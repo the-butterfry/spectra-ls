@@ -1,6 +1,14 @@
-# Gitignore settings for ESPHome
-# This is an example and may include too much for your use-case.
-# You can modify this file to suit your needs.
+# Repo policy: track ONLY control-py/, control-board-esp32-tcp.yaml, and circuitpy/
+# Ignore everything else by default.
+*
+!.gitignore
+!control-board-esp32-tcp.yaml
+!control-py/
+!control-py/**
+!circuitpy/
+!circuitpy/**
+
+# Extra safety ignores (redundant with * but kept for clarity)
 /.esphome/
 /secrets.yaml
 /control-py/secrets.yaml

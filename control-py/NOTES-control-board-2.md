@@ -335,6 +335,10 @@ Copy these into `CIRCUITPY/lib` on the Feather RP2040:
 
 ## Change log
 
+### 2026-04-14
+
+- HA: Split MA control hub package into focused include files for maintainability.
+
 ### 2026-04-13
 
 - HA: Gate kitchen meta override behind MA meta confidence so strong detections win.

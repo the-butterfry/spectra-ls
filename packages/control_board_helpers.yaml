@@ -1,0 +1,7 @@
+# Description: Control Board helper entities for HA (room/target selectors).
+# Version: 2026.03.28.1
+# Last updated: 2026-03-28
+# Update version/date whenever you change this file.
+
+# Deprecated: helpers now live in spectra_ls_lighting_hub.yaml
+# to keep the lighting hub drop-in and fully dynamic.

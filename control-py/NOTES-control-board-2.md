@@ -335,6 +335,11 @@ Copy these into `CIRCUITPY/lib` on the Feather RP2040:
 
 ## Change log
 
+### 2026-04-13
+
+- HA: Gate kitchen meta override behind MA meta confidence so strong detections win.
+- HA: Prefer active or fresh meta entity for now-playing selection to avoid stale targets on the OLED.
+
 ### 2026-04-12
 
 - HA: DST manual override now sticks until the room reaches target temperature; Tuya cool setpoint defaults 2°F below DST target on manual start.

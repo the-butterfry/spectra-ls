@@ -7,6 +7,8 @@
 !control-py/**
 !circuitpy/
 !circuitpy/**
+!packages/
+!packages/**
 
 # Extra safety ignores (redundant with * but kept for clarity)
 /.esphome/

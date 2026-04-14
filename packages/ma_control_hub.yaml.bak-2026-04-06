@@ -1,0 +1,1204 @@
+# Description: Music Assistant hub control + mapping for Spectra LS controls
+# Version: 2026.03.28.12
+# Last updated: 2026-03-28
+# Update version/date whenever you change this file.
+
+input_select:
+  ma_active_target:
+    name: MA Active Target
+    options:
+      - none
+    initial: none
+
+input_boolean:
+  ma_override_active:
+    name: MA Manual Override Active
+    initial: false
+
+input_number:
+  ma_balance:
+    name: MA Group Balance
+    min: -1.0
+    max: 1.0
+    step: 0.01
+    mode: slider
+    unit_of_measurement: ""
+  ma_meta_stale_s:
+    name: MA Meta Stale (s)
+    min: 5
+    max: 300
+    step: 1
+    initial: 45
+  ma_pos_stall_s:
+    name: MA Position Stall (s)
+    min: 5
+    max: 300
+    step: 1
+    initial: 15
+  ma_end_tolerance_s:
+    name: MA End Tolerance (s)
+    min: 0
+    max: 10
+    step: 0.5
+    initial: 2
+  ma_override_pause_s:
+    name: MA Override Pause Timeout (s)
+    min: 5
+    max: 600
+    step: 1
+    initial: 60
+  ma_auto_idle_s:
+    name: MA Auto Select Idle (s)
+    min: 5
+    max: 600
+    step: 1
+    initial: 45
+  ma_auto_playing_s:
+    name: MA Auto Select Playing (s)
+    min: 1
+    max: 60
+    step: 1
+    initial: 5
+
+input_text:
+  ma_server_url:
+    name: MA Server URL
+    initial: !secret ma_server_url
+    max: 255
+    mode: text
+  ma_last_valid_target:
+    name: MA Last Valid Target
+    initial: ""
+    max: 255
+    mode: text
+  spectra_ls_target_primary_entity:
+    name: Spectra LS Target (Primary) Entity ID
+    initial: "media_player.spectra_ls_2"
+    max: 255
+    mode: text
+  spectra_ls_target_primary_meta_entity:
+    name: Spectra LS Target (Primary) Meta Entity ID
+    initial: "media_player.spectra_ls"
+    max: 255
+    mode: text
+  spectra_ls_target_primary_tcp_host:
+    name: Spectra LS Target (Primary) TCP Host
+    initial: !include /config/spectra_ls_primary_tcp_host.yaml
+    max: 255
+    mode: text
+  spectra_ls_target_room_entity:
+    name: Spectra LS Target (Room) Entity ID
+    initial: ""
+    max: 255
+    mode: text
+  spectra_ls_target_room_meta_entity:
+    name: Spectra LS Target (Room) Meta Entity ID
+    initial: ""
+    max: 255
+    mode: text
+  spectra_ls_target_room_tcp_host:
+    name: Spectra LS Target (Room) TCP Host
+    initial: !include /config/spectra_ls_room_tcp_host.yaml
+    max: 255
+    mode: text
+
+command_line:
+  - sensor:
+      name: Spectra LS Rooms Raw
+      command: >-
+        python3 -c "import json; print(json.dumps({'rooms': json.load(open('/config/spectra_ls_rooms.json'))}))"
+      value_template: >-
+        {{ value_json.rooms | length if value_json.rooms is defined else 0 }}
+      json_attributes:
+        - rooms
+      scan_interval: 120
+
+
+rest:
+  - resource_template: "{{ states('sensor.ma_api_url') }}"
+    method: POST
+    headers:
+      Content-Type: "application/json"
+      # NOTE: ma_ll_token should include the 'Bearer ' prefix.
+      # Example in secrets.yaml: ma_ll_token: "Bearer <TOKEN>"
+      Authorization: !secret ma_ll_token
+    payload: '{"command": "players/all", "args": {"details": true}}'
+    scan_interval: 60
+    sensor:
+      - name: MA Players
+        value_template: >-
+          {% if value_json is defined and value_json.result is defined %}
+            {{ value_json.result | length }}
+          {% elif value_json is defined and value_json is iterable %}
+            {{ value_json | length }}
+          {% else %}
+            0
+          {% endif %}
+        json_attributes:
+          - result
+  - resource_template: "{{ states('sensor.ma_api_url') }}"
+    method: POST
+    headers:
+      Content-Type: "application/json"
+      # NOTE: ma_ll_token should include the 'Bearer ' prefix.
+      # Example in secrets.yaml: ma_ll_token: "Bearer <TOKEN>"
+      Authorization: !secret ma_ll_token
+    payload: >-
+      {"command": "players/get", "args": {"player_id": "{{ states('sensor.ma_active_player_id') }}"}}
+    scan_interval: 15
+    sensor:
+      - name: MA Active Player
+        value_template: >-
+          {% if value_json is defined and value_json.player_id is defined %}
+            {{ value_json.player_id }}
+          {% elif value_json is defined and value_json.result is defined and value_json.result.player_id is defined %}
+            {{ value_json.result.player_id }}
+          {% else %}
+            {{ '' }}
+          {% endif %}
+        json_attributes:
+          - player_id
+          - current_media
+          - streamdetails
+          - active_source
+          - app_name
+          - playback_state
+          - state
+          - result
+
+rest_command:
+  ma_api_command:
+    url: "{{ states('sensor.ma_api_url') }}"
+    method: POST
+    headers:
+      Content-Type: "application/json"
+      # NOTE: ma_ll_token should include the 'Bearer ' prefix.
+      # Example in secrets.yaml: ma_ll_token: "Bearer <TOKEN>"
+      Authorization: !secret ma_ll_token
+    payload: "{{ payload }}"
+    content_type: "application/json"
+
+script:
+  ma_update_target_options:
+    mode: restart
+    sequence:
+      - variables:
+          rooms: >-
+            {% set rooms_raw = state_attr('sensor.spectra_ls_rooms_raw','rooms') %}
+            {% if rooms_raw is string %}
+              {% set raw_l = rooms_raw | lower %}
+              {% set raw_trim = rooms_raw | trim %}
+              {% if raw_l in ['unknown','unavailable','none',''] %}
+                {{ [] }}
+              {% elif raw_trim.startswith('[') or raw_trim.startswith('{') %}
+                {{ rooms_raw | from_json }}
+              {% else %}
+                {{ [] }}
+              {% endif %}
+            {% else %}
+              {{ rooms_raw or [] }}
+            {% endif %}
+          known_targets: >-
+            {% set ns = namespace(list=[]) %}
+            {% for r in rooms %}
+              {% if r.entity is defined and r.entity not in ['','unknown','unavailable'] and states[r.entity] is not none %}
+                {% set ns.list = ns.list + [r.entity] %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.list }}
+          current: >-
+            {{ states('input_select.ma_active_target') }}
+          last_valid: >-
+            {{ states('input_text.ma_last_valid_target') }}
+          current_norm: >-
+            {{ (current | lower) if current is not none else '' }}
+          current_is_none: >-
+            {{ current_norm in ['none','unknown','unavailable',''] }}
+          final_options: >-
+            {% set extra = ([current] if (current_norm not in ['none','unknown','unavailable',''] and current not in known_targets) else []) %}
+            {{ (['none'] + known_targets + extra) | unique | list }}
+          default_option: >-
+            {% set last_ok = last_valid not in ['none','unknown','unavailable',''] and last_valid in known_targets %}
+            {{ (current if current_norm not in ['none','unknown','unavailable',''] else (last_valid if last_ok else (known_targets[0] if (known_targets | length) > 0 else 'none'))) }}
+      - service: input_select.set_options
+        data:
+          entity_id: input_select.ma_active_target
+          options: "{{ final_options }}"
+      - choose:
+          - conditions: "{{ current_is_none or current not in final_options }}"
+            sequence:
+              - service: input_select.select_option
+                data:
+                  entity_id: input_select.ma_active_target
+                  option: "{{ default_option }}"
+
+  ma_cycle_target:
+    mode: restart
+    sequence:
+      - service: input_boolean.turn_on
+        data:
+          entity_id: input_boolean.ma_override_active
+      - variables:
+          options: "{{ state_attr('input_select.ma_active_target','options') or [] }}"
+          current: "{{ states('input_select.ma_active_target') }}"
+      - choose:
+          - conditions: "{{ options | length > 0 }}"
+            sequence:
+              - variables:
+                  idx: "{{ options.index(current) if current in options else -1 }}"
+                  next: "{{ options[(idx + 1) % (options | length)] }}"
+              - service: input_select.select_option
+                data:
+                  entity_id: input_select.ma_active_target
+                  option: "{{ next }}"
+
+  ma_auto_select:
+    mode: restart
+    sequence:
+      - variables:
+          override_on: "{{ is_state('input_boolean.ma_override_active','on') }}"
+          current: "{{ states('input_select.ma_active_target') }}"
+          current_state: >-
+            {% if current.startswith('media_player.') and states[current] is not none %}
+              {{ states(current) | lower }}
+            {% else %}
+              {{ '' }}
+            {% endif %}
+          current_invalid: >-
+            {{ current in ['none','unknown','unavailable',''] or states[current] is none or current_state in ['','unknown','unavailable'] }}
+          current_playing: >-
+            {{ current not in ['none','unknown','unavailable',''] and current_state == 'playing' }}
+          current_active: >-
+            {{ current not in ['none','unknown','unavailable',''] and current_state in ['playing','paused'] }}
+          idle_threshold: "{{ states('input_number.ma_auto_idle_s') | float(45) }}"
+          current_idle_s: >-
+            {% if current in ['none','unknown','unavailable',''] or states[current] is none %}
+              999999
+            {% else %}
+              {{ (as_timestamp(now()) - as_timestamp(states[current].last_changed)) | float(0) }}
+            {% endif %}
+          current_idle_long: "{{ current_idle_s >= idle_threshold }}"
+      - choose:
+          - conditions: "{{ current_playing }}"
+            sequence:
+              - stop: "Auto-select skipped (current target playing)."
+          - conditions: "{{ override_on and current_playing }}"
+            sequence:
+              - stop: "Manual override active (current target playing)."
+          - conditions: "{{ override_on and not current_active }}"
+            sequence:
+              - service: input_boolean.turn_off
+                data:
+                  entity_id: input_boolean.ma_override_active
+          - conditions: "{{ not current_active and not current_idle_long }}"
+            sequence:
+              - stop: "Auto-select delayed (current target not idle long enough)."
+      - variables:
+          allowed_players: >-
+            {{ state_attr('input_select.ma_active_target','options') or [] }}
+          players: >-
+            {% set ids = (allowed_players | select('match','^media_player\\.') | list) %}
+            {% set ns = namespace(list=[]) %}
+            {% for e in ids %}
+              {% if states[e] is not none %}
+                {% set st = states(e) %}
+                {% if st not in ['unknown','unavailable',''] %}
+                  {% set ns.list = ns.list + [e] %}
+                {% endif %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.list }}
+          pick: >-
+            {% set ns = namespace(best='', best_playing=false, best_active=false) %}
+            {% for p in players %}
+              {% set st = states(p) | lower %}
+              {% set pos = state_attr(p,'media_position') | float(0) %}
+              {% set dur = state_attr(p,'media_duration') | float(0) %}
+              {% set title = state_attr(p,'media_title') or '' %}
+              {% set content_id = state_attr(p,'media_content_id') or '' %}
+              {% set title_l = title | lower %}
+              {% set content_l = content_id | lower %}
+              {% set url_like = (('://' in title_l) or title_l.startswith('www.') or title_l.endswith('.mp3') or title_l.endswith('.flac') or title_l.endswith('.wav') or title_l.endswith('.m4a') or title_l.endswith('.aac') or title_l.endswith('.ogg') or
+                                  (('://' in content_l) or content_l.startswith('www.') or content_l.endswith('.mp3') or content_l.endswith('.flac') or content_l.endswith('.wav') or content_l.endswith('.m4a') or content_l.endswith('.aac') or content_l.endswith('.ogg'))) %}
+              {% set valid_title = title if not url_like else '' %}
+              {% set artist = state_attr(p,'media_artist') %}
+              {% set album = state_attr(p,'media_album_name') or state_attr(p,'media_album') %}
+              {% set app = state_attr(p,'app_name') %}
+              {% set source = state_attr(p,'source') %}
+              {% set has_activity = valid_title or artist or album or (pos > 0) or (dur > 0) or app or source %}
+              {% if ns.best == '' and (st == 'playing' or (st == 'on' and has_activity)) %}
+                {% set ns.best = p %}
+                {% set ns.best_playing = (st == 'playing') %}
+                {% set ns.best_active = true %}
+              {% endif %}
+            {% endfor %}
+            {% if ns.best == '' %}
+              {% for p in players %}
+                {% set st = states(p) | lower %}
+                {% set pos = state_attr(p,'media_position') | float(0) %}
+                {% set dur = state_attr(p,'media_duration') | float(0) %}
+                {% set title = state_attr(p,'media_title') or '' %}
+                {% set content_id = state_attr(p,'media_content_id') or '' %}
+                {% set title_l = title | lower %}
+                {% set content_l = content_id | lower %}
+                {% set url_like = (('://' in title_l) or title_l.startswith('www.') or title_l.endswith('.mp3') or title_l.endswith('.flac') or title_l.endswith('.wav') or title_l.endswith('.m4a') or title_l.endswith('.aac') or title_l.endswith('.ogg') or
+                                    (('://' in content_l) or content_l.startswith('www.') or content_l.endswith('.mp3') or content_l.endswith('.flac') or content_l.endswith('.wav') or content_l.endswith('.m4a') or content_l.endswith('.aac') or content_l.endswith('.ogg'))) %}
+                {% set valid_title = title if not url_like else '' %}
+                {% set artist = state_attr(p,'media_artist') %}
+                {% set album = state_attr(p,'media_album_name') or state_attr(p,'media_album') %}
+                {% set app = state_attr(p,'app_name') %}
+                {% set source = state_attr(p,'source') %}
+                {% set has_activity = valid_title or artist or album or (pos > 0) or (dur > 0) or app or source %}
+                {% if ns.best == '' and st == 'paused' and has_activity %}
+                  {% set ns.best = p %}
+                  {% set ns.best_playing = false %}
+                  {% set ns.best_active = true %}
+                {% endif %}
+              {% endfor %}
+            {% endif %}
+            {{ ns.best }}
+          pick_playing: "{{ pick != '' and states(pick) | lower == 'playing' }}"
+          pick_active: >-
+            {% if pick == '' %}
+              false
+            {% else %}
+              {% set st = states(pick) | lower %}
+              {% set pos = state_attr(pick,'media_position') | float(0) %}
+              {% set dur = state_attr(pick,'media_duration') | float(0) %}
+              {% set title = state_attr(pick,'media_title') or '' %}
+              {% set content_id = state_attr(pick,'media_content_id') or '' %}
+              {% set title_l = title | lower %}
+              {% set content_l = content_id | lower %}
+              {% set url_like = (('://' in title_l) or title_l.startswith('www.') or title_l.endswith('.mp3') or title_l.endswith('.flac') or title_l.endswith('.wav') or title_l.endswith('.m4a') or title_l.endswith('.aac') or title_l.endswith('.ogg') or
+                                  (('://' in content_l) or content_l.startswith('www.') or content_l.endswith('.mp3') or content_l.endswith('.flac') or content_l.endswith('.wav') or content_l.endswith('.m4a') or content_l.endswith('.aac') or content_l.endswith('.ogg'))) %}
+              {% set valid_title = title if not url_like else '' %}
+              {% set artist = state_attr(pick,'media_artist') %}
+              {% set album = state_attr(pick,'media_album_name') or state_attr(pick,'media_album') %}
+              {% set app = state_attr(pick,'app_name') %}
+              {% set source = state_attr(pick,'source') %}
+              {% set has_activity = valid_title or artist or album or (pos > 0) or (dur > 0) or app or source %}
+              {{ st == 'playing' or (st == 'on' and has_activity) or (st == 'paused' and has_activity) }}
+            {% endif %}
+          playing_threshold: >-
+            {{ 0 if current_invalid else (states('input_number.ma_auto_playing_s') | float(5)) }}
+          pick_playing_s: >-
+            {% if pick_playing %}
+              {{ (as_timestamp(now()) - as_timestamp(states[pick].last_changed)) | float(0) }}
+            {% else %}
+              0
+            {% endif %}
+          pick_ready: >-
+            {{ pick_active and pick in (state_attr('input_select.ma_active_target','options') or []) and ((not pick_playing) or (pick_playing_s >= playing_threshold)) }}
+      - choose:
+          - conditions: "{{ pick_ready }}"
+            sequence:
+              - service: input_select.select_option
+                data:
+                  entity_id: input_select.ma_active_target
+                  option: "{{ pick }}"
+          - conditions: "{{ not pick_ready }}"
+            sequence:
+              - stop: "Auto-select skipped (no active playing target)."
+
+  ma_set_volume:
+    mode: restart
+    fields:
+      volume:
+        description: "Volume 0..1"
+        example: 0.35
+    sequence:
+      - stop: "MA volume set disabled (read-only)."
+
+
+  ma_set_balance:
+    mode: restart
+    fields:
+      balance:
+        description: "Balance -1..1"
+        example: -0.3
+    sequence:
+      - stop: "MA balance disabled (read-only volume)."
+
+automation:
+  - id: ma_update_target_options_start
+    alias: "MA: Update target options (startup)"
+    trigger:
+      - platform: homeassistant
+        event: start
+      - platform: state
+        entity_id: sensor.ma_players
+      - platform: time_pattern
+        minutes: "/5"
+    action:
+      - choose:
+          - conditions: "{{ trigger.platform == 'homeassistant' }}"
+            sequence:
+              - delay: "00:01:00"
+      - service: homeassistant.update_entity
+        data:
+          entity_id: sensor.spectra_ls_rooms_raw
+      - service: script.turn_on
+        data:
+          entity_id: script.ma_update_target_options
+      - service: script.turn_on
+        data:
+          entity_id: script.ma_auto_select
+
+  - id: ma_auto_select_loop
+    alias: "MA: Auto select active target"
+    trigger:
+      - platform: state
+        entity_id: sensor.ma_players
+      - platform: state
+        entity_id: input_select.ma_active_target
+      - platform: event
+        event_type: state_changed
+    condition:
+      - condition: template
+        value_template: >-
+          {% if trigger.platform != 'event' %}
+            true
+          {% else %}
+            {% set ent = trigger.event.data.entity_id if trigger.event.data is defined else '' %}
+            {% set watched = (state_attr('input_select.ma_active_target','options') or []) %}
+            {{ ent in watched }}
+          {% endif %}
+      - condition: template
+        value_template: >-
+          {% set count = states('sensor.ma_players') %}
+          {{ count not in ['unknown','unavailable',''] and (count | int(0)) > 0 }}
+      - condition: state
+        entity_id: input_boolean.ma_override_active
+        state: "off"
+    action:
+      - service: script.turn_on
+        data:
+          entity_id: script.ma_auto_select
+
+  - id: ma_track_last_valid_target
+    alias: "MA: Track last valid target"
+    trigger:
+      - platform: state
+        entity_id: input_select.ma_active_target
+    condition:
+      - condition: template
+        value_template: >-
+          {% set t = states('input_select.ma_active_target') %}
+          {{ t not in ['none','unknown','unavailable',''] and states[t] is not none }}
+    action:
+      - service: input_text.set_value
+        data:
+          entity_id: input_text.ma_last_valid_target
+          value: "{{ states('input_select.ma_active_target') }}"
+
+  - id: ma_restore_last_valid_target
+    alias: "MA: Restore last valid target"
+    trigger:
+      - platform: homeassistant
+        event: start
+    action:
+      - delay: "00:00:10"
+      - choose:
+          - conditions: >-
+              {% set current = states('input_select.ma_active_target') %}
+              {% set last = states('input_text.ma_last_valid_target') %}
+              {% set options = state_attr('input_select.ma_active_target','options') or [] %}
+              {{ current in ['none','unknown','unavailable',''] and last not in ['none','unknown','unavailable',''] and last in options }}
+            sequence:
+              - service: input_select.select_option
+                data:
+                  entity_id: input_select.ma_active_target
+                  option: "{{ states('input_text.ma_last_valid_target') }}"
+
+  - id: ma_balance_sync_input
+    alias: "MA: Balance slider -> apply"
+    trigger:
+      - platform: state
+        entity_id: input_number.ma_balance
+    action:
+      - stop: "MA balance sync disabled (read-only volume)."
+
+  - id: ma_watch_volume_set_calls
+    alias: "MA: Watch volume_set calls"
+    trigger:
+      - platform: event
+        event_type: call_service
+        event_data:
+          domain: media_player
+          service: volume_set
+    condition:
+      - condition: template
+        value_template: >-
+          {% set data = trigger.event.data.service_data or {} %}
+          {% set target = data.entity_id if data.entity_id is defined else data.entity_ids if data.entity_ids is defined else [] %}
+          {% if target is string %}
+            {% set targets = [target] %}
+          {% elif target is iterable %}
+            {% set targets = target %}
+          {% else %}
+            {% set targets = [] %}
+          {% endif %}
+          {% set watched = (state_attr('input_select.ma_active_target','options') or []) %}
+          {{ targets | select('in', watched) | list | length > 0 }}
+    action:
+      - service: logbook.log
+        data:
+          name: "MA Volume Set"
+          message: >-
+            volume_set called for {{ trigger.event.data.service_data.entity_id if trigger.event.data.service_data is defined and trigger.event.data.service_data.entity_id is defined else trigger.event.data.service_data.entity_ids }}
+            vol={{ trigger.event.data.service_data.volume_level if trigger.event.data.service_data is defined else 'n/a' }}
+            ctx={{ trigger.event.context.user_id if trigger.event.context is defined else 'n/a' }}
+            parent={{ trigger.event.context.parent_id if trigger.event.context is defined else 'n/a' }}
+            origin={{ trigger.event.context.origin_event.context.id if trigger.event.context is defined and trigger.event.context.origin_event is defined and trigger.event.context.origin_event.context is defined else 'n/a' }}
+          domain: media_player
+      - service: persistent_notification.create
+        data:
+          title: "MA volume_set call detected"
+          message: >-
+            volume_set called for {{ trigger.event.data.service_data.entity_id if trigger.event.data.service_data is defined and trigger.event.data.service_data.entity_id is defined else trigger.event.data.service_data.entity_ids }}
+            vol={{ trigger.event.data.service_data.volume_level if trigger.event.data.service_data is defined else 'n/a' }}
+            ctx={{ trigger.event.context.user_id if trigger.event.context is defined else 'n/a' }}
+            parent={{ trigger.event.context.parent_id if trigger.event.context is defined else 'n/a' }}
+            origin={{ trigger.event.context.origin_event.context.id if trigger.event.context is defined and trigger.event.context.origin_event is defined and trigger.event.context.origin_event.context is defined else 'n/a' }}
+
+  - id: ma_watch_volume_state_changes
+    alias: "MA: Watch volume state changes"
+    trigger:
+      - platform: event
+        event_type: state_changed
+    condition:
+      - condition: template
+        value_template: >-
+          {% set ent = trigger.event.data.entity_id if trigger.event.data is defined else '' %}
+          {% set watched = (state_attr('input_select.ma_active_target','options') or []) %}
+          {{ ent in watched }}
+      - condition: template
+        value_template: >-
+          {% set old = trigger.event.data.old_state if trigger.event.data is defined else none %}
+          {% set new = trigger.event.data.new_state if trigger.event.data is defined else none %}
+          {% if old is none or new is none %}
+            false
+          {% else %}
+            {% set old_v = old.attributes.volume_level if old.attributes is defined else none %}
+            {% set new_v = new.attributes.volume_level if new.attributes is defined else none %}
+            {{ old_v is not none and new_v is not none and (old_v | float(0)) != (new_v | float(0)) }}
+          {% endif %}
+    action:
+      - service: logbook.log
+        data:
+          name: "MA Volume State"
+          message: >-
+            {{ trigger.event.data.entity_id }} volume_level {{ trigger.event.data.old_state.attributes.volume_level if trigger.event.data.old_state is defined else 'n/a' }}
+            -> {{ trigger.event.data.new_state.attributes.volume_level if trigger.event.data.new_state is defined else 'n/a' }}
+            ctx={{ trigger.event.context.user_id if trigger.event.context is defined else 'n/a' }}
+            parent={{ trigger.event.context.parent_id if trigger.event.context is defined else 'n/a' }}
+            origin={{ trigger.event.context.origin_event.context.id if trigger.event.context is defined and trigger.event.context.origin_event is defined and trigger.event.context.origin_event.context is defined else 'n/a' }}
+          domain: media_player
+      - service: persistent_notification.create
+        data:
+          title: "MA volume state change"
+          message: >-
+            {{ trigger.event.data.entity_id }} volume_level {{ trigger.event.data.old_state.attributes.volume_level if trigger.event.data.old_state is defined else 'n/a' }}
+            -> {{ trigger.event.data.new_state.attributes.volume_level if trigger.event.data.new_state is defined else 'n/a' }}
+            ctx={{ trigger.event.context.user_id if trigger.event.context is defined else 'n/a' }}
+            parent={{ trigger.event.context.parent_id if trigger.event.context is defined else 'n/a' }}
+            origin={{ trigger.event.context.origin_event.context.id if trigger.event.context is defined and trigger.event.context.origin_event is defined and trigger.event.context.origin_event.context is defined else 'n/a' }}
+
+
+template:
+  - sensor:
+      - name: Spectra LS Rooms JSON
+        state: >-
+          {% set rooms = state_attr('sensor.spectra_ls_rooms_raw','rooms') or [] %}
+          {{ rooms | length }}
+        attributes:
+          rooms_json: >-
+            {% set rooms = state_attr('sensor.spectra_ls_rooms_raw','rooms') or [] %}
+            {{ rooms | tojson }}
+      - name: MA API URL
+        state: >-
+          {% set base = states('input_text.ma_server_url') %}
+          {% if base in ['unknown','unavailable','', none] %}
+            {{ 'http://127.0.0.1:1/api' }}
+          {% else %}
+            {% set clean = base | regex_replace('/api/?$','') | regex_replace('/$','') %}
+            {{ clean ~ '/api' }}
+          {% endif %}
+      - name: MA Active Target
+        state: "{{ states('input_select.ma_active_target') }}"
+      - name: MA Active Meta Entity
+        unique_id: ma_active_meta_entity
+        state: >-
+          {% set t = states('input_select.ma_active_target') %}
+          {% if t in ['none','unknown','unavailable',''] %}
+            {{ '' }}
+          {% else %}
+            {% set rooms_raw = state_attr('sensor.spectra_ls_rooms_raw','rooms') %}
+            {% set rooms = [] %}
+            {% if rooms_raw is string %}
+              {% set raw_l = rooms_raw | lower %}
+              {% set raw_trim = rooms_raw | trim %}
+              {% if raw_l in ['unknown','unavailable','none',''] %}
+                {% set rooms = [] %}
+              {% elif raw_trim.startswith('[') or raw_trim.startswith('{') %}
+                {% set rooms = rooms_raw | from_json %}
+              {% else %}
+                {% set rooms = [] %}
+              {% endif %}
+            {% else %}
+              {% set rooms = rooms_raw or [] %}
+            {% endif %}
+            {% set entries = rooms | selectattr('entity','equalto', t) | list %}
+            {% set entry = entries[0] if (entries | length) > 0 else none %}
+            {% set meta_candidate = (entry.meta if entry is not none and entry.meta is defined and entry.meta not in ['','none','unknown','unavailable'] else t) %}
+            {% set target_source = (state_attr(t, 'source') or '') %}
+            {% if target_source == 'AirPlay' %}
+              {% set ns_oracle = namespace(entity='') %}
+              {% for e in states.media_player %}
+                {% if ns_oracle.entity == '' %}
+                  {% set app_id = (e.attributes.app_id if e.attributes is defined and e.attributes.app_id is defined else '') | lower %}
+                  {% set app_name = (e.attributes.app_name if e.attributes is defined and e.attributes.app_name is defined else '') | lower %}
+                  {% set title = (e.attributes.media_title if e.attributes is defined and e.attributes.media_title is defined else '') %}
+                  {% set state = (e.state | lower) if e is not none else '' %}
+                  {% set title_ok = title not in ['','None', none] %}
+                  {% set youtube = (app_id.find('youtube') != -1) or (app_name == 'youtube') %}
+                  {% if title_ok and youtube and state in ['playing','paused'] %}
+                    {% set ns_oracle.entity = e.entity_id %}
+                  {% endif %}
+                {% endif %}
+              {% endfor %}
+              {% if ns_oracle.entity != '' %}
+                {% set meta_candidate = ns_oracle.entity %}
+              {% endif %}
+            {% endif %}
+            {% set meta_state = states(meta_candidate) if meta_candidate not in ['','none','unknown','unavailable'] else '' %}
+            {% set meta_valid = meta_candidate not in ['','none','unknown','unavailable'] and meta_state not in ['unknown','unavailable',''] %}
+            {{ meta_candidate if meta_valid else t }}
+          {% endif %}
+      - name: MA Active Player ID
+        state: >-
+          {% set t = states('input_select.ma_active_target') %}
+          {% if t in ['none','unknown','unavailable',''] %}
+            {{ '' }}
+          {% else %}
+            {% set meta = states('sensor.ma_active_meta_entity') %}
+            {% set meta = (meta if meta not in ['','none','unknown','unavailable'] else t) %}
+            {{ meta }}
+          {% endif %}
+      - name: Now Playing Entity
+        state: >-
+          {% set preferred = states('sensor.ma_active_meta_entity') %}
+          {% if preferred not in ['','unknown','unavailable','none'] %}
+            {{ preferred }}
+          {% else %}
+            {{ states('input_select.ma_active_target') }}
+          {% endif %}
+      - name: Now Playing Title
+        state: >-
+          {% set t = states('sensor.now_playing_entity') %}
+          {% if t in ['','unknown','unavailable',none] %}
+            {{ '' }}
+          {% else %}
+            {% set lookup_id = t %}
+            {% set short_id = t.split('.')[-1] %}
+            {% set players = state_attr('sensor.ma_players','result') or [] %}
+            {% set ns = namespace(p=None) %}
+            {% for p in players %}
+              {% if ns.p is none and (p.player_id == lookup_id or p.player_id == short_id or p.player_id == ('media_player.' ~ short_id) or p.entity_id == lookup_id) %}
+                {% set ns.p = p %}
+              {% endif %}
+            {% endfor %}
+            {% set ma_title = (ns.p.current_media.title if ns.p is not none and ns.p.current_media is defined else '') | default('', true) %}
+            {% set ma_uri = (ns.p.current_media.uri if ns.p is not none and ns.p.current_media is defined else '') | default('', true) %}
+            {% set stream_meta = (ns.p.streamdetails.stream_metadata if ns.p is not none and ns.p.streamdetails is defined and ns.p.streamdetails.stream_metadata is defined else none) %}
+            {% set stream_title = (stream_meta.title if stream_meta is not none and stream_meta.title is defined else '') | default('', true) %}
+            {% set title = (ma_title if ma_title not in ['None', none] else '') | default('', true) %}
+            {% set uri = (ma_uri if ma_uri not in ['None', none] else '') | default('', true) %}
+            {% set title_l = title | lower %}
+            {% set uri_l = uri | lower %}
+            {% set url_like = (('://' in title_l) or title_l.startswith('www.') or title_l.endswith('.mp3') or title_l.endswith('.flac') or title_l.endswith('.wav') or title_l.endswith('.m4a') or title_l.endswith('.aac') or title_l.endswith('.ogg') or
+                                (('://' in uri_l) or uri_l.startswith('www.') or uri_l.endswith('.mp3') or uri_l.endswith('.flac') or uri_l.endswith('.wav') or uri_l.endswith('.m4a') or uri_l.endswith('.aac') or uri_l.endswith('.ogg'))) %}
+            {% if title and not url_like %}
+              {{ title }}
+            {% else %}
+              {% set stream_l = stream_title | lower %}
+              {% set stream_url = (('://' in stream_l) or stream_l.startswith('www.') or stream_l.endswith('.mp3') or stream_l.endswith('.flac') or stream_l.endswith('.wav') or stream_l.endswith('.m4a') or stream_l.endswith('.aac') or stream_l.endswith('.ogg')) %}
+              {% if stream_title and not stream_url %}
+                {{ stream_title }}
+              {% else %}
+              {% set ha_title = state_attr(t,'media_title') or '' %}
+              {% set ha_id = state_attr(t,'media_content_id') or '' %}
+              {% set ha_tl = ha_title | lower %}
+              {% set ha_il = ha_id | lower %}
+              {% set ha_url = (('://' in ha_tl) or ha_tl.startswith('www.') or ha_tl.endswith('.mp3') or ha_tl.endswith('.flac') or ha_tl.endswith('.wav') or ha_tl.endswith('.m4a') or ha_tl.endswith('.aac') or ha_tl.endswith('.ogg') or
+                               (('://' in ha_il) or ha_il.startswith('www.') or ha_il.endswith('.mp3') or ha_il.endswith('.flac') or ha_il.endswith('.wav') or ha_il.endswith('.m4a') or ha_il.endswith('.aac') or ha_il.endswith('.ogg'))) %}
+              {% set fallback_title = (ha_title if not ha_url else '') | default('', true) %}
+              {% if fallback_title != '' %}
+                {{ fallback_title }}
+              {% else %}
+                {{ (state_attr(t,'app_name') or state_attr(t,'source') or state_attr(t,'friendly_name') or '') | default('', true) }}
+              {% endif %}
+              {% endif %}
+            {% endif %}
+          {% endif %}
+      - name: Now Playing Artist
+        state: >-
+          {% set t = states('sensor.now_playing_entity') %}
+          {% if t in ['','unknown','unavailable',none] %}
+            {{ '' }}
+          {% else %}
+            {% set lookup_id = t %}
+            {% set short_id = t.split('.')[-1] %}
+            {% set players = state_attr('sensor.ma_players','result') or [] %}
+            {% set ns = namespace(p=None) %}
+            {% for p in players %}
+              {% if ns.p is none and (p.player_id == lookup_id or p.player_id == short_id or p.player_id == ('media_player.' ~ short_id) or p.entity_id == lookup_id) %}
+                {% set ns.p = p %}
+              {% endif %}
+            {% endfor %}
+            {% set ma_artist = (ns.p.current_media.artist if ns.p is not none and ns.p.current_media is defined else '') | default('', true) %}
+            {% set stream_meta = (ns.p.streamdetails.stream_metadata if ns.p is not none and ns.p.streamdetails is defined and ns.p.streamdetails.stream_metadata is defined else none) %}
+            {% set stream_artist = (stream_meta.artist if stream_meta is not none and stream_meta.artist is defined else '') | default('', true) %}
+            {% if ma_artist and ma_artist not in ['None', none] %}
+              {{ ma_artist }}
+            {% elif stream_artist and stream_artist not in ['None', none] %}
+              {{ stream_artist }}
+            {% else %}
+              {{ (state_attr(t,'media_artist') or '') | default('', true) }}
+            {% endif %}
+          {% endif %}
+      - name: Now Playing Album
+        state: >-
+          {% set t = states('sensor.now_playing_entity') %}
+          {% if t in ['','unknown','unavailable',none] %}
+            {{ '' }}
+          {% else %}
+            {% set lookup_id = t %}
+            {% set short_id = t.split('.')[-1] %}
+            {% set players = state_attr('sensor.ma_players','result') or [] %}
+            {% set ns = namespace(p=None) %}
+            {% for p in players %}
+              {% if ns.p is none and (p.player_id == lookup_id or p.player_id == short_id or p.player_id == ('media_player.' ~ short_id) or p.entity_id == lookup_id) %}
+                {% set ns.p = p %}
+              {% endif %}
+            {% endfor %}
+            {% set ma_album = (ns.p.current_media.album if ns.p is not none and ns.p.current_media is defined else '') | default('', true) %}
+            {% set stream_meta = (ns.p.streamdetails.stream_metadata if ns.p is not none and ns.p.streamdetails is defined and ns.p.streamdetails.stream_metadata is defined else none) %}
+            {% set stream_album = (stream_meta.album if stream_meta is not none and stream_meta.album is defined else '') | default('', true) %}
+            {% if ma_album and ma_album not in ['None', none] %}
+              {{ ma_album }}
+            {% elif stream_album and stream_album not in ['None', none] %}
+              {{ stream_album }}
+            {% else %}
+              {{ (state_attr(t,'media_album_name') or state_attr(t,'media_album') or '') | default('', true) }}
+            {% endif %}
+          {% endif %}
+      - name: Now Playing Source
+        state: >-
+          {% set t = states('sensor.now_playing_entity') %}
+          {% if t in ['','unknown','unavailable',none] %}
+            {{ '' }}
+          {% else %}
+            {% set lookup_id = t %}
+            {% set short_id = t.split('.')[-1] %}
+            {% set players = state_attr('sensor.ma_players','result') or [] %}
+            {% set ns = namespace(p=None) %}
+            {% for p in players %}
+              {% if ns.p is none and (p.player_id == lookup_id or p.player_id == short_id or p.player_id == ('media_player.' ~ short_id) or p.entity_id == lookup_id) %}
+                {% set ns.p = p %}
+              {% endif %}
+            {% endfor %}
+            {% set ma_src = (ns.p.active_source if ns.p is not none else '') | default('', true) %}
+            {% if ma_src and ma_src not in ['None', none] %}
+              {{ ma_src }}
+            {% else %}
+              {{ (state_attr(t,'source') or '') | default('', true) }}
+            {% endif %}
+          {% endif %}
+      - name: Now Playing State
+        state: >-
+          {% set t = states('sensor.now_playing_entity') %}
+          {% if t in ['','unknown','unavailable',none] %}
+            {{ 'idle' }}
+          {% else %}
+            {% set lookup_id = t %}
+            {% set short_id = t.split('.')[-1] %}
+            {% set players = state_attr('sensor.ma_players','result') or [] %}
+            {% set ns = namespace(p=None) %}
+            {% for p in players %}
+              {% if ns.p is none and (p.player_id == lookup_id or p.player_id == short_id or p.player_id == ('media_player.' ~ short_id) or p.entity_id == lookup_id) %}
+                {% set ns.p = p %}
+              {% endif %}
+            {% endfor %}
+            {% set ma_state = (ns.p.playback_state if ns.p is not none else '') | default('', true) %}
+            {% if ma_state and ma_state not in ['None', none] %}
+              {{ ma_state }}
+            {% else %}
+              {{ states(t) | default('idle', true) }}
+            {% endif %}
+          {% endif %}
+      - name: Now Playing Duration
+        unit_of_measurement: s
+        state: >-
+          {% set t = states('sensor.now_playing_entity') %}
+          {{ (state_attr(t,'media_duration') if t not in ['','unknown','unavailable',none] else 0) | float(0) }}
+      - name: Now Playing Position
+        unit_of_measurement: s
+        state: >-
+          {% set t = states('sensor.now_playing_entity') %}
+          {{ (state_attr(t,'media_position') if t not in ['','unknown','unavailable',none] else 0) | float(0) }}
+      - name: Now Playing Volume
+        state: >-
+          {% set t = states('sensor.now_playing_entity') %}
+          {{ (state_attr(t,'volume_level') if t not in ['','unknown','unavailable',none] else 0) | float(0) }}
+      - name: Now Playing Friendly
+        state: >-
+          {% set t = states('sensor.now_playing_entity') %}
+          {{ (state_attr(t,'friendly_name') if t not in ['','unknown','unavailable',none] else '') | default('', true) }}
+      - name: MA Control Hosts
+        state: >-
+          {% set target = states('input_select.ma_active_target') %}
+          {% set valid_target = target not in ['none','unknown','unavailable',''] %}
+          {% set rooms_raw = state_attr('sensor.spectra_ls_rooms_raw','rooms') %}
+          {% set rooms = (rooms_raw | from_json) if rooms_raw is string else (rooms_raw or []) %}
+          {% set members = state_attr(target,'group_members') or state_attr(target,'members') or [] %}
+          {% set target_host = '' %}
+          {% if valid_target %}
+            {% set target_entries = (rooms | selectattr('entity','equalto', target) | list) %}
+            {% set target_entry = (target_entries[0] if (target_entries | length) > 0 else none) %}
+            {% if target_entry is not none and target_entry.tcp_host is defined and target_entry.tcp_host not in ['','unknown','unavailable'] %}
+              {% set target_host = target_entry.tcp_host %}
+            {% endif %}
+          {% endif %}
+          {% if target_host != '' %}
+            {{ target_host }}
+          {% else %}
+            {% set hosts = [] %}
+            {% for m in members %}
+              {% for r in rooms %}
+                {% if r.entity is defined and r.entity == m and r.tcp_host is defined and r.tcp_host not in ['','unknown','unavailable'] %}
+                  {% set hosts = hosts + [r.tcp_host] %}
+                {% endif %}
+              {% endfor %}
+            {% endfor %}
+            {% if hosts | length == 0 %}
+              {% set primary_entity = states('input_text.spectra_ls_target_primary_entity') %}
+              {% set room_entity = states('input_text.spectra_ls_target_room_entity') %}
+              {% set primary_host = states('input_text.spectra_ls_target_primary_tcp_host') %}
+              {% set room_host = states('input_text.spectra_ls_target_room_tcp_host') %}
+              {% if valid_target and target == primary_entity and primary_host not in ['','unknown','unavailable','none'] %}
+                {% set hosts = [primary_host] %}
+              {% elif valid_target and target == room_entity and room_host not in ['','unknown','unavailable','none'] %}
+                {% set hosts = [room_host] %}
+              {% endif %}
+            {% endif %}
+            {{ hosts | unique | join(',') if (hosts | length) > 0 else '' }}
+          {% endif %}
+      - name: MA Control Host
+        state: >-
+          {% set hosts = states('sensor.ma_control_hosts') %}
+          {% if ',' in hosts %}
+            {{ hosts.split(',')[0] }}
+          {% else %}
+            {{ hosts }}
+          {% endif %}
+      - name: MA Control Port
+        state: >-
+          8899
+      - name: MA Active Friendly
+        state: >-
+          {% set t = states('input_select.ma_active_target') %}
+          {% if t in ['none','unknown','unavailable',''] %}
+            {{ '' }}
+          {% else %}
+            {% set meta = states('sensor.ma_active_meta_entity') %}
+            {% set meta = (meta if meta not in ['','none','unknown','unavailable'] else t) %}
+            {{ (state_attr(meta, 'friendly_name') or state_attr(t, 'friendly_name') or '') | default('', true) }}
+          {% endif %}
+      - name: MA Active State
+        state: >-
+          {% set t = states('input_select.ma_active_target') %}
+          {% if t in ['none','unknown','unavailable',''] %}
+            {{ 'idle' }}
+          {% else %}
+            {% set meta = states('sensor.ma_active_meta_entity') %}
+            {% set meta = (meta if meta not in ['','none','unknown','unavailable'] else t) %}
+            {{ states(meta) | default('idle', true) }}
+          {% endif %}
+      - name: MA Active Title
+        state: >-
+          {% set t = states('input_select.ma_active_target') %}
+          {% if t in ['none','unknown','unavailable',''] %}
+            {{ '' }}
+          {% else %}
+            {% set _mp = states.media_player | list %}
+            {% set ap_id = states('sensor.ma_active_player_id') %}
+            {% set t_short = t.split('.')[-1] %}
+            {% set ap_match = ap_id == t or ap_id == t_short or ap_id == ('media_player.' ~ t_short) %}
+            {% set ap_current = (state_attr('sensor.ma_active_player','current_media') if ap_match else {}) or (state_attr('sensor.ma_active_player','result').current_media if ap_match and state_attr('sensor.ma_active_player','result') is defined and state_attr('sensor.ma_active_player','result').current_media is defined else {}) %}
+            {% set ap_stream = (state_attr('sensor.ma_active_player','streamdetails') if ap_match else {}) or (state_attr('sensor.ma_active_player','result').streamdetails if ap_match and state_attr('sensor.ma_active_player','result') is defined and state_attr('sensor.ma_active_player','result').streamdetails is defined else {}) %}
+            {% set ap_stream_meta = ap_stream.stream_metadata if ap_stream is defined and ap_stream.stream_metadata is defined else none %}
+            {% set ap_title = ap_current.title if ap_current is defined and ap_current.title is defined else '' %}
+            {% set ap_name = ap_current.name if ap_current is defined and ap_current.name is defined else '' %}
+            {% set ap_track = ap_current.metadata.title if ap_current is defined and ap_current.metadata is defined and ap_current.metadata.title is defined else '' %}
+            {% set ap_stream_title = ap_stream_meta.title if ap_stream_meta is not none and ap_stream_meta.title is defined else '' %}
+            {% set ap_stream_name = ap_stream_meta.stream_title if ap_stream_meta is not none and ap_stream_meta.stream_title is defined else '' %}
+            {% set meta = states('sensor.ma_active_meta_entity') %}
+            {% set meta = (meta if meta not in ['','none','unknown','unavailable'] else t) %}
+            {% set lookup = (meta if meta not in ['','none','unknown','unavailable'] else t) %}
+            {% set lookup_id = lookup %}
+            {% set short_id = lookup.split('.')[-1] %}
+            {% set players = state_attr('sensor.ma_players','result') or [] %}
+            {% set ns = namespace(p=None) %}
+            {% for p in players %}
+              {% set pid = (p.player_id if p.player_id is defined else '') %}
+              {% set ent = (p.entity_id if p.entity_id is defined else '') %}
+              {% if ns.p is none and (pid == lookup_id or pid == short_id or pid == ('media_player.' ~ short_id) or ent == lookup or ent == t) %}
+                {% set ns.p = p %}
+              {% endif %}
+            {% endfor %}
+            {% set ma_title = (ns.p.current_media.title if ns.p is not none and ns.p.current_media is defined else '') | default('', true) %}
+            {% set ma_name = (ns.p.current_media.name if ns.p is not none and ns.p.current_media is defined and ns.p.current_media.name is defined else '') | default('', true) %}
+            {% set ma_track = (ns.p.current_media.metadata.title if ns.p is not none and ns.p.current_media is defined and ns.p.current_media.metadata is defined and ns.p.current_media.metadata.title is defined else '') | default('', true) %}
+            {% set stream_meta = (ns.p.streamdetails.stream_metadata if ns.p is not none and ns.p.streamdetails is defined and ns.p.streamdetails.stream_metadata is defined else none) %}
+            {% set stream_title = (stream_meta.title if stream_meta is not none and stream_meta.title is defined else '') | default('', true) %}
+            {% set stream_name = (stream_meta.stream_title if stream_meta is not none and stream_meta.stream_title is defined else '') | default('', true) %}
+            {% set ha_target_title = (state_attr(t, 'media_title') or '') | default('', true) %}
+            {% set ha_meta_title = (state_attr(meta, 'media_title') or '') | default('', true) %}
+            {% set ha_primary_title = (state_attr(spectra_entity, 'media_title') if spectra_entity != '' and t == spectra_entity else '') | default('', true) %}
+            {% set ns_ha = namespace(val='') %}
+            {% for c in [ha_target_title, ha_meta_title, ha_primary_title] %}
+              {% set c_l = c | lower %}
+              {% set url_like = (('://' in c_l) or c_l.startswith('www.') or c_l.endswith('.mp3') or c_l.endswith('.flac') or c_l.endswith('.wav') or c_l.endswith('.m4a') or c_l.endswith('.aac') or c_l.endswith('.ogg')) %}
+              {% if ns_ha.val == '' and c and not url_like %}
+                {% set ns_ha.val = c %}
+              {% endif %}
+            {% endfor %}
+            {% set ha_title = ns_ha.val %}
+            {% set candidates = [ha_title, ap_title, ap_name, ap_track, ap_stream_title, ap_stream_name, ma_title, ma_name, ma_track, stream_title, stream_name] %}
+            {% set ns2 = namespace(val='') %}
+            {% for c in candidates %}
+              {% set c_l = c | lower %}
+              {% set url_like = (('://' in c_l) or c_l.startswith('www.') or c_l.endswith('.mp3') or c_l.endswith('.flac') or c_l.endswith('.wav') or c_l.endswith('.m4a') or c_l.endswith('.aac') or c_l.endswith('.ogg')) %}
+              {% if ns2.val == '' and c and not url_like %}
+                {% set ns2.val = c %}
+              {% endif %}
+            {% endfor %}
+            {{ ns2.val | default('', true) }}
+          {% endif %}
+      - name: MA Active Artist
+        state: >-
+          {% set t = states('input_select.ma_active_target') %}
+          {% if t in ['none','unknown','unavailable',''] %}
+            {{ '' }}
+          {% else %}
+            {% set _mp = states.media_player | list %}
+            {% set ap_id = states('sensor.ma_active_player_id') %}
+            {% set t_short = t.split('.')[-1] %}
+            {% set ap_match = ap_id == t or ap_id == t_short or ap_id == ('media_player.' ~ t_short) %}
+            {% set ap_current = (state_attr('sensor.ma_active_player','current_media') if ap_match else {}) or (state_attr('sensor.ma_active_player','result').current_media if ap_match and state_attr('sensor.ma_active_player','result') is defined and state_attr('sensor.ma_active_player','result').current_media is defined else {}) %}
+            {% set ap_stream = (state_attr('sensor.ma_active_player','streamdetails') if ap_match else {}) or (state_attr('sensor.ma_active_player','result').streamdetails if ap_match and state_attr('sensor.ma_active_player','result') is defined and state_attr('sensor.ma_active_player','result').streamdetails is defined else {}) %}
+            {% set ap_stream_meta = ap_stream.stream_metadata if ap_stream is defined and ap_stream.stream_metadata is defined else none %}
+            {% set ap_artist = ap_current.artist if ap_current is defined and ap_current.artist is defined else '' %}
+            {% set ap_artist = (ap_artist if ap_artist else (ap_current.metadata.artist if ap_current is defined and ap_current.metadata is defined and ap_current.metadata.artist is defined else '')) %}
+            {% set ap_stream_artist = ap_stream_meta.artist if ap_stream_meta is not none and ap_stream_meta.artist is defined else '' %}
+            {% set meta = states('sensor.ma_active_meta_entity') %}
+            {% set meta = (meta if meta not in ['','none','unknown','unavailable'] else t) %}
+            {% set lookup = (meta if meta not in ['','none','unknown','unavailable'] else t) %}
+            {% set lookup_id = lookup %}
+            {% set short_id = lookup.split('.')[-1] %}
+            {% set players = state_attr('sensor.ma_players','result') or [] %}
+            {% set ns = namespace(p=None) %}
+            {% for p in players %}
+              {% set pid = (p.player_id if p.player_id is defined else '') %}
+              {% set ent = (p.entity_id if p.entity_id is defined else '') %}
+              {% if ns.p is none and (pid == lookup_id or pid == short_id or pid == ('media_player.' ~ short_id) or ent == lookup or ent == t) %}
+                {% set ns.p = p %}
+              {% endif %}
+            {% endfor %}
+            {% set ma_artist = (ns.p.current_media.artist if ns.p is not none and ns.p.current_media is defined else '') | default('', true) %}
+            {% set stream_meta = (ns.p.streamdetails.stream_metadata if ns.p is not none and ns.p.streamdetails is defined and ns.p.streamdetails.stream_metadata is defined else none) %}
+            {% set stream_artist = (stream_meta.artist if stream_meta is not none and stream_meta.artist is defined else '') | default('', true) %}
+            {% set ha_primary_artist = (state_attr(spectra_entity, 'media_artist') if spectra_entity != '' and t == spectra_entity else '') | default('', true) %}
+            {% set ha_artist = (state_attr(t, 'media_artist') or state_attr(meta, 'media_artist') or '') | default('', true) %}
+            {{ (ha_artist or ha_primary_artist or ap_artist or ap_stream_artist or ma_artist or stream_artist or '') | default('', true) }}
+          {% endif %}
+      - name: MA Active Album
+        state: >-
+          {% set t = states('input_select.ma_active_target') %}
+          {% if t in ['none','unknown','unavailable',''] %}
+            {{ '' }}
+          {% else %}
+            {% set _mp = states.media_player | list %}
+            {% set ap_id = states('sensor.ma_active_player_id') %}
+            {% set t_short = t.split('.')[-1] %}
+            {% set ap_match = ap_id == t or ap_id == t_short or ap_id == ('media_player.' ~ t_short) %}
+            {% set ap_current = (state_attr('sensor.ma_active_player','current_media') if ap_match else {}) or (state_attr('sensor.ma_active_player','result').current_media if ap_match and state_attr('sensor.ma_active_player','result') is defined and state_attr('sensor.ma_active_player','result').current_media is defined else {}) %}
+            {% set ap_stream = (state_attr('sensor.ma_active_player','streamdetails') if ap_match else {}) or (state_attr('sensor.ma_active_player','result').streamdetails if ap_match and state_attr('sensor.ma_active_player','result') is defined and state_attr('sensor.ma_active_player','result').streamdetails is defined else {}) %}
+            {% set ap_stream_meta = ap_stream.stream_metadata if ap_stream is defined and ap_stream.stream_metadata is defined else none %}
+            {% set ap_album = ap_current.album if ap_current is defined and ap_current.album is defined else '' %}
+            {% set ap_album = (ap_album if ap_album else (ap_current.metadata.album if ap_current is defined and ap_current.metadata is defined and ap_current.metadata.album is defined else '')) %}
+            {% set ap_stream_album = ap_stream_meta.album if ap_stream_meta is not none and ap_stream_meta.album is defined else '' %}
+            {% set meta = states('sensor.ma_active_meta_entity') %}
+            {% set meta = (meta if meta not in ['','none','unknown','unavailable'] else t) %}
+            {% set lookup = (meta if meta not in ['','none','unknown','unavailable'] else t) %}
+            {% set lookup_id = lookup %}
+            {% set short_id = lookup.split('.')[-1] %}
+            {% set players = state_attr('sensor.ma_players','result') or [] %}
+            {% set ns = namespace(p=None) %}
+            {% for p in players %}
+              {% set pid = (p.player_id if p.player_id is defined else '') %}
+              {% set ent = (p.entity_id if p.entity_id is defined else '') %}
+              {% if ns.p is none and (pid == lookup_id or pid == short_id or pid == ('media_player.' ~ short_id) or ent == lookup or ent == t) %}
+                {% set ns.p = p %}
+              {% endif %}
+            {% endfor %}
+            {% set ma_album = (ns.p.current_media.album if ns.p is not none and ns.p.current_media is defined else '') | default('', true) %}
+            {% set stream_meta = (ns.p.streamdetails.stream_metadata if ns.p is not none and ns.p.streamdetails is defined and ns.p.streamdetails.stream_metadata is defined else none) %}
+            {% set stream_album = (stream_meta.album if stream_meta is not none and stream_meta.album is defined else '') | default('', true) %}
+            {% set ha_primary_album = (state_attr(spectra_entity, 'media_album_name') or state_attr(spectra_entity, 'media_album') if spectra_entity != '' and t == spectra_entity else '') | default('', true) %}
+            {% set ha_album = (state_attr(t, 'media_album_name') or state_attr(t, 'media_album') or state_attr(meta, 'media_album_name') or state_attr(meta, 'media_album') or '') | default('', true) %}
+            {{ (ha_album or ha_primary_album or ap_album or ap_stream_album or ma_album or stream_album or '') | default('', true) }}
+          {% endif %}
+      - name: MA Active App
+        state: >-
+          {% set t = states('input_select.ma_active_target') %}
+          {% if t in ['none','unknown','unavailable',''] %}
+            {{ '' }}
+          {% else %}
+            {% set _mp = states.media_player | list %}
+            {% set ap_id = states('sensor.ma_active_player_id') %}
+            {% set t_short = t.split('.')[-1] %}
+            {% set ap_match = ap_id == t or ap_id == t_short or ap_id == ('media_player.' ~ t_short) %}
+            {% set ap_app = ((state_attr('sensor.ma_active_player','app_name') if ap_match else '') or (state_attr('sensor.ma_active_player','result').app_name if ap_match and state_attr('sensor.ma_active_player','result') is defined and state_attr('sensor.ma_active_player','result').app_name is defined else '') or '') | default('', true) %}
+            {% set meta = states('sensor.ma_active_meta_entity') %}
+            {% set meta = (meta if meta not in ['','none','unknown','unavailable'] else t) %}
+            {% set lookup = (meta if meta not in ['','none','unknown','unavailable'] else t) %}
+            {% set lookup_id = lookup %}
+            {% set short_id = lookup.split('.')[-1] %}
+            {% set players = state_attr('sensor.ma_players','result') or [] %}
+            {% set ns = namespace(p=None) %}
+            {% for p in players %}
+              {% set pid = (p.player_id if p.player_id is defined else '') %}
+              {% set ent = (p.entity_id if p.entity_id is defined else '') %}
+              {% if ns.p is none and (pid == lookup_id or pid == short_id or pid == ('media_player.' ~ short_id) or ent == lookup or ent == t) %}
+                {% set ns.p = p %}
+              {% endif %}
+            {% endfor %}
+            {% set ma_app = (ns.p.app_name if ns.p is not none and ns.p.app_name is defined else '') | default('', true) %}
+            {% set ha_primary_app = (state_attr(spectra_entity, 'app_name') if spectra_entity != '' and t == spectra_entity else '') | default('', true) %}
+            {% set ha_app = (state_attr(t, 'app_name') or state_attr(meta, 'app_name') or '') | default('', true) %}
+            {% set app = (ha_app or ha_primary_app or ap_app or ma_app or '') | default('', true) %}
+            {% set app_l = app | lower %}
+            {{ '' if app_l in ['media assistant queue','music assistant queue'] else app }}
+          {% endif %}
+      - name: MA Active Source
+        state: >-
+          {% set t = states('input_select.ma_active_target') %}
+          {% if t in ['none','unknown','unavailable',''] %}
+            {{ '' }}
+          {% else %}
+            {% set _mp = states.media_player | list %}
+            {% set ap_id = states('sensor.ma_active_player_id') %}
+            {% set t_short = t.split('.')[-1] %}
+            {% set ap_match = ap_id == t or ap_id == t_short or ap_id == ('media_player.' ~ t_short) %}
+            {% set ap_src = ((state_attr('sensor.ma_active_player','active_source') if ap_match else '') or (state_attr('sensor.ma_active_player','result').active_source if ap_match and state_attr('sensor.ma_active_player','result') is defined and state_attr('sensor.ma_active_player','result').active_source is defined else '') or '') | default('', true) %}
+            {% set meta = states('sensor.ma_active_meta_entity') %}
+            {% set meta = (meta if meta not in ['','none','unknown','unavailable'] else t) %}
+            {% set lookup = (meta if meta not in ['','none','unknown','unavailable'] else t) %}
+            {% set lookup_id = lookup %}
+            {% set short_id = lookup.split('.')[-1] %}
+            {% set players = state_attr('sensor.ma_players','result') or [] %}
+            {% set ns = namespace(p=None) %}
+            {% for p in players %}
+              {% set pid = (p.player_id if p.player_id is defined else '') %}
+              {% set ent = (p.entity_id if p.entity_id is defined else '') %}
+              {% if ns.p is none and (pid == lookup_id or pid == short_id or pid == ('media_player.' ~ short_id) or ent == lookup or ent == t) %}
+                {% set ns.p = p %}
+              {% endif %}
+            {% endfor %}
+            {% set ma_src = (ns.p.active_source if ns.p is not none else '') | default('', true) %}
+            {% set ha_primary_src = (state_attr(spectra_entity, 'source') if spectra_entity != '' and t == spectra_entity else '') | default('', true) %}
+            {% set ha_src = (state_attr(t, 'source') or state_attr(meta, 'source') or '') | default('', true) %}
+            {% set src = (ha_src or ha_primary_src or ap_src or ma_src or '') | default('', true) %}
+            {% set src_l = src | lower %}
+            {{ '' if src_l in ['media assistant queue','music assistant queue'] else src }}
+          {% endif %}
+      - name: MA Active Duration
+        unit_of_measurement: s
+        state: >-
+          {% set t = states('input_select.ma_active_target') %}
+          {% if t in ['none','unknown','unavailable',''] %}
+            {{ 0 }}
+          {% else %}
+            {% set meta = states('sensor.ma_active_meta_entity') %}
+            {% set meta = (meta if meta not in ['','none','unknown','unavailable'] else t) %}
+            {{ (state_attr(meta, 'media_duration') or state_attr(t, 'media_duration') or 0) | float(0) }}
+          {% endif %}
+      - name: MA Active Position
+        unit_of_measurement: s
+        state: >-
+          {% set t = states('input_select.ma_active_target') %}
+          {% if t in ['none','unknown','unavailable',''] %}
+            {{ 0 }}
+          {% else %}
+            {% set meta = states('sensor.ma_active_meta_entity') %}
+            {% set meta = (meta if meta not in ['','none','unknown','unavailable'] else t) %}
+            {{ (state_attr(meta, 'media_position') or state_attr(t, 'media_position') or 0) | float(0) }}
+          {% endif %}
+      - name: MA Active Volume
+        state: >-
+          {% set t = states('input_select.ma_active_target') %}
+          {% if t in ['none','unknown','unavailable',''] %}
+            {{ 0 }}
+          {% else %}
+            {% set meta = states('sensor.ma_active_meta_entity') %}
+            {% set meta = (meta if meta not in ['','none','unknown','unavailable'] else t) %}
+            {{ (state_attr(meta, 'volume_level') or state_attr(t, 'volume_level') or 0) | float(0) }}
+          {% endif %}
+      - name: MA Balance Left Label
+        state: >-
+          {% set t = states('input_select.ma_active_target') %}
+          {% set members = state_attr(t,'group_members') or state_attr(t,'members') or [] %}
+          {% if members | length == 0 %}
+            {{ '' | default('', true) }}
+          {% elif members | length == 2 %}
+            {{ (state_attr(members[0], 'friendly_name') or members[0]) | default('', true) }}
+          {% else %}
+            LEFT
+          {% endif %}
+      - name: MA Balance Right Label
+        state: >-
+          {% set t = states('input_select.ma_active_target') %}
+          {% set members = state_attr(t,'group_members') or state_attr(t,'members') or [] %}
+          {% if members | length == 0 %}
+            {{ '' | default('', true) }}
+          {% elif members | length > 0 %}
+            {{ (state_attr(members[-1], 'friendly_name') or members[-1]) | default('', true) }}
+          {% else %}
+            {{ '' | default('', true) }}
+          {% endif %}
+      - name: MA Balance Group Size
+        state: >-
+          {% set t = states('input_select.ma_active_target') %}
+          {% set members = state_attr(t,'group_members') or state_attr(t,'members') or [] %}
+          {{ members | length }}
+  - binary_sensor:
+      - name: MA Active Is Group
+        state: >-
+          {% set t = states('input_select.ma_active_target') %}
+          {% set members = state_attr(t,'group_members') or state_attr(t,'members') or [] %}
+          {{ members | length > 0 }}
+
+  - select:
+      - name: MA Active Target Friendly
+        unique_id: ma_active_target_friendly
+        options: >-
+          {{ ['None'] }}
+        state: >-
+          {{ 'None' }}
+        select_option:
+          service: input_select.select_option
+          data:
+            entity_id: input_select.ma_active_target
+            option: none

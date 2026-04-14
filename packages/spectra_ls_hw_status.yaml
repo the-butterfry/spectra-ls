@@ -1,0 +1,67 @@
+# Description: Spectra LS hardware play-state polling via UART-over-TCP.
+# Version: 2026.04.10.2
+# Last updated: 2026-04-10
+# Update version/date whenever you change this file.
+
+command_line:
+  - sensor:
+      name: Spectra LS HW Status
+      command: >-
+        python3 /config/bin/arylic_hw_status.py /config/spectra_ls_rooms.json
+      value_template: >-
+        {{ value_json.playing_host if value_json is defined else '' }}
+      json_attributes:
+        - playing_host
+        - playing_entity
+        - playing_label
+        - rooms
+      scan_interval: 3600
+
+
+template:
+  - sensor:
+      - name: Spectra LS HW Playing Host
+        state: >-
+          {{ state_attr('sensor.spectra_ls_hw_status','playing_host') or '' }}
+      - name: Spectra LS HW Playing Entity
+        state: >-
+          {{ state_attr('sensor.spectra_ls_hw_status','playing_entity') or '' }}
+      - name: Spectra LS HW Playing Label
+        state: >-
+          {{ state_attr('sensor.spectra_ls_hw_status','playing_label') or '' }}
+
+automation:
+  - id: spectra_ls_hw_status_refresh_now_playing
+    alias: "Spectra LS: HW status refresh (now playing)"
+    trigger:
+      - platform: state
+        entity_id:
+          - sensor.ma_active_state
+          - sensor.ma_active_title
+          - sensor.ma_active_artist
+          - sensor.ma_active_source
+      - platform: time_pattern
+        seconds: "/15"
+    action:
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: >-
+                  {% set st = states('sensor.ma_active_state') | lower %}
+                  {{ st in ['playing','paused'] }}
+            sequence:
+              - service: homeassistant.update_entity
+                data:
+                  entity_id: sensor.spectra_ls_hw_status
+          - conditions:
+              - condition: template
+                value_template: >-
+                  {{ trigger.platform == 'state' and trigger.entity_id == 'sensor.ma_active_state' }}
+              - condition: template
+                value_template: >-
+                  {% set st = states('sensor.ma_active_state') | lower %}
+                  {{ st not in ['playing','paused'] }}
+            sequence:
+              - service: homeassistant.update_entity
+                data:
+                  entity_id: sensor.spectra_ls_hw_status

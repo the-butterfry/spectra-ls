@@ -1,0 +1,26 @@
+{
+	"folders": [
+		{
+			"path": ".."
+		},
+		{
+			"path": "../../../../../../media/cory/CIRCUITPY"
+		}
+	],
+	"settings": {
+		"python.languageServer": "Pylance",
+		"python.analysis.diagnosticSeverityOverrides": {
+			"reportMissingModuleSource": "none",
+			"reportShadowedImports": "none"
+		},
+		"circuitpython.board.version": "10.1.3",
+		"python.analysis.extraPaths": [
+			"/home/cory/.vscode/extensions/joedevivo.vscode-circuitpython-0.2.0-linux-x64/boards/0x239A/0x80F2",
+			"/home/cory/.vscode/extensions/joedevivo.vscode-circuitpython-0.2.0-linux-x64/stubs",
+			"/home/cory/.config/Code/User/globalStorage/joedevivo.vscode-circuitpython/bundle/20260402/adafruit-circuitpython-bundle-py-20260402/lib"
+		],
+		"circuitpython.board.vid": "0x239A",
+		"circuitpython.board.pid": "0x80F2",
+		"chat.restoreLastPanelSession": true
+	}
+}

@@ -16,6 +16,7 @@
 control-py/previous/circuitpy/
 .fseventsd/
 .Trash-*/
+.Trash-*
 .metadata_never_index
 .metadata_never_index:Zone.Identifier
 .vscode/

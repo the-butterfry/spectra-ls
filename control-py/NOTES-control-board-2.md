@@ -339,6 +339,7 @@ Copy these into `CIRCUITPY/lib` on the Feather RP2040:
 
 - HA: Gate kitchen meta override behind MA meta confidence so strong detections win.
 - HA: Prefer active or fresh meta entity for now-playing selection to avoid stale targets on the OLED.
+- HA: Use media_player is_playing/is_paused/play_state attributes for active meta detection.
 
 ### 2026-04-12
 

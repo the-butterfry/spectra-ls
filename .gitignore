@@ -1,17 +1,16 @@
-# Repo policy: track ONLY control-py/, control-board-esp32-tcp.yaml, and circuitpy/
+# Repo policy: track ONLY control-py/ and control-board-esp32-tcp.yaml
 # Ignore everything else by default.
 *
 !.gitignore
 !control-board-esp32-tcp.yaml
 !control-py/
 !control-py/**
-!circuitpy/
-!circuitpy/**
 
 # Extra safety ignores (redundant with * but kept for clarity)
 /.esphome/
 /secrets.yaml
 /control-py/secrets.yaml
 /control-py/.esphome/
+control-py/previous/circuitpy/
 __pycache__/
 *.pyc

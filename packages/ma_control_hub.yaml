@@ -1,5 +1,5 @@
 # Description: Music Assistant hub control + mapping for Spectra LS controls
-# Version: 2026.04.13.2
+# Version: 2026.04.13.3
 # Last updated: 2026-04-13
 # Update version/date whenever you change this file.
 
@@ -887,6 +887,165 @@ template:
               {% endif %}
             {% endfor %}
             {{ ns.best_score }}
+        - name: MA Meta Resolver
+          state: >-
+            {% set raw_users = states('input_text.plex_allowed_users') | lower %}
+            {% set allowed_users = raw_users.split(',') | map('trim') | reject('equalto','') | list %}
+            {% set allow_all_users = allowed_users | length == 0 or 'all' in allowed_users %}
+            {% set raw_players = states('input_text.plex_allowed_players') | lower %}
+            {% set allowed_players = raw_players.split(',') | map('trim') | reject('equalto','') | list %}
+            {% set allow_all_players = allowed_players | length == 0 or 'all' in allowed_players %}
+            {% set plex_session_allowed = is_state('binary_sensor.plex_session_allowed','on') %}
+            {% set pref = states('sensor.ma_active_meta_entity') %}
+            {% set target = states('input_select.ma_active_target') %}
+            {% set by_host = states('sensor.ma_active_target_by_host') %}
+            {% set stale_s = states('input_number.ma_meta_stale_s') | float(45) %}
+            {% set ns = namespace(list=[], count=0, best='', best_score=0) %}
+            {% for e in states.media_player %}
+              {% set st = (e.state | lower) if e is not none else '' %}
+              {% set title = (e.attributes.media_title if e.attributes is defined and e.attributes.media_title is defined else '') %}
+              {% set artist = (e.attributes.media_artist if e.attributes is defined and e.attributes.media_artist is defined else '') %}
+              {% set album = (e.attributes.media_album_name if e.attributes is defined and e.attributes.media_album_name is defined else (e.attributes.media_album if e.attributes is defined and e.attributes.media_album is defined else '')) %}
+              {% set app_name = (e.attributes.app_name if e.attributes is defined and e.attributes.app_name is defined else '') %}
+              {% set source = (e.attributes.source if e.attributes is defined and e.attributes.source is defined else '') %}
+              {% set play_state = (e.attributes.play_state if e.attributes is defined and e.attributes.play_state is defined else '') | lower %}
+              {% set is_playing = (e.attributes.is_playing if e.attributes is defined and e.attributes.is_playing is defined else none) %}
+              {% set is_paused = (e.attributes.is_paused if e.attributes is defined and e.attributes.is_paused is defined else none) %}
+              {% set ent_l = (e.entity_id | lower) %}
+              {% set name_l = ((e.attributes.friendly_name if e.attributes is defined and e.attributes.friendly_name is defined else e.entity_id) | lower) %}
+              {% set app_l = (app_name | lower) %}
+              {% set source_l = (source | lower) %}
+              {% set is_plex = ('plex' in ent_l) or ('plex' in app_l) or ('plex' in source_l) %}
+              {% set user_ok = allow_all_users or (allowed_users | select('in', name_l) | list | length > 0) or (allowed_users | select('in', app_l) | list | length > 0) or (allowed_users | select('in', source_l) | list | length > 0) or (allowed_users | select('in', ent_l) | list | length > 0) %}
+              {% set player_ok = allow_all_players or (allowed_players | select('in', name_l) | list | length > 0) or (allowed_players | select('in', app_l) | list | length > 0) or (allowed_players | select('in', source_l) | list | length > 0) or (allowed_players | select('in', ent_l) | list | length > 0) %}
+              {% set plex_ok = (not is_plex) or ((allow_all_users and allow_all_players) and plex_session_allowed) or (user_ok and player_ok) %}
+              {% set pos = (e.attributes.media_position if e.attributes is defined and e.attributes.media_position is defined else 0) | float(0) %}
+              {% set dur = (e.attributes.media_duration if e.attributes is defined and e.attributes.media_duration is defined else 0) | float(0) %}
+              {% set pos_updated = (e.attributes.media_position_updated_at if e.attributes is defined and e.attributes.media_position_updated_at is defined else none) %}
+              {% set pos_ts = as_timestamp(pos_updated) if pos_updated is not none else 0 %}
+              {% set pos_age = (as_timestamp(now()) - pos_ts) if pos_ts > 0 else 9999 %}
+              {% set recent = pos_age < stale_s %}
+              {% set content_id = (e.attributes.media_content_id if e.attributes is defined and e.attributes.media_content_id is defined else '') %}
+              {% set title_l = title | lower %}
+              {% set content_l = content_id | lower %}
+              {% set url_like = (('://' in title_l) or title_l.startswith('www.') or title_l.endswith('.mp3') or title_l.endswith('.flac') or title_l.endswith('.wav') or title_l.endswith('.m4a') or title_l.endswith('.aac') or title_l.endswith('.ogg') or
+                                 (('://' in content_l) or content_l.startswith('www.') or content_l.endswith('.mp3') or content_l.endswith('.flac') or content_l.endswith('.wav') or content_l.endswith('.m4a') or content_l.endswith('.aac') or content_l.endswith('.ogg'))) %}
+              {% set title_ok = title not in ['','None', none] and not url_like %}
+              {% set active = st in ['playing','paused'] or play_state in ['playing','paused'] or (is_playing is true) or (is_paused is true) %}
+              {% set score = 0 %}
+              {% if active %}{% set score = score + 4 %}{% endif %}
+              {% if is_playing is true %}{% set score = score + 3 %}{% endif %}
+              {% if is_paused is true %}{% set score = score + 1 %}{% endif %}
+              {% if title_ok %}{% set score = score + 3 %}{% endif %}
+              {% if artist not in ['','None', none] %}{% set score = score + 2 %}{% endif %}
+              {% if album not in ['','None', none] %}{% set score = score + 1 %}{% endif %}
+              {% if pos > 0 or dur > 0 %}{% set score = score + 2 %}{% endif %}
+              {% if recent %}{% set score = score + 2 %}{% endif %}
+              {% if app_name or source %}{% set score = score + 1 %}{% endif %}
+              {% if e.entity_id == pref %}{% set score = score + 2 %}{% endif %}
+              {% if e.entity_id == target %}{% set score = score + 1 %}{% endif %}
+              {% if e.entity_id == by_host %}{% set score = score + 2 %}{% endif %}
+              {% if url_like and not title_ok %}{% set score = score - 2 %}{% endif %}
+              {% if score > 0 and plex_ok %}
+                {% set ns.list = ns.list + [{'entity': e.entity_id, 'score': score, 'active': active, 'recent': recent, 'has_meta': (title_ok or artist not in ['','None', none] or album not in ['','None', none]), 'state': st}] %}
+                {% set ns.count = ns.count + 1 %}
+              {% endif %}
+              {% if score > ns.best_score and plex_ok %}
+                {% set ns.best_score = score %}
+                {% set ns.best = e.entity_id %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.count }}
+          attributes:
+            best_entity: >-
+              {% set best = '' %}
+              {% set score = 0 %}
+              {% set raw = state_attr('sensor.ma_meta_resolver','candidates_json') %}
+              {% if raw not in ['','None', none] %}
+                {% set parsed = raw | from_json %}
+                {% for c in parsed %}
+                  {% if c.score is defined and c.score > score %}
+                    {% set score = c.score %}
+                    {% set best = c.entity if c.entity is defined else '' %}
+                  {% endif %}
+                {% endfor %}
+              {% endif %}
+              {{ best }}
+            best_score: >-
+              {% set score = 0 %}
+              {% set raw = state_attr('sensor.ma_meta_resolver','candidates_json') %}
+              {% if raw not in ['','None', none] %}
+                {% set parsed = raw | from_json %}
+                {% for c in parsed %}
+                  {% if c.score is defined and c.score > score %}
+                    {% set score = c.score %}
+                  {% endif %}
+                {% endfor %}
+              {% endif %}
+              {{ score }}
+            candidates_json: >-
+              {% set raw_users = states('input_text.plex_allowed_users') | lower %}
+              {% set allowed_users = raw_users.split(',') | map('trim') | reject('equalto','') | list %}
+              {% set allow_all_users = allowed_users | length == 0 or 'all' in allowed_users %}
+              {% set raw_players = states('input_text.plex_allowed_players') | lower %}
+              {% set allowed_players = raw_players.split(',') | map('trim') | reject('equalto','') | list %}
+              {% set allow_all_players = allowed_players | length == 0 or 'all' in allowed_players %}
+              {% set plex_session_allowed = is_state('binary_sensor.plex_session_allowed','on') %}
+              {% set pref = states('sensor.ma_active_meta_entity') %}
+              {% set target = states('input_select.ma_active_target') %}
+              {% set by_host = states('sensor.ma_active_target_by_host') %}
+              {% set stale_s = states('input_number.ma_meta_stale_s') | float(45) %}
+              {% set ns = namespace(list=[]) %}
+              {% for e in states.media_player %}
+                {% set st = (e.state | lower) if e is not none else '' %}
+                {% set title = (e.attributes.media_title if e.attributes is defined and e.attributes.media_title is defined else '') %}
+                {% set artist = (e.attributes.media_artist if e.attributes is defined and e.attributes.media_artist is defined else '') %}
+                {% set album = (e.attributes.media_album_name if e.attributes is defined and e.attributes.media_album_name is defined else (e.attributes.media_album if e.attributes is defined and e.attributes.media_album is defined else '')) %}
+                {% set app_name = (e.attributes.app_name if e.attributes is defined and e.attributes.app_name is defined else '') %}
+                {% set source = (e.attributes.source if e.attributes is defined and e.attributes.source is defined else '') %}
+                {% set play_state = (e.attributes.play_state if e.attributes is defined and e.attributes.play_state is defined else '') | lower %}
+                {% set is_playing = (e.attributes.is_playing if e.attributes is defined and e.attributes.is_playing is defined else none) %}
+                {% set is_paused = (e.attributes.is_paused if e.attributes is defined and e.attributes.is_paused is defined else none) %}
+                {% set ent_l = (e.entity_id | lower) %}
+                {% set name_l = ((e.attributes.friendly_name if e.attributes is defined and e.attributes.friendly_name is defined else e.entity_id) | lower) %}
+                {% set app_l = (app_name | lower) %}
+                {% set source_l = (source | lower) %}
+                {% set is_plex = ('plex' in ent_l) or ('plex' in app_l) or ('plex' in source_l) %}
+                {% set user_ok = allow_all_users or (allowed_users | select('in', name_l) | list | length > 0) or (allowed_users | select('in', app_l) | list | length > 0) or (allowed_users | select('in', source_l) | list | length > 0) or (allowed_users | select('in', ent_l) | list | length > 0) %}
+                {% set player_ok = allow_all_players or (allowed_players | select('in', name_l) | list | length > 0) or (allowed_players | select('in', app_l) | list | length > 0) or (allowed_players | select('in', source_l) | list | length > 0) or (allowed_players | select('in', ent_l) | list | length > 0) %}
+                {% set plex_ok = (not is_plex) or ((allow_all_users and allow_all_players) and plex_session_allowed) or (user_ok and player_ok) %}
+                {% set pos = (e.attributes.media_position if e.attributes is defined and e.attributes.media_position is defined else 0) | float(0) %}
+                {% set dur = (e.attributes.media_duration if e.attributes is defined and e.attributes.media_duration is defined else 0) | float(0) %}
+                {% set pos_updated = (e.attributes.media_position_updated_at if e.attributes is defined and e.attributes.media_position_updated_at is defined else none) %}
+                {% set pos_ts = as_timestamp(pos_updated) if pos_updated is not none else 0 %}
+                {% set pos_age = (as_timestamp(now()) - pos_ts) if pos_ts > 0 else 9999 %}
+                {% set recent = pos_age < stale_s %}
+                {% set content_id = (e.attributes.media_content_id if e.attributes is defined and e.attributes.media_content_id is defined else '') %}
+                {% set title_l = title | lower %}
+                {% set content_l = content_id | lower %}
+                {% set url_like = (('://' in title_l) or title_l.startswith('www.') or title_l.endswith('.mp3') or title_l.endswith('.flac') or title_l.endswith('.wav') or title_l.endswith('.m4a') or title_l.endswith('.aac') or title_l.endswith('.ogg') or
+                                   (('://' in content_l) or content_l.startswith('www.') or content_l.endswith('.mp3') or content_l.endswith('.flac') or content_l.endswith('.wav') or content_l.endswith('.m4a') or content_l.endswith('.aac') or content_l.endswith('.ogg'))) %}
+                {% set title_ok = title not in ['','None', none] and not url_like %}
+                {% set active = st in ['playing','paused'] or play_state in ['playing','paused'] or (is_playing is true) or (is_paused is true) %}
+                {% set score = 0 %}
+                {% if active %}{% set score = score + 4 %}{% endif %}
+                {% if is_playing is true %}{% set score = score + 3 %}{% endif %}
+                {% if is_paused is true %}{% set score = score + 1 %}{% endif %}
+                {% if title_ok %}{% set score = score + 3 %}{% endif %}
+                {% if artist not in ['','None', none] %}{% set score = score + 2 %}{% endif %}
+                {% if album not in ['','None', none] %}{% set score = score + 1 %}{% endif %}
+                {% if pos > 0 or dur > 0 %}{% set score = score + 2 %}{% endif %}
+                {% if recent %}{% set score = score + 2 %}{% endif %}
+                {% if app_name or source %}{% set score = score + 1 %}{% endif %}
+                {% if e.entity_id == pref %}{% set score = score + 2 %}{% endif %}
+                {% if e.entity_id == target %}{% set score = score + 1 %}{% endif %}
+                {% if e.entity_id == by_host %}{% set score = score + 2 %}{% endif %}
+                {% if url_like and not title_ok %}{% set score = score - 2 %}{% endif %}
+                {% if score > 0 and plex_ok %}
+                  {% set ns.list = ns.list + [{'entity': e.entity_id, 'score': score, 'active': active, 'recent': recent, 'has_meta': (title_ok or artist not in ['','None', none] or album not in ['','None', none]), 'state': st}] %}
+                {% endif %}
+              {% endfor %}
+              {{ ns.list | tojson }}
       - name: MA Meta Detected Entity
         unique_id: ma_meta_detected_entity
         state: >-
@@ -1058,6 +1217,8 @@ template:
           {% endif %}
       - name: Now Playing Entity
         state: >-
+          {% set resolver = state_attr('sensor.ma_meta_resolver','best_entity') %}
+          {% set res_valid = resolver not in ['','unknown','unavailable','none'] and states[resolver] is not none %}
           {% set t = states('input_select.ma_active_target') %}
           {% set t_valid = t not in ['','unknown','unavailable','none'] and states[t] is not none %}
           {% set t_state = (states(t) | lower) if t_valid else '' %}
@@ -1078,7 +1239,9 @@ template:
           {% set pref_recent = pref_pos_age < 30 %}
           {% set pref_has_meta = pref_title not in ['', 'None', none] or pref_artist not in ['', 'None', none] %}
           {% set pref_active = pref_state in ['playing','paused'] %}
-          {% if pref_valid and (pref_active or pref_recent or pref_has_meta) %}
+          {% if res_valid %}
+            {{ resolver }}
+          {% elif pref_valid and (pref_active or pref_recent or pref_has_meta) %}
             {{ preferred }}
           {% elif t_valid and ma_state == 'playing' and (t_has_meta or ma_title not in ['','unknown','unavailable','none']) %}
             {{ t }}

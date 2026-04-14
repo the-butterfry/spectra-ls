@@ -1,0 +1,593 @@
+# Description: Legacy Lighting menu definition (Control Board v1).
+# Version: 2026.03.09
+# Last updated: 2026-03-09
+# Update version/date whenever you change this file.
+type: menu
+text: "Lighting"
+on_enter:
+  then:
+    - lambda: |-
+        id(last_input_ms) = millis();
+        id(slider_mode) = 0;
+on_leave:
+  then:
+    - lambda: |-
+        id(slider_mode) = 0;
+items:
+  - type: back
+    text: "Back"
+  - type: menu
+    text: "Rooms"
+    items:
+      - type: back
+        text: "Back"
+      - type: menu
+        text: "${room_label_living}"
+        items:
+          - type: back
+            text: "Back"
+          - type: menu
+            text: "Adjust All"
+            on_enter:
+              then:
+                - script.execute: set_target_living_all
+            items:
+              - type: back
+                text: "Back"
+              - type: menu
+                text: "Hue"
+                on_enter:
+                  then:
+                    - script.execute: enter_slider_hue
+                on_leave:
+                  then:
+                    - lambda: |-
+                        id(slider_mode) = 0;
+                items:
+                  - type: label
+                    text: "${room_label_living} Hue"
+                  - type: back
+                    text: "Back"
+              - type: menu
+                text: "Sat"
+                on_enter:
+                  then:
+                    - script.execute: enter_slider_sat
+                on_leave:
+                  then:
+                    - lambda: |-
+                        id(slider_mode) = 0;
+                items:
+                  - type: label
+                    text: "${room_label_living} Saturation"
+                  - type: back
+                    text: "Back"
+              - type: menu
+                text: "Brightness"
+                on_enter:
+                  then:
+                    - script.execute: enter_slider_brightness
+                on_leave:
+                  then:
+                    - lambda: |-
+                        id(slider_mode) = 0;
+                items:
+                  - type: label
+                    text: "${room_label_living} Brightness"
+                  - type: back
+                    text: "Back"
+          - type: menu
+            text: "Star Lamp"
+            on_enter:
+              then:
+                - script.execute: set_target_living_star
+            items:
+              - type: back
+                text: "Back"
+              - type: menu
+                text: "Hue"
+                on_enter:
+                  then:
+                    - script.execute: enter_slider_hue
+                on_leave:
+                  then:
+                    - lambda: |-
+                        id(slider_mode) = 0;
+                items:
+                  - type: label
+                    text: "Star Lamp Hue"
+                  - type: back
+                    text: "Back"
+              - type: menu
+                text: "Sat"
+                on_enter:
+                  then:
+                    - script.execute: enter_slider_sat
+                on_leave:
+                  then:
+                    - lambda: |-
+                        id(slider_mode) = 0;
+                items:
+                  - type: label
+                    text: "Star Lamp Saturation"
+                  - type: back
+                    text: "Back"
+              - type: menu
+                text: "Brightness"
+                on_enter:
+                  then:
+                    - script.execute: enter_slider_brightness
+                on_leave:
+                  then:
+                    - lambda: |-
+                        id(slider_mode) = 0;
+                items:
+                  - type: label
+                    text: "Star Lamp Brightness"
+                  - type: back
+                    text: "Back"
+          - type: menu
+            text: "Reading"
+            on_enter:
+              then:
+                - script.execute: set_target_living_reading
+            items:
+              - type: back
+                text: "Back"
+              - type: menu
+                text: "Hue"
+                on_enter:
+                  then:
+                    - script.execute: enter_slider_hue
+                on_leave:
+                  then:
+                    - lambda: |-
+                        id(slider_mode) = 0;
+                items:
+                  - type: label
+                    text: "Reading Hue"
+                  - type: back
+                    text: "Back"
+              - type: menu
+                text: "Sat"
+                on_enter:
+                  then:
+                    - script.execute: enter_slider_sat
+                on_leave:
+                  then:
+                    - lambda: |-
+                        id(slider_mode) = 0;
+                items:
+                  - type: label
+                    text: "Reading Saturation"
+                  - type: back
+                    text: "Back"
+              - type: menu
+                text: "Brightness"
+                on_enter:
+                  then:
+                    - script.execute: enter_slider_brightness
+                on_leave:
+                  then:
+                    - lambda: |-
+                        id(slider_mode) = 0;
+                items:
+                  - type: label
+                    text: "Reading Brightness"
+                  - type: back
+                    text: "Back"
+          - type: menu
+            text: "Hue Tube"
+            on_enter:
+              then:
+                - script.execute: set_target_living_tube
+            items:
+              - type: back
+                text: "Back"
+              - type: menu
+                text: "Hue"
+                on_enter:
+                  then:
+                    - script.execute: enter_slider_hue
+                on_leave:
+                  then:
+                    - lambda: |-
+                        id(slider_mode) = 0;
+                items:
+                  - type: label
+                    text: "Hue Tube Hue"
+                  - type: back
+                    text: "Back"
+              - type: menu
+                text: "Sat"
+                on_enter:
+                  then:
+                    - script.execute: enter_slider_sat
+                on_leave:
+                  then:
+                    - lambda: |-
+                        id(slider_mode) = 0;
+                items:
+                  - type: label
+                    text: "Hue Tube Saturation"
+                  - type: back
+                    text: "Back"
+              - type: menu
+                text: "Brightness"
+                on_enter:
+                  then:
+                    - script.execute: enter_slider_brightness
+                on_leave:
+                  then:
+                    - lambda: |-
+                        id(slider_mode) = 0;
+                items:
+                  - type: label
+                    text: "Hue Tube Brightness"
+                  - type: back
+                    text: "Back"
+          - type: menu
+            text: "Turntable"
+            on_enter:
+              then:
+                - script.execute: set_target_living_turntable
+            items:
+              - type: back
+                text: "Back"
+              - type: menu
+                text: "Hue"
+                on_enter:
+                  then:
+                    - script.execute: enter_slider_hue
+                on_leave:
+                  then:
+                    - lambda: |-
+                        id(slider_mode) = 0;
+                items:
+                  - type: label
+                    text: "Turntable Hue"
+                  - type: back
+                    text: "Back"
+              - type: menu
+                text: "Sat"
+                on_enter:
+                  then:
+                    - script.execute: enter_slider_sat
+                on_leave:
+                  then:
+                    - lambda: |-
+                        id(slider_mode) = 0;
+                items:
+                  - type: label
+                    text: "Turntable Saturation"
+                  - type: back
+                    text: "Back"
+              - type: menu
+                text: "Brightness"
+                on_enter:
+                  then:
+                    - script.execute: enter_slider_brightness
+                on_leave:
+                  then:
+                    - lambda: |-
+                        id(slider_mode) = 0;
+                items:
+                  - type: label
+                    text: "Turntable Brightness"
+                  - type: back
+                    text: "Back"
+      - type: menu
+        text: "${room_label_dining}"
+        items:
+          - type: back
+            text: "Back"
+          - type: menu
+            text: "Adjust All"
+            on_enter:
+              then:
+                - script.execute: set_target_dining_all
+            items:
+              - type: back
+                text: "Back"
+              - type: menu
+                text: "Hue"
+                on_enter:
+                  then:
+                    - script.execute: enter_slider_hue
+                on_leave:
+                  then:
+                    - lambda: |-
+                        id(slider_mode) = 0;
+                items:
+                  - type: label
+                    text: "${room_label_dining} Hue"
+                  - type: back
+                    text: "Back"
+              - type: menu
+                text: "Sat"
+                on_enter:
+                  then:
+                    - script.execute: enter_slider_sat
+                on_leave:
+                  then:
+                    - lambda: |-
+                        id(slider_mode) = 0;
+                items:
+                  - type: label
+                    text: "${room_label_dining} Saturation"
+                  - type: back
+                    text: "Back"
+              - type: menu
+                text: "Brightness"
+                on_enter:
+                  then:
+                    - script.execute: enter_slider_brightness
+                on_leave:
+                  then:
+                    - lambda: |-
+                        id(slider_mode) = 0;
+                items:
+                  - type: label
+                    text: "${room_label_dining} Brightness"
+                  - type: back
+                    text: "Back"
+          - type: menu
+            text: "Chandelier"
+            on_enter:
+              then:
+                - script.execute: set_target_dining_chandelier
+            items:
+              - type: back
+                text: "Back"
+              - type: menu
+                text: "Hue"
+                on_enter:
+                  then:
+                    - script.execute: enter_slider_hue
+                on_leave:
+                  then:
+                    - lambda: |-
+                        id(slider_mode) = 0;
+                items:
+                  - type: label
+                    text: "Chandelier Hue"
+                  - type: back
+                    text: "Back"
+              - type: menu
+                text: "Sat"
+                on_enter:
+                  then:
+                    - script.execute: enter_slider_sat
+                on_leave:
+                  then:
+                    - lambda: |-
+                        id(slider_mode) = 0;
+                items:
+                  - type: label
+                    text: "Chandelier Saturation"
+                  - type: back
+                    text: "Back"
+              - type: menu
+                text: "Brightness"
+                on_enter:
+                  then:
+                    - script.execute: enter_slider_brightness
+                on_leave:
+                  then:
+                    - lambda: |-
+                        id(slider_mode) = 0;
+                items:
+                  - type: label
+                    text: "Chandelier Brightness"
+                  - type: back
+                    text: "Back"
+      - type: menu
+        text: "${room_label_kitchen}"
+        items:
+          - type: back
+            text: "Back"
+          - type: menu
+            text: "Adjust All"
+            on_enter:
+              then:
+                - script.execute: set_target_kitchen_all
+            items:
+              - type: back
+                text: "Back"
+              - type: menu
+                text: "Hue"
+                on_enter:
+                  then:
+                    - script.execute: enter_slider_hue
+                on_leave:
+                  then:
+                    - lambda: |-
+                        id(slider_mode) = 0;
+                items:
+                  - type: label
+                    text: "${room_label_kitchen} Hue"
+                  - type: back
+                    text: "Back"
+              - type: menu
+                text: "Sat"
+                on_enter:
+                  then:
+                    - script.execute: enter_slider_sat
+                on_leave:
+                  then:
+                    - lambda: |-
+                        id(slider_mode) = 0;
+                items:
+                  - type: label
+                    text: "${room_label_kitchen} Saturation"
+                  - type: back
+                    text: "Back"
+              - type: menu
+                text: "Brightness"
+                on_enter:
+                  then:
+                    - script.execute: enter_slider_brightness
+                on_leave:
+                  then:
+                    - lambda: |-
+                        id(slider_mode) = 0;
+                items:
+                  - type: label
+                    text: "${room_label_kitchen} Brightness"
+                  - type: back
+                    text: "Back"
+          - type: menu
+            text: "Polaroid Clock"
+            on_enter:
+              then:
+                - script.execute: set_target_kitchen_clock
+            items:
+              - type: back
+                text: "Back"
+              - type: menu
+                text: "Hue"
+                on_enter:
+                  then:
+                    - script.execute: enter_slider_hue
+                on_leave:
+                  then:
+                    - lambda: |-
+                        id(slider_mode) = 0;
+                items:
+                  - type: label
+                    text: "Polaroid Clock Hue"
+                  - type: back
+                    text: "Back"
+              - type: menu
+                text: "Sat"
+                on_enter:
+                  then:
+                    - script.execute: enter_slider_sat
+                on_leave:
+                  then:
+                    - lambda: |-
+                        id(slider_mode) = 0;
+                items:
+                  - type: label
+                    text: "Polaroid Clock Saturation"
+                  - type: back
+                    text: "Back"
+              - type: menu
+                text: "Brightness"
+                on_enter:
+                  then:
+                    - script.execute: enter_slider_brightness
+                on_leave:
+                  then:
+                    - lambda: |-
+                        id(slider_mode) = 0;
+                items:
+                  - type: label
+                    text: "Polaroid Clock Brightness"
+                  - type: back
+                    text: "Back"
+      - type: menu
+        text: "${room_label_bedroom}"
+        items:
+          - type: back
+            text: "Back"
+          - type: menu
+            text: "Adjust All"
+            on_enter:
+              then:
+                - script.execute: set_target_bedroom_all
+            items:
+              - type: back
+                text: "Back"
+              - type: menu
+                text: "Hue"
+                on_enter:
+                  then:
+                    - script.execute: enter_slider_hue
+                on_leave:
+                  then:
+                    - lambda: |-
+                        id(slider_mode) = 0;
+                items:
+                  - type: label
+                    text: "${room_label_bedroom} Hue"
+                  - type: back
+                    text: "Back"
+              - type: menu
+                text: "Sat"
+                on_enter:
+                  then:
+                    - script.execute: enter_slider_sat
+                on_leave:
+                  then:
+                    - lambda: |-
+                        id(slider_mode) = 0;
+                items:
+                  - type: label
+                    text: "${room_label_bedroom} Saturation"
+                  - type: back
+                    text: "Back"
+              - type: menu
+                text: "Brightness"
+                on_enter:
+                  then:
+                    - script.execute: enter_slider_brightness
+                on_leave:
+                  then:
+                    - lambda: |-
+                        id(slider_mode) = 0;
+                items:
+                  - type: label
+                    text: "${room_label_bedroom} Brightness"
+                  - type: back
+                    text: "Back"
+          - type: menu
+            text: "Bedroom"
+            on_enter:
+              then:
+                - script.execute: set_target_bedroom_light
+            items:
+              - type: back
+                text: "Back"
+              - type: menu
+                text: "Hue"
+                on_enter:
+                  then:
+                    - script.execute: enter_slider_hue
+                on_leave:
+                  then:
+                    - lambda: |-
+                        id(slider_mode) = 0;
+                items:
+                  - type: label
+                    text: "Bedroom Hue"
+                  - type: back
+                    text: "Back"
+              - type: menu
+                text: "Sat"
+                on_enter:
+                  then:
+                    - script.execute: enter_slider_sat
+                on_leave:
+                  then:
+                    - lambda: |-
+                        id(slider_mode) = 0;
+                items:
+                  - type: label
+                    text: "Bedroom Saturation"
+                  - type: back
+                    text: "Back"
+              - type: menu
+                text: "Brightness"
+                on_enter:
+                  then:
+                    - script.execute: enter_slider_brightness
+                on_leave:
+                  then:
+                    - lambda: |-
+                        id(slider_mode) = 0;
+                items:
+                  - type: label
+                    text: "Bedroom Brightness"
+                  - type: back
+                    text: "Back"

@@ -1,0 +1,1638 @@
+# Description: Core state + globals + system intervals + shared scripts.
+# Version: 2026.04.12.4
+# Last updated: 2026-04-12
+# Update version/date whenever you change this file.
+#
+# Sections:
+#  - Globals (shared state used across packages)
+#  - System intervals (heartbeat + screensaver watchdog)
+#  - Core scripts (logging + calibration flow + input bookkeeping)
+
+# === Globals: shared state ===
+globals:
+  # OLED contrast bookkeeping
+  - id: oled_contrast
+    type: float
+    restore_value: yes
+    initial_value: "0.80"
+  - id: oled_contrast_last_applied
+    type: float
+    restore_value: no
+    initial_value: "0"
+  - id: oled_contrast_last_applied_raw
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: oled_contrast_apply_count
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: oled_contrast_last_apply_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+
+  # Boot/splash timing
+  - id: boot_fade_start_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: splash_until_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+
+  # Arylic + EQ caches
+  - id: arylic_volume_cached
+    type: int
+    restore_value: no
+    initial_value: "-1"
+  - id: arylic_bass_cached
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: arylic_treble_cached
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: arylic_mid_cached
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: arylic_eq_low_cached
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: arylic_eq_mid_cached
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: arylic_eq_high_cached
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: arylic_eq_low_deferred
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: arylic_eq_mid_deferred
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: arylic_eq_high_deferred
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: arylic_eq_low_deferred_until_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: arylic_eq_mid_deferred_until_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: arylic_eq_high_deferred_until_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: arylic_eq_low_last_sent_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: arylic_eq_mid_last_sent_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: arylic_eq_high_last_sent_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: arylic_last_vol_sent_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: arylic_last_vol_sent_target
+    type: int
+    restore_value: no
+    initial_value: "-1"
+
+  # Volume pot deferral
+  - id: pot_volume_target
+    type: int
+    restore_value: no
+    initial_value: "-1"
+  - id: pot_volume_pct_cached
+    type: int
+    restore_value: no
+    initial_value: "-1"
+  - id: pot_volume_pct_last_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: pot_volume_last_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: pot_volume_deferred
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: pot_volume_deferred_until_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: pot_volume_catch_active
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: pot_volume_catch_value
+    type: int
+    restore_value: no
+    initial_value: "-1"
+  - id: pot_volume_catch_complete
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: pot_volume_catch_current
+    type: int
+    restore_value: no
+    initial_value: "-1"
+
+  # Arylic send timing + meta freshness
+  - id: arylic_last_bass_sent_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: arylic_last_mid_sent_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: arylic_last_treble_sent_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: arylic_last_meta_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: arylic_http_inflight
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: arylic_lr_http_inflight
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: arylic_http_fail_count
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: arylic_http_pause_until_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: arylic_http_last_log_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: arylic_mute_state
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: arylic_playing_state
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: arylic_source_state
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: arylic_control_host
+    type: std::string
+    restore_value: no
+    initial_value: '"${arylic_tcp_host}"'
+  - id: arylic_control_hosts
+    type: std::string
+    restore_value: no
+    initial_value: '"${arylic_tcp_host}"'
+  - id: arylic_control_port
+    type: int
+    restore_value: no
+    initial_value: "${arylic_tcp_port}"
+  - id: arylic_title_state
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: arylic_artist_state
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: arylic_album_state
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: arylic_meta_url_state
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: arylic_meta_cover_state
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: arylic_meta_codec_state
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: arylic_meta_format_state
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: arylic_meta_bitrate_state
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: arylic_meta_samplerate_state
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: arylic_meta_bitdepth_state
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: arylic_meta_channels_state
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: arylic_meta_track_state
+    type: int
+    restore_value: no
+    initial_value: "-1"
+  - id: arylic_meta_total_tracks_state
+    type: int
+    restore_value: no
+    initial_value: "-1"
+  - id: arylic_meta_position_state
+    type: int
+    restore_value: no
+    initial_value: "-1"
+  - id: arylic_meta_duration_state
+    type: int
+    restore_value: no
+    initial_value: "-1"
+  - id: arylic_lr_playing_state
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: arylic_lr_source_state
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: arylic_lr_title_state
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: arylic_lr_artist_state
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: arylic_lr_album_state
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: arylic_lr_meta_position_state
+    type: int
+    restore_value: no
+    initial_value: "-1"
+  - id: arylic_lr_meta_duration_state
+    type: int
+    restore_value: no
+    initial_value: "-1"
+  - id: arylic_lr_last_meta_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: meta_override_idx
+    type: int
+    restore_value: no
+    initial_value: "-1"
+  - id: meta_override_last_active_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: meta_override_last_change_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: meta_refresh_force
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: meta_menu_selected_enable
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: meta_menu_selected_entity
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+
+  # LED ring wake windows
+  - id: audio_ring_active_until_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: hue_ring_active_until_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+
+  # Lighting state
+  - id: lighting_hue
+    type: float
+    restore_value: no
+    initial_value: "0"
+  - id: lighting_sat
+    type: float
+    restore_value: no
+    initial_value: "100"
+  - id: lighting_mode_hue
+    type: bool
+    restore_value: no
+    initial_value: "true"
+
+  # Menu + UI state
+  - id: menu_active
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: menu_level
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: menu_index
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: menu_light_room
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: menu_room_count
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: menu_target_count
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: menu_meta_count
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: screen_mode
+    type: int
+    restore_value: no
+    initial_value: "1"  # 0=Lighting, 1=Audio
+  - id: last_screen_mode
+    type: int
+    restore_value: no
+    initial_value: "-1"
+  - id: audio_empty_active
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: audio_empty_until_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: audio_wake_until_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: brightness_active_until_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: brightness_slider_only_until_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: lighting_brightness
+    type: float
+    restore_value: no
+    initial_value: "100"
+  - id: lighting_adjust_mode
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: lighting_return_to_audio_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: selected_room
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: selected_target
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: last_input_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: screensaver_active
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: display_state
+    type: int
+    restore_value: no
+    initial_value: "0"
+
+  # Calibration state
+  - id: calibration_active
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: calibration_auto_active
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: calibration_auto_channel
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: calibration_channel
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: calibration_step
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: calibration_min
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: calibration_mid
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: calibration_max
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: calibration_min_0
+    type: int
+    restore_value: yes
+    initial_value: "0"
+  - id: calibration_mid_0
+    type: int
+    restore_value: yes
+    initial_value: "0"
+  - id: calibration_max_0
+    type: int
+    restore_value: yes
+    initial_value: "0"
+  - id: calibration_min_1
+    type: int
+    restore_value: yes
+    initial_value: "0"
+  - id: calibration_mid_1
+    type: int
+    restore_value: yes
+    initial_value: "0"
+  - id: calibration_max_1
+    type: int
+    restore_value: yes
+    initial_value: "0"
+  - id: calibration_min_2
+    type: int
+    restore_value: yes
+    initial_value: "0"
+  - id: calibration_mid_2
+    type: int
+    restore_value: yes
+    initial_value: "0"
+  - id: calibration_max_2
+    type: int
+    restore_value: yes
+    initial_value: "0"
+  - id: calibration_min_3
+    type: int
+    restore_value: yes
+    initial_value: "0"
+  - id: calibration_mid_3
+    type: int
+    restore_value: yes
+    initial_value: "0"
+  - id: calibration_max_3
+    type: int
+    restore_value: yes
+    initial_value: "0"
+  - id: calibration_min_4
+    type: int
+    restore_value: yes
+    initial_value: "0"
+  - id: calibration_mid_4
+    type: int
+    restore_value: yes
+    initial_value: "0"
+  - id: calibration_max_4
+    type: int
+    restore_value: yes
+    initial_value: "0"
+  - id: calibration_min_5
+    type: int
+    restore_value: yes
+    initial_value: "0"
+  - id: calibration_mid_5
+    type: int
+    restore_value: yes
+    initial_value: "0"
+  - id: calibration_max_5
+    type: int
+    restore_value: yes
+    initial_value: "0"
+  - id: calibration_min_6
+    type: int
+    restore_value: yes
+    initial_value: "0"
+  - id: calibration_mid_6
+    type: int
+    restore_value: yes
+    initial_value: "0"
+  - id: calibration_max_6
+    type: int
+    restore_value: yes
+    initial_value: "0"
+  - id: calibration_channel_name
+    type: std::string
+    restore_value: no
+    initial_value: '"SLIDER A0"'
+  - id: adc_raw_0
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: adc_raw_1
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: adc_raw_2
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: adc_raw_3
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: adc_raw_4
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: adc_raw_5
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: adc_raw_6
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: eq_low_target
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: eq_mid_target
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: eq_high_target
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: eq_low_last_change_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: eq_mid_last_change_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: eq_high_last_change_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: eq_overlay_ignore_until_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: ma_vol_pending
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: ma_vol_target
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: ma_vol_target_f
+    type: float
+    restore_value: no
+    initial_value: "0"
+  - id: ma_vol_last_send_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: ma_unmute_pending
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: ma_unmute_entity
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: ma_unmute_last_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+
+  # Audio metadata + render cache
+  - id: last_playing_state
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: last_playing_true_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: ha_audio1_last_active_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: ha_audio1_last_playing_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: ha_audio2_last_active_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: ha_audio2_last_playing_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: ha_audio3_last_active_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: ha_audio3_last_playing_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: ha_audio4_last_active_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: ha_audio4_last_playing_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: ha_audio5_last_active_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: ha_audio5_last_playing_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: ha_audio6_last_active_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: ha_audio6_last_playing_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: playing_effective
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: playing_false_since_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: last_lighting_sent_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: last_brightness_sent_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: lighting_brightness_pending
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: lighting_brightness_pending_until_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: ha_audio_pos_last_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: ha_audio_pos_last_value
+    type: float
+    restore_value: no
+    initial_value: "0"
+  - id: ha_audio_duration_value
+    type: float
+    restore_value: no
+    initial_value: "0"
+  - id: ha_audio2_pos_last_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: ha_audio2_pos_last_value
+    type: float
+    restore_value: no
+    initial_value: "0"
+  - id: ha_audio2_duration_value
+    type: float
+    restore_value: no
+    initial_value: "0"
+  - id: ha_audio3_pos_last_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: ha_audio3_pos_last_value
+    type: float
+    restore_value: no
+    initial_value: "0"
+  - id: ha_audio3_duration_value
+    type: float
+    restore_value: no
+    initial_value: "0"
+  - id: ha_audio4_pos_last_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: ha_audio4_pos_last_value
+    type: float
+    restore_value: no
+    initial_value: "0"
+  - id: ha_audio4_duration_value
+    type: float
+    restore_value: no
+    initial_value: "0"
+  - id: ha_audio5_pos_last_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: ha_audio5_pos_last_value
+    type: float
+    restore_value: no
+    initial_value: "0"
+  - id: ha_audio5_duration_value
+    type: float
+    restore_value: no
+    initial_value: "0"
+  - id: ha_audio6_pos_last_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: ha_audio6_pos_last_value
+    type: float
+    restore_value: no
+    initial_value: "0"
+  - id: ha_audio6_duration_value
+    type: float
+    restore_value: no
+    initial_value: "0"
+  - id: ha_audio_last_meta_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: ha_audio1_last_meta_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: ha_audio2_last_meta_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: ha_audio3_last_meta_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: ha_audio4_last_meta_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: ha_audio5_last_meta_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: ha_audio6_last_meta_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: ha_audio_last_force_refresh_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: np_cache_version
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: np_last_cache_version
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: np_last_vol_fill
+    type: int
+    restore_value: no
+    initial_value: "-1"
+  - id: np_last_progress_fill
+    type: int
+    restore_value: no
+    initial_value: "-1"
+  - id: np_last_playing_drawn
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: np_last_screensaver_drawn
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: np_last_draw_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: np_last_compute_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: np_disp_vol
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: np_disp_vol_from_pot
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: np_disp_progress_filled
+    type: int
+    restore_value: no
+    initial_value: "-1"
+  - id: np_disp_duration
+    type: float
+    restore_value: no
+    initial_value: "0"
+  - id: np_disp_position
+    type: float
+    restore_value: no
+    initial_value: "0"
+  - id: np_disp_pos_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: np_raw_title
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: np_raw_artist
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: np_raw_album
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: np_raw_source_label
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: np_raw_source_pill
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: np_raw_src_display
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: np_active_target_entity
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: np_active_target_dirty
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: np_active_target_last_set_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: np_title_cached
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: np_artist_cached
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: np_album_cached
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: np_source_label_cached
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: np_source_pill_cached
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: np_src_display_cached
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: source_popup_label
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: source_popup_until_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: meta_popup_label
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: meta_popup_until_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: control_target_popup_active
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: control_target_prompt_active
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: control_target_prompt_manual
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: control_target_needs_prompt
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: control_target_prompt_blocked
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: control_target_source_key
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: control_target_lock_active
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: control_target_lock_source_key
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: control_target_prompt_snooze_until_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: control_target_prompt_grace_until_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: control_target_last_good_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: control_target_force_until_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: control_target_pending_until_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: arylic_control_hosts_last_valid_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: control_target_prompt_index
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: control_target_prompt_commit
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: control_target_prompt_entity
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+
+# === HTTP request (Arylic TCP status) ===
+http_request:
+  id: arylic_http
+  useragent: esphome/${device_name}
+  timeout: 1s
+  verify_ssl: false
+
+# === System intervals ===
+interval:
+  - interval: ${arylic_http_poll_ms}ms
+    then:
+      - if:
+          condition:
+            wifi.connected:
+          then:
+            - if:
+                condition:
+                  lambda: |-
+                    const uint32_t now = millis();
+                    const bool http_enabled = ${arylic_http_enabled};
+                    if (!http_enabled) return false;
+                    if (id(arylic_http_inflight)) return false;
+                    if (id(arylic_http_pause_until_ms) > now) return false;
+                    id(arylic_http_inflight) = true;
+                    return true;
+                then:
+                  - http_request.get:
+                      url: "${arylic_http_scheme}://${arylic_http_host}:${arylic_http_port}/httpapi.asp?command=getPlayerStatus"
+                      capture_response: true
+                      on_response:
+                        then:
+                          - lambda: |-
+                              id(arylic_http_inflight) = false;
+                              if (response->status_code < 200 || response->status_code >= 300) {
+                                int fails = id(arylic_http_fail_count) + 1;
+                                id(arylic_http_fail_count) = fails;
+                                const uint32_t backoff_ms = (fails >= 6) ? 60000 : (fails >= 4) ? 30000 : (fails >= 2) ? 15000 : 5000;
+                                id(arylic_http_pause_until_ms) = millis() + backoff_ms;
+                                ESP_LOGW("arylic_http", "getPlayerStatus http=%d host=%s scheme=%s port=%s (backoff %ums, fail=%d)",
+                                         response->status_code,
+                                         "${arylic_http_host}", "${arylic_http_scheme}", "${arylic_http_port}",
+                                         (unsigned) backoff_ms, fails);
+                                return;
+                              }
+                              id(arylic_http_fail_count) = 0;
+                              id(arylic_http_pause_until_ms) = 0;
+                              const std::string &payload = body;
+                              if (payload.empty()) return;
+                              const uint32_t now_ms = millis();
+
+                              auto extract_field = [&](const std::string &key) -> std::string {
+                                const std::string needle = "\"" + key + "\":";
+                                size_t pos = payload.find(needle);
+                                if (pos == std::string::npos) return std::string();
+                                pos += needle.size();
+                                while (pos < payload.size() && payload[pos] == ' ') pos++;
+                                bool quoted = (pos < payload.size() && payload[pos] == '"');
+                                if (quoted) pos++;
+                                size_t end = pos;
+                                if (quoted) {
+                                  end = payload.find('"', pos);
+                                } else {
+                                  while (end < payload.size() && payload[end] != ',' && payload[end] != '}' && payload[end] != ' ') end++;
+                                }
+                                if (end == std::string::npos || end < pos) return std::string();
+                                return payload.substr(pos, end - pos);
+                              };
+
+                              auto to_int = [&](const std::string &s, int fallback) -> int {
+                                if (s.empty()) return fallback;
+                                char *end = nullptr;
+                                long v = strtol(s.c_str(), &end, 10);
+                                if (end == s.c_str()) return fallback;
+                                return (int) v;
+                              };
+
+                              auto hex_val = [&](char c) -> int {
+                                if (c >= '0' && c <= '9') return c - '0';
+                                if (c >= 'a' && c <= 'f') return 10 + (c - 'a');
+                                if (c >= 'A' && c <= 'F') return 10 + (c - 'A');
+                                return -1;
+                              };
+
+                              auto looks_like_hex = [&](const std::string &hex) -> bool {
+                                if (hex.empty() || (hex.size() % 2) != 0) return false;
+                                for (char c : hex) {
+                                  if (hex_val(c) < 0) return false;
+                                }
+                                return true;
+                              };
+
+                              auto hex_to_ascii = [&](const std::string &hex) -> std::string {
+                                if (!looks_like_hex(hex)) return hex;
+                                std::string out;
+                                out.reserve(hex.size() / 2);
+                                for (size_t i = 0; i + 1 < hex.size(); i += 2) {
+                                  int hi = hex_val(hex[i]);
+                                  int lo = hex_val(hex[i + 1]);
+                                  if (hi < 0 || lo < 0) return hex;
+                                  out.push_back((char) ((hi << 4) | lo));
+                                }
+                                return out;
+                              };
+
+                              const std::string status = extract_field("status");
+                              const int vol = to_int(extract_field("vol"), -1);
+                              const int mute = to_int(extract_field("mute"), -1);
+                              const int mode = to_int(extract_field("mode"), -1);
+                              const int curpos = to_int(extract_field("curpos"), -1);
+                              const int totlen = to_int(extract_field("totlen"), -1);
+                              const int plicurr = to_int(extract_field("plicurr"), -1);
+                              const int plicount = to_int(extract_field("plicount"), -1);
+                              std::string title_raw = extract_field("Title");
+                              std::string artist_raw = extract_field("Artist");
+                              std::string album_raw = extract_field("Album");
+                              if (title_raw.empty()) title_raw = extract_field("title");
+                              if (artist_raw.empty()) artist_raw = extract_field("artist");
+                              if (album_raw.empty()) album_raw = extract_field("album");
+
+                              if (!status.empty()) {
+                                id(arylic_playing_state) = (status == "play");
+                              }
+                              if (mute >= 0) {
+                                id(arylic_mute_state) = (mute != 0);
+                              }
+                              if (vol >= 0) {
+                                if (vol != id(arylic_volume_cached)) {
+                                  id(audio_ring_active_until_ms) = millis() + ${ring_active_window_ms};
+                                }
+                                id(arylic_volume_cached) = vol;
+                              }
+                              std::string src = id(arylic_source_state);
+                              if (mode >= 0) {
+                                src = "NET";
+                                if (mode == 40) src = "LINE-IN";
+                                else if (mode == 41) src = "BT";
+                                else if (mode == 47) src = "LINE-IN2";
+                                else if (mode == 43) src = "OPT";
+                                else if (mode == 45) src = "COAX";
+                                else if (mode == 49) src = "HDMI";
+                                else if (mode == 51) src = "USBDAC";
+                                else if (mode == 54) src = "PHONO";
+                                else if (mode == 56) src = "OPT2";
+                                else if (mode == 57) src = "COAX2";
+                                else if (mode == 58) src = "ARC";
+                                else if (mode == 0) src = "IDLE";
+                                id(arylic_source_state) = src;
+                              }
+
+                              auto clean_meta = [&](const std::string &input) -> std::string {
+                                if (input.empty()) return std::string();
+                                std::string low;
+                                low.reserve(input.size());
+                                for (char ch : input) {
+                                  if (ch >= 'A' && ch <= 'Z') low.push_back((char) (ch - 'A' + 'a'));
+                                  else low.push_back(ch);
+                                }
+                                if (low == "unknown" || low == "unavailable" || low == "none" || low == "idle") {
+                                  return std::string();
+                                }
+                                return input;
+                              };
+
+                              const std::string title = clean_meta(hex_to_ascii(title_raw));
+                              const std::string artist = clean_meta(hex_to_ascii(artist_raw));
+                              const std::string album = clean_meta(hex_to_ascii(album_raw));
+                              const bool meta_changed = (title != id(arylic_title_state)) ||
+                                                       (artist != id(arylic_artist_state)) ||
+                                                       (album != id(arylic_album_state));
+                              const uint32_t log_every_ms = 15000;
+                              const bool should_log = meta_changed ||
+                                                      (now_ms - id(arylic_http_last_log_ms) > log_every_ms);
+                              if (should_log) {
+                                id(arylic_http_last_log_ms) = now_ms;
+                                ESP_LOGI("arylic_http",
+                                         "status=%s src=%s vol=%d mute=%d pos=%d/%d title='%s' artist='%s' album='%s'",
+                                         status.empty() ? "" : status.c_str(),
+                                         src.c_str(),
+                                         vol,
+                                         mute,
+                                         curpos,
+                                         totlen,
+                                         title.c_str(),
+                                         artist.c_str(),
+                                         album.c_str());
+                              }
+                              const bool is_playing = (!status.empty() && status == "play");
+                              if ((!title.empty() || !artist.empty() || !album.empty()) && is_playing) {
+                                id(arylic_last_meta_ms) = now_ms;
+                              }
+                              id(arylic_title_state) = title;
+                              id(arylic_artist_state) = artist;
+                              id(arylic_album_state) = album;
+
+                              if (curpos >= 0) id(arylic_meta_position_state) = curpos;
+                              if (totlen >= 0) id(arylic_meta_duration_state) = totlen;
+                              if (plicurr >= 0) id(arylic_meta_track_state) = plicurr;
+                              if (plicount >= 0) id(arylic_meta_total_tracks_state) = plicount;
+                              const bool has_time = (curpos > 0 || totlen > 0 || plicurr > 0 || plicount > 0);
+                              if (has_time && is_playing) {
+                                id(arylic_last_meta_ms) = now_ms;
+                              }
+
+                              id(arylic_meta_url_state) = "";
+                              id(arylic_meta_cover_state) = "";
+                              id(arylic_meta_codec_state) = "";
+                              id(arylic_meta_format_state) = "";
+                              id(arylic_meta_bitrate_state) = "";
+                              id(arylic_meta_samplerate_state) = "";
+                              id(arylic_meta_bitdepth_state) = "";
+                              id(arylic_meta_channels_state) = "";
+                      on_error:
+                        then:
+                          - lambda: |-
+                              id(arylic_http_inflight) = false;
+                              int fails = id(arylic_http_fail_count) + 1;
+                              id(arylic_http_fail_count) = fails;
+                              const uint32_t backoff_ms = (fails >= 6) ? 60000 : (fails >= 4) ? 30000 : (fails >= 2) ? 15000 : 5000;
+                              id(arylic_http_pause_until_ms) = millis() + backoff_ms;
+                              ESP_LOGW("arylic_http", "getPlayerStatus error host=%s scheme=%s port=%s (backoff %ums, fail=%d)",
+                                       "${arylic_http_host}", "${arylic_http_scheme}", "${arylic_http_port}",
+                                       (unsigned) backoff_ms, fails);
+
+  - interval: ${arylic_lr_http_poll_ms}ms
+    then:
+      - if:
+          condition:
+            wifi.connected:
+          then:
+            - if:
+                condition:
+                  lambda: |-
+                    const uint32_t now = millis();
+                    const bool lr_http_enabled = ${arylic_lr_http_enabled};
+                    if (!lr_http_enabled) return false;
+                    if (id(arylic_http_inflight)) return false;
+                    if (id(arylic_lr_http_inflight)) return false;
+                    id(arylic_lr_http_inflight) = true;
+                    return true;
+                then:
+                  - http_request.get:
+                      url: "${arylic_lr_http_scheme}://${arylic_lr_http_host}:${arylic_lr_http_port}/httpapi.asp?command=getPlayerStatus"
+                      capture_response: true
+                      on_response:
+                        then:
+                          - lambda: |-
+                              id(arylic_lr_http_inflight) = false;
+                              if (response->status_code < 200 || response->status_code >= 300) {
+                                ESP_LOGW("arylic_lr", "getPlayerStatus http=%d host=%s scheme=%s port=%s",
+                                         response->status_code,
+                                         "${arylic_lr_http_host}", "${arylic_lr_http_scheme}", "${arylic_lr_http_port}");
+                                return;
+                              }
+                              const std::string &payload = body;
+                              if (payload.empty()) return;
+
+                              auto extract_field = [&](const std::string &key) -> std::string {
+                                const std::string needle = "\"" + key + "\":";
+                                size_t pos = payload.find(needle);
+                                if (pos == std::string::npos) return std::string();
+                                pos += needle.size();
+                                while (pos < payload.size() && payload[pos] == ' ') pos++;
+                                bool quoted = (pos < payload.size() && payload[pos] == '"');
+                                if (quoted) pos++;
+                                size_t end = pos;
+                                if (quoted) {
+                                  end = payload.find('"', pos);
+                                } else {
+                                  while (end < payload.size() && payload[end] != ',' && payload[end] != '}' && payload[end] != ' ') end++;
+                                }
+                                if (end == std::string::npos || end < pos) return std::string();
+                                return payload.substr(pos, end - pos);
+                              };
+
+                              auto hex_val = [&](char c) -> int {
+                                if (c >= '0' && c <= '9') return c - '0';
+                                if (c >= 'a' && c <= 'f') return 10 + (c - 'a');
+                                if (c >= 'A' && c <= 'F') return 10 + (c - 'A');
+                                return -1;
+                              };
+                              auto looks_like_hex = [&](const std::string &hex) -> bool {
+                                if (hex.empty() || (hex.size() % 2) != 0) return false;
+                                for (char c : hex) {
+                                  if (hex_val(c) < 0) return false;
+                                }
+                                return true;
+                              };
+                              auto hex_to_ascii = [&](const std::string &hex) -> std::string {
+                                if (!looks_like_hex(hex)) return hex;
+                                std::string out;
+                                out.reserve(hex.size() / 2);
+                                for (size_t i = 0; i + 1 < hex.size(); i += 2) {
+                                  int hi = hex_val(hex[i]);
+                                  int lo = hex_val(hex[i + 1]);
+                                  if (hi < 0 || lo < 0) return hex;
+                                  out.push_back((char) ((hi << 4) | lo));
+                                }
+                                return out;
+                              };
+
+                              auto to_int = [&](const std::string &s, int fallback) -> int {
+                                if (s.empty()) return fallback;
+                                char *end = nullptr;
+                                long v = strtol(s.c_str(), &end, 10);
+                                if (end == s.c_str()) return fallback;
+                                return (int) v;
+                              };
+
+                              auto clean_meta = [&](const std::string &input) -> std::string {
+                                if (input.empty()) return std::string();
+                                std::string low;
+                                low.reserve(input.size());
+                                for (char ch : input) {
+                                  if (ch >= 'A' && ch <= 'Z') low.push_back((char) (ch - 'A' + 'a'));
+                                  else low.push_back(ch);
+                                }
+                                if (low == "unknown" || low == "unavailable" || low == "none" || low == "idle") {
+                                  return std::string();
+                                }
+                                return input;
+                              };
+
+                              const std::string status = extract_field("status");
+                              const int vol = to_int(extract_field("vol"), -1);
+                              const int mute = to_int(extract_field("mute"), -1);
+                              const int mode = to_int(extract_field("mode"), -1);
+                              const int curpos = to_int(extract_field("curpos"), -1);
+                              const int totlen = to_int(extract_field("totlen"), -1);
+                              const uint32_t now_ms = millis();
+                              std::string title_raw = extract_field("Title");
+                              std::string artist_raw = extract_field("Artist");
+                              std::string album_raw = extract_field("Album");
+                              if (title_raw.empty()) title_raw = extract_field("title");
+                              if (artist_raw.empty()) artist_raw = extract_field("artist");
+                              if (album_raw.empty()) album_raw = extract_field("album");
+
+                              const std::string title = clean_meta(hex_to_ascii(title_raw));
+                              const std::string artist = clean_meta(hex_to_ascii(artist_raw));
+                              const std::string album = clean_meta(hex_to_ascii(album_raw));
+
+                              if (!status.empty()) {
+                                id(arylic_lr_playing_state) = (status == "play");
+                              }
+                              std::string src = id(arylic_lr_source_state);
+                              if (mode >= 0) {
+                                src = "NET";
+                                if (mode == 40) src = "LINE-IN";
+                                else if (mode == 41) src = "BT";
+                                else if (mode == 47) src = "LINE-IN2";
+                                else if (mode == 43) src = "OPT";
+                                else if (mode == 45) src = "COAX";
+                                else if (mode == 49) src = "HDMI";
+                                else if (mode == 51) src = "USBDAC";
+                                else if (mode == 54) src = "PHONO";
+                                else if (mode == 56) src = "OPT2";
+                                else if (mode == 57) src = "COAX2";
+                                else if (mode == 58) src = "ARC";
+                                else if (mode == 0) src = "IDLE";
+                                id(arylic_lr_source_state) = src;
+                              }
+
+                              const bool meta_changed = (title != id(arylic_lr_title_state)) ||
+                                                       (artist != id(arylic_lr_artist_state)) ||
+                                                       (album != id(arylic_lr_album_state));
+                              const uint32_t log_every_ms = 15000;
+                              const bool should_log = meta_changed || (now_ms - id(arylic_http_last_log_ms) > log_every_ms);
+                              if (should_log) {
+                                id(arylic_http_last_log_ms) = now_ms;
+                                ESP_LOGI("arylic_lr",
+                                         "status=%s src=%s vol=%d mute=%d pos=%d/%d title='%s' artist='%s' album='%s'",
+                                         status.empty() ? "" : status.c_str(),
+                                         src.c_str(),
+                                         vol,
+                                         mute,
+                                         curpos,
+                                         totlen,
+                                         title.c_str(),
+                                         artist.c_str(),
+                                         album.c_str());
+                              }
+
+                              const bool is_playing = (!status.empty() && status == "play");
+                              if ((title.empty() && artist.empty() && album.empty()) && !is_playing) {
+                                // keep last meta timestamp for a short grace period only
+                              } else if (!title.empty() || !artist.empty() || !album.empty() || (curpos > 0 || totlen > 0)) {
+                                if (is_playing) {
+                                  id(arylic_lr_last_meta_ms) = now_ms;
+                                }
+                              }
+
+                              id(arylic_lr_title_state) = title;
+                              id(arylic_lr_artist_state) = artist;
+                              id(arylic_lr_album_state) = album;
+                              if (curpos >= 0) id(arylic_lr_meta_position_state) = curpos;
+                              if (totlen >= 0) id(arylic_lr_meta_duration_state) = totlen;
+                      on_error:
+                        then:
+                          - lambda: |-
+                              id(arylic_lr_http_inflight) = false;
+                              ESP_LOGW("arylic_lr", "getPlayerStatus error host=%s scheme=%s port=%s",
+                                       "${arylic_lr_http_host}", "${arylic_lr_http_scheme}", "${arylic_lr_http_port}");
+  - interval: ${heartbeat_interval_ms}ms
+    then:
+      - script.execute: log_status_burst
+
+  - interval: ${screensaver_update_ms}ms
+    then:
+      - if:
+          condition:
+            lambda: |-
+              const uint32_t now = millis();
+              if (!id(ha_audio_state).has_state()) return false;
+              std::string state = id(ha_audio_state).state.c_str();
+              for (auto &c : state) c = (char) ::tolower(c);
+              if (state != "playing") return false;
+              const float duration = id(ha_audio_duration_value);
+              const float pos = id(ha_audio_pos_last_value);
+              if (duration <= 1.0f) return false;
+              if (pos < (duration - 0.5f)) return false;
+              if (now - id(ha_audio_pos_last_ms) < 1500) return false;
+              if (now - id(ha_audio_last_meta_ms) < 1500) return false;
+              if (now - id(ha_audio_last_force_refresh_ms) < 2000) return false;
+              return true;
+          then:
+            - lambda: |-
+                id(ha_audio_last_force_refresh_ms) = millis();
+            - if:
+                condition:
+                  lambda: |-
+                    return id(ma_active_target).has_state() && !id(ma_active_target).state.empty();
+                then:
+                  - homeassistant.service:
+                      service: homeassistant.update_entity
+                      data:
+                        entity_id: !lambda 'return id(ma_active_target).state;'
+
+# === Core scripts ===
+script:
+  - id: log_status_burst
+    mode: restart
+    then:
+      - lambda: |-
+          const uint32_t now = millis();
+          std::string src = id(arylic_source).has_state() ? id(arylic_source).state.c_str() : "UNK";
+          int vol = id(arylic_volume_cached);
+          if (vol < 0 && id(arylic_volume).has_state()) vol = (int) id(arylic_volume).state;
+          if (vol < 0) vol = 0;
+          const bool muted = id(arylic_mute).has_state() ? id(arylic_mute).state : false;
+          const bool playing = id(playing_effective);
+          const int room = id(selected_room);
+          const int target = id(selected_target);
+          const char *room_label = (room == 0) ? "${room_label_living}" :
+                                   (room == 1) ? "${room_label_dining}" :
+                                   (room == 2) ? "${room_label_kitchen}" :
+                                   "${room_label_bedroom}";
+          const char *target_label = (target == 0) ? "${target_label_all}" :
+                                     (room == 0 && target == 1) ? "${target_label_star}" :
+                                     (room == 0 && target == 2) ? "${target_label_tube}" :
+                                     (room == 0 && target == 3) ? "${target_label_reading}" :
+                                     (room == 1 && target == 1) ? "${target_label_chandelier}" :
+                                     (room == 2 && target == 1) ? "${target_label_polaroid_clock}" :
+                                     (room == 3 && target == 1) ? "${target_label_reading}" :
+                                     "${target_label_all}";
+          std::string ma_target = id(ma_active_target).has_state() ? id(ma_active_target).state.c_str() : "";
+          std::string ma_name = id(ma_active_friendly).has_state() ? id(ma_active_friendly).state.c_str() : "";
+          if (ma_target.empty()) ma_target = "-";
+          if (ma_name.empty()) ma_name = "-";
+          ESP_LOGI("status",
+                   "up=%ums src=%s vol=%d mute=%d play=%d room=%s target=%s ma_target=%s ma_name=%s hue=%.1f sat=%.1f bri=%.1f screen=%d menu=%d lvl=%d idle=%ums",
+                   (unsigned) now,
+                   src.c_str(),
+                   vol,
+                   muted ? 1 : 0,
+                   playing ? 1 : 0,
+                   room_label,
+                   target_label,
+                   ma_target.c_str(),
+                   ma_name.c_str(),
+                   id(lighting_hue),
+                   id(lighting_sat),
+                   id(lighting_brightness),
+                   id(screen_mode),
+                   id(menu_active) ? 1 : 0,
+                   id(menu_level),
+                   (unsigned) (now - id(last_input_ms)));
+
+  - id: note_user_input
+    mode: restart
+    then:
+      - lambda: |-
+          static uint32_t last_log = 0;
+          const uint32_t now = millis();
+          id(last_input_ms) = now;
+          if (now - last_log > 1000) {
+            ESP_LOGI("input", "note_user_input (menu_active=%d calib=%d)", id(menu_active), id(calibration_active));
+            last_log = now;
+          }
+          if (id(calibration_active)) return;
+          id(menu_active) = false;
+          id(menu_level) = 0;
+      - script.execute: compute_display_state
+
+  - id: note_menu_input
+    mode: restart
+    then:
+      - lambda: |-
+          static uint32_t last_log = 0;
+          const uint32_t now = millis();
+          id(last_input_ms) = now;
+          if (now - last_log > 1000) {
+            ESP_LOGI("input", "note_menu_input (menu_active=%d calib=%d)", id(menu_active), id(calibration_active));
+            last_log = now;
+          }
+          if (id(calibration_active)) return;
+      - script.execute: compute_display_state
+
+  - id: start_auto_setup
+    mode: restart
+    then:
+      - lambda: |-
+          id(calibration_auto_active) = true;
+          id(calibration_auto_channel) = 0;
+          id(calibration_channel) = 0;
+          id(calibration_step) = 0;
+          id(calibration_min) = 0;
+          id(calibration_mid) = 0;
+          id(calibration_max) = 0;
+          id(calibration_active) = true;
+          id(menu_active) = true;
+          id(menu_level) = 3;
+          id(menu_index) = 0;
+          id(calibration_channel_name) = "SLIDER A0";
+
+  - id: calibration_capture_step
+    mode: restart
+    then:
+      - lambda: |-
+          int raw = 0;
+          if (id(calibration_channel) == 0) raw = id(adc_raw_0);
+          else if (id(calibration_channel) == 1) raw = id(adc_raw_1);
+          else if (id(calibration_channel) == 2) raw = id(adc_raw_2);
+          else if (id(calibration_channel) == 3) raw = id(adc_raw_3);
+          else if (id(calibration_channel) == 4) raw = id(adc_raw_4);
+          else if (id(calibration_channel) == 5) raw = id(adc_raw_5);
+          else raw = id(adc_raw_6);
+
+          if (id(calibration_step) == 0) {
+            id(calibration_step) = 1;
+            return;
+          }
+          if (id(calibration_step) == 1) {
+            id(calibration_min) = raw;
+            id(calibration_step) = 2;
+            return;
+          }
+          if (id(calibration_step) == 2) {
+            id(calibration_mid) = raw;
+            id(calibration_step) = 3;
+            return;
+          }
+          id(calibration_max) = raw;
+          const int ch = id(calibration_channel);
+          const int cmin = id(calibration_min);
+          const int cmid = id(calibration_mid);
+          const int cmax = id(calibration_max);
+          if (ch == 0) { id(calibration_min_0) = cmin; id(calibration_mid_0) = cmid; id(calibration_max_0) = cmax; }
+          else if (ch == 1) { id(calibration_min_1) = cmin; id(calibration_mid_1) = cmid; id(calibration_max_1) = cmax; }
+          else if (ch == 2) { id(calibration_min_2) = cmin; id(calibration_mid_2) = cmid; id(calibration_max_2) = cmax; }
+          else if (ch == 3) { id(calibration_min_3) = cmin; id(calibration_mid_3) = cmid; id(calibration_max_3) = cmax; }
+          else if (ch == 4) { id(calibration_min_4) = cmin; id(calibration_mid_4) = cmid; id(calibration_max_4) = cmax; }
+          else if (ch == 5) { id(calibration_min_5) = cmin; id(calibration_mid_5) = cmid; id(calibration_max_5) = cmax; }
+          else { id(calibration_min_6) = cmin; id(calibration_mid_6) = cmid; id(calibration_max_6) = cmax; }
+          if (id(calibration_auto_active)) {
+            int next = id(calibration_auto_channel) + 1;
+            if (next <= 6) {
+              id(calibration_auto_channel) = next;
+              id(calibration_channel) = next;
+              id(calibration_step) = 0;
+              id(calibration_min) = 0;
+              id(calibration_mid) = 0;
+              id(calibration_max) = 0;
+              if (next == 0) id(calibration_channel_name) = "SLIDER A0";
+              else if (next == 1) id(calibration_channel_name) = "SLIDER A1";
+              else if (next == 2) id(calibration_channel_name) = "POT A2";
+              else if (next == 3) id(calibration_channel_name) = "POT A3";
+              else if (next == 4) id(calibration_channel_name) = "POT A4";
+              else if (next == 5) id(calibration_channel_name) = "POT A5";
+              else id(calibration_channel_name) = "POT A6";
+              return;
+            }
+            id(calibration_auto_active) = false;
+          }
+          id(calibration_active) = false;
+          id(calibration_step) = 0;

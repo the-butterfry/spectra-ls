@@ -1,0 +1,870 @@
+# Description: UI/menu input handling + UI fonts + now-playing helper sensors.
+# Version: 2026.04.12.6
+# Last updated: 2026-04-12
+# Update version/date whenever you change this file.
+#
+# Sections:
+#  - Fonts used by OLED UI/splash
+#  - Menu buttons + encoder navigation
+#  - UI helper sensors (menu state, screen mode, now playing)
+
+# === Fonts (OLED UI + splash) ===
+font:
+  - file: "${ui_font_file}"
+    id: font_now
+    size: ${now_playing_font_size}
+  - file: "${ui_font_file}"
+    id: font_menu
+    size: ${menu_font_size}
+  - file: "${splash_font_file}"
+    id: font_splash_title
+    size: ${splash_title_font_size}
+  - file: "${splash_font_file}"
+    id: font_splash_subtitle
+    size: ${splash_subtitle_font_size}
+  - file: "${splash_font_file}"
+    id: font_splash_symbol
+    size: ${splash_symbol_font_size}
+  - file: "${ui_font_file}"
+    id: font_small
+    size: ${now_playing_small_font_size}
+  # Icon font removed for now; we can re-add when revisiting source icons.
+
+script:
+  - id: refresh_menu_counts
+    mode: restart
+    then:
+      - lambda: |-
+          auto parse_options_count = [](const std::string &raw) -> int {
+            int count = 0;
+            std::string token;
+            bool in_quote = false;
+            char quote_char = 0;
+            auto trim = [](std::string &v) {
+              size_t start = v.find_first_not_of(" \t\n\r");
+              size_t end = v.find_last_not_of(" \t\n\r");
+              if (start == std::string::npos || end == std::string::npos) {
+                v.clear();
+                return;
+              }
+              v = v.substr(start, end - start + 1);
+            };
+            for (char ch : raw) {
+              if (ch == '\\') continue;
+              if ((ch == '\'' || ch == '"')) {
+                if (!in_quote) { in_quote = true; quote_char = ch; continue; }
+                if (quote_char == ch) { in_quote = false; continue; }
+              }
+              if (!in_quote && (ch == '[' || ch == ']')) continue;
+              if (!in_quote && ch == ',') {
+                trim(token);
+                if (!token.empty()) count++;
+                token.clear();
+                continue;
+              }
+              token.push_back(ch);
+            }
+            trim(token);
+            if (!token.empty()) count++;
+            return count;
+          };
+
+          int room_count = 4;
+          if (id(ha_room_options).has_state()) {
+            const int parsed = parse_options_count(id(ha_room_options).state.c_str());
+            if (parsed > 0) room_count = parsed;
+          }
+          int target_count = 0;
+          if (id(ha_target_options).has_state()) {
+            const int parsed = parse_options_count(id(ha_target_options).state.c_str());
+            if (parsed > 0) target_count = parsed;
+          }
+
+            int meta_count = 0;
+            if (id(ha_meta_candidates_names).has_state()) {
+              const int parsed = parse_options_count(id(ha_meta_candidates_names).state.c_str());
+              if (parsed > 0) meta_count = parsed;
+            }
+
+          id(menu_room_count) = room_count;
+          id(menu_target_count) = target_count;
+          id(menu_meta_count) = meta_count;
+
+  - id: apply_meta_override_selection
+    mode: restart
+    then:
+      - lambda: |-
+          const bool enable = id(meta_menu_selected_enable);
+          const std::string entity = id(meta_menu_selected_entity);
+          ESP_LOGI("meta", "menu select enable=%d entity='%s'", enable ? 1 : 0, entity.c_str());
+      - if:
+          condition:
+            lambda: |-
+              return id(meta_menu_selected_enable);
+          then:
+            - homeassistant.service:
+                service: input_boolean.turn_on
+                data:
+                  entity_id: ${ha_ma_meta_override_active}
+          else:
+            - homeassistant.service:
+                service: input_boolean.turn_off
+                data:
+                  entity_id: ${ha_ma_meta_override_active}
+      - homeassistant.service:
+          service: input_text.set_value
+          data:
+            entity_id: ${ha_ma_meta_override_entity}
+            value: !lambda |-
+              return id(meta_menu_selected_enable) ? id(meta_menu_selected_entity) : std::string("");
+
+  - id: apply_control_target_selection
+    mode: restart
+    then:
+      - if:
+          condition:
+            lambda: |-
+              return id(control_target_prompt_commit) && !id(control_target_prompt_entity).empty();
+          then:
+            - homeassistant.service:
+                service: input_select.select_option
+                data:
+                  entity_id: input_select.ma_active_target
+                  option: !lambda |-
+                    return id(control_target_prompt_entity);
+            - lambda: |-
+                id(control_target_prompt_commit) = false;
+
+  - id: menu_select_action
+    mode: restart
+    then:
+      - script.execute: refresh_menu_counts
+      - lambda: |-
+          id(control_target_prompt_commit) = false;
+          id(control_target_prompt_entity) = "";
+          id(control_target_popup_active) = false;
+          if (id(control_target_prompt_active)) {
+            id(menu_active) = false;
+            id(menu_level) = 0;
+            id(menu_index) = 0;
+            auto trim_ascii = [](std::string &value) {
+              size_t start = value.find_first_not_of(" \t\n\r");
+              size_t end = value.find_last_not_of(" \t\n\r");
+              if (start == std::string::npos || end == std::string::npos) {
+                value.clear();
+                return;
+              }
+              value = value.substr(start, end - start + 1);
+            };
+            auto parse_options = [&](const std::string &raw) -> std::vector<std::string> {
+              std::vector<std::string> out;
+              if (raw.empty()) return out;
+              std::string token;
+              bool in_quote = false;
+              char quote_char = 0;
+              for (char ch : raw) {
+                if (ch == '\\') continue;
+                if ((ch == '\'' || ch == '"')) {
+                  if (!in_quote) { in_quote = true; quote_char = ch; continue; }
+                  if (quote_char == ch) { in_quote = false; continue; }
+                }
+                if (!in_quote && (ch == '[' || ch == ']')) continue;
+                if (!in_quote && ch == ',') {
+                  trim_ascii(token);
+                  if (!token.empty()) out.push_back(token);
+                  token.clear();
+                  continue;
+                }
+                token.push_back(ch);
+              }
+              trim_ascii(token);
+              if (!token.empty()) out.push_back(token);
+              return out;
+            };
+            std::string entities_raw;
+            if (id(ha_control_target_entities).has_state()) {
+              entities_raw = id(ha_control_target_entities).state.c_str();
+            }
+            std::vector<std::string> entities = parse_options(entities_raw);
+            if (entities.empty()) {
+              ESP_LOGW("target_prompt", "no targets (raw='%s')", entities_raw.c_str());
+              id(control_target_prompt_active) = false;
+              id(control_target_prompt_manual) = false;
+              const uint32_t now = millis();
+              id(meta_popup_label) = "NO TARGETS";
+              id(meta_popup_until_ms) = now + ${meta_popup_ms};
+              id(control_target_popup_active) = true;
+              id(control_target_prompt_snooze_until_ms) = now + ${meta_popup_ms};
+              return;
+            }
+            if (!entities.empty()) {
+              int pick = id(control_target_prompt_index);
+              if (pick < 0) pick = 0;
+              if (pick >= (int) entities.size()) pick = (int) entities.size() - 1;
+              const std::string entity = entities[pick];
+              if (!entity.empty()) {
+                ESP_LOGI("target_prompt", "select idx=%d entity='%s'", pick, entity.c_str());
+                id(control_target_prompt_active) = false;
+                id(control_target_prompt_manual) = false;
+                id(control_target_prompt_entity) = entity;
+                id(control_target_prompt_commit) = true;
+                id(control_target_lock_active) = true;
+                id(control_target_lock_source_key) = entity;
+                id(control_target_prompt_blocked) = true;
+                id(menu_active) = false;
+                id(menu_level) = 0;
+                id(menu_index) = 0;
+                const uint32_t now = millis();
+                id(meta_popup_label) = entity;
+                id(meta_popup_until_ms) = now + ${meta_popup_ms};
+                id(control_target_popup_active) = true;
+                id(control_target_prompt_snooze_until_ms) = now + ${control_target_prompt_cooldown_ms};
+                id(control_target_force_until_ms) = now + 30000;
+                id(audio_wake_until_ms) = now + ${audio_wake_hold_ms};
+                auto label_from_idx = [&](int idx) -> std::string {
+                  if (!id(ha_control_target_labels).has_state()) return std::string();
+                  std::vector<std::string> labels = parse_options(id(ha_control_target_labels).state.c_str());
+                  if (idx >= 0 && idx < (int) labels.size()) return labels[idx];
+                  return std::string();
+                };
+                const std::string label = label_from_idx(pick);
+                if (!label.empty()) {
+                  id(meta_popup_label) = label;
+                }
+                id(apply_control_target_selection).execute();
+              }
+            }
+            return;
+          }
+          int room_count = id(menu_room_count);
+          if (room_count <= 0) room_count = 4;
+          int target_count = id(menu_target_count);
+          if (target_count <= 0) {
+            target_count = (id(menu_light_room) == 0) ? 4 : 2;
+          }
+          int meta_count = id(menu_meta_count);
+          const int menu_level5_count = room_count + 1;
+          const int menu_level6_count = target_count + 1;
+          const int menu_level9_count = meta_count + 2;
+
+          if (!id(menu_active)) {
+            id(menu_active) = true;
+            if (id(menu_level) < 1) id(menu_level) = 1;
+            id(menu_index) = id(screen_mode);
+            id(lighting_adjust_mode) = 0;
+          }
+
+          if (id(menu_level) > 1) {
+            int back_count = 0;
+            if (id(menu_level) == 4) back_count = 3;
+            if (id(menu_level) == 5) back_count = menu_level5_count;
+            else if (id(menu_level) == 6) back_count = menu_level6_count;
+            else if (id(menu_level) == 7) back_count = 4;
+            else if (id(menu_level) == 8) back_count = (id(selected_target) == 0) ? 2 : 3;
+            else if (id(menu_level) == 9) back_count = menu_level9_count;
+            if (back_count > 0 && id(menu_index) == (back_count - 1)) {
+              if (id(menu_level) == 4) {
+                id(menu_level) = 1;
+                id(menu_index) = 2;
+              } else if (id(menu_level) == 5) {
+                id(menu_level) = 1;
+                id(menu_index) = 0;
+              } else if (id(menu_level) == 6) {
+                id(menu_level) = 5;
+                id(menu_index) = id(menu_light_room);
+              } else if (id(menu_level) == 7) {
+                int back_idx = id(selected_target);
+                if (back_idx < 0) back_idx = 0;
+                const int max_target_idx = menu_level6_count - 2;
+                if (back_idx > max_target_idx) back_idx = max_target_idx;
+                id(menu_level) = 6;
+                id(menu_index) = back_idx;
+              } else if (id(menu_level) == 8) {
+                id(menu_level) = 7;
+                id(menu_index) = 0;
+              } else if (id(menu_level) == 9) {
+                id(menu_level) = 1;
+                id(menu_index) = 2;
+              }
+              return;
+            }
+          }
+
+          if (id(menu_level) == 1) {
+            if (id(menu_index) == 0) {
+              id(menu_level) = 5;
+              id(menu_light_room) = id(selected_room);
+              id(menu_index) = id(menu_light_room);
+            } else if (id(menu_index) == 1) {
+              id(screen_mode) = 1;
+              id(menu_active) = false;
+              id(menu_level) = 0;
+              id(audio_empty_active) = true;
+              id(audio_empty_until_ms) = millis() + ${audio_empty_duration_ms};
+              id(last_input_ms) = millis();
+              id(np_cache_version) += 1;
+            } else if (id(menu_index) == 2) {
+              id(menu_level) = 4;
+              id(menu_index) = 0;
+            }
+            return;
+          }
+          if (id(menu_level) == 4) {
+            if (id(menu_index) == 0) {
+              id(menu_level) = 9;
+              id(menu_index) = 0;
+            } else if (id(menu_index) == 1) {
+              id(control_target_lock_active) = false;
+              id(control_target_lock_source_key) = "";
+              id(control_target_prompt_blocked) = false;
+              id(control_target_prompt_active) = true;
+              id(control_target_prompt_manual) = true;
+              id(control_target_prompt_index) = 0;
+              id(menu_active) = false;
+              id(menu_level) = 0;
+              id(menu_index) = 0;
+            } else {
+              id(menu_level) = 1;
+              id(menu_index) = 2;
+            }
+            return;
+          }
+          if (id(menu_level) == 5) {
+            if (id(menu_index) >= 0 && id(menu_index) < room_count) {
+              id(menu_light_room) = id(menu_index);
+              id(selected_room) = id(menu_index);
+              id(push_room_select_to_ha).execute();
+              id(sync_lighting_from_ha).execute();
+              id(menu_level) = 6;
+              id(menu_index) = 0;
+            } else {
+              id(menu_level) = 1;
+              id(menu_index) = 0;
+            }
+            return;
+          }
+          if (id(menu_level) == 6) {
+            const int room = id(menu_light_room);
+            const int count = menu_level6_count;
+            const int back_idx = count - 1;
+            if (id(menu_index) == back_idx) {
+              id(menu_level) = 5;
+              id(menu_index) = room;
+              return;
+            }
+            const int target = id(menu_index);
+            id(selected_room) = room;
+            id(selected_target) = target;
+            id(push_room_select_to_ha).execute();
+            id(push_target_select_to_ha).execute();
+            id(focus_lighting).execute();
+            id(sync_lighting_from_ha).execute();
+            id(menu_level) = 7;
+            id(menu_index) = 0;
+            return;
+          }
+          if (id(menu_level) == 7) {
+            if (id(menu_index) == 0) {
+              id(menu_level) = 8;
+              id(menu_index) = 0;
+            } else if (id(menu_index) == 1) {
+              id(lighting_adjust_mode) = 0;
+              id(lighting_mode_hue) = true;
+              id(screen_mode) = 0;
+              id(menu_active) = false;
+              id(menu_level) = 0;
+            } else if (id(menu_index) == 2) {
+              id(lighting_adjust_mode) = 0;
+              id(lighting_mode_hue) = false;
+              id(screen_mode) = 0;
+              id(menu_active) = false;
+              id(menu_level) = 0;
+            } else {
+              int back_idx = id(selected_target);
+              if (back_idx < 0) back_idx = 0;
+              const int max_target_idx = menu_level6_count - 2;
+              if (back_idx > max_target_idx) back_idx = max_target_idx;
+              id(menu_level) = 6;
+              id(menu_index) = back_idx;
+            }
+            return;
+          }
+          if (id(menu_level) == 8) {
+            const int target = id(selected_target);
+            const int back_idx = (target == 0) ? 1 : 2;
+            if (id(menu_index) == 0) {
+              id(toggle_room_lights).execute();
+            } else if (target != 0 && id(menu_index) == 1) {
+              id(toggle_selected_light).execute();
+            } else if (id(menu_index) == back_idx) {
+              id(menu_level) = 7;
+              id(menu_index) = 0;
+            }
+            return;
+          }
+          if (id(menu_level) == 9) {
+            auto trim_ascii = [](std::string &value) {
+              size_t start = value.find_first_not_of(" \t\n\r");
+              size_t end = value.find_last_not_of(" \t\n\r");
+              if (start == std::string::npos || end == std::string::npos) {
+                value.clear();
+                return;
+              }
+              value = value.substr(start, end - start + 1);
+            };
+            auto parse_options = [&](const std::string &raw) -> std::vector<std::string> {
+              std::vector<std::string> out;
+              if (raw.empty()) return out;
+              std::string token;
+              bool in_quote = false;
+              char quote_char = 0;
+              for (char ch : raw) {
+                if (ch == '\\') continue;
+                if ((ch == '\'' || ch == '"')) {
+                  if (!in_quote) { in_quote = true; quote_char = ch; continue; }
+                  if (quote_char == ch) { in_quote = false; continue; }
+                }
+                if (!in_quote && (ch == '[' || ch == ']')) continue;
+                if (!in_quote && ch == ',') {
+                  trim_ascii(token);
+                  if (!token.empty()) out.push_back(token);
+                  token.clear();
+                  continue;
+                }
+                token.push_back(ch);
+              }
+              trim_ascii(token);
+              if (!token.empty()) out.push_back(token);
+              return out;
+            };
+            std::string entities_raw;
+            if (id(ha_meta_candidates_entities).has_state()) {
+              entities_raw = id(ha_meta_candidates_entities).state.c_str();
+            }
+            std::vector<std::string> entities = parse_options(entities_raw);
+            std::string names_raw;
+            if (id(ha_meta_candidates_names).has_state()) {
+              names_raw = id(ha_meta_candidates_names).state.c_str();
+            }
+            std::vector<std::string> names = parse_options(names_raw);
+            const int count = menu_level9_count;
+            const int back_idx = count - 1;
+            if (id(menu_index) == 0) {
+              id(meta_menu_selected_enable) = false;
+              id(meta_menu_selected_entity) = "";
+              id(meta_popup_label) = "AUTO";
+              id(meta_popup_until_ms) = millis() + ${meta_popup_ms};
+              id(control_target_popup_active) = false;
+              id(menu_level) = 1;
+              id(menu_index) = 2;
+              id(apply_meta_override_selection).execute();
+              return;
+            }
+            if (id(menu_index) == back_idx) {
+              id(menu_level) = 1;
+              id(menu_index) = 2;
+              return;
+            }
+            const int pick_idx = id(menu_index) - 1;
+            if (pick_idx >= 0 && pick_idx < (int) entities.size()) {
+              id(meta_menu_selected_enable) = true;
+              id(meta_menu_selected_entity) = entities[pick_idx];
+              if (pick_idx < (int) names.size() && !names[pick_idx].empty()) {
+                id(meta_popup_label) = names[pick_idx];
+              } else {
+                id(meta_popup_label) = entities[pick_idx];
+              }
+              id(meta_popup_until_ms) = millis() + ${meta_popup_ms};
+              id(control_target_popup_active) = false;
+              id(menu_level) = 1;
+              id(menu_index) = 2;
+              id(apply_meta_override_selection).execute();
+            }
+            return;
+          }
+
+# === Menu buttons + encoder ===
+# Guardrail: menu_active/menu_level ownership lives in UI handlers.
+# Do not clear menus from generic input handlers; display state is decided in
+# control-board-peripherals-no-rings.yaml.
+binary_sensor:
+  - platform: rp2040_uart
+    rp2040_uart_id: rp2040_uart_hub
+    button_id: 21
+    name: "RP Menu Enc Press"
+    id: rp_menu_enc_press
+    internal: true
+    on_press:
+      - lambda: |-
+          ESP_LOGI("input", "Button RP Menu Enc Press");
+      - script.execute: note_menu_input
+      - script.execute: menu_select_action
+  - platform: rp2040_uart
+    rp2040_uart_id: rp2040_uart_hub
+    button_id: 36
+    name: "RP Back"
+    id: rp_back
+    internal: true
+    on_press:
+      - lambda: |-
+          ESP_LOGI("input", "Button RP Back");
+      - script.execute: note_menu_input
+      - lambda: |-
+          if (id(control_target_prompt_active)) {
+            id(control_target_prompt_active) = false;
+          id(control_target_prompt_manual) = false;
+            id(control_target_prompt_commit) = false;
+            id(control_target_prompt_entity) = "";
+            id(menu_active) = false;
+            id(menu_level) = 0;
+            id(menu_index) = 0;
+            const uint32_t now = millis();
+            id(meta_popup_label) = "CANCELLED";
+            id(meta_popup_until_ms) = now + ${meta_popup_ms};
+            id(control_target_popup_active) = true;
+            id(control_target_prompt_snooze_until_ms) = now + ${meta_popup_ms};
+            return;
+          }
+          if (!id(menu_active)) return;
+          if (id(menu_level) == 4) {
+            id(menu_level) = 1;
+            id(menu_index) = 2;
+            return;
+          }
+          if (id(menu_level) == 9) {
+            id(menu_level) = 1;
+            id(menu_index) = 2;
+            return;
+          }
+          if (id(menu_level) >= 8) {
+            id(menu_level) = 7;
+            id(menu_index) = 0;
+            return;
+          }
+          if (id(menu_level) == 7) {
+            id(menu_level) = 6;
+            id(menu_index) = 0;
+            return;
+          }
+          if (id(menu_level) == 6) {
+            id(menu_level) = 5;
+            id(menu_index) = id(menu_light_room);
+            return;
+          }
+          if (id(menu_level) == 5) {
+            id(menu_level) = 1;
+            id(menu_index) = 0;
+            return;
+          }
+          if (id(menu_level) > 1) {
+            id(menu_level) = 1;
+            id(menu_index) = 0;
+            return;
+          }
+          id(menu_active) = false;
+          id(menu_level) = 0;
+  - platform: rp2040_uart
+    rp2040_uart_id: rp2040_uart_hub
+    button_id: 37
+    name: "RP Select"
+    id: rp_select
+    internal: true
+    on_press:
+      - lambda: |-
+          ESP_LOGI("input", "Button RP Select");
+      - script.execute: note_menu_input
+      - script.execute: menu_select_action
+
+  # Optional: keep UI-facing state toggles available as binary sensors
+  - platform: template
+    name: "Menu Active"
+    id: menu_active_state
+    internal: true
+    lambda: |-
+      return id(menu_active);
+
+  - platform: template
+    name: "Screensaver Active"
+    id: screensaver_active_state
+    internal: true
+    lambda: |-
+      return id(screensaver_active);
+
+  - platform: template
+    name: "Lighting Mode Hue"
+    id: lighting_mode_hue_state
+    internal: true
+    lambda: |-
+      return id(lighting_mode_hue);
+
+# === Menu encoder delta ===
+sensor:
+  - platform: rp2040_uart
+    rp2040_uart_id: rp2040_uart_hub
+    type: encoder
+    sensor_id: 2
+    name: "RP Menu Enc Delta"
+    id: rp_menu_enc_delta
+    internal: true
+    accuracy_decimals: 0
+    on_value:
+      - script.execute: note_menu_input
+      - script.execute: refresh_menu_counts
+      - lambda: |-
+          const int delta = (int) x;
+          if (delta == 0) return;
+          ESP_LOGI("input", "Encoder Menu delta=%d", delta);
+          if (id(control_target_prompt_active)) {
+            auto trim_ascii = [](std::string &value) {
+              size_t start = value.find_first_not_of(" \t\n\r");
+              size_t end = value.find_last_not_of(" \t\n\r");
+              if (start == std::string::npos || end == std::string::npos) {
+                value.clear();
+                return;
+              }
+              value = value.substr(start, end - start + 1);
+            };
+            auto parse_options = [&](const std::string &raw) -> std::vector<std::string> {
+              std::vector<std::string> out;
+              if (raw.empty()) return out;
+              std::string token;
+              bool in_quote = false;
+              char quote_char = 0;
+              for (char ch : raw) {
+                if (ch == '\\') continue;
+                if ((ch == '\'' || ch == '"')) {
+                  if (!in_quote) { in_quote = true; quote_char = ch; continue; }
+                  if (quote_char == ch) { in_quote = false; continue; }
+                }
+                if (!in_quote && (ch == '[' || ch == ']')) continue;
+                if (!in_quote && ch == ',') {
+                  trim_ascii(token);
+                  if (!token.empty()) out.push_back(token);
+                  token.clear();
+                  continue;
+                }
+                token.push_back(ch);
+              }
+              trim_ascii(token);
+              if (!token.empty()) out.push_back(token);
+              return out;
+            };
+            std::vector<std::string> items;
+            if (id(ha_control_target_labels).has_state()) {
+              items = parse_options(id(ha_control_target_labels).state.c_str());
+            }
+            if (items.empty() && id(ha_control_target_entities).has_state()) {
+              items = parse_options(id(ha_control_target_entities).state.c_str());
+            }
+            const int count = (int) items.size();
+            if (count <= 0) return;
+            int idx = id(control_target_prompt_index) + delta;
+            while (idx < 0) idx += count;
+            while (idx >= count) idx -= count;
+            id(control_target_prompt_index) = idx;
+            return;
+          }
+          int room_count = id(menu_room_count);
+          if (room_count <= 0) room_count = 4;
+          int target_count = id(menu_target_count);
+          if (target_count <= 0) {
+            target_count = (id(menu_light_room) == 0) ? 4 : 2;
+          }
+          int meta_count = id(menu_meta_count);
+          const int menu_level5_count = room_count + 1;
+          const int menu_level6_count = target_count + 1;
+          const int menu_level9_count = meta_count + 2;
+          if (!id(menu_active)) {
+            id(menu_active) = true;
+            id(menu_level) = 1;
+            id(menu_index) = id(screen_mode);
+            id(lighting_adjust_mode) = 0;
+          }
+          int count = 0;
+          if (id(menu_level) == 1) count = 3;
+          else if (id(menu_level) == 4) count = 3;
+          else if (id(menu_level) == 5) count = menu_level5_count;
+          else if (id(menu_level) == 6) count = menu_level6_count;
+          else if (id(menu_level) == 7) count = 4;
+          else if (id(menu_level) == 8) count = (id(selected_target) == 0) ? 2 : 3;
+          else if (id(menu_level) == 9) count = menu_level9_count;
+          if (count <= 0) return;
+          int idx = id(menu_index) + delta;
+          while (idx < 0) idx += count;
+          while (idx >= count) idx -= count;
+          id(menu_index) = idx;
+
+interval:
+  - interval: 250ms
+    then:
+      - lambda: |-
+          const uint32_t now = millis();
+          const uint32_t idle_ms = now - id(last_input_ms);
+          const bool playing = id(playing_effective);
+          if (id(last_screen_mode) < 0) {
+            id(last_screen_mode) = id(screen_mode);
+          } else if (id(last_screen_mode) != id(screen_mode)) {
+            id(audio_empty_active) = false;
+            id(last_screen_mode) = id(screen_mode);
+          }
+          if (id(audio_empty_active)) {
+            id(audio_empty_active) = false;
+          }
+          if (id(menu_active)) {
+            if (id(menu_level) < 1) id(menu_level) = 1;
+            if (id(menu_index) < 0) id(menu_index) = 0;
+          }
+          if (!id(menu_active) && id(screen_mode) == 0) {
+            if (id(menu_level) < 1) id(menu_level) = 1;
+            if (id(menu_index) < 0) id(menu_index) = 0;
+          }
+          if (playing) {
+            id(playing_false_since_ms) = 0;
+          } else if (id(playing_false_since_ms) == 0) {
+            id(playing_false_since_ms) = now;
+          }
+          const uint32_t home_idle_ms = (uint32_t) ${menu_home_idle_ms};
+          if (home_idle_ms > 0 && idle_ms > home_idle_ms) {
+            if (id(menu_active)) {
+              if (id(menu_level) > 1) {
+                id(menu_level) = 1;
+                id(menu_index) = 0;
+              }
+            }
+          }
+          if (id(menu_active) && idle_ms > (uint32_t) ${menu_blank_idle_ms}) {
+            id(menu_active) = false;
+            id(menu_level) = 0;
+            id(menu_index) = 0;
+            id(screen_mode) = 0;
+          }
+          const bool lighting_hold_active = id(lighting_return_to_audio_ms) > 0 && now < id(lighting_return_to_audio_ms);
+          if (playing && id(screen_mode) != 1 && !id(menu_active) && !lighting_hold_active) {
+            id(screen_mode) = 1;
+            id(menu_level) = 1;
+            id(menu_index) = 0;
+          }
+          if (id(screen_mode) == 0 && !id(menu_active) && id(lighting_return_to_audio_ms) > 0 && now > id(lighting_return_to_audio_ms)) {
+            id(screen_mode) = 1;
+            id(lighting_return_to_audio_ms) = 0;
+          }
+          const uint32_t playback_off_grace_ms = 1200;
+          if (!playing && id(screen_mode) == 1 && !id(menu_active) &&
+              id(playing_false_since_ms) > 0 &&
+              (now - id(playing_false_since_ms)) >= playback_off_grace_ms) {
+            id(screen_mode) = 0;
+            id(menu_active) = true;
+            id(menu_level) = 1;
+            id(menu_index) = 0;
+          }
+      - script.execute: compute_display_state
+
+# === UI helper text sensors ===
+text_sensor:
+  - platform: template
+    name: "Screen Mode"
+    id: screen_mode_label
+    internal: true
+    update_interval: 500ms
+    lambda: |-
+      return id(screen_mode) == 0 ? std::string("Lighting") : std::string("Audio");
+
+  - platform: template
+    name: "Now Playing Title"
+    id: now_playing_title
+    internal: true
+    update_interval: 500ms
+    lambda: |-
+      const bool arylic_has_title = id(arylic_title).has_state() && !id(arylic_title).state.empty();
+      const bool arylic_has_artist = id(arylic_artist).has_state() && !id(arylic_artist).state.empty();
+      const bool arylic_has_album = id(arylic_album).has_state() && !id(arylic_album).state.empty();
+      const bool arylic_active = (id(arylic_playing).has_state() && id(arylic_playing).state) || arylic_has_title || arylic_has_artist || arylic_has_album;
+      if (arylic_active && arylic_has_title) {
+        return id(arylic_title).state;
+      }
+      if (id(ha_audio_title).has_state() && !id(ha_audio_title).state.empty()) {
+        return id(ha_audio_title).state;
+      }
+      return std::string("Now Playing");
+
+  - platform: template
+    name: "Now Playing Artist"
+    id: now_playing_artist
+    internal: true
+    update_interval: 500ms
+    lambda: |-
+      const bool arylic_has_title = id(arylic_title).has_state() && !id(arylic_title).state.empty();
+      const bool arylic_has_artist = id(arylic_artist).has_state() && !id(arylic_artist).state.empty();
+      const bool arylic_has_album = id(arylic_album).has_state() && !id(arylic_album).state.empty();
+      const bool arylic_active = (id(arylic_playing).has_state() && id(arylic_playing).state) || arylic_has_title || arylic_has_artist || arylic_has_album;
+      if (arylic_active && arylic_has_artist) {
+        return id(arylic_artist).state;
+      }
+      if (id(ha_audio_artist).has_state() && !id(ha_audio_artist).state.empty()) {
+        return id(ha_audio_artist).state;
+      }
+      return std::string("");
+
+  - platform: template
+    name: "Now Playing Album"
+    id: now_playing_album
+    internal: true
+    update_interval: 500ms
+    lambda: |-
+      const bool arylic_has_title = id(arylic_title).has_state() && !id(arylic_title).state.empty();
+      const bool arylic_has_artist = id(arylic_artist).has_state() && !id(arylic_artist).state.empty();
+      const bool arylic_has_album = id(arylic_album).has_state() && !id(arylic_album).state.empty();
+      const bool arylic_active = (id(arylic_playing).has_state() && id(arylic_playing).state) || arylic_has_title || arylic_has_artist || arylic_has_album;
+      if (arylic_active && arylic_has_album) {
+        return id(arylic_album).state;
+      }
+      if (id(ha_audio_album).has_state() && !id(ha_audio_album).state.empty()) {
+        return id(ha_audio_album).state;
+      }
+      return std::string("");
+
+  - platform: template
+    name: "Now Playing Source"
+    id: now_playing_source
+    internal: true
+    update_interval: 500ms
+    lambda: |-
+      const bool arylic_has_title = id(arylic_title).has_state() && !id(arylic_title).state.empty();
+      const bool arylic_has_artist = id(arylic_artist).has_state() && !id(arylic_artist).state.empty();
+      const bool arylic_has_album = id(arylic_album).has_state() && !id(arylic_album).state.empty();
+      const bool arylic_active = (id(arylic_playing).has_state() && id(arylic_playing).state) || arylic_has_title || arylic_has_artist || arylic_has_album;
+      if (arylic_active && id(arylic_source).has_state() && !id(arylic_source).state.empty()) {
+        return id(arylic_source).state;
+      }
+      std::string src;
+      if (id(ha_audio_app).has_state() && !id(ha_audio_app).state.empty()) {
+        src = id(ha_audio_app).state;
+      }
+      if (src.empty() && id(ha_audio_source).has_state()) {
+        src = id(ha_audio_source).state;
+      }
+      if (src.empty()) return std::string("SRC");
+      return src;
+
+  - platform: template
+    name: "Now Playing State"
+    id: now_playing_state
+    internal: true
+    update_interval: 500ms
+    lambda: |-
+      const bool arylic_has_title = id(arylic_title).has_state() && !id(arylic_title).state.empty();
+      const bool arylic_has_artist = id(arylic_artist).has_state() && !id(arylic_artist).state.empty();
+      const bool arylic_has_album = id(arylic_album).has_state() && !id(arylic_album).state.empty();
+      const bool arylic_active = (id(arylic_playing).has_state() && id(arylic_playing).state) || arylic_has_title || arylic_has_artist || arylic_has_album;
+      if (id(arylic_playing).has_state() && id(arylic_playing).state) {
+        return std::string("Playing");
+      }
+      if (arylic_active) {
+        return std::string("Paused");
+      }
+      if (id(ha_audio_state).has_state()) {
+        std::string state = id(ha_audio_state).state.c_str();
+        for (auto &c : state) c = (char) ::tolower(c);
+        return state == "playing" ? std::string("Playing") : std::string("Paused");
+      }
+      return std::string("Paused");

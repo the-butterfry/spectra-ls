@@ -120,7 +120,6 @@ wifi:
   password: ${wifi_password}
   fast_connect: true
   power_save_mode: NONE
-  use_address: 192.168.30.246
   manual_ip:
     static_ip: ${static_ip}
     gateway: ${gateway_ip}

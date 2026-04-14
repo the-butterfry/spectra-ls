@@ -72,7 +72,7 @@ Deploy the HA packages, reload, point Spectra L/S to HA, and go — with no YAML
 
 1. **Configure ESPHome device substitutions**
 
-    - Wi‑Fi + static IP (device‑specific).
+    - Wi‑Fi + static IP (device‑specific). Use `wifi_ssid` / `wifi_password` secrets for the Control Board v2.
     - Leave lighting room/target labels as fallbacks only.
 
 1. **Flash ESPHome (ESP32‑S3)**

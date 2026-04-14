@@ -5,6 +5,8 @@
 !control-board-esp32-tcp.yaml
 !control-py/
 !control-py/**
+!circuitpy/
+!circuitpy/**
 
 # Extra safety ignores (redundant with * but kept for clarity)
 /.esphome/
@@ -12,5 +14,10 @@
 /control-py/secrets.yaml
 /control-py/.esphome/
 control-py/previous/circuitpy/
+.fseventsd/
+.Trash-*/
+.metadata_never_index
+.metadata_never_index:Zone.Identifier
+.vscode/
 __pycache__/
 *.pyc

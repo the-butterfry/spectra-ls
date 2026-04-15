@@ -338,6 +338,7 @@ Copy these into `CIRCUITPY/lib` on the Feather RP2040:
 ### 2026-04-14
 
 - HA: Split MA control hub package into focused include files for maintainability.
+- HA: Control-target ambiguity now clears when now-playing clearly matches the active target, even if meta confidence is low.
 
 ### 2026-04-13
 

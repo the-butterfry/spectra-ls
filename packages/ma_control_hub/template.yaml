@@ -1498,7 +1498,17 @@
           {% endif %}
         {% endfor %}
         {% set meta_low = is_state('binary_sensor.ma_meta_low_confidence','on') %}
-        {% set signal_ok = hw_ok or ns.room_playing or (host_ok and not meta_low) %}
+        {% set np = states('sensor.now_playing_entity') %}
+        {% set np_state = (states(np) | lower) if np not in ['','none','unknown','unavailable'] else '' %}
+        {% set np_active = np_state in ['playing','paused'] %}
+        {% set np_is_playing = (state_attr(np,'is_playing') if np not in ['','none','unknown','unavailable'] else none) %}
+        {% set np_is_paused = (state_attr(np,'is_paused') if np not in ['','none','unknown','unavailable'] else none) %}
+        {% set np_play_state = ((state_attr(np,'play_state') if np not in ['','none','unknown','unavailable'] else '') | lower) %}
+        {% set np_has_meta = ((state_attr(np,'media_title') or '') not in ['','None', none]) or ((state_attr(np,'media_artist') or '') not in ['','None', none]) %}
+        {% set np_active_strong = np_active or (np_is_playing is true) or (np_is_paused is true) or (np_play_state in ['play','playing','pause','paused']) %}
+        {% set np_matches_target = np == target or np == states('sensor.ma_active_meta_entity') or np == states('sensor.ma_active_target_by_host') %}
+        {% set strong_now_playing = np_matches_target and (np_active_strong or np_has_meta) %}
+        {% set signal_ok = hw_ok or ns.room_playing or (host_ok and (not meta_low or strong_now_playing)) %}
         {{ (not target_ok) or (not host_ok) or (not signal_ok) or airplay or amb_entity }}
     - name: MA Active Is Group
       state: >-

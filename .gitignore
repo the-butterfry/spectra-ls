@@ -1,6 +1,6 @@
 # Description: Top-level ignore rules for Home Assistant monorepo.
-# Version: 2026.04.15.1
-# Last updated: 2026-04-15
+# Version: 2026.04.16.1
+# Last updated: 2026-04-16
 
 # Secrets / credentials
 secrets.yaml
@@ -33,6 +33,7 @@ __pycache__/
 # Temporary/backup snapshots
 _backup_*/
 esphome_repo_src/
+.worktrees/
 test.txt
 
 # Local secret variants

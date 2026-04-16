@@ -1,8 +1,15 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.15.2 -->
-<!-- Last updated: 2026-04-15 -->
+<!-- Version: 2026.04.16.1 -->
+<!-- Last updated: 2026-04-16 -->
 
 # Changelog
+
+## 2026-04-16
+
+- ESPHome: Canonicalize secrets structure to `esphome/secrets.yaml` and remove duplicate per-project `secrets.yaml` under `esphome/spectra_ls_system/`.
+- Repo: Add tracked `esphome/secrets.example.yaml` template while keeping real secret files ignored.
+- Repo: Establish concurrent dual-branch operations with dedicated `menu-only` worktree under `.worktrees/menu-only`.
+- Docs: Add filesystem safety gate to prevent destructive live-path moves/deletes without reversible snapshot and verification.
 
 ## 2026-04-15
 

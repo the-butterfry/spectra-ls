@@ -1,0 +1,66 @@
+message,api,response,param ,description,Example
+,,"115200,8,N,1,no flow control",,,
+{param},,"this is a field for a param, you should replace it with a specified text in actual message to send",,,
+[ ],,not available,,,
+NA,,,,,
+message,,"normally query current state when execute with no param, and normally set the value when continued with param",,,
+execution,,UART (some model),message need to be terminated with ;,,
+,,uart passthrough tool,message need to be sent in this format: MCU+PAS+RAKOIT:{message}&,,
+,,ACPWorkbench,send via Tag button without response. And need to close the window for each execution,,
+,,,,,
+VER,3,VER:{firmware}-{commit}-{api},"{firmware} firmware version
+{commit} git commit when building
+{api} api version",get firmware version information,VER
+STA,3,"MCU+PAS+STA:{source},{mute},
+{volume},{treble},{bass},{net},
+{internet},{playing},{led},
+{upgrading}","{source} NET/USB/USBDAC/LINE-IN/
+LINE-IN2/BT/OPT/COAX/I2S/HDMI
+{mute} 0/1
+{volume} 0~100
+{treble} -10~10
+{bass} -10~10
+{net} 0/1
+{internet} 0/1
+{playing} 0/1
+{led} 0/1
+{upgrading} 0/1",get system running state,STA
+SYS:{cmd},3,NA,{cmd} REBOOT/STANDBY/RESET/RECOVER,"system control, reboot device, enter standby, factory reset, recover all data",SYS:REBOOT
+WWW,3,WWW:{onoff},{onoff} 0/1,get internet state,WWW
+AUD[:{onoff}],3,AUD:{onoff},{onoff} 0/1,get/set audio output,AUD:0
+SRC[:{source}],3,SRC:{source},"{source} NET/USB/USBDAC/LINE-IN/
+LINE-IN2/BT/OPT/COAX/I2S/HDMI",get/set current input source,SRC:BT
+VOL[:{volume}],3,VOL:{volume},{volume} 0 ~ 100,get/set volume,VOL:50
+MUT[:{onoff}],3,MUT:{onoff},"{onoff} 0/1/T, off/on/toggle",get/set mute,MUT:1
+BAS[:{bass}],3,BAS:{bass},{bass} -10 ~ 10,get/set BASS value,BAS:0
+TRE[:{treble}],3,TRE:{treble},{treble} -10 ~ 10,get/set TREBLE value,TRE:0
+POP,3,NA,only available in BT/NET/USB mode (*1),play or pause,POP
+STP,3,NA,only available in NET/USB mode,stop,STP
+NXT,3,NA,only available in BT/NET/USB mode (*1),next,NXT
+PRE,3,NA,only available in BT/NET/USB mode (*1),previous,PRE
+BTC[:{onoff}],3,BTC:{onoff},{onoff} 0/1,"get current bt connection state, or reconnect/disconnect current device. 
+only available in BT mode and device with no external bt module.
+Control will have no return",BTC:1
+PLA,3,PLA:{playing},"{playing} 0/1, wifi playing status",get current network playback state,PLA
+CHN,3,CHN:{channel},{channel} L/R/S,get current channel state,CHN
+MRM,3,MRM:{mode},"{mode} S/M/N, slave/master/none",get current multiroom state,MRM
+LED[:{onoff}],3,LED:{onoff},"{onoff} 0/1/T, off/on/toggle",get/set LED state,LED:0
+BEP[:{beep}],3,BEP:{beep},"{beep} 0/1, off/on","get/set beep key sound, enabled or disabled.",BEP:0
+PST:{preset},3,NA,{preset} 0 ~ 10,get/set PRESET value,PST:1
+VBS[:{onoff}],3,VBS:{onoff},"{onoff} 0/1/T, off/on/toggle",get/set virtual bass,VBS:1
+WRS,3,NA,,wifi reset,WRS
+LPM[:{loopmode}],3,LPM:{loopmode},"{loopmode} REPEATALL/REPEATONE/
+REPEATSHUFFLE/SHUFFLE/SEQUENCE",set/get loopmode for network playback,LPM:REPEATALL
+NAM[:{name}],3,NAM:{name},"{name} hexed string with UTF8 encoding
+eg: 536F756E6453797374656D5F39383235 = SoundSystem_9825",set/get current device name. Remains after factory reset,NAM:48454C4C4F
+ETH,3,ETH:{onoff},{onoff} 0/1,get ethernet state,ETH
+WIF,3,WIF:{onoff},{onoff} 0/1,get wifi state,WIF
+PMT[:{onoff}],4,PMT:{onoff},{onoff} 0/1,"set/get current prompt voice state, enabled or disabled. Remains after factory reset",PMT:0
+PRG[:{onoff}],4,PRG:{onoff},{onoff} 0/1,"set/get pregain before tone, enabled or disabled",PRG:0
+DLY[:{mute_delay}],4,DLY:{mute_delay},{mute_delay} 1~60,"set/get delay time before system output control, default 30",DLY:5
+MXV[:{max_vol}],4,MXV:{max_vol},{max_volume} 30~100,set/get system max volume. Remains after factory reset,MXV:70
+ASW[:{auto_swith}],4,ASW:{auto_switch},{auto_switch} 0/1,enable/disable the auto switch to previous source after playback stopped (network),ASW:0
+POM[:{source}],4,POM:{source},{source} system source,"set the input mode when power on, NONE for keeping last source. ",POM:BT
+ZON:{zone}:{msg},4,related to {msg} sent,"{zone} zone index, or use ALL to all zones
+{msg} detailed API message","send API message to specified zone, and will reply with the response message
+only available on model M400, zone index can be set by 7 PINs on right side",ZON:1:VOL:50

@@ -1,0 +1,1629 @@
+# Description: Audio controls package for Control Board v2.
+# Version: 2026.03.20.3
+# Last updated: 2026-03-20
+# Update version/date whenever you change this file.
+
+binary_sensor:
+  - platform: rp2040_uart
+    rp2040_uart_id: rp2040_uart_hub
+    button_id: 22
+    name: "RP Volume Enc Press"
+    id: rp_volume_enc_press
+    internal: true
+    on_press:
+      - lambda: |-
+          ESP_LOGI("input", "Button RP Volume Enc Press");
+      - script.execute: arylic_toggle_mute
+  - platform: rp2040_uart
+    rp2040_uart_id: rp2040_uart_hub
+    button_id: 32
+    name: "RP Play Pause"
+    id: rp_play_pause
+    internal: true
+    on_press:
+      - lambda: |-
+          ESP_LOGI("input", "Button RP Play Pause");
+      - script.execute: note_user_input
+      - script.execute: focus_audio
+      - homeassistant.service:
+          service: media_player.media_play_pause
+          data:
+            entity_id: !lambda 'return id(ma_active_target).state.c_str();'
+  - platform: rp2040_uart
+    rp2040_uart_id: rp2040_uart_hub
+    button_id: 33
+    name: "RP Next"
+    id: rp_next
+    internal: true
+    on_press:
+      - lambda: |-
+          ESP_LOGI("input", "Button RP Next");
+      - script.execute: note_user_input
+      - script.execute: focus_audio
+      - homeassistant.service:
+          service: media_player.media_next_track
+          data:
+            entity_id: !lambda 'return id(ma_active_target).state.c_str();'
+  - platform: rp2040_uart
+    rp2040_uart_id: rp2040_uart_hub
+    button_id: 34
+    name: "RP Prev"
+    id: rp_prev
+    internal: true
+    on_press:
+      - lambda: |-
+          ESP_LOGI("input", "Button RP Prev");
+      - script.execute: note_user_input
+      - script.execute: focus_audio
+      - homeassistant.service:
+          service: media_player.media_previous_track
+          data:
+            entity_id: !lambda 'return id(ma_active_target).state.c_str();'
+  - platform: rp2040_uart
+    rp2040_uart_id: rp2040_uart_hub
+    button_id: 35
+    name: "RP Source Toggle"
+    id: rp_source_toggle
+    internal: true
+    on_press:
+      - lambda: |-
+          ESP_LOGI("input", "Button RP Source Toggle");
+      - script.execute: note_user_input
+      - script.execute: focus_audio
+      - homeassistant.service:
+          service: script.ma_cycle_target
+  - platform: rp2040_uart
+    rp2040_uart_id: rp2040_uart_hub
+    button_id: ${meta_select_button_id}
+    name: "RP Meta Select"
+    id: rp_meta_select
+    internal: true
+    on_press:
+      - lambda: |-
+          ESP_LOGI("input", "Button RP Meta Select");
+      - script.execute: note_user_input
+      - script.execute: focus_audio
+      - script.execute: meta_override_cycle
+
+  # Arylic state (kept with audio controls)
+  - platform: template
+    name: "Arylic Mute"
+    id: arylic_mute
+    internal: true
+    lambda: |-
+      return id(arylic_mute_state);
+  - platform: template
+    name: "Arylic Playing"
+    id: arylic_playing
+    internal: true
+    lambda: |-
+      return id(arylic_playing_state);
+
+sensor:
+  - platform: rp2040_uart
+    rp2040_uart_id: rp2040_uart_hub
+    type: encoder
+    sensor_id: 3
+    name: "RP Volume Enc Delta"
+    id: rp_volume_enc_delta
+    internal: true
+    accuracy_decimals: 0
+    on_value:
+      - script.execute:
+          id: arylic_volume_delta
+          delta: !lambda 'return (int) x;'
+  - platform: rp2040_uart
+    rp2040_uart_id: rp2040_uart_hub
+    type: analog
+    sensor_id: 102
+    name: "RP Volume Pot Raw"
+    id: rp_volume_pot_raw
+    internal: true
+    accuracy_decimals: 0
+    on_value:
+      - lambda: |-
+          static uint32_t last_log = 0;
+          static uint32_t last_send_log = 0;
+          static int last_sent_target = -1;
+          static uint32_t last_send_ms = 0;
+          const uint32_t now = millis();
+          if (id(menu_active)) {
+            id(last_input_ms) = now;
+          } else {
+            id(screen_mode) = 1;
+            id(audio_empty_active) = false;
+            id(last_input_ms) = now;
+          }
+          float raw_pct = (float) x;
+          if (raw_pct > 100.0f) raw_pct = (raw_pct / 65535.0f) * 100.0f;
+          if (raw_pct < 0.0f) raw_pct = 0.0f;
+          if (raw_pct > 100.0f) raw_pct = 100.0f;
+          if (raw_pct <= 2.0f) raw_pct = 0.0f;
+          if (raw_pct >= 98.0f) raw_pct = 100.0f;
+          id(pot_volume_pct_cached) = (int) (raw_pct + 0.5f);
+          id(pot_volume_pct_last_ms) = now;
+          int max_vol = (int) ${audio_max_volume_pct};
+          if (max_vol <= 0 || max_vol > 100) max_vol = 100;
+          int target = (int) (raw_pct * (float) max_vol / 100.0f + 0.5f);
+          if (target < 0) target = 0;
+          if (target > max_vol) target = max_vol;
+                int current_vol = -1;
+                if (id(arylic_volume).has_state()) {
+                  current_vol = (int) id(arylic_volume).state;
+                }
+                if (current_vol < 0) {
+                  float ha_vol = -1.0f;
+                  if (id(ha_audio_volume).has_state()) {
+                    ha_vol = id(ha_audio_volume).state * 100.0f;
+                  } else if (id(ha_audio2_volume).has_state()) {
+                    ha_vol = id(ha_audio2_volume).state * 100.0f;
+                  } else if (id(ha_audio3_volume).has_state()) {
+                    ha_vol = id(ha_audio3_volume).state * 100.0f;
+                  } else if (id(ha_audio4_volume).has_state()) {
+                    ha_vol = id(ha_audio4_volume).state * 100.0f;
+                  } else if (id(ha_audio5_volume).has_state()) {
+                    ha_vol = id(ha_audio5_volume).state * 100.0f;
+                  } else if (id(ha_audio6_volume).has_state()) {
+                    ha_vol = id(ha_audio6_volume).state * 100.0f;
+                  }
+                  if (ha_vol >= 0.0f && ha_vol <= 100.0f) {
+                    current_vol = (int) (ha_vol + 0.5f);
+                  } else if (ha_vol < 0.0f || ha_vol > 100.0f) {
+                    if (now - last_send_log > 1000) {
+                      ESP_LOGW("input", "MA volume out of range: %.1f (ignored)", ha_vol);
+                      last_send_log = now;
+                    }
+                  }
+                }
+                if (current_vol < 0 && id(arylic_volume_cached) >= 0) {
+                  current_vol = id(arylic_volume_cached);
+                }
+                if (current_vol >= 0) {
+                  if (current_vol != id(pot_volume_catch_current)) {
+                    id(pot_volume_catch_current) = current_vol;
+                    id(pot_volume_catch_value) = current_vol;
+                    id(pot_volume_catch_active) = false;
+                    id(pot_volume_catch_complete) = false;
+                  }
+                  if (!id(pot_volume_catch_complete) && target > current_vol) {
+                    id(pot_volume_catch_active) = true;
+                    id(pot_volume_catch_value) = current_vol;
+                  }
+                  if (id(pot_volume_catch_active)) {
+                    if (target <= id(pot_volume_catch_value)) {
+                      id(pot_volume_catch_active) = false;
+                      id(pot_volume_catch_complete) = true;
+                    } else {
+                      if (now - last_send_log > 500) {
+                        ESP_LOGI("input", "Pot catch: target=%d > current=%d (hold)", target, id(pot_volume_catch_value));
+                        last_send_log = now;
+                      }
+                      id(pot_volume_target) = target;
+                      id(pot_volume_last_ms) = now;
+                      return;
+                    }
+                  }
+                }
+                const uint32_t min_interval = (uint32_t) ${volume_pot_send_interval_ms};
+                if (target == last_sent_target) return;
+                if (now - last_send_ms < min_interval) return;
+                last_send_ms = now;
+                last_sent_target = target;
+                const uint32_t idle_ms = now - id(last_input_ms);
+                const uint32_t blank_ms = id(menu_active) ? (uint32_t) ${menu_blank_idle_ms} : (uint32_t) ${screensaver_idle_ms};
+                bool screen_awake = (blank_ms == 0) || (idle_ms < blank_ms);
+                const bool audio_wake_active = id(audio_wake_until_ms) > 0 && now < id(audio_wake_until_ms);
+                if (audio_wake_active) screen_awake = true;
+                if (id(playing_effective)) screen_awake = true;
+                if (screen_awake) {
+                  id(last_input_ms) = now;
+                }
+                if (now - last_log > 500) {
+                  ESP_LOGI("input", "Volume pot raw=%d target=%d screen_awake=%d", (int) x, target, screen_awake ? 1 : 0);
+                  last_log = now;
+                }
+                id(audio_ring_active_until_ms) = now + ${ring_active_window_ms};
+                if (target != id(arylic_volume_cached) && screen_awake) {
+                  id(audio_wake_until_ms) = now + ${audio_wake_hold_ms};
+                }
+                id(pot_volume_target) = target;
+                id(pot_volume_last_ms) = now;
+                if (now - last_send_log > 500) {
+                  ESP_LOGI("input", "Pot send arylic VOL target=%d last_sent=%u now=%u", target,
+                           (unsigned) id(arylic_last_vol_sent_ms), (unsigned) now);
+                  last_send_log = now;
+                }
+                std::string target_entity = id(np_active_target_entity);
+                if (target_entity.empty() && id(ma_active_target).has_state() && !id(ma_active_target).state.empty()) {
+                  target_entity = id(ma_active_target).state.c_str();
+                }
+                if (target >= 5 && id(arylic_mute_state) && (now - id(ma_unmute_last_ms) > 1000)) {
+                  id(arylic_mute_state) = false;
+                  id(ma_unmute_last_ms) = now;
+                  if (!target_entity.empty()) {
+                    id(ma_unmute_entity) = target_entity;
+                    id(ma_unmute_pending) = true;
+                  }
+                }
+                const char *host = "${arylic_tcp_host}";
+                uint16_t port = (uint16_t) ${arylic_tcp_port};
+                if (!target_entity.empty()) {
+                  if (target_entity == std::string("${np_lr_target_entity}") ||
+                      target_entity == std::string("${ha_audio_player_3}") ||
+                      target_entity == std::string("${ha_audio_player_4}")) {
+                    host = "${arylic_lr_tcp_host}";
+                    port = (uint16_t) ${arylic_lr_tcp_port};
+                  }
+                } else if (id(arylic_lr_playing_state)) {
+                  host = "${arylic_lr_tcp_host}";
+                  port = (uint16_t) ${arylic_lr_tcp_port};
+                }
+                const bool tcp_ok = esphome::arylic_tcp::send_volume(host, port, target);
+                if (!tcp_ok) {
+                  ESP_LOGW("arylic_tcp", "VOL send failed host=%s target=%d entity=%s", host, target, target_entity.c_str());
+                }
+                float ha_vol = (float) target / 100.0f;
+                if (ha_vol < 0.0f) ha_vol = 0.0f;
+                if (ha_vol > 1.0f) ha_vol = 1.0f;
+                id(ma_vol_target) = target;
+                id(ma_vol_target_f) = ha_vol;
+                id(ma_vol_last_send_ms) = now;
+                id(arylic_last_vol_sent_ms) = now;
+                id(arylic_volume_cached) = target;
+                id(pot_volume_deferred) = false;
+                id(ma_vol_pending) = true;
+  - platform: rp2040_uart
+    rp2040_uart_id: rp2040_uart_hub
+    type: analog
+    sensor_id: 104
+    name: "RP EQ Low Pot Raw"
+    id: rp_eq_low_pot_raw
+    internal: true
+    accuracy_decimals: 0
+    on_value:
+      - if:
+          condition:
+            lambda: |-
+              static int last_sent = 999;
+              float pct = (float) x;
+              if (pct < 0.0f) pct = 0.0f;
+              if (pct > 100.0f) pct = 100.0f;
+              float val = (pct / 100.0f) * 24.0f - 12.0f;
+              int eq = (int) (val >= 0.0f ? (val + 0.5f) : (val - 0.5f));
+              if (eq < -12) eq = -12;
+              if (eq > 12) eq = 12;
+              if (eq == last_sent) return false;
+              last_sent = eq;
+              id(eq_low_target) = eq;
+              return true;
+          then:
+            - script.execute:
+                id: arylic_set_bass
+                target: !lambda 'return (int) id(eq_low_target);'
+  - platform: rp2040_uart
+    rp2040_uart_id: rp2040_uart_hub
+    type: analog
+    sensor_id: 105
+    name: "RP EQ Mid Pot Raw"
+    id: rp_eq_mid_pot_raw
+    internal: true
+    accuracy_decimals: 0
+    on_value:
+      - if:
+          condition:
+            lambda: |-
+              static int last_sent = 999;
+              float pct = (float) x;
+              if (pct < 0.0f) pct = 0.0f;
+              if (pct > 100.0f) pct = 100.0f;
+              float val = (pct / 100.0f) * 24.0f - 12.0f;
+              int eq = (int) (val >= 0.0f ? (val + 0.5f) : (val - 0.5f));
+              if (eq < -12) eq = -12;
+              if (eq > 12) eq = 12;
+              if (eq == last_sent) return false;
+              last_sent = eq;
+              id(eq_mid_target) = eq;
+              return true;
+          then:
+            - lambda: |-
+                // TODO: Mid-band EQ not supported via LinkPlay TCP. Pin this for non-WiiM outputs.
+                ESP_LOGW("eq", "Mid EQ update ignored (target=%d). Pending non-WiiM/TCP strategy.", id(eq_mid_target));
+  - platform: rp2040_uart
+    rp2040_uart_id: rp2040_uart_hub
+    type: analog
+    sensor_id: 106
+    name: "RP EQ High Pot Raw"
+    id: rp_eq_high_pot_raw
+    internal: true
+    accuracy_decimals: 0
+    on_value:
+      - if:
+          condition:
+            lambda: |-
+              static int last_sent = 999;
+              float pct = (float) x;
+              if (pct < 0.0f) pct = 0.0f;
+              if (pct > 100.0f) pct = 100.0f;
+              float val = (pct / 100.0f) * 24.0f - 12.0f;
+              int eq = (int) (val >= 0.0f ? (val + 0.5f) : (val - 0.5f));
+              if (eq < -12) eq = -12;
+              if (eq > 12) eq = 12;
+              if (eq == last_sent) return false;
+              last_sent = eq;
+              id(eq_high_target) = eq;
+              return true;
+          then:
+            - script.execute:
+                id: arylic_set_treble
+                target: !lambda 'return (int) id(eq_high_target);'
+  - platform: template
+    name: "Arylic Volume"
+    id: arylic_volume
+    internal: true
+    accuracy_decimals: 0
+    lambda: |-
+      int vol = id(arylic_volume_cached);
+      if (vol < 0) vol = 0;
+      return (float) vol;
+  - platform: template
+    name: "Arylic Bass"
+    id: arylic_bass
+    internal: true
+    accuracy_decimals: 0
+    lambda: |-
+      return (float) id(arylic_bass_cached);
+  - platform: template
+    name: "Arylic Treble"
+    id: arylic_treble
+    internal: true
+    accuracy_decimals: 0
+    lambda: |-
+      return (float) id(arylic_treble_cached);
+
+  - platform: template
+    name: "Arylic Track"
+    id: arylic_meta_track
+    internal: true
+    accuracy_decimals: 0
+    lambda: |-
+      return (float) id(arylic_meta_track_state);
+  - platform: template
+    name: "Arylic Total Tracks"
+    id: arylic_meta_total_tracks
+    internal: true
+    accuracy_decimals: 0
+    lambda: |-
+      return (float) id(arylic_meta_total_tracks_state);
+  - platform: template
+    name: "Arylic Position"
+    id: arylic_meta_position
+    internal: true
+    unit_of_measurement: "s"
+    accuracy_decimals: 0
+    lambda: |-
+      return (float) id(arylic_meta_position_state);
+  - platform: template
+    name: "Arylic Duration"
+    id: arylic_meta_duration
+    internal: true
+    unit_of_measurement: "s"
+    accuracy_decimals: 0
+    lambda: |-
+      return (float) id(arylic_meta_duration_state);
+  - platform: homeassistant
+    id: ha_audio_volume
+    entity_id: sensor.ma_active_volume
+    internal: true
+    accuracy_decimals: 2
+  - platform: homeassistant
+    id: ha_audio2_volume
+    entity_id: sensor.ma_active_volume
+    internal: true
+    accuracy_decimals: 2
+  - platform: homeassistant
+    id: ha_audio3_volume
+    entity_id: sensor.ma_active_volume
+    internal: true
+    accuracy_decimals: 2
+  - platform: homeassistant
+    id: ha_audio4_volume
+    entity_id: sensor.ma_active_volume
+    internal: true
+    accuracy_decimals: 2
+  - platform: homeassistant
+    id: ha_audio5_volume
+    entity_id: sensor.ma_active_volume
+    internal: true
+    accuracy_decimals: 2
+  - platform: homeassistant
+    id: ha_audio6_volume
+    entity_id: sensor.ma_active_volume
+    internal: true
+    accuracy_decimals: 2
+
+number:
+  - platform: template
+    name: "Arylic Volume Set"
+    id: arylic_volume_set
+    internal: true
+    unit_of_measurement: "%"
+    min_value: ${audio_ui_min}
+    max_value: ${audio_ui_max}
+    step: 1
+    update_interval: 500ms
+    lambda: |-
+      int actual = id(arylic_volume).has_state() ? (int) id(arylic_volume).state : (int) id(arylic_volume_cached);
+      if (actual < 0) actual = 0;
+      int max_vol = (int) ${audio_max_volume_pct};
+      if (max_vol <= 0 || max_vol > 100) max_vol = 100;
+      if (actual > max_vol) actual = max_vol;
+      const int ui_min = ${audio_ui_min};
+      const int ui_max = ${audio_ui_max};
+      const int ui_span = ui_max - ui_min;
+      if (ui_span <= 0 || max_vol <= 0) return (float) ui_min;
+      const float ratio = (float) actual / (float) max_vol;
+      int ui = ui_min + (int) (ratio * (float) ui_span + 0.5f);
+      if (ui < ui_min) ui = ui_min;
+      if (ui > ui_max) ui = ui_max;
+      return (float) ui;
+    set_action:
+      - lambda: |-
+          int ui = (int) x;
+          const int ui_min = ${audio_ui_min};
+          const int ui_max = ${audio_ui_max};
+          if (ui < ui_min) ui = ui_min;
+          if (ui > ui_max) ui = ui_max;
+          int max_vol = (int) ${audio_max_volume_pct};
+          if (max_vol <= 0 || max_vol > 100) max_vol = 100;
+          const int ui_span = ui_max - ui_min;
+          float ratio = (ui_span > 0) ? ((float) (ui - ui_min) / (float) ui_span) : 0.0f;
+          int target = (int) (ratio * (float) max_vol + 0.5f);
+          if (target < 0) target = 0;
+          if (target > max_vol) target = max_vol;
+          id(arylic_volume_cached) = target;
+          id(audio_ring_active_until_ms) = millis() + ${ring_active_window_ms};
+          const uint32_t now = millis();
+          float ha_vol = (float) target / 100.0f;
+          if (ha_vol < 0.0f) ha_vol = 0.0f;
+          if (ha_vol > 1.0f) ha_vol = 1.0f;
+          id(ma_vol_target) = target;
+          id(ma_vol_target_f) = ha_vol;
+          id(ma_vol_last_send_ms) = now;
+          id(arylic_last_vol_sent_ms) = now;
+          id(ma_vol_pending) = true;
+
+select:
+  - platform: template
+    name: "Arylic Source"
+    id: arylic_source_select
+    options:
+      - "WiFi"
+      - "Bluetooth"
+      - "Line In 1"
+      - "Line In 2"
+      # Add more inputs later if you wire them (e.g., USB, USB DAC, Optical, Coax, I2S, HDMI)
+    update_interval: 1s
+    lambda: |-
+      if (!id(arylic_source).has_state()) return std::string("WiFi");
+      std::string src = id(arylic_source).state.c_str();
+      if (src == "NET") return std::string("WiFi");
+      if (src == "BT") return std::string("Bluetooth");
+      if (src == "LINE-IN") return std::string("Line In 1");
+      if (src == "LINE-IN2") return std::string("Line In 2");
+      return std::string("WiFi");
+    set_action:
+      - lambda: |-
+          std::string target;
+          if (x == "WiFi") target = "NET";
+          else if (x == "Bluetooth") target = "BT";
+          else if (x == "Line In 1") target = "LINE-IN";
+          else if (x == "Line In 2") target = "LINE-IN2";
+          if (!target.empty()) {
+            const bool tcp_ok = esphome::arylic_tcp::send_source("${arylic_tcp_host}", (uint16_t) ${arylic_tcp_port}, target);
+            if (!tcp_ok) {
+              ESP_LOGW("arylic_tcp", "SRC send failed target=%s", target.c_str());
+            }
+            id(arylic_source_state) = target;
+          }
+
+text_sensor:
+  - platform: homeassistant
+    id: ha_audio_position
+    entity_id: sensor.ma_active_position
+    internal: true
+    on_value:
+      - lambda: |-
+          std::string s = x.c_str();
+          if (s.empty()) return;
+          std::string low;
+          low.reserve(s.size());
+          for (char ch : s) {
+            if (ch >= 'A' && ch <= 'Z') low.push_back((char) (ch - 'A' + 'a'));
+            else low.push_back(ch);
+          }
+          if (low == "unknown" || low == "unavailable" || low == "none") return;
+          char *end = nullptr;
+          float v = strtof(s.c_str(), &end);
+          if (end == s.c_str()) return;
+          id(ha_audio_pos_last_value) = v;
+          id(ha_audio_pos_last_ms) = millis();
+  - platform: homeassistant
+    id: ha_audio_duration
+    entity_id: sensor.ma_active_duration
+    internal: true
+    on_value:
+      - lambda: |-
+          std::string s = x.c_str();
+          if (s.empty()) return;
+          std::string low;
+          low.reserve(s.size());
+          for (char ch : s) {
+            if (ch >= 'A' && ch <= 'Z') low.push_back((char) (ch - 'A' + 'a'));
+            else low.push_back(ch);
+          }
+          if (low == "unknown" || low == "unavailable" || low == "none") return;
+          char *end = nullptr;
+          float v = strtof(s.c_str(), &end);
+          if (end == s.c_str()) return;
+          id(ha_audio_duration_value) = v;
+  - platform: homeassistant
+    id: ha_audio2_position
+    entity_id: sensor.ma_active_position
+    internal: true
+    on_value:
+      - lambda: |-
+          std::string s = x.c_str();
+          if (s.empty()) return;
+          std::string low;
+          low.reserve(s.size());
+          for (char ch : s) {
+            if (ch >= 'A' && ch <= 'Z') low.push_back((char) (ch - 'A' + 'a'));
+            else low.push_back(ch);
+          }
+          if (low == "unknown" || low == "unavailable" || low == "none") return;
+          char *end = nullptr;
+          float v = strtof(s.c_str(), &end);
+          if (end == s.c_str()) return;
+          id(ha_audio2_pos_last_value) = v;
+          id(ha_audio2_pos_last_ms) = millis();
+  - platform: homeassistant
+    id: ha_audio2_duration
+    entity_id: sensor.ma_active_duration
+    internal: true
+    on_value:
+      - lambda: |-
+          std::string s = x.c_str();
+          if (s.empty()) return;
+          std::string low;
+          low.reserve(s.size());
+          for (char ch : s) {
+            if (ch >= 'A' && ch <= 'Z') low.push_back((char) (ch - 'A' + 'a'));
+            else low.push_back(ch);
+          }
+          if (low == "unknown" || low == "unavailable" || low == "none") return;
+          char *end = nullptr;
+          float v = strtof(s.c_str(), &end);
+          if (end == s.c_str()) return;
+          id(ha_audio2_duration_value) = v;
+  - platform: homeassistant
+    id: ha_audio3_position
+    entity_id: sensor.ma_active_position
+    internal: true
+    on_value:
+      - lambda: |-
+          std::string s = x.c_str();
+          if (s.empty()) return;
+          std::string low;
+          low.reserve(s.size());
+          for (char ch : s) {
+            if (ch >= 'A' && ch <= 'Z') low.push_back((char) (ch - 'A' + 'a'));
+            else low.push_back(ch);
+          }
+          if (low == "unknown" || low == "unavailable" || low == "none") return;
+          char *end = nullptr;
+          float v = strtof(s.c_str(), &end);
+          if (end == s.c_str()) return;
+          id(ha_audio3_pos_last_value) = v;
+          id(ha_audio3_pos_last_ms) = millis();
+  - platform: homeassistant
+    id: ha_audio3_duration
+    entity_id: sensor.ma_active_duration
+    internal: true
+    on_value:
+      - lambda: |-
+          std::string s = x.c_str();
+          if (s.empty()) return;
+          std::string low;
+          low.reserve(s.size());
+          for (char ch : s) {
+            if (ch >= 'A' && ch <= 'Z') low.push_back((char) (ch - 'A' + 'a'));
+            else low.push_back(ch);
+          }
+          if (low == "unknown" || low == "unavailable" || low == "none") return;
+          char *end = nullptr;
+          float v = strtof(s.c_str(), &end);
+          if (end == s.c_str()) return;
+          id(ha_audio3_duration_value) = v;
+  - platform: homeassistant
+    id: ha_audio4_position
+    entity_id: sensor.ma_active_position
+    internal: true
+    on_value:
+      - lambda: |-
+          std::string s = x.c_str();
+          if (s.empty()) return;
+          std::string low;
+          low.reserve(s.size());
+          for (char ch : s) {
+            if (ch >= 'A' && ch <= 'Z') low.push_back((char) (ch - 'A' + 'a'));
+            else low.push_back(ch);
+          }
+          if (low == "unknown" || low == "unavailable" || low == "none") return;
+          char *end = nullptr;
+          float v = strtof(s.c_str(), &end);
+          if (end == s.c_str()) return;
+          id(ha_audio4_pos_last_value) = v;
+          id(ha_audio4_pos_last_ms) = millis();
+  - platform: homeassistant
+    id: ha_audio4_duration
+    entity_id: sensor.ma_active_duration
+    internal: true
+    on_value:
+      - lambda: |-
+          std::string s = x.c_str();
+          if (s.empty()) return;
+          std::string low;
+          low.reserve(s.size());
+          for (char ch : s) {
+            if (ch >= 'A' && ch <= 'Z') low.push_back((char) (ch - 'A' + 'a'));
+            else low.push_back(ch);
+          }
+          if (low == "unknown" || low == "unavailable" || low == "none") return;
+          char *end = nullptr;
+          float v = strtof(s.c_str(), &end);
+          if (end == s.c_str()) return;
+          id(ha_audio4_duration_value) = v;
+  - platform: homeassistant
+    id: ha_audio5_position
+    entity_id: sensor.ma_active_position
+    internal: true
+    on_value:
+      - lambda: |-
+          std::string s = x.c_str();
+          if (s.empty()) return;
+          std::string low;
+          low.reserve(s.size());
+          for (char ch : s) {
+            if (ch >= 'A' && ch <= 'Z') low.push_back((char) (ch - 'A' + 'a'));
+            else low.push_back(ch);
+          }
+          if (low == "unknown" || low == "unavailable" || low == "none") return;
+          char *end = nullptr;
+          float v = strtof(s.c_str(), &end);
+          if (end == s.c_str()) return;
+          id(ha_audio5_pos_last_value) = v;
+          id(ha_audio5_pos_last_ms) = millis();
+  - platform: homeassistant
+    id: ha_audio5_duration
+    entity_id: sensor.ma_active_duration
+    internal: true
+    on_value:
+      - lambda: |-
+          std::string s = x.c_str();
+          if (s.empty()) return;
+          std::string low;
+          low.reserve(s.size());
+          for (char ch : s) {
+            if (ch >= 'A' && ch <= 'Z') low.push_back((char) (ch - 'A' + 'a'));
+            else low.push_back(ch);
+          }
+          if (low == "unknown" || low == "unavailable" || low == "none") return;
+          char *end = nullptr;
+          float v = strtof(s.c_str(), &end);
+          if (end == s.c_str()) return;
+          id(ha_audio5_duration_value) = v;
+  - platform: homeassistant
+    id: ha_audio6_position
+    entity_id: sensor.ma_active_position
+    internal: true
+    on_value:
+      - lambda: |-
+          std::string s = x.c_str();
+          if (s.empty()) return;
+          std::string low;
+          low.reserve(s.size());
+          for (char ch : s) {
+            if (ch >= 'A' && ch <= 'Z') low.push_back((char) (ch - 'A' + 'a'));
+            else low.push_back(ch);
+          }
+          if (low == "unknown" || low == "unavailable" || low == "none") return;
+          char *end = nullptr;
+          float v = strtof(s.c_str(), &end);
+          if (end == s.c_str()) return;
+          id(ha_audio6_pos_last_value) = v;
+          id(ha_audio6_pos_last_ms) = millis();
+  - platform: homeassistant
+    id: ha_audio6_duration
+    entity_id: sensor.ma_active_duration
+    internal: true
+    on_value:
+      - lambda: |-
+          std::string s = x.c_str();
+          if (s.empty()) return;
+          std::string low;
+          low.reserve(s.size());
+          for (char ch : s) {
+            if (ch >= 'A' && ch <= 'Z') low.push_back((char) (ch - 'A' + 'a'));
+            else low.push_back(ch);
+          }
+          if (low == "unknown" || low == "unavailable" || low == "none") return;
+          char *end = nullptr;
+          float v = strtof(s.c_str(), &end);
+          if (end == s.c_str()) return;
+          id(ha_audio6_duration_value) = v;
+  - platform: template
+    name: "Arylic Source"
+    id: arylic_source
+    internal: true
+    update_interval: 1s
+    lambda: |-
+      return id(arylic_source_state);
+  - platform: template
+    name: "Arylic Title"
+    id: arylic_title
+    internal: true
+    update_interval: 1s
+    lambda: |-
+      return id(arylic_title_state);
+  - platform: template
+    name: "Arylic Artist"
+    id: arylic_artist
+    internal: true
+    update_interval: 1s
+    lambda: |-
+      return id(arylic_artist_state);
+  - platform: template
+    name: "Arylic Album"
+    id: arylic_album
+    internal: true
+    update_interval: 1s
+    lambda: |-
+      return id(arylic_album_state);
+
+  - platform: template
+    name: "Arylic Meta URL"
+    id: arylic_meta_url
+    internal: true
+    update_interval: 1s
+    lambda: |-
+      return id(arylic_meta_url_state);
+  - platform: template
+    name: "Arylic Meta Cover"
+    id: arylic_meta_cover
+    internal: true
+    update_interval: 1s
+    lambda: |-
+      return id(arylic_meta_cover_state);
+  - platform: template
+    name: "Arylic Meta Codec"
+    id: arylic_meta_codec
+    internal: true
+    update_interval: 1s
+    lambda: |-
+      return id(arylic_meta_codec_state);
+  - platform: template
+    name: "Arylic Meta Format"
+    id: arylic_meta_format
+    internal: true
+    update_interval: 1s
+    lambda: |-
+      return id(arylic_meta_format_state);
+  - platform: template
+    name: "Arylic Meta Bitrate"
+    id: arylic_meta_bitrate
+    internal: true
+    update_interval: 1s
+    lambda: |-
+      return id(arylic_meta_bitrate_state);
+  - platform: template
+    name: "Arylic Meta Sample Rate"
+    id: arylic_meta_samplerate
+    internal: true
+    update_interval: 1s
+    lambda: |-
+      return id(arylic_meta_samplerate_state);
+  - platform: template
+    name: "Arylic Meta Bit Depth"
+    id: arylic_meta_bitdepth
+    internal: true
+    update_interval: 1s
+    lambda: |-
+      return id(arylic_meta_bitdepth_state);
+  - platform: template
+    name: "Arylic Meta Channels"
+    id: arylic_meta_channels
+    internal: true
+    update_interval: 1s
+    lambda: |-
+      return id(arylic_meta_channels_state);
+
+  - platform: template
+    name: "Meta Override"
+    id: meta_override_state
+    internal: true
+    update_interval: 500ms
+    lambda: |-
+      const int idx = id(meta_override_idx);
+      if (idx < 0) return std::string("${meta_source_label_auto}");
+      if (idx == 0) return std::string("${meta_source_label_arylic}");
+      if (idx == 1) return std::string("${meta_source_label_1}");
+      if (idx == 2) return std::string("${meta_source_label_2}");
+      if (idx == 3) return std::string("${meta_source_label_3}");
+      if (idx == 4) return std::string("${meta_source_label_4}");
+      if (idx == 5) return std::string("${meta_source_label_5}");
+      if (idx == 6) return std::string("${meta_source_label_6}");
+      return std::string("${meta_source_label_auto}");
+  - platform: homeassistant
+    id: ma_active_target
+    entity_id: input_select.ma_active_target
+    internal: true
+    on_value:
+      - lambda: |-
+          std::string value = x.c_str();
+          if (value.empty()) value = "-";
+          ESP_LOGI("ma", "active_target=%s", value.c_str());
+  - platform: homeassistant
+    id: ha_audio_title
+    entity_id: sensor.ma_active_title
+    internal: true
+    on_value:
+      - lambda: |-
+          const uint32_t now = millis();
+          id(ha_audio_last_meta_ms) = now;
+          id(ha_audio1_last_meta_ms) = now;
+  - platform: homeassistant
+    id: ha_audio_artist
+    entity_id: sensor.ma_active_artist
+    internal: true
+    on_value:
+      - lambda: |-
+          const uint32_t now = millis();
+          id(ha_audio_last_meta_ms) = now;
+          id(ha_audio1_last_meta_ms) = now;
+  - platform: homeassistant
+    id: ha_audio_album
+    entity_id: sensor.ma_active_album
+    internal: true
+    on_value:
+      - lambda: |-
+          const uint32_t now = millis();
+          id(ha_audio_last_meta_ms) = now;
+          id(ha_audio1_last_meta_ms) = now;
+  - platform: homeassistant
+    id: ha_audio_source
+    entity_id: sensor.ma_active_source
+    internal: true
+  - platform: homeassistant
+    id: ha_audio_app
+    entity_id: sensor.ma_active_app
+    internal: true
+  - platform: homeassistant
+    id: ha_audio_state
+    entity_id: sensor.ma_active_state
+    internal: true
+  - platform: homeassistant
+    id: ha_audio2_title
+    entity_id: sensor.ma_active_title
+    internal: true
+    on_value:
+      - lambda: |-
+          const uint32_t now = millis();
+          id(ha_audio_last_meta_ms) = now;
+          id(ha_audio2_last_meta_ms) = now;
+  - platform: homeassistant
+    id: ha_audio2_artist
+    entity_id: sensor.ma_active_artist
+    internal: true
+    on_value:
+      - lambda: |-
+          const uint32_t now = millis();
+          id(ha_audio_last_meta_ms) = now;
+          id(ha_audio2_last_meta_ms) = now;
+  - platform: homeassistant
+    id: ha_audio2_album
+    entity_id: sensor.ma_active_album
+    internal: true
+    on_value:
+      - lambda: |-
+          const uint32_t now = millis();
+          id(ha_audio_last_meta_ms) = now;
+          id(ha_audio2_last_meta_ms) = now;
+  - platform: homeassistant
+    id: ha_audio2_source
+    entity_id: sensor.ma_active_source
+    internal: true
+  - platform: homeassistant
+    id: ha_audio2_app
+    entity_id: sensor.ma_active_app
+    internal: true
+  - platform: homeassistant
+    id: ha_audio2_state
+    entity_id: sensor.ma_active_state
+    internal: true
+  - platform: homeassistant
+    id: ha_audio3_title
+    entity_id: ${ha_audio_player_3}
+    attribute: media_title
+    internal: true
+    on_value:
+      - lambda: |-
+          const uint32_t now = millis();
+          id(ha_audio_last_meta_ms) = now;
+          id(ha_audio3_last_meta_ms) = now;
+  - platform: homeassistant
+    id: ha_audio3_artist
+    entity_id: ${ha_audio_player_3}
+    attribute: media_artist
+    internal: true
+    on_value:
+      - lambda: |-
+          const uint32_t now = millis();
+          id(ha_audio_last_meta_ms) = now;
+          id(ha_audio3_last_meta_ms) = now;
+  - platform: homeassistant
+    id: ha_audio3_album
+    entity_id: ${ha_audio_player_3}
+    attribute: media_album_name
+    internal: true
+    on_value:
+      - lambda: |-
+          const uint32_t now = millis();
+          id(ha_audio_last_meta_ms) = now;
+          id(ha_audio3_last_meta_ms) = now;
+  - platform: homeassistant
+    id: ha_audio3_source
+    entity_id: ${ha_audio_player_3}
+    attribute: source
+    internal: true
+  - platform: homeassistant
+    id: ha_audio3_input
+    entity_id: ${ha_audio_player_3}
+    attribute: source
+    internal: true
+  - platform: homeassistant
+    id: ha_audio3_app
+    entity_id: ${ha_audio_player_3}
+    attribute: app_name
+    internal: true
+  - platform: homeassistant
+    id: ha_audio3_state
+    entity_id: ${ha_audio_player_3}
+    internal: true
+  - platform: homeassistant
+    id: ha_audio4_title
+    entity_id: sensor.ma_active_title
+    internal: true
+    on_value:
+      - lambda: |-
+          const uint32_t now = millis();
+          id(ha_audio_last_meta_ms) = now;
+          id(ha_audio4_last_meta_ms) = now;
+  - platform: homeassistant
+    id: ha_audio4_artist
+    entity_id: sensor.ma_active_artist
+    internal: true
+    on_value:
+      - lambda: |-
+          const uint32_t now = millis();
+          id(ha_audio_last_meta_ms) = now;
+          id(ha_audio4_last_meta_ms) = now;
+  - platform: homeassistant
+    id: ha_audio4_album
+    entity_id: sensor.ma_active_album
+    internal: true
+    on_value:
+      - lambda: |-
+          const uint32_t now = millis();
+          id(ha_audio_last_meta_ms) = now;
+          id(ha_audio4_last_meta_ms) = now;
+  - platform: homeassistant
+    id: ha_audio4_source
+    entity_id: sensor.ma_active_source
+    internal: true
+  - platform: homeassistant
+    id: ha_audio4_input
+    entity_id: sensor.ma_active_source
+    internal: true
+  - platform: homeassistant
+    id: ha_audio4_app
+    entity_id: sensor.ma_active_app
+    internal: true
+  - platform: homeassistant
+    id: ha_audio4_state
+    entity_id: sensor.ma_active_state
+    internal: true
+  - platform: homeassistant
+    id: ha_audio5_title
+    entity_id: sensor.ma_active_title
+    internal: true
+    on_value:
+      - lambda: |-
+          const uint32_t now = millis();
+          id(ha_audio_last_meta_ms) = now;
+          id(ha_audio5_last_meta_ms) = now;
+  - platform: homeassistant
+    id: ha_audio5_artist
+    entity_id: sensor.ma_active_artist
+    internal: true
+    on_value:
+      - lambda: |-
+          const uint32_t now = millis();
+          id(ha_audio_last_meta_ms) = now;
+          id(ha_audio5_last_meta_ms) = now;
+  - platform: homeassistant
+    id: ha_audio5_album
+    entity_id: sensor.ma_active_album
+    internal: true
+    on_value:
+      - lambda: |-
+          const uint32_t now = millis();
+          id(ha_audio_last_meta_ms) = now;
+          id(ha_audio5_last_meta_ms) = now;
+  - platform: homeassistant
+    id: ha_audio5_source
+    entity_id: sensor.ma_active_source
+    internal: true
+  - platform: homeassistant
+    id: ha_audio5_app
+    entity_id: sensor.ma_active_app
+    internal: true
+  - platform: homeassistant
+    id: ha_audio5_state
+    entity_id: sensor.ma_active_state
+    internal: true
+  - platform: homeassistant
+    id: ha_audio6_title
+    entity_id: sensor.ma_active_title
+    internal: true
+    on_value:
+      - lambda: |-
+          const uint32_t now = millis();
+          id(ha_audio_last_meta_ms) = now;
+          id(ha_audio6_last_meta_ms) = now;
+  - platform: homeassistant
+    id: ha_audio6_artist
+    entity_id: sensor.ma_active_artist
+    internal: true
+    on_value:
+      - lambda: |-
+          const uint32_t now = millis();
+          id(ha_audio_last_meta_ms) = now;
+          id(ha_audio6_last_meta_ms) = now;
+  - platform: homeassistant
+    id: ha_audio6_album
+    entity_id: sensor.ma_active_album
+    internal: true
+    on_value:
+      - lambda: |-
+          const uint32_t now = millis();
+          id(ha_audio_last_meta_ms) = now;
+          id(ha_audio6_last_meta_ms) = now;
+  - platform: homeassistant
+    id: ha_audio6_source
+    entity_id: sensor.ma_active_source
+    internal: true
+  - platform: homeassistant
+    id: ha_audio6_app
+    entity_id: sensor.ma_active_app
+    internal: true
+  - platform: homeassistant
+    id: ha_audio6_state
+    entity_id: sensor.ma_active_state
+    internal: true
+  - platform: homeassistant
+    id: ma_active_friendly
+    entity_id: sensor.ma_active_friendly
+    internal: true
+    on_value:
+      - lambda: |-
+          std::string value = x.c_str();
+          if (value.empty()) value = "-";
+          ESP_LOGI("ma", "active_friendly=%s", value.c_str());
+
+interval:
+  - interval: 500ms
+    then:
+      - if:
+          condition:
+            lambda: |-
+              if (!id(np_active_target_dirty)) return false;
+              if (id(np_active_target_entity).empty()) return false;
+              const uint32_t now = millis();
+              if (id(np_active_target_last_set_ms) > 0 && (now - id(np_active_target_last_set_ms)) < 1000) return false;
+              return true;
+          then:
+            - homeassistant.service:
+                service: input_select.select_option
+                data:
+                  entity_id: input_select.ma_active_target
+                  option: !lambda 'return id(np_active_target_entity);'
+            - homeassistant.service:
+                service: input_boolean.turn_on
+                data:
+                  entity_id: input_boolean.ma_override_active
+            - homeassistant.service:
+                service: timer.start
+                data:
+                  entity_id: timer.ma_override_timeout
+            - lambda: |-
+                id(np_active_target_dirty) = false;
+                id(np_active_target_last_set_ms) = millis();
+  - interval: 200ms
+    then:
+      - lambda: |-
+          if (!id(pot_volume_deferred)) return;
+          const uint32_t now = millis();
+          if (now < id(pot_volume_deferred_until_ms)) return;
+          const int target = id(pot_volume_target);
+          if (target < 0) {
+            id(pot_volume_deferred) = false;
+            return;
+          }
+          ESP_LOGI("input", "Pot deferred send MA VOL target=%d", target);
+          std::string target_entity = id(np_active_target_entity);
+          if (target_entity.empty() && id(ma_active_target).has_state() && !id(ma_active_target).state.empty()) {
+            target_entity = id(ma_active_target).state.c_str();
+          }
+          if (target >= 5 && id(arylic_mute_state) && (now - id(ma_unmute_last_ms) > 1000)) {
+            id(arylic_mute_state) = false;
+            id(ma_unmute_last_ms) = now;
+            if (!target_entity.empty()) {
+              id(ma_unmute_entity) = target_entity;
+              id(ma_unmute_pending) = true;
+            }
+          }
+          const char *host = "${arylic_tcp_host}";
+          uint16_t port = (uint16_t) ${arylic_tcp_port};
+          if (!target_entity.empty()) {
+            if (target_entity == std::string("${np_lr_target_entity}") ||
+                target_entity == std::string("${ha_audio_player_3}") ||
+                target_entity == std::string("${ha_audio_player_4}")) {
+              host = "${arylic_lr_tcp_host}";
+              port = (uint16_t) ${arylic_lr_tcp_port};
+            }
+          } else if (id(arylic_lr_playing_state)) {
+            host = "${arylic_lr_tcp_host}";
+            port = (uint16_t) ${arylic_lr_tcp_port};
+          }
+          const bool tcp_ok = esphome::arylic_tcp::send_volume(host, port, target);
+          if (!tcp_ok) {
+            ESP_LOGW("arylic_tcp", "VOL send failed host=%s target=%d entity=%s", host, target, target_entity.c_str());
+          }
+          float ha_vol = (float) target / 100.0f;
+          if (ha_vol < 0.0f) ha_vol = 0.0f;
+          if (ha_vol > 1.0f) ha_vol = 1.0f;
+          id(ma_vol_target) = target;
+          id(ma_vol_target_f) = ha_vol;
+          id(ma_vol_last_send_ms) = now;
+          id(arylic_last_vol_sent_ms) = now;
+          id(arylic_volume_cached) = target;
+          id(pot_volume_deferred) = false;
+          id(ma_vol_pending) = true;
+  - interval: 150ms
+    then:
+      - if:
+          condition:
+            lambda: |-
+              if (${volume_tcp_only}) {
+                id(ma_unmute_pending) = false;
+                id(ma_unmute_entity).clear();
+                return false;
+              }
+              return id(ma_unmute_pending) && !id(ma_unmute_entity).empty();
+          then:
+            - homeassistant.service:
+                service: media_player.volume_mute
+                data:
+                  entity_id: !lambda 'return id(ma_unmute_entity).c_str();'
+                  is_volume_muted: "false"
+            - lambda: |-
+                id(ma_unmute_pending) = false;
+                id(ma_unmute_entity).clear();
+      - if:
+          condition:
+            lambda: |-
+              if (!id(ma_vol_pending)) return false;
+              if (${volume_tcp_only}) {
+                id(ma_vol_pending) = false;
+                return false;
+              }
+              return true;
+          then:
+            - if:
+                condition:
+                  lambda: |-
+                    return !id(np_active_target_entity).empty();
+                then:
+                  - homeassistant.service:
+                      service: media_player.volume_set
+                      data:
+                        entity_id: !lambda 'return id(np_active_target_entity).c_str();'
+                        volume_level: !lambda 'return id(ma_vol_target_f);'
+                else:
+                  - homeassistant.service:
+                      service: script.ma_set_volume
+                      data:
+                        volume: !lambda 'return id(ma_vol_target_f);'
+            - lambda: |-
+                id(ma_vol_pending) = false;
+  - interval: ${ha_audio_refresh_ms}ms
+    then:
+      - homeassistant.service:
+          service: homeassistant.update_entity
+          data:
+            entity_id: sensor.ma_active_title
+      - homeassistant.service:
+          service: homeassistant.update_entity
+          data:
+            entity_id: sensor.ma_active_position
+      - homeassistant.service:
+          service: homeassistant.update_entity
+          data:
+            entity_id: sensor.ma_active_state
+
+script:
+  - id: focus_audio
+    mode: restart
+    then:
+      - lambda: |-
+          id(screen_mode) = 1;
+          id(lighting_adjust_mode) = 0;
+
+  - id: meta_override_cycle
+    mode: restart
+    then:
+      - lambda: |-
+          const uint32_t now = millis();
+          id(meta_override_idx) = -1;
+          id(meta_override_last_change_ms) = now;
+          id(meta_override_last_active_ms) = now;
+          id(meta_popup_label) = "TARGET";
+          id(meta_popup_until_ms) = now + ${meta_popup_ms};
+          ESP_LOGI("meta", "cycle target (MA)");
+      - homeassistant.service:
+          service: script.ma_cycle_target
+      - delay: 200ms
+      - lambda: |-
+          if (id(ma_active_friendly).has_state() && !id(ma_active_friendly).state.empty()) {
+            id(meta_popup_label) = id(ma_active_friendly).state;
+          }
+
+  - id: arylic_set_volume
+    mode: restart
+    parameters:
+      target: int
+    then:
+      - lambda: |-
+          int max_vol = (int) ${audio_max_volume_pct};
+          if (max_vol <= 0 || max_vol > 100) max_vol = 100;
+          int clamped = target;
+          if (clamped < 0) clamped = 0;
+          if (clamped > max_vol) clamped = max_vol;
+          const uint32_t now = millis();
+          std::string target_entity = id(np_active_target_entity);
+          if (target_entity.empty() && id(ma_active_target).has_state() && !id(ma_active_target).state.empty()) {
+            target_entity = id(ma_active_target).state.c_str();
+          }
+          if (clamped >= 5 && id(arylic_mute_state) && (now - id(ma_unmute_last_ms) > 1000)) {
+            id(arylic_mute_state) = false;
+            id(ma_unmute_last_ms) = now;
+            if (!target_entity.empty()) {
+              id(ma_unmute_entity) = target_entity;
+              id(ma_unmute_pending) = true;
+            }
+          }
+          const char *host = "${arylic_tcp_host}";
+          uint16_t port = (uint16_t) ${arylic_tcp_port};
+          if (!target_entity.empty()) {
+            if (target_entity == std::string("${np_lr_target_entity}") ||
+                target_entity == std::string("${ha_audio_player_3}") ||
+                target_entity == std::string("${ha_audio_player_4}")) {
+              host = "${arylic_lr_tcp_host}";
+              port = (uint16_t) ${arylic_lr_tcp_port};
+            }
+          } else if (id(arylic_lr_playing_state)) {
+            host = "${arylic_lr_tcp_host}";
+            port = (uint16_t) ${arylic_lr_tcp_port};
+          }
+          const bool tcp_ok = esphome::arylic_tcp::send_volume(host, port, clamped);
+          if (!tcp_ok) {
+            ESP_LOGW("arylic_tcp", "VOL send failed host=%s target=%d entity=%s", host, clamped, target_entity.c_str());
+          }
+          float ha_vol = (float) clamped / 100.0f;
+          if (ha_vol < 0.0f) ha_vol = 0.0f;
+          if (ha_vol > 1.0f) ha_vol = 1.0f;
+          id(ma_vol_target) = clamped;
+          id(ma_vol_target_f) = ha_vol;
+          id(ma_vol_last_send_ms) = now;
+          id(arylic_last_vol_sent_ms) = now;
+          id(arylic_volume_cached) = clamped;
+          id(ma_vol_pending) = true;
+
+  - id: arylic_set_bass
+    mode: restart
+    parameters:
+      target: int
+    then:
+      - lambda: |-
+          int clamped = target;
+          if (clamped < -12) clamped = -12;
+          if (clamped > 12) clamped = 12;
+          id(arylic_bass_cached) = clamped;
+          const uint32_t now = millis();
+          std::string target_entity = id(np_active_target_entity);
+          if (target_entity.empty() && id(ma_active_target).has_state() && !id(ma_active_target).state.empty()) {
+            target_entity = id(ma_active_target).state.c_str();
+          }
+          const char *host = "${arylic_tcp_host}";
+          uint16_t port = (uint16_t) ${arylic_tcp_port};
+          if (!target_entity.empty()) {
+            if (target_entity == std::string("${np_lr_target_entity}") ||
+                target_entity == std::string("${ha_audio_player_3}") ||
+                target_entity == std::string("${ha_audio_player_4}")) {
+              host = "${arylic_lr_tcp_host}";
+              port = (uint16_t) ${arylic_lr_tcp_port};
+            }
+          } else if (id(arylic_lr_playing_state)) {
+            host = "${arylic_lr_tcp_host}";
+            port = (uint16_t) ${arylic_lr_tcp_port};
+          }
+          const bool tcp_ok = esphome::arylic_tcp::send_bass(host, port, clamped);
+          if (!tcp_ok) {
+            ESP_LOGW("arylic_tcp", "BAS send failed host=%s target=%d entity=%s", host, clamped, target_entity.c_str());
+          }
+          id(arylic_last_bass_sent_ms) = now;
+
+  - id: arylic_set_treble
+    mode: restart
+    parameters:
+      target: int
+    then:
+      - lambda: |-
+          int clamped = target;
+          if (clamped < -12) clamped = -12;
+          if (clamped > 12) clamped = 12;
+          id(arylic_treble_cached) = clamped;
+          const uint32_t now = millis();
+          std::string target_entity = id(np_active_target_entity);
+          if (target_entity.empty() && id(ma_active_target).has_state() && !id(ma_active_target).state.empty()) {
+            target_entity = id(ma_active_target).state.c_str();
+          }
+          const char *host = "${arylic_tcp_host}";
+          uint16_t port = (uint16_t) ${arylic_tcp_port};
+          if (!target_entity.empty()) {
+            if (target_entity == std::string("${np_lr_target_entity}") ||
+                target_entity == std::string("${ha_audio_player_3}") ||
+                target_entity == std::string("${ha_audio_player_4}")) {
+              host = "${arylic_lr_tcp_host}";
+              port = (uint16_t) ${arylic_lr_tcp_port};
+            }
+          } else if (id(arylic_lr_playing_state)) {
+            host = "${arylic_lr_tcp_host}";
+            port = (uint16_t) ${arylic_lr_tcp_port};
+          }
+          const bool tcp_ok = esphome::arylic_tcp::send_treble(host, port, clamped);
+          if (!tcp_ok) {
+            ESP_LOGW("arylic_tcp", "TRE send failed host=%s target=%d entity=%s", host, clamped, target_entity.c_str());
+          }
+          id(arylic_last_treble_sent_ms) = now;
+
+  - id: arylic_request_status
+    mode: restart
+    then:
+      - lambda: |-
+          return;
+
+  - id: arylic_toggle_mute
+    mode: restart
+    then:
+      - lambda: |-
+          const bool muted = id(arylic_mute).has_state() ? id(arylic_mute).state : false;
+          const bool next = !muted;
+          id(arylic_mute_state) = next;
+      - homeassistant.service:
+          service: media_player.volume_mute
+          data:
+            entity_id: !lambda 'return id(ma_active_target).state.c_str();'
+            is_volume_muted: !lambda 'return id(arylic_mute_state);'
+
+  - id: arylic_play_pause
+    mode: restart
+    then:
+      - lambda: |-
+          const bool tcp_ok = esphome::arylic_tcp::send_play_pause("${arylic_tcp_host}", (uint16_t) ${arylic_tcp_port});
+          if (!tcp_ok) {
+            ESP_LOGW("arylic_tcp", "POP send failed");
+          }
+          id(arylic_playing_state) = !id(arylic_playing_state);
+
+  - id: arylic_next
+    mode: restart
+    then:
+      - lambda: |-
+          const bool tcp_ok = esphome::arylic_tcp::send_next("${arylic_tcp_host}", (uint16_t) ${arylic_tcp_port});
+          if (!tcp_ok) {
+            ESP_LOGW("arylic_tcp", "NXT send failed");
+          }
+          id(arylic_playing_state) = true;
+
+  - id: arylic_prev
+    mode: restart
+    then:
+      - lambda: |-
+          const bool tcp_ok = esphome::arylic_tcp::send_prev("${arylic_tcp_host}", (uint16_t) ${arylic_tcp_port});
+          if (!tcp_ok) {
+            ESP_LOGW("arylic_tcp", "PRE send failed");
+          }
+          id(arylic_playing_state) = true;
+
+  - id: arylic_toggle_source
+    mode: restart
+    then:
+      - lambda: |-
+          std::string src = id(arylic_source).has_state() ? id(arylic_source).state.c_str() : "";
+          std::string next = (src == "BT") ? "NET" : "BT";
+          const bool tcp_ok = esphome::arylic_tcp::send_source("${arylic_tcp_host}", (uint16_t) ${arylic_tcp_port}, next);
+          if (!tcp_ok) {
+            ESP_LOGW("arylic_tcp", "SRC send failed target=%s", next.c_str());
+          }
+          id(arylic_source_state) = next;
+
+  - id: arylic_cycle_source
+    mode: restart
+    then:
+      - lambda: |-
+          auto split_csv = [](const std::string &input) {
+            std::vector<std::string> out;
+            std::string token;
+            auto push_token = [&](std::string &value) {
+              size_t start = value.find_first_not_of(" \t");
+              size_t end = value.find_last_not_of(" \t");
+              if (start == std::string::npos || end == std::string::npos) {
+                value.clear();
+                return;
+              }
+              value = value.substr(start, end - start + 1);
+              if (!value.empty()) out.push_back(value);
+              value.clear();
+            };
+            for (char c : input) {
+              if (c == ',') {
+                push_token(token);
+              } else {
+                token.push_back(c);
+              }
+            }
+            push_token(token);
+            return out;
+          };
+
+          std::vector<std::string> codes = split_csv("${arylic_source_cycle_codes}");
+          if (codes.empty()) return;
+          std::vector<std::string> labels = split_csv("${arylic_source_cycle_labels}");
+          if (labels.size() != codes.size()) labels = codes;
+
+          std::string current = id(arylic_source).has_state() ? id(arylic_source).state.c_str() : "";
+          int idx = -1;
+          for (size_t i = 0; i < codes.size(); i++) {
+            if (codes[i] == current) {
+              idx = (int) i;
+              break;
+            }
+          }
+          const int next = (idx < 0) ? 0 : ((idx + 1) % (int) codes.size());
+          const std::string next_code = codes[next];
+          const std::string next_label = (labels.size() > (size_t) next) ? labels[next] : next_code;
+
+          const bool tcp_ok = esphome::arylic_tcp::send_source("${arylic_tcp_host}", (uint16_t) ${arylic_tcp_port}, next_code);
+          if (!tcp_ok) {
+            ESP_LOGW("arylic_tcp", "SRC send failed target=%s", next_code.c_str());
+          }
+          id(arylic_source_state) = next_code;
+          id(source_popup_label) = next_label;
+          id(source_popup_until_ms) = millis() + ${source_popup_ms};
+
+  - id: arylic_volume_delta
+    mode: restart
+    parameters:
+      delta: int
+    then:
+      - lambda: |-
+          if (delta == 0) return;
+          ESP_LOGI("input", "Encoder Volume delta=%d", delta);
+          int current = id(arylic_volume_cached);
+          if (current < 0 && id(arylic_volume).has_state()) {
+            current = (int) id(arylic_volume).state;
+          }
+          if (current < 0) return;
+          int target = current + delta;
+          int max_vol = (int) ${audio_max_volume_pct};
+          if (max_vol <= 0 || max_vol > 100) max_vol = 100;
+          if (target < 0) target = 0;
+          if (target > max_vol) target = max_vol;
+          const uint32_t now = millis();
+          const uint32_t min_interval = (uint32_t) (1000 / ${encoder_rate_limit_hz});
+          id(audio_ring_active_until_ms) = now + ${ring_active_window_ms};
+          if (now - id(arylic_last_vol_sent_ms) < min_interval) {
+            id(arylic_volume_cached) = target;
+            return;
+          }
+          std::string target_entity = id(np_active_target_entity);
+          if (target_entity.empty() && id(ma_active_target).has_state() && !id(ma_active_target).state.empty()) {
+            target_entity = id(ma_active_target).state.c_str();
+          }
+          if (target >= 5 && id(arylic_mute_state) && (now - id(ma_unmute_last_ms) > 1000)) {
+            id(arylic_mute_state) = false;
+            id(ma_unmute_last_ms) = now;
+            if (!target_entity.empty()) {
+              id(ma_unmute_entity) = target_entity;
+              id(ma_unmute_pending) = true;
+            }
+          }
+          const char *host = "${arylic_tcp_host}";
+          uint16_t port = (uint16_t) ${arylic_tcp_port};
+          if (!target_entity.empty()) {
+            if (target_entity == std::string("${np_lr_target_entity}") ||
+                target_entity == std::string("${ha_audio_player_3}") ||
+                target_entity == std::string("${ha_audio_player_4}")) {
+              host = "${arylic_lr_tcp_host}";
+              port = (uint16_t) ${arylic_lr_tcp_port};
+            }
+          } else if (id(arylic_lr_playing_state)) {
+            host = "${arylic_lr_tcp_host}";
+            port = (uint16_t) ${arylic_lr_tcp_port};
+          }
+          const bool tcp_ok = esphome::arylic_tcp::send_volume(host, port, target);
+          if (!tcp_ok) {
+            ESP_LOGW("arylic_tcp", "VOL send failed host=%s target=%d entity=%s", host, target, target_entity.c_str());
+          }
+          float ha_vol = (float) target / 100.0f;
+          if (ha_vol < 0.0f) ha_vol = 0.0f;
+          if (ha_vol > 1.0f) ha_vol = 1.0f;
+          id(ma_vol_target) = target;
+          id(ma_vol_target_f) = ha_vol;
+          id(ma_vol_last_send_ms) = now;
+          id(arylic_last_vol_sent_ms) = now;
+          id(arylic_volume_cached) = target;
+          id(ma_vol_pending) = true;
+
+  - id: arylic_bass_delta
+    mode: restart
+    parameters:
+      delta: int
+    then:
+      - lambda: |-
+          if (delta == 0) return;
+          ESP_LOGI("input", "Encoder Bass ignored (pots authoritative) delta=%d", delta);
+
+  - id: arylic_treble_delta
+    mode: restart
+    parameters:
+      delta: int
+    then:
+      - lambda: |-
+          if (delta == 0) return;
+          ESP_LOGI("input", "Encoder Treble ignored (pots authoritative) delta=%d", delta);
+
+  - id: arylic_reset_bass
+    mode: restart
+    then:
+      - lambda: |-
+          id(arylic_bass_cached) = 0;
+          id(arylic_last_bass_sent_ms) = millis();
+
+  - id: arylic_reset_treble
+    mode: restart
+    then:
+      - lambda: |-
+          id(arylic_treble_cached) = 0;
+          id(arylic_last_treble_sent_ms) = millis();

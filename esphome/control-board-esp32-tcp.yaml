@@ -1,0 +1,136 @@
+# Description: Main ESPHome config for Control Board v2 (ESP32-S3 + RP2040 UART + Arylic TCP).
+# Version: 2026.04.13.3
+# Last updated: 2026-04-13
+# Update version/date whenever you change this file.
+#
+# Setup checklist:
+#   1) Set Wi-Fi + static IPs in substitutions (wifi_ssid/wifi_password/static_ip/gateway/subnet/dns).
+#   2) (Legacy) MA target substitutions are unused; leave blank unless you still use them.
+#   3) Set Arylic hosts (arylic_*_host) to the physical LinkPlay/WiiM IPs.
+#   4) Update HA helpers (ha_light_script, input_select_room, input_select_target) if renamed.
+#   5) (Optional) Adjust fallback labels (room_label_*, target_label_*, meta_source_label_*).
+#   7) Verify packages include the correct peripherals file (no-rings vs rings).
+#   8) Recompile & upload ESPHome after changing substitutions.
+substitutions:
+  <<: !include /config/esphome/control-py/substitutions.yaml
+
+# Toggle hardware peripherals package (uncomment one):
+# Package map:
+#  - control-board-hardware.yaml: UART + RP2040 hub + raw ADC taps
+#  - control-board-ui.yaml: menu buttons/encoder + fonts + UI helpers
+#  - control-board-system.yaml: globals + intervals + core scripts
+#  - control-board-diagnostics.yaml: OLED contrast + diagnostics + test buttons
+#  - control-board-audio-tcp.yaml: audio controls + metadata (TCP-only)
+#  - control-board-lighting.yaml: lighting controls + HA sync
+packages:
+  # peripherals: !include /config/esphome/control-py/control-board-peripherals.yaml
+  peripherals: !include /config/esphome/control-py/control-board-peripherals-no-rings.yaml
+  hardware: !include /config/esphome/control-py/packages/control-board-hardware.yaml
+  ui: !include /config/esphome/control-py/packages/control-board-ui.yaml
+  system: !include /config/esphome/control-py/packages/control-board-system.yaml
+  diagnostics: !include /config/esphome/control-py/packages/control-board-diagnostics.yaml
+  audio: !include /config/esphome/control-py/packages/control-board-audio-tcp.yaml
+  lighting: !include /config/esphome/control-py/packages/control-board-lighting.yaml
+
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+  includes:
+    - /config/esphome/control-py/components/arylic_tcp.h
+
+  on_boot:
+    then:
+      - delay: 2s
+      - homeassistant.service:
+          service: script.ma_update_target_options
+      - delay: 200ms
+      - lambda: |-
+          id(splash_until_ms) = millis() + ${splash_duration_ms};
+          id(boot_fade_start_ms) = millis();
+      - lambda: |-
+          float v = id(oled_contrast);
+          if (v < 0.0f) v = 0.0f;
+          if (v > 1.0f) v = 1.0f;
+          const uint8_t contrast = (uint8_t) (v * 255.0f);
+          id(oled_display).set_contrast(contrast);
+          id(oled_contrast_last_applied) = v;
+          id(oled_contrast_last_applied_raw) = contrast;
+          id(oled_contrast_apply_count)++;
+          id(oled_contrast_last_apply_ms) = millis();
+      - delay: 1s
+      - script.execute: sync_lighting_from_ha
+      - lambda: |-
+          id(menu_active) = true;
+          id(menu_level) = 1;
+          id(menu_index) = 0;
+          id(screen_mode) = 1;
+          id(lighting_adjust_mode) = 0;
+          id(last_input_ms) = millis();
+      - script.execute: compute_display_state
+
+esp32:
+  board: ${esp32_board}
+  variant: esp32s3
+  framework:
+    type: esp-idf
+    sdkconfig_options:
+      CONFIG_RMT_TX_CHANNELS: "4"
+      CONFIG_FREERTOS_USE_TRACE_FACILITY: "y"
+      CONFIG_FREERTOS_USE_STATS_FORMATTING_FUNCTIONS: "y"
+      CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS: "y"
+      CONFIG_FREERTOS_RUN_TIME_STATS_USING_ESP_TIMER: "y"
+      CONFIG_FREERTOS_RUN_TIME_COUNTER_TYPE_U64: "y"
+      CONFIG_ESP_TIMER_PROFILING: "y"
+  flash_size: 16MB
+
+psram:
+  mode: octal
+  speed: 80MHz
+
+logger:
+  level: INFO
+  logs:
+    sensor: WARN
+    text_sensor: WARN
+    number: WARN
+    select: WARN
+    homeassistant: WARN
+    rp2040_uart: INFO
+    cpu_usage: INFO
+
+api:
+
+ota:
+  - platform: esphome
+
+external_components:
+  - source:
+      type: local
+      path: /config/esphome/control-py/components
+    components: [rp2040_uart, cpu_usage]
+
+web_server:
+  port: 80
+  include_internal: true
+  log: true
+  version: 3
+
+wifi:
+  ssid: ${wifi_ssid}
+  password: ${wifi_password}
+  fast_connect: true
+  power_save_mode: NONE
+  manual_ip:
+    static_ip: ${static_ip}
+    gateway: ${gateway_ip}
+    subnet: ${subnet_mask}
+    dns1: ${dns1_ip}
+    dns2: ${dns2_ip}
+
+# Status:
+#  - OLED UI rendering is handled by the peripherals package.
+#  - HA/MA metadata integration is handled by audio/system packages.
+#  - RP2040 input handling is handled by hardware/ui/audio packages.
+# Remaining:
+#  - Ensure all audio controls are TCP/MA-only (no UART control paths).
+#  - Validate screensaver triggers against TCP/MA playback state.

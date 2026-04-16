@@ -1,0 +1,31 @@
+# Repo policy: track ONLY control-py/ and control-board-esp32-tcp.yaml
+# Ignore everything else by default.
+*
+!.gitignore
+!control-board-esp32-tcp.yaml
+!spectra_ls_system.yaml
+!control-py/
+!control-py/**
+!spectra_ls_system/
+!spectra_ls_system/**
+!circuitpy/
+!circuitpy/**
+!packages/
+!packages/**
+
+# Extra safety ignores (redundant with * but kept for clarity)
+/.esphome/
+/secrets.yaml
+/control-py/secrets.yaml
+/spectra_ls_system/secrets.yaml
+/spectra_ls_system/.env
+/control-py/.esphome/
+control-py/previous/circuitpy/
+.fseventsd/
+.Trash-*/
+.Trash-*
+.metadata_never_index
+.metadata_never_index:Zone.Identifier
+.vscode/
+__pycache__/
+*.pyc

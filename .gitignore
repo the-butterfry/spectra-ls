@@ -1,0 +1,56 @@
+# Description: Top-level ignore rules for Home Assistant monorepo.
+# Version: 2026.04.15.1
+# Last updated: 2026-04-15
+
+# Secrets / credentials
+secrets.yaml
+secrets/
+**/secrets.yaml
+**/.env
+
+# HA runtime state and DB artifacts
+.storage/
+*.db
+*.db-shm
+*.db-wal
+home-assistant.log*
+.ha_run.lock
+.HA_VERSION
+.shopping_list.json
+.arylic_hw_status_cache.json
+ip_bans.yaml
+known_devices.yaml
+lovelace_corrupt_latest.json
+
+# OS/editor/cache noise
+.cache/
+.vscode/
+.Trash-*/
+.fseventsd/
+__pycache__/
+*.pyc
+
+# Temporary/backup snapshots
+_backup_*/
+esphome_repo_src/
+test.txt
+
+# Local secret variants
+spectra_ls_secrets.yaml
+
+# Keep canonical sources tracked
+!.github/
+!.github/**
+!CHANGELOG.md
+!configuration.yaml
+!automations.yaml
+!scripts.yaml
+!scenes.yaml
+!packages/
+!packages/**
+!esphome/
+!esphome/**
+!blueprints/
+!blueprints/**
+!custom_components/
+!custom_components/**

@@ -1,0 +1,118 @@
+# Description: Spectra LS setup (top-level user config).
+# Version: 2026.04.14.0
+# Last updated: 2026-04-14
+# Update version/date whenever you change this file.
+#
+# This package provides user-facing helpers for Spectra LS room mapping.
+# It is intended to be the single source of truth for room -> entity/meta/host.
+
+input_text:
+  spectra_ls_room_1_label:
+    name: Spectra LS Room 1 Label
+    initial: "Spectra L/S"
+    max: 255
+    mode: text
+  spectra_ls_room_1_entity:
+    name: Spectra LS Room 1 Entity ID
+    initial: "media_player.spectra_ls_2"
+    max: 255
+    mode: text
+  spectra_ls_room_1_meta:
+    name: Spectra LS Room 1 Meta Entity ID
+    initial: "media_player.spectra_ls"
+    max: 255
+    mode: text
+  spectra_ls_room_1_tcp_host:
+    name: Spectra LS Room 1 TCP Host
+    initial: "192.168.10.50"
+    max: 255
+    mode: text
+
+  spectra_ls_room_2_label:
+    name: Spectra LS Room 2 Label
+    initial: "Kitchen"
+    max: 255
+    mode: text
+  spectra_ls_room_2_entity:
+    name: Spectra LS Room 2 Entity ID
+    initial: "media_player.kitchen_speakers"
+    max: 255
+    mode: text
+  spectra_ls_room_2_meta:
+    name: Spectra LS Room 2 Meta Entity ID
+    initial: "media_player.kitchen_speakers"
+    max: 255
+    mode: text
+  spectra_ls_room_2_tcp_host:
+    name: Spectra LS Room 2 TCP Host
+    initial: "192.168.10.51"
+    max: 255
+    mode: text
+
+  spectra_ls_rooms_extra_json:
+    name: Spectra LS Rooms Extra (JSON)
+    # Optional additional rooms as JSON list of objects with keys: label, entity, meta, tcp_host
+    # Example:
+    # [
+    #   {"label": "Office", "entity": "media_player.office", "meta": "media_player.office", "tcp_host": "192.168.10.60"}
+    # ]
+    initial: ""
+    max: 255
+    mode: text
+
+template:
+  - sensor:
+      - name: Spectra LS Rooms Raw
+        state: >-
+          {% set rooms = [] %}
+          {% set label1 = states('input_text.spectra_ls_room_1_label') | trim %}
+          {% set ent1 = states('input_text.spectra_ls_room_1_entity') | trim %}
+          {% set meta1 = states('input_text.spectra_ls_room_1_meta') | trim %}
+          {% set host1 = states('input_text.spectra_ls_room_1_tcp_host') | trim %}
+          {% if label1 and ent1 and host1 %}
+            {% set rooms = rooms + [{"label": label1, "entity": ent1, "meta": (meta1 if meta1 else ent1), "tcp_host": host1}] %}
+          {% endif %}
+          {% set label2 = states('input_text.spectra_ls_room_2_label') | trim %}
+          {% set ent2 = states('input_text.spectra_ls_room_2_entity') | trim %}
+          {% set meta2 = states('input_text.spectra_ls_room_2_meta') | trim %}
+          {% set host2 = states('input_text.spectra_ls_room_2_tcp_host') | trim %}
+          {% if label2 and ent2 and host2 %}
+            {% set rooms = rooms + [{"label": label2, "entity": ent2, "meta": (meta2 if meta2 else ent2), "tcp_host": host2}] %}
+          {% endif %}
+          {% set extra_raw = states('input_text.spectra_ls_rooms_extra_json') | trim %}
+          {% if extra_raw not in ['','none','unknown','unavailable'] %}
+            {% if extra_raw.startswith('[') or extra_raw.startswith('{') %}
+              {% set extra = extra_raw | from_json %}
+              {% if extra is iterable %}
+                {% set rooms = rooms + extra %}
+              {% endif %}
+            {% endif %}
+          {% endif %}
+          {{ rooms | length }}
+        attributes:
+          rooms: >-
+            {% set rooms = [] %}
+            {% set label1 = states('input_text.spectra_ls_room_1_label') | trim %}
+            {% set ent1 = states('input_text.spectra_ls_room_1_entity') | trim %}
+            {% set meta1 = states('input_text.spectra_ls_room_1_meta') | trim %}
+            {% set host1 = states('input_text.spectra_ls_room_1_tcp_host') | trim %}
+            {% if label1 and ent1 and host1 %}
+              {% set rooms = rooms + [{"label": label1, "entity": ent1, "meta": (meta1 if meta1 else ent1), "tcp_host": host1}] %}
+            {% endif %}
+            {% set label2 = states('input_text.spectra_ls_room_2_label') | trim %}
+            {% set ent2 = states('input_text.spectra_ls_room_2_entity') | trim %}
+            {% set meta2 = states('input_text.spectra_ls_room_2_meta') | trim %}
+            {% set host2 = states('input_text.spectra_ls_room_2_tcp_host') | trim %}
+            {% if label2 and ent2 and host2 %}
+              {% set rooms = rooms + [{"label": label2, "entity": ent2, "meta": (meta2 if meta2 else ent2), "tcp_host": host2}] %}
+            {% endif %}
+            {% set extra_raw = states('input_text.spectra_ls_rooms_extra_json') | trim %}
+            {% if extra_raw not in ['','none','unknown','unavailable'] %}
+              {% if extra_raw.startswith('[') or extra_raw.startswith('{') %}
+                {% set extra = extra_raw | from_json %}
+                {% if extra is iterable %}
+                  {% set rooms = rooms + extra %}
+                {% endif %}
+              {% endif %}
+            {% endif %}
+            {{ rooms | tojson }}

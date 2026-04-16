@@ -1,0 +1,17 @@
+# Description: Music Assistant hub control + mapping for Spectra LS controls (split include)
+# Version: 2026.04.14.2
+# Last updated: 2026-04-14
+# Update version/date whenever you change this file.
+
+input_select: !include /config/esphome/packages/ma_control_hub/input_select.yaml
+input_boolean: !include /config/esphome/packages/ma_control_hub/input_boolean.yaml
+input_number: !include /config/esphome/packages/ma_control_hub/input_number.yaml
+input_text: !include /config/esphome/packages/ma_control_hub/input_text.yaml
+
+rest: !include /config/esphome/packages/ma_control_hub/rest.yaml
+rest_command: !include /config/esphome/packages/ma_control_hub/rest_command.yaml
+
+script: !include /config/esphome/packages/ma_control_hub/script.yaml
+automation: !include /config/esphome/packages/ma_control_hub/automation.yaml
+
+template: !include /config/esphome/packages/ma_control_hub/template.yaml

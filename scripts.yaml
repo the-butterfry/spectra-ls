@@ -1,0 +1,44 @@
+crosstrek_lock_toggle:
+  alias: Crosstrek Lock Toggle
+  mode: single
+  sequence:
+  - choose:
+    - conditions:
+      - condition: state
+        entity_id: lock.2024_crosstrek_wilderness_door_locks
+        state: locked
+      sequence:
+      - service: lock.unlock
+        target:
+          entity_id: lock.2024_crosstrek_wilderness_door_locks
+    default:
+    - service: lock.lock
+      target:
+        entity_id: lock.2024_crosstrek_wilderness_door_locks
+esphome_set_hsb:
+  alias: ESPHome set HSB
+  mode: restart
+  fields:
+    entity_id:
+      description: Target light entity_id
+      example: light.star_lamp
+    h:
+      description: Hue (0-360)
+      example: 180
+    s:
+      description: Saturation (0-100)
+      example: 75
+    b:
+      description: Brightness percent (1-100)
+      example: 60
+  sequence:
+  - target:
+      entity_id: '{{ entity_id }}'
+    data:
+      hs_color:
+      - '{{ h | float }}'
+      - '{{ s | float }}'
+      brightness_pct: '{{ b | float }}'
+    action: light.turn_on
+  description: ''
+

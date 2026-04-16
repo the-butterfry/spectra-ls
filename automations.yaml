@@ -1,0 +1,48 @@
+- id: '1769006521246'
+  alias: Cory BLE Hybrid Unlock (single-press, replacement)
+  description: Replaces blueprint automation; unlocks on arrival or single-press with
+    safety checks.
+  triggers:
+  - entity_id: binary_sensor.ble_presence_door_cory_ble_arriving
+    to: 'on'
+    trigger: state
+  - entity_id: binary_sensor.ble_presence_door_cory_ble_button_single
+    to: 'on'
+    trigger: state
+  conditions:
+  - condition: state
+    entity_id: lock.apartment_door
+    state: locked
+  - condition: state
+    entity_id: binary_sensor.apartment_door_bt
+    state: 'off'
+  - condition: state
+    entity_id: input_boolean.cory_ble_unlock_coldown
+    state: 'off'
+  actions:
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: >-
+          {{ trigger.entity_id == 'binary_sensor.ble_presence_door_cory_ble_button_single' }}
+      sequence:
+      - target:
+          entity_id: lock.apartment_door
+        action: lock.unlock
+    - conditions:
+      - condition: template
+        value_template: >-
+          {{ trigger.entity_id == 'binary_sensor.ble_presence_door_cory_ble_arriving' }}
+      sequence:
+      - target:
+          entity_id: lock.apartment_door
+        action: lock.unlock
+  - target:
+      entity_id: input_boolean.cory_ble_unlock_coldown
+    action: input_boolean.turn_on
+  - delay: 00:00:20
+  - target:
+      entity_id: input_boolean.cory_ble_unlock_coldown
+    action: input_boolean.turn_off
+  mode: restart
+  max_exceeded: silent

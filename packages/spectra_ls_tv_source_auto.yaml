@@ -1,0 +1,216 @@
+# Description: Universal TV-to-Spectra source auto-switch (optical/HDMI).
+# Version: 2026.04.07.1
+# Last updated: 2026-04-07
+# Update version/date whenever you change this file.
+
+input_boolean:
+  spectra_tv_auto_enabled:
+    name: Spectra TV Auto Audio
+    initial: false
+
+input_number:
+  spectra_tv_revert_s:
+    name: Spectra TV Revert Delay (s)
+    min: 0
+    max: 600
+    step: 5
+    initial: 30
+
+input_text:
+  spectra_tv_last_source:
+    name: Spectra TV Last Source
+    initial: ""
+    max: 255
+    mode: text
+  spectra_tv_audio_target:
+    name: Spectra TV Audio Target
+    initial: ""
+    max: 255
+    mode: text
+  spectra_tv_source_keywords:
+    name: Spectra TV Source Keywords
+    # Comma-separated keywords (lower/upper ok). Used to detect external video sources.
+    # Examples: hdmi, av, game, arc
+    initial: "hdmi"
+    max: 255
+    mode: text
+  spectra_tv_source_entity_override:
+    name: Spectra TV Source Entity Override
+    initial: ""
+    max: 255
+    mode: text
+  spectra_tv_audio_select_entity_override:
+    name: Spectra TV Audio Select Entity Override
+    initial: ""
+    max: 255
+    mode: text
+
+template:
+  - sensor:
+      - name: Spectra TV Source Entity
+        state: >-
+          {% set override = states('input_text.spectra_tv_source_entity_override') %}
+          {% if override not in ['','none','unknown','unavailable'] and states[override] is not none %}
+            {{ override }}
+          {% else %}
+            {% set keys = states('input_text.spectra_tv_source_keywords') | lower %}
+            {% set keywords = keys.split(',') | map('trim') | reject('equalto','') | list %}
+            {% set ns = namespace(best='', best_score=-1) %}
+            {% for e in states.media_player %}
+              {% set src = (state_attr(e.entity_id,'source') or '') %}
+              {% set src_l = src | lower %}
+              {% set src_list = state_attr(e.entity_id,'source_list') or [] %}
+              {% set list_l = src_list | map('lower') | list %}
+              {% set has_key = false %}
+              {% for k in keywords %}
+                {% if k and (k in src_l) %}{% set has_key = true %}{% endif %}
+                {% for s in list_l %}{% if k and (k in s) %}{% set has_key = true %}{% endif %}{% endfor %}
+              {% endfor %}
+              {% if has_key %}
+                {% set st = states(e.entity_id) | lower %}
+                {% set score = 0 %}
+                {% if st == 'playing' %}{% set score = score + 3 %}{% elif st == 'paused' %}{% set score = score + 2 %}{% elif st in ['on','idle'] %}{% set score = score + 1 %}{% endif %}
+                {% if src_l != '' %}{% set score = score + 1 %}{% endif %}
+                {% if score > ns.best_score %}
+                  {% set ns.best_score = score %}
+                  {% set ns.best = e.entity_id %}
+                {% endif %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.best }}
+          {% endif %}
+      - name: Spectra TV Active Source
+        state: >-
+          {% set ent = states('sensor.spectra_tv_source_entity') %}
+          {% if ent in ['','unknown','unavailable'] %}
+            {{ '' }}
+          {% else %}
+            {{ state_attr(ent, 'source') or '' }}
+          {% endif %}
+      - name: Spectra TV Audio Select Entity
+        state: >-
+          {% set override = states('input_text.spectra_tv_audio_select_entity_override') %}
+          {% if override not in ['','none','unknown','unavailable'] and states[override] is not none %}
+            {{ override }}
+          {% else %}
+            {% set ns = namespace(ent='') %}
+            {% for s in states.select %}
+              {% set opts = state_attr(s.entity_id,'options') or [] %}
+              {% set opts_l = opts | map('lower') | list %}
+              {% if ns.ent == '' and ('optical' in opts_l or 'line in 1' in opts_l or 'line in 2' in opts_l) %}
+                {% set ns.ent = s.entity_id %}
+              {% endif %}
+            {% endfor %}
+            {% if ns.ent != '' %}
+              {{ ns.ent }}
+            {% elif states['select.arylic_source_select'] is not none %}
+              {{ 'select.arylic_source_select' }}
+            {% else %}
+              {{ '' }}
+            {% endif %}
+          {% endif %}
+  - binary_sensor:
+      - name: Spectra External Video Active
+        state: >-
+          {% set ent = states('sensor.spectra_tv_source_entity') %}
+          {% if ent in ['','unknown','unavailable'] %}
+            false
+          {% else %}
+            {% set st = states(ent) | lower %}
+            {% set src = (state_attr(ent, 'source') or '') | lower %}
+            {% set keys = states('input_text.spectra_tv_source_keywords') | lower %}
+            {% set keywords = keys.split(',') | map('trim') | reject('equalto','') | list %}
+            {% set match = false %}
+            {% for k in keywords %}
+              {% if k and (k in src) %}{% set match = true %}{% endif %}
+            {% endfor %}
+            {{ match and st not in ['off','unavailable','unknown'] }}
+          {% endif %}
+
+  - select:
+      - name: Spectra TV Audio Target
+        state: >-
+          {{ states('input_text.spectra_tv_audio_target') }}
+        options: >-
+          {% set ent = states('sensor.spectra_tv_audio_select_entity') %}
+          {{ state_attr(ent, 'options') or [] }}
+        select_option:
+          service: input_text.set_value
+          data:
+            entity_id: input_text.spectra_tv_audio_target
+            value: "{{ option }}"
+
+script:
+  spectra_tv_switch_to_target:
+    mode: restart
+    sequence:
+      - variables:
+          select_ent: "{{ states('sensor.spectra_tv_audio_select_entity') }}"
+          target: "{{ states('input_text.spectra_tv_audio_target') }}"
+          current: "{{ states(select_ent) if select_ent not in ['','unknown','unavailable'] else '' }}"
+      - choose:
+          - conditions: >-
+              {{ select_ent not in ['','unknown','unavailable'] and target not in ['','unknown','unavailable'] and current != target }}
+            sequence:
+              - service: input_text.set_value
+                data:
+                  entity_id: input_text.spectra_tv_last_source
+                  value: "{{ current }}"
+              - service: select.select_option
+                data:
+                  entity_id: "{{ select_ent }}"
+                  option: "{{ target }}"
+
+  spectra_tv_restore_source:
+    mode: restart
+    sequence:
+      - variables:
+          select_ent: "{{ states('sensor.spectra_tv_audio_select_entity') }}"
+          last: "{{ states('input_text.spectra_tv_last_source') }}"
+      - choose:
+          - conditions: >-
+              {{ select_ent not in ['','unknown','unavailable'] and last not in ['','unknown','unavailable'] }}
+            sequence:
+              - service: select.select_option
+                data:
+                  entity_id: "{{ select_ent }}"
+                  option: "{{ last }}"
+              - service: input_text.set_value
+                data:
+                  entity_id: input_text.spectra_tv_last_source
+                  value: ""
+
+automation:
+  - id: spectra_tv_auto_switch_on
+    alias: "Spectra: Auto switch to TV audio"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.spectra_external_video_active
+        to: "on"
+    condition:
+      - condition: state
+        entity_id: input_boolean.spectra_tv_auto_enabled
+        state: "on"
+      - condition: template
+        value_template: >-
+          {{ states('input_text.spectra_tv_audio_target') not in ['','unknown','unavailable'] }}
+    action:
+      - service: script.spectra_tv_switch_to_target
+
+  - id: spectra_tv_auto_restore
+    alias: "Spectra: Auto restore audio after TV idle"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.spectra_external_video_active
+        to: "off"
+    condition:
+      - condition: state
+        entity_id: input_boolean.spectra_tv_auto_enabled
+        state: "on"
+    action:
+      - delay:
+          seconds: "{{ states('input_number.spectra_tv_revert_s') | int(30) }}"
+      - condition: state
+        entity_id: binary_sensor.spectra_external_video_active
+        state: "off"
+      - service: script.spectra_tv_restore_source

@@ -1,0 +1,556 @@
+# config/packages/dst_tuya_ac.yaml
+# DST + Tuya AC package (all temperatures in Fahrenheit)
+# Replace climate.snail_conditioner_tuya with your Tuya climate entity if different.
+
+# -------------------------
+# Template switches and sensor (modern syntax)
+# -------------------------
+template:
+  - switch:
+      - name: "AC Mode — Cool"
+        default_entity_id: switch.ac_cooler
+        state: '{{ is_state("climate.snail_conditioner_tuya","cool") }}'
+        turn_on:
+          - service: script.turn_on
+            target:
+              entity_id:
+                - script.dst_ac_set_cool
+        turn_off:
+          - service: script.turn_on
+            target:
+              entity_id:
+                - script.dst_ac_turn_off
+
+      - name: "AC Mode — Fan"
+        default_entity_id: switch.ac_fan
+        state: '{{ is_state("climate.snail_conditioner_tuya","fan_only") }}'
+        turn_on:
+          - service: script.turn_on
+            target:
+              entity_id:
+                - script.dst_ac_set_fan
+        turn_off:
+          - service: script.turn_on
+            target:
+              entity_id:
+                - script.dst_ac_turn_off
+
+      - name: "AC Mode — Dry"
+        default_entity_id: switch.ac_dryer
+        state: '{{ is_state("climate.snail_conditioner_tuya","dry") }}'
+        turn_on:
+          - service: script.turn_on
+            target:
+              entity_id:
+                - script.dst_ac_set_dry
+        turn_off:
+          - service: script.turn_on
+            target:
+              entity_id:
+                - script.dst_ac_turn_off
+
+  - sensor:
+      - name: "AC Internal Temperature"
+        default_entity_id: sensor.ac_internal_temperature
+        unit_of_measurement: "°F"
+        availability: >-
+          {% set raw = state_attr('climate.snail_conditioner_tuya','current_temperature') %}
+          {{ raw is not none and (raw | float(0)) != -40 }}
+        state: >-
+          {% set raw = state_attr('climate.snail_conditioner_tuya','current_temperature') %}
+          {{ (raw | float) | round(1) }}
+      - name: "AC Internal Humidity"
+        default_entity_id: sensor.ac_internal_humidity
+        unit_of_measurement: "%"
+        availability: >-
+          {% set raw = state_attr('climate.snail_conditioner_tuya','current_humidity') %}
+          {{ raw is not none and (raw | int(0)) > 0 }}
+        state: >-
+          {% set raw = state_attr('climate.snail_conditioner_tuya','current_humidity') %}
+          {{ raw | int }}
+
+  - fan:
+      - name: "AC Fan"
+        default_entity_id: fan.ac_fan
+        availability: >-
+          {{ states('climate.snail_conditioner_tuya') not in ['unknown','unavailable','none',''] }}
+        state: >-
+          {{ states('climate.snail_conditioner_tuya') not in ['off','unknown','unavailable','none',''] }}
+        preset_mode: >-
+          {{ state_attr('climate.snail_conditioner_tuya','fan_mode') | default('auto', true) }}
+        preset_modes:
+          - low
+          - high
+          - auto
+          - strong
+        turn_on:
+          - action: climate.set_hvac_mode
+            target:
+              entity_id: climate.snail_conditioner_tuya
+            data:
+              hvac_mode: "fan_only"
+        turn_off:
+          - action: climate.set_hvac_mode
+            target:
+              entity_id: climate.snail_conditioner_tuya
+            data:
+              hvac_mode: "off"
+        set_preset_mode:
+          - action: climate.set_fan_mode
+            target:
+              entity_id: climate.snail_conditioner_tuya
+            data:
+              fan_mode: "{{ preset_mode }}"
+
+
+# -------------------------
+# Scripts (device calls and presets) - Fahrenheit setpoints
+# -------------------------
+script:
+  dst_ac_set_cool:
+    sequence:
+      - service: climate.set_hvac_mode
+        target:
+          entity_id: climate.snail_conditioner_tuya
+        data:
+          hvac_mode: "cool"
+      - variables:
+          target_attr: "{{ state_attr('climate.room_dst','temperature') }}"
+          target_ok: "{{ target_attr is not none }}"
+          target_temp: "{{ (target_attr | float) if target_ok else 71 }}"
+          tuya_min: "{{ state_attr('climate.snail_conditioner_tuya','min_temp') | float(60) }}"
+          tuya_max: "{{ state_attr('climate.snail_conditioner_tuya','max_temp') | float(86) }}"
+          tuya_temp: >-
+            {% set base = target_temp - 2 %}
+            {{ [tuya_max, [tuya_min, base] | max] | min }}
+      - delay: "00:00:02"
+      - service: climate.set_temperature
+        target:
+          entity_id: climate.snail_conditioner_tuya
+        data:
+          temperature: "{{ tuya_temp }}"
+
+  dst_ac_set_fan:
+    sequence:
+      - service: climate.set_hvac_mode
+        target:
+          entity_id: climate.snail_conditioner_tuya
+        data:
+          hvac_mode: "fan_only"
+
+  dst_ac_set_dry:
+    sequence:
+      - service: climate.set_hvac_mode
+        target:
+          entity_id: climate.snail_conditioner_tuya
+        data:
+          hvac_mode: "dry"
+
+  dst_ac_turn_off:
+    mode: restart
+    sequence:
+      - service: climate.set_hvac_mode
+        target:
+          entity_id: climate.snail_conditioner_tuya
+        data:
+          hvac_mode: "off"
+
+  # Preset helper scripts (Home/Away only)
+  dst_preset_away:
+    sequence:
+      - service: automation.turn_off
+        target:
+          entity_id:
+            - automation.dst_auto_cool_outdoor
+            - automation.dst_auto_off_outdoor_cool
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.ac_away_lock
+      - service: climate.set_hvac_mode
+        target:
+          entity_id: climate.room_dst
+        data:
+          hvac_mode: "off"
+
+  dst_preset_home:
+    sequence:
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.ac_away_lock
+      - service: automation.turn_on
+        target:
+          entity_id:
+            - automation.dst_auto_cool_outdoor
+            - automation.dst_auto_off_outdoor_cool
+
+# -------------------------
+# Dual Smart Thermostat (DST) using Fahrenheit
+# -------------------------
+climate:
+  - platform: dual_smart_thermostat
+    name: "Room DST"
+    heater: switch.ac_cooler
+    fan: fan.ac_fan
+    dryer: switch.ac_dryer
+    humidity_sensor: sensor.bedroom_enviro_humidity
+    ac_mode: true
+    target_sensor: sensor.bedroom_enviro_temperature
+    min_temp: 64
+    max_temp: 86
+    target_temp: 75
+    hot_tolerance: 1
+    min_cycle_duration:
+      seconds: 120
+    initial_hvac_mode: "off"
+    precision: 1
+    target_temp_step: 1
+
+    # DST native preset sections (Home/Away only)
+    away:
+      target_temp_high: 80
+    home:
+      target_temp_high: 75
+
+# -------------------------
+# Automations
+# -------------------------
+automation:
+  - id: dst_pause_automation_10h
+    alias: "DST: Pause automations for 10 hours"
+    trigger:
+      - platform: state
+        entity_id: input_button.ac_pause_10h
+    action:
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.ac_pause_until
+        data:
+          timestamp: "{{ (now() + timedelta(hours=10)).timestamp() | int }}"
+
+  - id: dst_manual_override_on_temp_change
+    alias: "DST: Manual override when target temp changes"
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: climate.room_dst
+        attribute: temperature
+    condition:
+      - condition: state
+        entity_id: input_boolean.ac_automation_busy
+        state: "off"
+      - condition: state
+        entity_id: input_boolean.ac_away_lock
+        state: "off"
+    action:
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.ac_manual_override_until
+        data:
+          timestamp: "{{ (now() + timedelta(hours=24)).timestamp() | int }}"
+
+  - id: dst_clear_manual_override_on_outdoor_cool
+    alias: "DST: Clear manual override when outdoor cools"
+    trigger:
+      - platform: state
+        entity_id:
+          - sensor.central_dist_seattle_temperature
+          - sensor.central_dist_seattle_feels_like
+      - platform: time_pattern
+        minutes: "/10"
+    condition:
+      - condition: template
+        value_template: >-
+          {% set until_ts = as_timestamp(states('input_datetime.ac_manual_override_until')) | default(0) %}
+          {% set active = until_ts > as_timestamp(now()) %}
+          {% set out_temp = states('sensor.central_dist_seattle_temperature') | float(0) %}
+          {% set feels = states('sensor.central_dist_seattle_feels_like') | float(0) %}
+          {% set target = state_attr('climate.room_dst','temperature') | float(0) %}
+          {% set room = states('sensor.bedroom_enviro_temperature') | float(0) %}
+          {{ active and (out_temp <= 70 or feels <= 70) and (room <= target + 0.5) }}
+    action:
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.ac_manual_override_until
+        data:
+          timestamp: "{{ (now() - timedelta(minutes=1)).timestamp() | int }}"
+
+  - id: dst_clear_manual_override_on_target_reached
+    alias: "DST: Clear manual override when target reached"
+    trigger:
+      - platform: state
+        entity_id: sensor.bedroom_enviro_temperature
+      - platform: state
+        entity_id: climate.room_dst
+        attribute: temperature
+      - platform: time_pattern
+        minutes: "/5"
+    condition:
+      - condition: template
+        value_template: >-
+          {% set until_ts = as_timestamp(states('input_datetime.ac_manual_override_until')) | default(0) %}
+          {% set active = until_ts > as_timestamp(now()) %}
+          {% set target = state_attr('climate.room_dst','temperature') | float(0) %}
+          {% set room = states('sensor.bedroom_enviro_temperature') | float(0) %}
+          {% set hvac = states('climate.room_dst') %}
+          {{ active and hvac == 'cool' and room <= target + 0.5 }}
+    action:
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.ac_manual_override_until
+        data:
+          timestamp: "{{ (now() - timedelta(minutes=1)).timestamp() | int }}"
+
+  - id: dst_on_preset_mode_changed
+    alias: "DST: Run preset script when climate preset_mode changes"
+    trigger:
+      - platform: state
+        entity_id: climate.room_dst
+        attribute: preset_mode
+    action:
+      - variables:
+          pm: "{{ state_attr('climate.room_dst','preset_mode') | default('') }}"
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ pm == 'away' }}"
+            sequence:
+              - service: script.turn_on
+                target:
+                  entity_id: script.dst_preset_away
+          - conditions:
+              - condition: template
+                value_template: "{{ pm == 'home' }}"
+            sequence:
+              - service: script.turn_on
+                target:
+                  entity_id: script.dst_preset_home
+        default: []
+
+  - id: dst_auto_cool_outdoor
+    alias: "DST: Auto cool on hot/humid outdoors (gated)"
+    trigger:
+      - platform: state
+        entity_id:
+          - sensor.central_dist_seattle_feels_like
+          - sensor.central_dist_seattle_temperature
+          - sensor.central_dist_seattle_humidity
+          - sensor.bedroom_enviro_temperature
+      - platform: time_pattern
+        minutes: "/5"
+    condition:
+      - condition: state
+        entity_id: input_boolean.ac_away_lock
+        state: "off"
+      - condition: template
+        value_template: >-
+          {% set pause_until = as_timestamp(states('input_datetime.ac_pause_until')) | default(0) %}
+          {{ pause_until <= as_timestamp(now()) }}
+      - condition: template
+        value_template: >-
+          {% set override_until = as_timestamp(states('input_datetime.ac_manual_override_until')) | default(0) %}
+          {{ override_until <= as_timestamp(now()) }}
+      - condition: template
+        value_template: >-
+          {% set room_raw = states('sensor.bedroom_enviro_temperature') %}
+          {% set room_ok = room_raw not in ['unknown','unavailable','none',''] %}
+          {% set room_temp = room_raw | float(0) %}
+          {% set after_6 = now().hour >= 18 %}
+          {% set gate_ok = room_ok and (after_6 or room_temp >= 85) %}
+          {% set feels = states('sensor.central_dist_seattle_feels_like') | float(0) %}
+          {% set out_temp = states('sensor.central_dist_seattle_temperature') | float(0) %}
+          {% set humid = states('sensor.central_dist_seattle_humidity') | float(0) %}
+          {% set outdoor_hot = (feels >= 78) or (out_temp >= 78) %}
+          {% set outdoor_humid = humid >= 65 %}
+          {{ gate_ok and outdoor_hot and outdoor_humid }}
+      - condition: template
+        value_template: >-
+          {{ not is_state('climate.room_dst','cool') }}
+    action:
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.ac_automation_busy
+      - service: climate.set_hvac_mode
+        target:
+          entity_id: climate.room_dst
+        data:
+          hvac_mode: "cool"
+      - variables:
+          room_temp: "{{ states('sensor.bedroom_enviro_temperature') | float(0) }}"
+          feels_temp: "{{ states('sensor.central_dist_seattle_feels_like') | float(0) }}"
+          out_temp: "{{ states('sensor.central_dist_seattle_temperature') | float(0) }}"
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: >-
+                  {{ now().hour >= 23 }}
+            sequence:
+              - service: climate.set_temperature
+                target:
+                  entity_id: climate.room_dst
+                data:
+                  temperature: 74
+          - conditions:
+              - condition: template
+                value_template: >-
+                  {{ (now().hour > 19) or (now().hour == 19 and now().minute >= 30) }}
+            sequence:
+              - service: climate.set_temperature
+                target:
+                  entity_id: climate.room_dst
+                data:
+                  temperature: 72
+          - conditions:
+              - condition: template
+                value_template: >-
+                  {{ states('sensor.bedroom_enviro_temperature') | float(0) >= 85 }}
+            sequence:
+              - service: climate.set_temperature
+                target:
+                  entity_id: climate.room_dst
+                data:
+                  temperature: 80
+        default:
+          - service: climate.set_temperature
+            target:
+              entity_id: climate.room_dst
+            data:
+              temperature: 80
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: >-
+                  {{ room_temp >= 88 or feels_temp >= 90 or out_temp >= 90 }}
+            sequence:
+              - service: fan.set_preset_mode
+                target:
+                  entity_id: fan.ac_fan
+                data:
+                  preset_mode: "strong"
+          - conditions:
+              - condition: template
+                value_template: >-
+                  {{ room_temp >= 84 or feels_temp >= 85 or out_temp >= 85 }}
+            sequence:
+              - service: fan.set_preset_mode
+                target:
+                  entity_id: fan.ac_fan
+                data:
+                  preset_mode: "high"
+        default:
+          - service: fan.set_preset_mode
+            target:
+              entity_id: fan.ac_fan
+            data:
+              preset_mode: "low"
+      - delay: "00:00:01"
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.ac_automation_busy
+
+  - id: dst_auto_off_outdoor_cool
+    alias: "DST: Auto off when outdoor cool (gated)"
+    trigger:
+      - platform: state
+        entity_id:
+          - sensor.central_dist_seattle_temperature
+          - sensor.bedroom_enviro_temperature
+      - platform: time_pattern
+        minutes: "/10"
+    condition:
+      - condition: state
+        entity_id: input_boolean.ac_away_lock
+        state: "off"
+      - condition: template
+        value_template: >-
+          {% set override_until = as_timestamp(states('input_datetime.ac_manual_override_until')) | default(0) %}
+          {{ override_until <= as_timestamp(now()) }}
+      - condition: template
+        value_template: >-
+          {% set pause_until = as_timestamp(states('input_datetime.ac_pause_until')) | default(0) %}
+          {{ pause_until <= as_timestamp(now()) }}
+      - condition: template
+        value_template: >-
+          {% set room_raw = states('sensor.bedroom_enviro_temperature') %}
+          {% set room_ok = room_raw not in ['unknown','unavailable','none',''] %}
+          {% set room_temp = room_raw | float(0) %}
+          {% set after_6 = now().hour >= 18 %}
+          {% set gate_ok = room_ok and (after_6 or room_temp >= 85) %}
+          {% set out_temp = states('sensor.central_dist_seattle_temperature') | float(0) %}
+          {{ gate_ok and out_temp <= 65 and room_temp <= 75 }}
+      - condition: template
+        value_template: >-
+          {{ not is_state('climate.room_dst','off') }}
+    action:
+      - service: climate.set_hvac_mode
+        target:
+          entity_id: climate.room_dst
+        data:
+          hvac_mode: "off"
+
+  - id: dst_enforce_tuya_cool_while_dst_cooling
+    alias: "DST: Enforce Tuya cool while DST cooling"
+    trigger:
+      - platform: state
+        entity_id: climate.room_dst
+      - platform: state
+        entity_id: climate.snail_conditioner_tuya
+      - platform: time_pattern
+        minutes: "/2"
+    condition:
+      - condition: state
+        entity_id: climate.room_dst
+        state: "cool"
+      - condition: template
+        value_template: >-
+          {% set room_raw = states('sensor.bedroom_enviro_temperature') %}
+          {% set room_ok = room_raw not in ['unknown','unavailable','none',''] %}
+          {% set room = room_raw | float(0) %}
+          {% set target = state_attr('climate.room_dst','temperature') | float(0) %}
+          {{ room_ok and room > target + 0.5 }}
+      - condition: template
+        value_template: >-
+          {{ states('climate.snail_conditioner_tuya') != 'cool' }}
+    action:
+      - service: script.turn_on
+        target:
+          entity_id: script.dst_ac_set_cool
+
+# -------------------------
+# Hide low-level switches from default UI but keep them available
+# -------------------------
+homeassistant:
+  customize:
+    switch.ac_cooler:
+      hidden: true
+      friendly_name: "AC Mode — Cool"
+    switch.ac_fan:
+      hidden: true
+      friendly_name: "AC Mode — Fan"
+    switch.ac_dryer:
+      hidden: true
+      friendly_name: "AC Mode — Dry"
+    fan.ac_fan:
+      friendly_name: "AC Fan"
+
+input_button:
+  ac_pause_10h:
+    name: "AC Pause 10 Hours"
+    icon: mdi:timer-pause
+
+input_datetime:
+  ac_manual_override_until:
+    name: "AC Manual Override Until"
+    has_date: true
+    has_time: true
+  ac_pause_until:
+    name: "AC Pause Until"
+    has_date: true
+    has_time: true
+
+input_boolean:
+  ac_automation_busy:
+    name: "AC Automation Busy"
+    icon: mdi:sync
+  ac_away_lock:
+    name: "AC Away Lock"
+    icon: mdi:lock

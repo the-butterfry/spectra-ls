@@ -1,0 +1,144 @@
+# Description: Spectra LS scripts.
+# Version: 2026.03.28.2
+# Last updated: 2026-03-28
+# Update version/date whenever you change this file.
+
+script:
+  control_board_set_light_dynamic:
+    alias: Spectra LS - Set Light (Dynamic)
+    mode: restart
+    fields:
+      target:
+        description: "entity_id, or 'all' (legacy)"
+        example: "light.kitchen"
+      target_entity:
+        description: "entity_id (preferred)"
+        example: "light.kitchen"
+      area_id:
+        description: "area_id for room broadcast"
+        example: "living_room"
+      hs_color:
+        description: "HS color array [h, s] (legacy)"
+        example: "[30.0, 80.0]"
+      hs:
+        description: "HS color array [h, s] (preferred)"
+        example: "[30.0, 80.0]"
+      brightness:
+        description: "Brightness percent (0-100) or 0-255 (legacy)"
+        example: "55"
+      transition:
+        description: "Transition seconds"
+        example: "0.4"
+    sequence:
+      - variables:
+          target_entity: >-
+            {{ target_entity | default('', true) | trim }}
+          target_legacy: >-
+            {{ target | default('', true) | trim }}
+          area_id: >-
+            {{ area_id | default('', true) | trim }}
+          area_id_resolved: >-
+            {% if area_id | default('', true) | trim != '' %}
+              {{ area_id | default('', true) | trim }}
+            {% else %}
+              {% set room = states('input_select.control_board_room') | default('', true) | trim %}
+              {% set ns = namespace(area_id='') %}
+              {% for a in areas() %}
+                {% if area_name(a) == room and ns.area_id == '' %}
+                  {% set ns.area_id = a %}
+                {% endif %}
+              {% endfor %}
+              {{ ns.area_id }}
+            {% endif %}
+          hs_raw: >-
+            {{ hs | default(hs_color, true) }}
+          brightness_raw: >-
+            {{ brightness | default('', true) }}
+          brightness_pct: >-
+            {% if brightness_raw is string and brightness_raw | trim == '' %}
+              100
+            {% else %}
+              {% set b = brightness_raw | float(-1) %}
+              {% if b < 0 %}
+                100
+              {% elif b <= 1 %}
+                {{ (b * 100) | round(1) }}
+              {% elif b <= 100 %}
+                {{ b | round(1) }}
+              {% else %}
+                {{ ((b / 255.0) * 100) | round(1) }}
+              {% endif %}
+            {% endif %}
+          hs_parsed: >-
+            {% if hs_raw is string and hs_raw | trim | length > 0 %}
+              {{ hs_raw | from_json }}
+            {% else %}
+              {{ hs_raw }}
+            {% endif %}
+          hs_present: >-
+            {% if hs_parsed is string %}
+              {{ hs_parsed | trim | length > 0 }}
+            {% elif hs_parsed is sequence %}
+              {{ hs_parsed | length >= 2 }}
+            {% else %}
+              false
+            {% endif %}
+      - choose:
+          - conditions: >-
+              {{ target_entity == '' and (target_legacy == '' or target_legacy == 'all') }}
+            sequence:
+              - choose:
+                  - conditions: "{{ (brightness_pct | float(100)) <= 0.5 }}"
+                    sequence:
+                      - service: light.turn_off
+                        target:
+                          area_id: >-
+                            {{ area_id_resolved if area_id_resolved != '' else states('sensor.control_board_room_area_id') }}
+                default:
+                  - choose:
+                      - conditions: "{{ hs_present }}"
+                        sequence:
+                          - service: light.turn_on
+                            data:
+                              hs_color: "{{ hs_parsed }}"
+                              brightness_pct: "{{ brightness_pct }}"
+                              transition: "{{ transition | default(0) }}"
+                            target:
+                              area_id: >-
+                                {{ area_id_resolved if area_id_resolved != '' else states('sensor.control_board_room_area_id') }}
+                    default:
+                      - service: light.turn_on
+                        data:
+                          brightness_pct: "{{ brightness_pct }}"
+                          transition: "{{ transition | default(0) }}"
+                        target:
+                          area_id: >-
+                            {{ area_id_resolved if area_id_resolved != '' else states('sensor.control_board_room_area_id') }}
+        default:
+          - choose:
+              - conditions: "{{ (brightness_pct | float(100)) <= 0.5 }}"
+                sequence:
+                  - service: light.turn_off
+                    target:
+                      entity_id: >-
+                        {{ target_entity if target_entity != '' else target_legacy }}
+            default:
+              - choose:
+                  - conditions: "{{ hs_present }}"
+                    sequence:
+                      - service: light.turn_on
+                        data:
+                          hs_color: "{{ hs_parsed }}"
+                          brightness_pct: "{{ brightness_pct }}"
+                          transition: "{{ transition | default(0) }}"
+                        target:
+                          entity_id: >-
+                            {{ target_entity if target_entity != '' else target_legacy }}
+                default:
+                  - service: light.turn_on
+                    data:
+                      brightness_pct: "{{ brightness_pct }}"
+                      transition: "{{ transition | default(0) }}"
+                    target:
+                      entity_id: >-
+                        {{ target_entity if target_entity != '' else target_legacy }}

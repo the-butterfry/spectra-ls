@@ -1,0 +1,316 @@
+# Description: Spectra LS lighting hub (rooms/targets from HA Areas).
+# Version: 2026.03.28.4
+# Last updated: 2026-03-28
+# Update version/date whenever you change this file.
+#
+# Notes:
+# - Rooms are derived from HA Areas that contain at least one light.
+# - Targets are derived from lights in the selected room (area).
+# - Input selects are updated via input_select.set_options (dynamic).
+
+input_select:
+  control_board_room:
+    name: Control Board Room
+    options:
+      - Unknown
+    initial: Unknown
+  control_board_target:
+    name: Control Board Target
+    options:
+      - All
+    initial: All
+
+template:
+  - sensor:
+      - name: Control Board Room Options
+        unique_id: control_board_room_options
+        icon: mdi:floor-plan
+        state: >
+          {% set ns = namespace(rooms=[]) %}
+          {% for area_id in areas() %}
+            {% set lights = area_entities(area_id) | select('match','^light\.') | list %}
+            {% if lights | count > 0 %}
+              {% set ns.rooms = ns.rooms + [area_name(area_id)] %}
+            {% endif %}
+          {% endfor %}
+          {% if ns.rooms | count == 0 %}
+            {{ ['Unknown'] | tojson }}
+          {% else %}
+            {{ ns.rooms | tojson }}
+          {% endif %}
+        attributes:
+          count: >
+            {% set ns = namespace(rooms=[]) %}
+            {% for area_id in areas() %}
+              {% set lights = area_entities(area_id) | select('match','^light\.') | list %}
+              {% if lights | count > 0 %}
+                {% set ns.rooms = ns.rooms + [area_name(area_id)] %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.rooms | count }}
+
+      - name: Control Board Target Options
+        unique_id: control_board_target_options
+        icon: mdi:lightbulb-group
+        state: >
+          {% set room = states('input_select.control_board_room') %}
+          {% set ns = namespace(area_id=None, targets=['All']) %}
+          {% for area_id in areas() %}
+            {% if area_name(area_id) == room %}
+              {% set ns.area_id = area_id %}
+            {% endif %}
+          {% endfor %}
+          {% if ns.area_id %}
+            {% set lights = area_entities(ns.area_id) | select('match','^light\.') | list %}
+            {% for ent in lights %}
+              {% set label = state_attr(ent, 'friendly_name') or ent.split('.')[-1] %}
+              {% set ns.targets = ns.targets + [label] %}
+            {% endfor %}
+          {% endif %}
+          {{ ns.targets | tojson }}
+        attributes:
+          count: >
+            {% set room = states('input_select.control_board_room') %}
+            {% set ns = namespace(area_id=None, targets=['All']) %}
+            {% for area_id in areas() %}
+              {% if area_name(area_id) == room %}
+                {% set ns.area_id = area_id %}
+              {% endif %}
+            {% endfor %}
+            {% if ns.area_id %}
+              {% set lights = area_entities(ns.area_id) | select('match','^light\.') | list %}
+              {% for ent in lights %}
+                {% set ns.targets = ns.targets + [ent] %}
+              {% endfor %}
+            {% endif %}
+            {{ ns.targets | count }}
+
+      - name: Control Board Room Area ID
+        unique_id: control_board_room_area_id
+        icon: mdi:map-marker-radius
+        state: >
+          {% set room = states('input_select.control_board_room') %}
+          {% set ns = namespace(area_id='') %}
+          {% for area_id in areas() %}
+            {% if area_name(area_id) == room %}
+              {% set ns.area_id = area_id %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.area_id }}
+
+      - name: Control Board Target Entity ID
+        unique_id: control_board_target_entity_id
+        icon: mdi:lightbulb
+        state: >
+          {% set room = states('input_select.control_board_room') %}
+          {% set target = states('input_select.control_board_target') %}
+          {% set target_norm = target | lower | regex_replace('[^a-z0-9]+','') %}
+          {% set ns = namespace(area_id=None, entity='') %}
+          {% for area_id in areas() %}
+            {% if area_name(area_id) == room %}
+              {% set ns.area_id = area_id %}
+            {% endif %}
+          {% endfor %}
+          {% if target != 'All' and ns.area_id %}
+            {% for ent in area_entities(ns.area_id) | select('match','^light\.') | list %}
+              {% set label = state_attr(ent, 'friendly_name') or ent.split('.')[-1] %}
+              {% set label_norm = label | lower | regex_replace('[^a-z0-9]+','') %}
+              {% set ent_norm = ent.split('.')[-1] | lower | regex_replace('[^a-z0-9]+','') %}
+              {% if ns.entity == '' and (label == target or label_norm == target_norm or ent_norm == target_norm) %}
+                {% set ns.entity = ent %}
+              {% endif %}
+            {% endfor %}
+          {% endif %}
+          {{ ns.entity }}
+
+      - name: Control Board Room HS
+        unique_id: control_board_room_hs
+        icon: mdi:palette
+        state: >
+          {% set room = states('input_select.control_board_room') %}
+          {% set ns = namespace(area_id=None, hs='') %}
+          {% for area_id in areas() %}
+            {% if area_name(area_id) == room %}
+              {% set ns.area_id = area_id %}
+            {% endif %}
+          {% endfor %}
+          {% if ns.area_id %}
+            {% set lights = area_entities(ns.area_id) | select('match','^light\.') | list %}
+            {% for ent in lights %}
+              {% set hs = state_attr(ent, 'hs_color') %}
+              {% if hs is not none and ns.hs == '' %}
+                {% set ns.hs = hs | tojson %}
+              {% endif %}
+            {% endfor %}
+          {% endif %}
+          {{ ns.hs }}
+
+      - name: Control Board Target HS
+        unique_id: control_board_target_hs
+        icon: mdi:palette
+        state: >
+          {% set target = states('input_select.control_board_target') %}
+          {% set entity = states('sensor.control_board_target_entity_id') %}
+          {% if target != 'All' and entity not in ['','unknown','unavailable', none] %}
+            {% set hs = state_attr(entity, 'hs_color') %}
+            {{ hs | tojson if hs is not none else '' }}
+          {% else %}
+            {{ '' }}
+          {% endif %}
+
+  - binary_sensor:
+      - name: Control Board Room On
+        unique_id: control_board_room_on
+        state: >
+          {% set room = states('input_select.control_board_room') %}
+          {% set ns = namespace(area_id=None, on=false) %}
+          {% for area_id in areas() %}
+            {% if area_name(area_id) == room %}
+              {% set ns.area_id = area_id %}
+            {% endif %}
+          {% endfor %}
+          {% if ns.area_id %}
+            {% set lights = area_entities(ns.area_id) | select('match','^light\.') | list %}
+            {% for ent in lights %}
+              {% if is_state(ent, 'on') %}
+                {% set ns.on = true %}
+              {% endif %}
+            {% endfor %}
+          {% endif %}
+          {{ ns.on }}
+
+      - name: Control Board Target On
+        unique_id: control_board_target_on
+        state: >
+          {% set target = states('input_select.control_board_target') %}
+          {% set entity = states('sensor.control_board_target_entity_id') %}
+          {% if target == 'All' %}
+            {{ is_state('binary_sensor.control_board_room_on', 'on') }}
+          {% elif entity not in ['','unknown','unavailable', none] %}
+            {{ is_state(entity, 'on') }}
+          {% else %}
+            false
+          {% endif %}
+
+automation:
+  - id: control_board_sync_room_options
+    alias: Control Board - Sync Room Options
+    mode: single
+    trigger:
+      - platform: homeassistant
+        event: start
+      - platform: state
+        entity_id: sensor.control_board_room_options
+      - platform: time_pattern
+        minutes: "/5"
+    action:
+      - variables:
+          room_raw: "{{ states('sensor.control_board_room_options') }}"
+          room_parsed: >
+            {% if room_raw in ['unknown', 'unavailable', ''] %}
+              {{ [] }}
+            {% elif room_raw is string %}
+              {% if room_raw[0:1] != '[' %}
+                {{ [] }}
+              {% else %}
+                {{ room_raw | from_json(default=[]) }}
+              {% endif %}
+            {% elif room_raw is iterable %}
+              {{ room_raw }}
+            {% else %}
+              {{ [] }}
+            {% endif %}
+          current_options: "{{ state_attr('input_select.control_board_room','options') or [] }}"
+          current: "{{ states('input_select.control_board_room') }}"
+          room_options: >
+            {% if room_parsed | count > 0 %}
+              {{ room_parsed }}
+            {% elif current_options | count > 0 %}
+              {{ current_options }}
+            {% else %}
+              {{ ['Unknown'] }}
+            {% endif %}
+          safe_options: >
+            {% if current not in room_options and current not in ['unknown','unavailable',''] %}
+              {{ (room_options + [current]) | unique | list }}
+            {% else %}
+              {{ room_options }}
+            {% endif %}
+          options_changed: "{{ current_options | join('||') != room_options | join('||') }}"
+          needs_reset: "{{ (room_parsed | count > 0) and (states('input_select.control_board_room') not in room_options) }}"
+          should_update_options: "{{ options_changed and ((room_parsed | count > 0) or (current_options | count == 0)) }}"
+      - choose:
+          - conditions: "{{ should_update_options }}"
+            sequence:
+              - service: input_select.set_options
+                data:
+                  entity_id: input_select.control_board_room
+                  options: "{{ safe_options }}"
+      - choose:
+          - conditions: "{{ needs_reset }}"
+            sequence:
+              - service: input_select.select_option
+                data:
+                  entity_id: input_select.control_board_room
+                  option: "{{ room_options[0] if room_options | count > 0 else 'Unknown' }}"
+
+  - id: control_board_sync_target_options
+    alias: Control Board - Sync Target Options
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id:
+          - sensor.control_board_target_options
+          - input_select.control_board_room
+      - platform: time_pattern
+        minutes: "/5"
+    action:
+      - variables:
+          target_raw: "{{ states('sensor.control_board_target_options') }}"
+          target_parsed: >
+            {% if target_raw in ['unknown', 'unavailable', ''] %}
+              {{ [] }}
+            {% elif target_raw is string %}
+              {% if target_raw[0:1] != '[' %}
+                {{ [] }}
+              {% else %}
+                {{ target_raw | from_json(default=[]) }}
+              {% endif %}
+            {% elif target_raw is iterable %}
+              {{ target_raw }}
+            {% else %}
+              {{ [] }}
+            {% endif %}
+          current_options: "{{ state_attr('input_select.control_board_target','options') or [] }}"
+          current: "{{ states('input_select.control_board_target') }}"
+          target_options: >
+            {% if target_parsed | count > 0 %}
+              {{ target_parsed }}
+            {% elif current_options | count > 0 %}
+              {{ current_options }}
+            {% else %}
+              {{ ['All'] }}
+            {% endif %}
+          safe_options: >
+            {% if current not in target_options and current not in ['unknown','unavailable',''] %}
+              {{ (target_options + [current]) | unique | list }}
+            {% else %}
+              {{ target_options }}
+            {% endif %}
+          options_changed: "{{ current_options | join('||') != target_options | join('||') }}"
+          needs_reset: "{{ (target_parsed | count > 0) and (states('input_select.control_board_target') not in target_options) }}"
+          should_update_options: "{{ options_changed and ((target_parsed | count > 0) or (current_options | count == 0)) }}"
+      - choose:
+          - conditions: "{{ should_update_options }}"
+            sequence:
+              - service: input_select.set_options
+                data:
+                  entity_id: input_select.control_board_target
+                  options: "{{ safe_options }}"
+      - choose:
+          - conditions: "{{ needs_reset }}"
+            sequence:
+              - service: input_select.select_option
+                data:
+                  entity_id: input_select.control_board_target
+                  option: "{{ target_options[0] if target_options | count > 0 else 'All' }}"

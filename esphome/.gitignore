@@ -1,9 +1,14 @@
-# Repo policy: track ONLY control-py/ and control-board-esp32-tcp.yaml
+# Description: ESPHome subtree ignore policy for tracked project files.
+# Version: 2026.04.16.1
+# Last updated: 2026-04-16
+#
+# Repo policy: track ONLY control-py/, spectra_ls_system/, circuitpy/, packages/, and entrypoints.
 # Ignore everything else by default.
 *
 !.gitignore
 !control-board-esp32-tcp.yaml
 !spectra_ls_system.yaml
+!secrets.example.yaml
 !control-py/
 !control-py/**
 !spectra_ls_system/

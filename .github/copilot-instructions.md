@@ -3,8 +3,8 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 ---
 
 <!-- Description: Workspace Copilot operating instructions for Home Assistant + ESPHome. -->
-<!-- Version: 2026.04.15.2 -->
-<!-- Last updated: 2026-04-15 -->
+<!-- Version: 2026.04.16.1 -->
+<!-- Last updated: 2026-04-16 -->
 
 # GitHub Copilot Instructions — Home Assistant + ESPHome
 
@@ -101,6 +101,18 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 	- Commit with a concise, action-based message.
 	- Push to GitHub before ending the session (keep remote in sync).
 - Never commit secrets (confirm `secrets.yaml` and `control-py/secrets.yaml` stay untracked).
+
+## Branch Operations Model (Required)
+- Keep `main` and `menu-only` as concurrently operable branches.
+- Use separate worktrees for parallel branch work to avoid destructive checkouts in a live Home Assistant filesystem.
+- Before any shared-contract merge, validate both branches still contain functional entrypoints and required package paths.
+
+## Filesystem Safety Gate (Required)
+- Do **not** move/delete live workspace directories (for example `esphome/`) without:
+	1) creating a reversible snapshot/backup,
+	2) proving restore commands,
+	3) post-change path verification of critical entrypoints.
+- If any verification fails, immediately rollback filesystem changes before continuing.
 
 ## Workspace Path Authority
 - Use `/mnt/homeassistant` as the **authoritative** Home Assistant workspace path for all reads/writes.

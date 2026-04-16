@@ -1,5 +1,5 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.15.1 -->
+<!-- Version: 2026.04.15.2 -->
 <!-- Last updated: 2026-04-15 -->
 
 # Changelog
@@ -11,6 +11,9 @@
 - Repo: Enforce mandatory per-file version metadata policy in Copilot instructions (Description + Version + Last updated; bump minor on every edit).
 - Repo: Enforce RP2040 source-of-truth policy (live `CIRCUITPY/` + single repo mirror `esphome/circuitpy/`) and remove stale duplicate `boot.py`/`code.py` copies from other ESPHome paths.
 - Docs: Tighten Copilot instructions for senior/public-product standards, latest HA/ESPHome API diligence, and mandatory dual-sync RP2040 edits (live `CIRCUITPY/` + `esphome/circuitpy/`).
+- Repo: Migrate to top-level `/mnt/homeassistant` Git root and import `esphome` history under `esphome/` with preserved commit history.
+- Repo: Track core HA root files on `main` (`configuration.yaml`, `automations.yaml`, `scripts.yaml`, `scenes.yaml`, and `packages/`).
+- Docs: Add dual-branch shared-contract merge gate (`main` + `menu-only`) with required paired update or explicit divergence note.
 
 ## 2026-04-14
 

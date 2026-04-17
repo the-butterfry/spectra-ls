@@ -1,10 +1,16 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.66 -->
+<!-- Version: 2026.04.17.67 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
+
+- ESPHome/Lighting Audit Fix: Correct display-state gating so lighting render windows honor `hue_ring_active_until_ms` (not only brightness/audio windows), preventing Hue/Saturation lighting views from dropping back to the main/menu screen during active adjustments.
+
+- ESPHome/Lighting Audit Fix: Harden slider input routing in `spectra-ls-lighting.yaml` so slider movement exits stale non-lighting menu states and applies as lighting input, while still preserving room/target selection behavior when explicitly in Room/Target menu levels.
+
+- ESPHome/Lighting Audit Fix: Add a consistent temporary lighting hold window in `focus_lighting` so encoder/button/slider interactions all keep `screen_mode=0` long enough to prevent immediate auto-flip back to audio while playback is active.
 
 - Docs/README: Tighten `Digital Audio Ingest + Final DAC Path` intro wording and add an explicit plain-language positioning line: “In plain terms: a DAC for your home.”
 

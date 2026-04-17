@@ -1,5 +1,5 @@
 # Description: Spectra LS OLED-only peripherals package (no LED rings) for Control Board v2.
-# Version: 2026.04.17.4
+# Version: 2026.04.17.5
 # Last updated: 2026-04-17
 # Update version/date whenever you change this file.
 esphome:
@@ -655,7 +655,7 @@ script:
           const bool now_playing_active = (playing || ha_state_active || active_recent_screen || playing_recent_hold || ha_playing_recent || audio_wake_active || meta_recent_allowed || cached_recent);
           const bool no_audio_activity = !playing && !meta_recent_allowed && !active_recent_screen && !audio_wake_active;
           const bool lighting_active = lighting_mode &&
-                                       (now < id(brightness_active_until_ms) || now < id(audio_ring_active_until_ms));
+                                       (now < id(brightness_active_until_ms) || now < id(hue_ring_active_until_ms) || now < id(audio_ring_active_until_ms));
           const bool idle_now_playing = np_return_ms > 0 && idle_ms > np_return_ms;
           const bool audio_now_playing = audio_mode && now_playing_active;
           const bool lighting_idle_now_playing = lighting_mode && idle_now_playing && now_playing_active;
@@ -1671,7 +1671,7 @@ display:
           log_loop_section("lighting_slider", section_start_ms);
           return;
         }
-        if (!menu_active_now && now >= id(brightness_active_until_ms) && now >= id(audio_ring_active_until_ms)) {
+        if (!menu_active_now && now >= id(brightness_active_until_ms) && now >= id(hue_ring_active_until_ms) && now >= id(audio_ring_active_until_ms)) {
           it.fill(COLOR_OFF);
           log_loop_section("lighting_blank", section_start_ms);
           return;

@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.62 -->
+<!-- Version: 2026.04.17.63 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
+
+- Docs/README: Rework non-spec sections into product-outcome language (what users feel and can do) by removing file-path/architecture-heavy prose from system interaction and feature sections; keep detailed technical capability data centered in specs/cutsheet areas.
 
 - Docs/README: Replace implementation-heavy input inventory wording with outcome-focused product copy; explicitly call out direct lighting Brightness/Hue/Saturation control over rooms or individual lights and keep the Inputs section centered on what users can do (not internal mechanics).
 

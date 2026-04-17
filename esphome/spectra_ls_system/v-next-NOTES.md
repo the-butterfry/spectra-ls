@@ -1,8 +1,60 @@
+<!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
+<!-- Version: 2026.04.17.2 -->
+<!-- Last updated: 2026-04-17 -->
+
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
 
 > Scope: Hardware-driven UX redesign for Spectra LS Control Board v2.
 > Audience: Implementation agent working across RP2040 CircuitPython + ESPHome packages + HA helpers.
 > Status: Draft plan. Update as decisions solidify.
+
+## Naming Strategy + Deferred Full Cleanup (Entity/Helper IDs)
+
+### Current contract policy (active now)
+
+- File/package naming in active includes should use `spectra-ls-*`.
+- Legacy runtime helper/entity IDs (`control_board_*`) remain in place where already deployed.
+- This is intentional for operational stability while `spectra_ls_system` reaches full completion.
+
+### Why cleanup is deferred
+
+- Existing Home Assistant artifacts depend on deployed IDs (dashboards/cards, scripts/automations, template sensors, recorder/history/statistics continuity, and external references/service payloads).
+- Mid-stream global ID renames carry high outage/regression risk.
+
+### Forward naming rule (effective now)
+
+- For all **new** artifacts, use Spectra naming.
+- Files/packages: `spectra-ls-*`.
+- Helpers/entities: `spectra_ls_*`.
+- Docs/comments: avoid introducing new `control_board_*` names except compatibility references.
+
+### Completion trigger gates (do not run cleanup before all pass)
+
+1. `spectra_ls_system` is functionally complete/stable.
+2. Validation templates 1–12 pass consistently in normal operations.
+3. No open contract-level MA routing/selector refactors remain.
+4. A controlled maintenance window is scheduled.
+
+### Full cleanup execution blueprint (future)
+
+- **Inventory:** build full old→new ID map (`control_board_*` → `spectra_ls_*`) and enumerate all reference paths.
+- **Compatibility phase:** introduce `spectra_ls_*` surfaces, mirror/bridge old and new, keep legacy IDs live during burn-in.
+- **Validation phase:** verify both legacy + new surfaces PASS before cutover.
+- **Cutover phase:** flip all references to `spectra_ls_*`, then retire compatibility shims after sustained PASS windows.
+- **Cleanup phase:** remove legacy definitions and preserve migration mapping in docs/changelog.
+
+### Migration-day guardrails
+
+- No ad hoc one-file renames for helper/entity IDs.
+- Keep changes atomic per domain (audio, lighting, UI, hardware, MA hub).
+- Require rollback path (snapshot + tested restore steps).
+- Treat missing helper/script sentinels as blocker.
+
+### Read-depth guidance for future sessions
+
+- Skim-safe default: read this section header/policy only.
+- Deep-read required only when explicitly starting migration.
+- Migration start trigger phrase: **"start full naming cleanup"**.
 
 ## Goals (what success looks like)
 
@@ -10,6 +62,34 @@
 2. **Menu is fallback**: menu encoder remains functional, but hardware changes reassert control.
 3. **Generalizable**: works for installs with 1–N rooms and multiple audio targets.
 4. **Deterministic**: hardware switch positions always map to clear actions, no ambiguous prompts.
+
+## Pathing + Naming Safety Guardrails (Do Not Skip)
+
+### Authoritative edit targets for `spectra_ls_system`
+
+- ESPHome entrypoint: `/mnt/homeassistant/esphome/spectra_ls_system.yaml`
+- Spectra packages only:
+  - `/mnt/homeassistant/esphome/spectra_ls_system/packages/spectra-ls-system.yaml`
+  - `/mnt/homeassistant/esphome/spectra_ls_system/packages/spectra-ls-hardware.yaml`
+  - `/mnt/homeassistant/esphome/spectra_ls_system/packages/spectra-ls-ui.yaml`
+  - `/mnt/homeassistant/esphome/spectra_ls_system/packages/spectra-ls-lighting.yaml`
+  - `/mnt/homeassistant/esphome/spectra_ls_system/packages/spectra-ls-audio-tcp.yaml`
+  - `/mnt/homeassistant/esphome/spectra_ls_system/packages/spectra-ls-diagnostics.yaml`
+- RP2040 source-of-truth:
+  - live: `/media/cory/CIRCUITPY/code.py`
+  - mirror: `/mnt/homeassistant/esphome/circuitpy/code.py`
+
+### Out-of-scope paths for this track (unless explicitly requested)
+
+- `/mnt/homeassistant/esphome/control-py/**` (stabilized v2 line)
+- `/mnt/homeassistant/esphome/control-py/previous/**` (archived)
+- `/mnt/homeassistant/esphome/spectra_ls_system/NOTES-control-board-2.md` (archived/frozen)
+
+### Naming execution rule
+
+- New files/packages/helpers use Spectra naming (`spectra-ls-*`, `spectra_ls_*`).
+- Legacy `control_board_*` runtime IDs remain until dedicated cleanup trigger.
+- Never mix ad hoc renames with behavior changes in one patch set.
 
 ## Current Input Inventory (baseline)
 
@@ -81,9 +161,42 @@ Suggested mapping (generalizable across installs):
 
 ## Implementation Plan (Agent Instructions)
 
+### Execution Phases (commit-scoped)
+
+1. **Phase A — Path-safe scaffolding + event contract reservation**
+   - Confirm all target files are in `spectra_ls_system` and `CIRCUITPY`+mirror only.
+   - Reserve/record event IDs and mode enum contract in this file.
+   - Commit scope: notes + non-behavioral scaffolding only.
+
+2. **Phase B — RP2040 input capture**
+   - Implement selector/switch/momentary scan + debounce + edge-trigger emit.
+   - Update both live `CIRCUITPY` and repo mirror in same change set.
+   - Commit scope: RP2040 only (plus notes/changelog as needed).
+
+3. **Phase C — ESPHome mode/state wiring**
+   - Wire incoming events into `spectra-ls-hardware.yaml` + `spectra-ls-ui.yaml`.
+   - Add `hardware_mode`, menu override clearing, and deterministic route state updates.
+   - Commit scope: spectra package files only.
+
+4. **Phase D — HA helper/routing integration**
+   - Bind mode transitions to existing helper contracts (`ma_active_target`, room/target selectors).
+   - Add only required helper surfaces; avoid broad helper churn.
+   - Commit scope: minimal helper/automation updates.
+
+5. **Phase E — Validation + hardening**
+   - Run validation templates and confirm pass/warn deltas.
+   - Address race/flood/stale-state issues before proceeding.
+   - Commit scope: fixes + docs + changelog.
+
+6. **Phase F — Deferred naming cleanup (future trigger only)**
+   - Execute only after all trigger gates in naming section are satisfied.
+   - Perform compatibility/cutover/cleanup sequence as documented above.
+
 ### Phase 1 — RP2040 CircuitPython (input scanning)
 
-**Files**: `/media/cory/CIRCUITPY/code.py` (and control-py copy)
+**Files**:
+- `/media/cory/CIRCUITPY/code.py` (authoritative live firmware)
+- `/mnt/homeassistant/esphome/circuitpy/code.py` (required mirror sync in same change set)
 
 1. **Add selector input**
    - Choose one:
@@ -105,7 +218,7 @@ Suggested mapping (generalizable across installs):
 
 4. **Event ID assignments**
    - Pick new IDs in an unused range (e.g., 120–129)
-   - Document in this file and in NOTES-control-board-2.md
+   - Document in this file (`v-next-NOTES.md`) and `CHANGELOG.md` when applied
 
 5. **Edge-triggered events**
    - Only send on change to prevent flooding
@@ -116,8 +229,9 @@ Suggested mapping (generalizable across installs):
 ### Phase 2 — ESPHome (ESP32-S3)
 
 **Files**:
-- `/config/esphome/control-py/packages/control-board-hardware.yaml`
-- `/config/esphome/control-py/packages/control-board-ui.yaml`
+- `/config/esphome/spectra_ls_system/packages/spectra-ls-hardware.yaml`
+- `/config/esphome/spectra_ls_system/packages/spectra-ls-ui.yaml`
+- `/config/esphome/spectra_ls_system/packages/spectra-ls-system.yaml` (if shared routing state is needed)
 
 1. **Add sensors / binary_sensors for new events**
    - `mode_selector` (0–4)
@@ -174,7 +288,7 @@ Suggested mapping (generalizable across installs):
 - Hardware mode always overrides menu when selector changes.
 - Audio target switch positions never show “control target prompt.”
 - No event flooding from selector or 3-way switch.
-- All mappings documented in NOTES-control-board-2.md + CHANGELOG when implemented.
+- All mappings documented in `v-next-NOTES.md` + `CHANGELOG.md` when implemented.
 
 ---
 

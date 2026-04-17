@@ -1,6 +1,6 @@
 # Description: Spectra LS lighting hub (rooms/targets from HA Areas).
-# Version: 2026.03.28.4
-# Last updated: 2026-03-28
+# Version: 2026.04.17.5
+# Last updated: 2026-04-17
 # Update version/date whenever you change this file.
 #
 # Notes:
@@ -286,17 +286,10 @@ automation:
           target_options: >
             {% if target_parsed | count > 0 %}
               {{ target_parsed }}
-            {% elif current_options | count > 0 %}
-              {{ current_options }}
             {% else %}
               {{ ['All'] }}
             {% endif %}
-          safe_options: >
-            {% if current not in target_options and current not in ['unknown','unavailable',''] %}
-              {{ (target_options + [current]) | unique | list }}
-            {% else %}
-              {{ target_options }}
-            {% endif %}
+          safe_options: "{{ target_options }}"
           options_changed: "{{ current_options | join('||') != target_options | join('||') }}"
           needs_reset: "{{ (target_parsed | count > 0) and (states('input_select.control_board_target') not in target_options) }}"
           should_update_options: "{{ options_changed and ((target_parsed | count > 0) or (current_options | count == 0)) }}"

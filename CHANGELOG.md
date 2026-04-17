@@ -1,10 +1,14 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.75 -->
+<!-- Version: 2026.04.17.76 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
+
+- HA/Lighting Contract Fix: Enforce strict light-only target options in `packages/spectra_ls_lighting_hub.yaml` by removing stale-current option carryover from target sync, preventing non-light entries (for example speaker labels) from persisting in `input_select.control_board_target`.
+
+- ESPHome/UI UX Fix: Add direct one-click entry from non-menu lighting screen into Lighting Rooms menu in `spectra-ls-ui.yaml` so opening lighting menu no longer requires an extra select press.
 
 - ESPHome/UI Navigation Fix: Eliminate boot-time ghost root-menu rendering that was visually presenting menu tiles without an active menu state, causing dead-end-feeling navigation and hidden menu semantics.
 

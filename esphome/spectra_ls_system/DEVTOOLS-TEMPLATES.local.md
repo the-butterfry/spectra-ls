@@ -1,5 +1,5 @@
 <!-- Description: Copy/paste Home Assistant Dev Tools template diagnostics for Spectra LS System. -->
-<!-- Version: 2026.04.17.4 -->
+<!-- Version: 2026.04.17.5 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Spectra LS System — Dev Tools Template Validation
@@ -1485,4 +1485,163 @@ Unavailable core entities:
 - Partial contract loss detected; inspect package reload logs and missing IDs above.
 {% endif %}
 ```
+<!-- EOF -->
+
+## 13) Source Truth Test — Is HA Down or Is Control-Hub Path Broken?
+
+```jinja
+{# =========================
+  Source Truth Test (HA vs Control-Hub Path)
+  Run in: Developer Tools -> Template
+  Purpose: answer "is HA inaccessible?" vs "source/control-hub path is degraded"
+  ========================= #}
+
+{% set core_ha = [
+  'sensor.time',
+  'sun.sun'
+] %}
+
+{% set hub_contract = [
+  'sensor.ma_api_url',
+  'sensor.ma_control_host',
+  'sensor.ma_control_hosts',
+  'input_select.ma_active_target',
+  'sensor.ma_active_target_by_host',
+  'sensor.ma_active_meta_entity',
+  'sensor.now_playing_entity',
+  'sensor.now_playing_state',
+  'sensor.now_playing_title',
+  'sensor.control_board_room_options',
+  'sensor.control_board_target_options',
+  'input_select.control_board_room',
+  'input_select.control_board_target'
+] %}
+
+{% set source_inputs = [
+  'media_player.control_board_v2_arylic',
+  'sensor.control_board_v2_ha_audio_app',
+  'sensor.control_board_v2_ha_audio_source',
+  'sensor.control_board_v2_arylic_source',
+  'sensor.control_board_v2_arylic_lr_source_state'
+] %}
+
+{% set ns = namespace(
+  core_missing=[], core_bad=[],
+  hub_missing=[], hub_bad=[],
+  src_missing=[], src_bad=[],
+  src_ok=[]
+) %}
+
+{% for eid in core_ha %}
+  {% if states[eid] is none %}
+    {% set ns.core_missing = ns.core_missing + [eid] %}
+  {% else %}
+    {% set st = states(eid) %}
+    {% if st in ['unknown','unavailable','none',''] %}
+      {% set ns.core_bad = ns.core_bad + [eid] %}
+    {% endif %}
+  {% endif %}
+{% endfor %}
+
+{% for eid in hub_contract %}
+  {% if states[eid] is none %}
+    {% set ns.hub_missing = ns.hub_missing + [eid] %}
+  {% else %}
+    {% set st = states(eid) %}
+    {% if st in ['unknown','unavailable','none',''] %}
+      {% set ns.hub_bad = ns.hub_bad + [eid] %}
+    {% endif %}
+  {% endif %}
+{% endfor %}
+
+{% for eid in source_inputs %}
+  {% if states[eid] is none %}
+    {% set ns.src_missing = ns.src_missing + [eid] %}
+  {% else %}
+    {% set st = states(eid) %}
+    {% if st in ['unknown','unavailable','none',''] %}
+      {% set ns.src_bad = ns.src_bad + [eid] %}
+    {% else %}
+      {% set ns.src_ok = ns.src_ok + [eid] %}
+    {% endif %}
+  {% endif %}
+{% endfor %}
+
+{% set room_opts = state_attr('input_select.control_board_room','options') or [] %}
+{% set target_opts = state_attr('input_select.control_board_target','options') or [] %}
+{% set active_target = states('input_select.ma_active_target') %}
+{% set control_host = states('sensor.ma_control_host') %}
+
+{% set ha_core_ok = (ns.core_missing | length == 0) and (ns.core_bad | length == 0) %}
+{% set hub_ok = (ns.hub_missing | length == 0) and (ns.hub_bad | length == 0) %}
+{% set src_ok_any = (ns.src_ok | length) > 0 %}
+{% set room_target_options_ok = (room_opts | length) > 0 and (target_opts | length) > 0 %}
+
+{% set verdict = 'PASS' %}
+{% set conclusion = 'Hub/source path appears healthy.' %}
+
+{% if not ha_core_ok %}
+  {% set verdict = 'FAIL' %}
+  {% set conclusion = 'Home Assistant core appears degraded or not fully ready.' %}
+{% elif (ns.hub_missing | length) >= 5 %}
+  {% set verdict = 'FAIL' %}
+  {% set conclusion = 'Control-hub package contracts are missing (loader/init regression likely).' %}
+{% elif (not room_target_options_ok) or (not src_ok_any) or (control_host in ['unknown','unavailable','none','']) %}
+  {% set verdict = 'WARN' %}
+  {% set conclusion = 'HA is reachable, but control-hub source/option pipeline is degraded.' %}
+{% endif %}
+
+### Source Truth Test — HA vs Control Hub
+- Result: **{{ verdict }}**
+- Timestamp: **{{ now() }}**
+- Conclusion: **{{ conclusion }}**
+
+### Quick state snapshot
+- HA core healthy: **{{ ha_core_ok }}**
+- Control-hub contract healthy: **{{ hub_ok }}**
+- Any usable source feed present: **{{ src_ok_any }}**
+- Room/Target option lists non-empty: **{{ room_target_options_ok }}**
+
+### Key values
+- `input_select.ma_active_target`: **{{ active_target }}**
+- `sensor.ma_control_host`: **{{ control_host }}**
+- `input_select.control_board_room` options count: **{{ room_opts | length }}**
+- `input_select.control_board_target` options count: **{{ target_opts | length }}**
+
+### Missing / unhealthy signals
+{% if (ns.core_missing | length + ns.core_bad | length + ns.hub_missing | length + ns.hub_bad | length + ns.src_missing | length + ns.src_bad | length) == 0 %}
+- none
+{% else %}
+{% for e in ns.core_missing %}
+- core missing: `{{ e }}`
+{% endfor %}
+{% for e in ns.core_bad %}
+- core bad: `{{ e }}` (state={{ states(e) }})
+{% endfor %}
+{% for e in ns.hub_missing %}
+- hub missing: `{{ e }}`
+{% endfor %}
+{% for e in ns.hub_bad %}
+- hub bad: `{{ e }}` (state={{ states(e) }})
+{% endfor %}
+{% for e in ns.src_missing %}
+- source missing: `{{ e }}`
+{% endfor %}
+{% for e in ns.src_bad %}
+- source bad: `{{ e }}` (state={{ states(e) }})
+{% endfor %}
+{% endif %}
+
+### Action guidance
+{% if verdict == 'FAIL' and not ha_core_ok %}
+- HA is likely not fully healthy. Restart HA core and re-run this test.
+{% elif verdict == 'FAIL' %}
+- Control-hub package likely failed to load. Run Template #12 (Package Loader Regression Check) and fix missing sentinels.
+{% elif verdict == 'WARN' %}
+- HA is reachable; issue is source/contract flow. Check `sensor.control_board_room_options`, `sensor.control_board_target_options`, and active target/host mapping before blaming HA uptime.
+{% else %}
+- Path looks healthy. If OLED still reports bad source, inspect ESP logs for receive/staleness gating.
+{% endif %}
+```
+
 <!-- EOF -->

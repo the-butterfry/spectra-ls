@@ -1,11 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.16.3 -->
+<!-- Version: 2026.04.16.4 -->
 <!-- Last updated: 2026-04-16 -->
 
 # Changelog
 
 ## 2026-04-16
 
+- ESPHome: Reduce diagnostics and control-number publish cadence to 30s (`EQ Low/Mid/High`, `Arylic Volume Set`, `OLED Contrast`, heap/PSRAM diagnostics) and simplify CPU reporting to a single `CPU Usage` sensor (disable per-core sensors and top-task logs).
 - ESPHome: Reduce number state publish spam by throttling template number update intervals (`EQ Low/Mid/High`, `Arylic Volume Set`) from 500ms to 5s and `OLED Contrast` from 1s to 10s.
 - ESPHome: Canonicalize secrets structure to `esphome/secrets.yaml` and remove duplicate per-project `secrets.yaml` under `esphome/spectra_ls_system/`.
 - Repo: Add tracked `esphome/secrets.example.yaml` template while keeping real secret files ignored.

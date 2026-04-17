@@ -1,5 +1,5 @@
 <!-- Description: Human-readable overview and deployment guide for the Spectra LS Home Assistant + ESPHome system. -->
-<!-- Version: 2026.04.17.12 -->
+<!-- Version: 2026.04.17.13 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Spectra LS System
@@ -16,21 +16,21 @@ On `main`, project direction follows `esphome/spectra_ls_system/v-next-NOTES.md`
 
 ### MCUs
 
-- **ESP32-S3** (`esp32-s3-devkitc-1`): OLED/UI rendering, Home Assistant API integration, network control paths.
-- **RP2040 (CircuitPython)**: physical input scanning and event publishing upstream.
+- **[ESP32-S3](https://www.espressif.com/en/products/socs/esp32-s3)** (`[esp32-s3-devkitc-1](https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32s3/esp32-s3-devkitc-1/index.html)`): OLED/UI rendering, Home Assistant API integration, network control paths.
+- **[RP2040](https://www.raspberrypi.com/products/rp2040/) ([CircuitPython](https://circuitpython.org/))**: physical input scanning and event publishing upstream.
 
 ### Expanders / Input ICs
 
-- **PCF8575** digital expander (active at `0x20`; optional expansion at `0x21`) for button/switch inputs.
-- **Seesaw rotary encoders** (menu + lighting encoders).
-- **ADS1015** analog ADC for high-resolution pots (volume, EQ bass/treble, lighting slider).
+- **[PCF8575](https://www.nxp.com/products/interfaces/ic-spi-i3c-interface-devices/general-purpose-i-o-gpio/remote-16-bit-i-o-expander-for-ic-bus:PCF8575)** digital expander (active at `0x20`; optional expansion at `0x21`) for button/switch inputs.
+- **[Seesaw](https://learn.adafruit.com/adafruit-seesaw-atsamd09-breakout/overview) rotary encoders** (menu + lighting encoders).
+- **[ADS1015](https://www.ti.com/product/ADS1015)** analog ADC for high-resolution pots (volume, EQ bass/treble, lighting slider).
 - **RP2040 internal ADC** for EQ mid channel.
-- **ADS7830** (recommended expansion, `0x49`) for additional low-resolution selector/switch channels.
+- **[ADS7830](https://www.ti.com/product/ADS7830)** (recommended expansion, `0x49`) for additional low-resolution selector/switch channels.
 
 ### Control Interfaces
 
-- **Home Assistant API** (`api:` in ESPHome) for entity state and helper orchestration.
-- **Wi-Fi/TCP control** to Arylic/LinkPlay/WiiM-class endpoints (primary real-time audio control path).
+- **[Home Assistant API](https://www.home-assistant.io/integrations/api/)** (`api:` in ESPHome) for entity state and helper orchestration.
+- **Wi-Fi/TCP control** to [Arylic](https://developer.arylic.com/httpapi/)/[Linkplay](https://linkplay.com/)/[WiiM](https://www.wiimhome.com/)-class endpoints (primary real-time audio control path).
 - **RP2040 ↔ ESP32 UART** event transport for hardware controls.
 - **I2C buses** for OLED and local input peripherals (PCF8575 / Seesaw / ADC devices).
 
@@ -38,9 +38,9 @@ On `main`, project direction follows `esphome/spectra_ls_system/v-next-NOTES.md`
 
 Spectra Level / Source (L/S) is architected as a fully integrated high-fidelity sound system, not just a DAC-on-a-board implementation. In audio-chain terms, the ES9038Q2M stage is only one node in a controlled end-to-end path: source ingest, digital transport integrity, deterministic routing, and low-noise final conversion. L/S is designed to accept mixed A/V source workflows and render a reference-grade output path with an "audio nerd" focus on signal quality, timing stability, and conversion transparency.
 
-- **HDMI input from an ARC-capable source** is supported in the source chain.
+- **[HDMI](https://www.hdmi.org/) input from an [ARC](https://en.wikipedia.org/wiki/Audio_Return_Channel)-capable source** is supported in the source chain.
 - ARC digital audio is split/extracted and routed into the final output conversion stage.
-- Final DAC stage: **ESS ES9038Q2M** (`ESS 9038Q2M DAC`).
+- Final DAC stage: **[ESS ES9038Q2M](https://www.esstech.com/products-overview/es9038q2m/)** (`ESS 9038Q2M DAC`).
 - Conversion target capability: **192kHz / 24-bit**.
 - Referenced supported formats on this output chain:
   - `FLAC`
@@ -53,7 +53,7 @@ Spectra Level / Source (L/S) is architected as a fully integrated high-fidelity 
 
 ### Recommended Screen
 
-- **I2C OLED, SSD1306 128x64 mode** (configured `oled_model: "SSD1306 128x64"`, typical address `0x3C`).
+- **I2C OLED, [SSD1306](https://www.solomon-systech.com/product/ssd1306/) 128x64 mode** (configured `oled_model: "SSD1306 128x64"`, typical address `0x3C`).
 - SSD1309-compatible modules are supported when driven in SSD1306 mode in current configs.
 
 ## System Interaction (Moderate Detail)
@@ -92,10 +92,10 @@ Recommended flow: run 1 → 2 → 3 after deploy, then use 4 for specific action
 
 ## Audio Clients / Player Types Spectra LS Interacts With
 
-- **Music Assistant players** (`media_player` entities) for normalized multi-source metadata and active target context.
-- **Home Assistant media players** (generic `media_player.*`) for cross-integration state/transport interoperability.
-- **WiiM Audio integration players** for transport-oriented control paths in supported rooms.
-- **Arylic / LinkPlay TCP endpoints** for direct low-latency control (volume, EQ, source, transport fallback).
+- **[Music Assistant](https://music-assistant.io/) players** (`media_player` entities) for normalized multi-source metadata and active target context.
+- **[Home Assistant](https://www.home-assistant.io/) media players** (generic `media_player.*`) for cross-integration state/transport interoperability.
+- **[WiiM](https://www.wiimhome.com/) Audio integration players** for transport-oriented control paths in supported rooms.
+- **[Arylic](https://developer.arylic.com/httpapi/) / [LinkPlay](https://linkplay.com/) TCP endpoints** for direct low-latency control (volume, EQ, source, transport fallback).
 - **AirPlay / Apple TV style sources** detected through HA/MA metadata and source-app attributes.
 - **Plex sessions/players** (optional) for now-playing enrichment and local-session filtering logic.
 

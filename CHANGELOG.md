@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.50 -->
+<!-- Version: 2026.04.17.51 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
+
+- Docs/README: Convert front-page hardware/audio ecosystem mentions to inline manufacturer/project URLs (MCUs, input ICs, control interface ecosystems, HDMI/ARC reference, ESS ES9038Q2M, and OLED controller references) so readers can jump directly from each mention to its canonical project/vendor page.
 
 - Docs/README: Normalize product naming in front-page audio section to introduce **Level / Source** once and use **L/S** shorthand thereafter while preserving published ARC/DAC capability details.
 

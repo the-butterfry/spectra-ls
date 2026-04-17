@@ -1,5 +1,5 @@
 <!-- Description: Human-readable overview and deployment guide for the Spectra Level / Source (L/S) Home Assistant + ESPHome system. -->
-<!-- Version: 2026.04.17.15 -->
+<!-- Version: 2026.04.17.16 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Spectra Level / Source
@@ -36,9 +36,9 @@ On `main`, project direction follows `esphome/spectra_ls_system/v-next-NOTES.md`
 
 ### Digital Audio Ingest + Final DAC Path
 
-Spectra Level / Source (L/S) is architected as a fully integrated high-fidelity sound system, not just a DAC-on-a-board implementation. In audio-chain terms, the ES9038Q2M stage is only one node in a controlled end-to-end path: source ingest, digital transport integrity, deterministic routing, and low-noise final conversion. L/S is designed to accept mixed A/V source workflows and render a reference-grade output path with a strong focus on signal quality, timing stability, and conversion transparency.
+Spectra Level / Source (L/S) is designed for real-world use right where you live: place it on the coffee table and treat it as your home digital-to-analog control hub. From the couch or desk, you get tactile control over sources, routing, and playback without living inside phone apps. Under the hood, it still maintains a controlled end-to-end path for signal quality, timing stability, and conversion transparency.
 
-- **[HDMI](https://www.hdmi.org/) input from an [ARC](https://en.wikipedia.org/wiki/Audio_Return_Channel)-capable source** is supported in the source chain.
+- HDMI input from an ARC-capable source is supported in the source chain.
 - ARC digital audio is split/extracted and routed into the final output conversion stage.
 - Final DAC stage: **[ESS ES9038Q2M](https://www.esstech.com/products-overview/es9038q2m/)** (`ESS 9038Q2M DAC`).
 - Conversion target capability: **192kHz / 24-bit**.

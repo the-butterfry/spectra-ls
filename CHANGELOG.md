@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.76 -->
+<!-- Version: 2026.04.17.77 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
+
+- HA/Lighting Target Hygiene: Harden `packages/spectra_ls_lighting_hub.yaml` target derivation to exclude speaker-like pseudo-light entities (name/entity contains `speaker`) while retaining domain-light routing, preventing entries like `Kitchen speakers` from appearing in lighting target menus.
 
 - HA/Lighting Contract Fix: Enforce strict light-only target options in `packages/spectra_ls_lighting_hub.yaml` by removing stale-current option carryover from target sync, preventing non-light entries (for example speaker labels) from persisting in `input_select.control_board_target`.
 

@@ -1,5 +1,5 @@
 # Description: Spectra LS lighting hub (rooms/targets from HA Areas).
-# Version: 2026.04.17.5
+# Version: 2026.04.17.6
 # Last updated: 2026-04-17
 # Update version/date whenever you change this file.
 #
@@ -64,7 +64,11 @@ template:
             {% set lights = area_entities(ns.area_id) | select('match','^light\.') | list %}
             {% for ent in lights %}
               {% set label = state_attr(ent, 'friendly_name') or ent.split('.')[-1] %}
-              {% set ns.targets = ns.targets + [label] %}
+              {% set ent_low = ent | lower %}
+              {% set label_low = label | lower %}
+              {% if 'speaker' not in ent_low and 'speaker' not in label_low %}
+                {% set ns.targets = ns.targets + [label] %}
+              {% endif %}
             {% endfor %}
           {% endif %}
           {{ ns.targets | tojson }}
@@ -80,7 +84,12 @@ template:
             {% if ns.area_id %}
               {% set lights = area_entities(ns.area_id) | select('match','^light\.') | list %}
               {% for ent in lights %}
-                {% set ns.targets = ns.targets + [ent] %}
+                {% set label = state_attr(ent, 'friendly_name') or ent.split('.')[-1] %}
+                {% set ent_low = ent | lower %}
+                {% set label_low = label | lower %}
+                {% if 'speaker' not in ent_low and 'speaker' not in label_low %}
+                  {% set ns.targets = ns.targets + [ent] %}
+                {% endif %}
               {% endfor %}
             {% endif %}
             {{ ns.targets | count }}
@@ -114,9 +123,11 @@ template:
           {% if target != 'All' and ns.area_id %}
             {% for ent in area_entities(ns.area_id) | select('match','^light\.') | list %}
               {% set label = state_attr(ent, 'friendly_name') or ent.split('.')[-1] %}
+              {% set ent_low = ent | lower %}
+              {% set label_low = label | lower %}
               {% set label_norm = label | lower | regex_replace('[^a-z0-9]+','') %}
               {% set ent_norm = ent.split('.')[-1] | lower | regex_replace('[^a-z0-9]+','') %}
-              {% if ns.entity == '' and (label == target or label_norm == target_norm or ent_norm == target_norm) %}
+              {% if ns.entity == '' and 'speaker' not in ent_low and 'speaker' not in label_low and (label == target or label_norm == target_norm or ent_norm == target_norm) %}
                 {% set ns.entity = ent %}
               {% endif %}
             {% endfor %}

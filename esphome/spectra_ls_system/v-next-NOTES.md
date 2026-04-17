@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.17.4 -->
+<!-- Version: 2026.04.17.5 -->
 <!-- Last updated: 2026-04-17 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -430,3 +430,26 @@ Expected WARN/PASS interpretation:
 - Menu encoder remains fallback; hardware selector reasserts state.
 - Expansion via ADS7830/PCF8575 is allowed.
 - Ensure selector states map cleanly to HA target lists across multi-room installs.
+
+### Future Cleanup / Tuning Backlog — Host Inventory + Overrides (Productization)
+
+- [ ] Replace ad hoc host defaults with a single product-scoped host inventory model (canonical source), rather than split per-user root files.
+- [ ] Define canonical naming for inventory artifact(s): avoid user/site names; prefer product namespace (e.g., `spectra_ls_host_inventory`).
+- [ ] Design host inventory schema to include richer metadata, not just IP:
+   - stable device key / logical role (`primary`, `room`, etc.)
+   - transport capabilities (TCP/HTTP/UPnP)
+   - friendly label(s)
+   - optional MAC and firmware/version hints
+   - override precedence fields (auto-discovered vs user-pinned)
+- [ ] Add a generation path (auto-discovery + synthesis) that can produce/refresh inventory defaults without committing user-specific data.
+- [ ] Add a user override layer (manual corrections/augmentations) with explicit merge precedence over discovered values.
+- [ ] Ensure generated/override artifacts are local-only by default (ignored in git), while repository keeps only universal templates/examples.
+- [ ] Update MA control hub helper wiring to read from canonical inventory surfaces (or derived helpers) instead of hard-coded per-install includes.
+- [ ] Add validation checks/scripts for schema integrity and required keys (fail fast on malformed inventory).
+- [ ] Add migration notes for existing installs that currently depend on `spectra_ls_primary_tcp_host` / `spectra_ls_room_tcp_host` keys.
+
+Current state note (2026-04-17):
+
+- Root `spectra_ls_primary_tcp_host.yaml` and `spectra_ls_room_tcp_host.yaml` are local-only and untracked from GitHub.
+- Active `ma_control_hub` host defaults are secrets-based via `!secret spectra_ls_primary_tcp_host` and `!secret spectra_ls_room_tcp_host`.
+- This backlog item is the planned path to evolve from simple host keys to a universal product-grade host inventory/override model.

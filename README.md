@@ -1,18 +1,18 @@
-<!-- Description: Human-readable overview and deployment guide for the Spectra Level / Source (Spectra L/S) Home Assistant + ESPHome system. -->
-<!-- Version: 2026.04.17.25 -->
+<!-- Description: Human-readable overview and deployment guide for the Spectra L/S Home Assistant + ESPHome system. -->
+<!-- Version: 2026.04.17.26 -->
 <!-- Last updated: 2026-04-17 -->
 
-# Spectra Level / Source
+# Spectra L/S
 
 **⚠️ State of project (published 2026-04-16): Active heavy development on `main`. Not currently recommended for fresh production installations unless you are comfortable with frequent updates and occasional migration adjustments.**
 
-[Home Assistant](https://www.home-assistant.io/) unifies and automates devices and routines across your home; Spectra Level / Source (Spectra L/S) brings that power back into your hands as an intelligent physical control surface. With tactile knobs, smooth sliders, physical switches, dedicated buttons, and rotary dials, direct analog inputs drive Volume and Physical 3-Band EQ control for everything from everyday listening to a home dance party.
+[Home Assistant](https://www.home-assistant.io/) unifies and automates devices and routines across your home; Spectra Level / Source (Spectra L/S) is the tactile layer that puts control back in your hands. With physical controls for transport, lighting, volume, and tone, you can shape the atmosphere of your home in seconds from the coffee table.
 
-This is the point: Spectra L/S lets you run your home audio and lighting like an instrument, not an app screen. Hit Play/Pause, jump Next/Back, shape tone, move brightness, and switch rooms in seconds from the coffee table while the OLED keeps every move clear and immediate.
+Spectra L/S is built to feel immediate. Tap Play/Pause, jump Next/Back, tune brightness and color, and sculpt sound with Physical 3-Band EQ — all with clear OLED feedback that keeps every action obvious.
 
-Behind the scenes, Home Assistant manages room logic, helpers, and automation flow, while ESPHome drives the OLED UI and real-time control behavior. In v-next, multiple switches and dials expand functionality while keeping the interface simple and clear, and the screen stays responsive to inputs with visual menu feedback as you navigate. If Home Assistant already knows a smart light or sound target, Spectra L/S can discover it and interact automatically, including direct tuning/control workflows from the hardware interface.
+It is also built to feel connected. If Home Assistant already knows a light or sound target, Spectra L/S can discover it and interact automatically, so your existing rooms and devices become instantly controllable from one physical surface.
 
-On `main`, project direction follows `esphome/spectra_ls_system/v-next-NOTES.md`: hardware-first UX, menu as fallback, deterministic controls, and scalable room/target handling.
+On `main`, direction follows `esphome/spectra_ls_system/v-next-NOTES.md`: hardware-first UX, menu as fallback, deterministic controls, and scalable room/target handling.
 
 ## Hardware Reference (Current + Recommended)
 
@@ -56,7 +56,7 @@ On `main`, project direction follows `esphome/spectra_ls_system/v-next-NOTES.md`
 
 ### Digital Audio Ingest + Final DAC Path
 
-Spectra Level / Source (Spectra L/S) is designed for real-world use right where you live: place it on the coffee table and treat it as your home digital-to-analog control hub. From the couch or desk, you get tactile control over sources, routing, and playback without living inside phone apps. Under the hood, it still maintains a controlled end-to-end path for signal quality, timing stability, and conversion transparency.
+Spectra L/S is designed for real-world use right where you live: place it on the coffee table and treat it as your home digital-to-analog control hub. From the couch or desk, you get tactile control over sources, routing, and playback without living inside phone apps. Under the hood, it still maintains a controlled end-to-end path for signal quality, timing stability, and conversion transparency.
 
 Spectra L/S also supports whole-home multi-speaker playback with tight room-to-room synchronization, so one tap can keep every room locked to the same track and timing. You can also split zones for independent playback when needed, including routing supported audio-input sources into grouped multi-room streaming.
 

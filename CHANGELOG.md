@@ -1,11 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.3 -->
+<!-- Version: 2026.04.17.4 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
 
+- HA: Fix `ma_control_hub` package loader conflicts by removing duplicate `packages/ma_control_hub/*.yaml` split fragments (keep `.inc` only) so `!include_dir_named packages` does not auto-load sub-fragments as standalone packages.
 - HA: Restore missing `/config/spectra_ls_primary_tcp_host.yaml` and `/config/spectra_ls_room_tcp_host.yaml` include files used by `packages/ma_control_hub/input_text.inc` to resolve startup config load errors.
 - ESPHome: Phase 13 rename step on `spectra_ls_system` path — rename hardware package include from `packages/control-board-hardware.yaml` to `packages/spectra-ls-hardware.yaml` and repoint `esphome/spectra_ls_system.yaml` include.
 - ESPHome: Phase 12 rename step on `spectra_ls_system` path — rename active peripherals include from `control-board-peripherals-no-rings.yaml` to `spectra-ls-peripherals.yaml` and repoint `esphome/spectra_ls_system.yaml` include.

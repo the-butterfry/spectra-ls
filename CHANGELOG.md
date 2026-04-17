@@ -1,11 +1,13 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.16.9 -->
+<!-- Version: 2026.04.16.11 -->
 <!-- Last updated: 2026-04-16 -->
 
 # Changelog
 
 ## 2026-04-16
 
+- Docs: README description now calls out room/lighting/audio auto-discovery and minimal user configuration expectations.
+- Repo/Docs: Stop tracking root `configuration.yaml`; switch to placeholder-based integration via `SPECTRA-HA-CONFIG-PLACEHOLDERS.md` for adding Spectra-specific lines into an existing Home Assistant config.
 - Docs: Add bold README project-state banner (active heavy development + publish date) and a current hardware reference section covering MCUs, expanders, control interfaces, and recommended OLED screen profile.
 - Docs: Declare `esphome/spectra_ls_system/v-next-NOTES.md` as the `main` branch direction source and require `README.md` alignment to that hardware-first roadmap.
 - Docs: Update README elevator pitch to plain-English whole-home audio + lighting focus and add explicit audio clients/player types section (Music Assistant, HA media_player, WiiM integration, Arylic/LinkPlay, AirPlay/Apple TV, Plex optional).
@@ -18,13 +20,10 @@
 - Repo: Add tracked `esphome/secrets.example.yaml` template while keeping real secret files ignored.
 - Repo: Establish concurrent dual-branch operations with dedicated `menu-only` worktree under `.worktrees/menu-only`.
 - Docs: Add filesystem safety gate to prevent destructive live-path moves/deletes without reversible snapshot and verification.
-- Repo: Tighten HA tracking scope to Spectra-only (`configuration.yaml`, `packages/`, `esphome/`); stop tracking generic HA root `automations.yaml`, `scripts.yaml`, and `scenes.yaml`.
+- Repo: Tighten HA tracking scope to Spectra project docs/packages/ESPHome paths and stop tracking generic HA root runtime files.
 
 ## 2026-04-15
 
-- ESPHome: Rename `spectra_ls_system/packages/*` files from `control-board-*` to `spectra_ls_system-*` and update all in-project references/includes.
-- ESPHome: Rename `esphome/spectra_ls_system/control-board-headless.yaml` to `esphome/spectra_ls_system/spectra_ls_system-headless.yaml`.
-- Repo: Enforce mandatory per-file version metadata policy in Copilot instructions (Description + Version + Last updated; bump minor on every edit).
 - Repo: Enforce RP2040 source-of-truth policy (live `CIRCUITPY/` + single repo mirror `esphome/circuitpy/`) and remove stale duplicate `boot.py`/`code.py` copies from other ESPHome paths.
 - Docs: Tighten Copilot instructions for senior/public-product standards, latest HA/ESPHome API diligence, and mandatory dual-sync RP2040 edits (live `CIRCUITPY/` + `esphome/circuitpy/`).
 - Repo: Migrate to top-level `/mnt/homeassistant` Git root and import `esphome` history under `esphome/` with preserved commit history.

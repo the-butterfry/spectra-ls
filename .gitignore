@@ -1,5 +1,5 @@
 # Description: Top-level ignore rules for Home Assistant monorepo.
-# Version: 2026.04.16.2
+# Version: 2026.04.16.3
 # Last updated: 2026-04-16
 
 # Secrets / credentials
@@ -40,6 +40,7 @@ test.txt
 spectra_ls_secrets.yaml
 
 # Non-spectra HA root files (out of repo scope)
+configuration.yaml
 automations.yaml
 scripts.yaml
 scenes.yaml
@@ -48,7 +49,7 @@ scenes.yaml
 !.github/
 !.github/**
 !CHANGELOG.md
-!configuration.yaml
+!SPECTRA-HA-CONFIG-PLACEHOLDERS.md
 !packages/
 !packages/**
 !esphome/

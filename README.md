@@ -1,5 +1,5 @@
 <!-- Description: Human-readable overview and deployment guide for the Spectra LS Home Assistant + ESPHome system. -->
-<!-- Version: 2026.04.16.5 -->
+<!-- Version: 2026.04.16.7 -->
 <!-- Last updated: 2026-04-16 -->
 
 # Spectra LS System
@@ -8,7 +8,7 @@
 
 Home Assistant unifies and automates devices and routines across your home; Spectra LS brings that power back into your hands as an intelligent physical control surface. With tactile knobs, smooth sliders, physical switches, dedicated buttons, and rotary dials, you can control whole-home music and lighting by touch instead of living inside phone apps.
 
-Behind the scenes, Home Assistant manages room logic, helpers, and automation flow, while ESPHome drives the OLED UI and real-time control behavior. Input hardware feeds clean control events into that stack, so transport, source selection, volume, EQ, lighting target selection, and lighting adjustments stay quick and natural even when upstream state updates are briefly noisy.
+Behind the scenes, Home Assistant manages room logic, helpers, and automation flow, while ESPHome drives the OLED UI and real-time control behavior. Spectra LS is designed to auto-discover rooms, lighting targets, and audio players from your existing setup, so day-to-day operation needs very little manual configuration.
 
 On `main`, project direction follows `esphome/spectra_ls_system/v-next-NOTES.md`: hardware-first UX, menu as fallback, deterministic controls, and scalable room/target handling.
 
@@ -107,6 +107,7 @@ On `main`, project direction follows `esphome/spectra_ls_system/v-next-NOTES.md`
 
 ### 6) Reload Home Assistant and package state
 
+0. If you are integrating into an existing Home Assistant install, merge the placeholder lines from `SPECTRA-HA-CONFIG-PLACEHOLDERS.md` into your local `configuration.yaml`.
 1. Reload YAML configuration or restart Home Assistant as needed.
 2. Reload affected template/automation helpers.
 3. Verify key entity availability (target selectors, now-playing, control host helpers).

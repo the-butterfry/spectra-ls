@@ -1,11 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.16.5 -->
+<!-- Version: 2026.04.16.6 -->
 <!-- Last updated: 2026-04-16 -->
 
 # Changelog
 
 ## 2026-04-16
 
+- Docs: Rewrite README project-intent intro to emphasize whole-home audio + lighting control and simplify system interaction language.
 - Docs: Add mandatory shared-contract go/no-go checklist (`.github/SHARED-CONTRACT-CHECKLIST.md`) and wire it into branch runbook + Copilot directives.
 - Docs: Add top-level repository `README.md` with project intent, architecture interaction summary, key features, and detailed deploy instructions.
 - ESPHome: Reduce diagnostics and control-number publish cadence to 30s (`EQ Low/Mid/High`, `Arylic Volume Set`, `OLED Contrast`, heap/PSRAM diagnostics) and simplify CPU reporting to a single `CPU Usage` sensor (disable per-core sensors and top-task logs).

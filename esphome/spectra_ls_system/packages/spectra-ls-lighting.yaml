@@ -1,5 +1,5 @@
 # Description: Lighting controls package for Spectra LS System.
-# Version: 2026.04.17.6
+# Version: 2026.04.17.7
 # Last updated: 2026-04-17
 # Update version/date whenever you change this file.
 
@@ -111,7 +111,8 @@ sensor:
     accuracy_decimals: 0
     on_value:
       - lambda: |-
-          const bool room_target_menu_active = id(menu_active) && (id(menu_level) == 5 || id(menu_level) == 6);
+          const bool room_target_menu_active = id(menu_active) &&
+                                               (id(menu_level) == ${menu_level_lighting_rooms} || id(menu_level) == ${menu_level_lighting_targets});
           if (room_target_menu_active) {
             id(note_menu_input).execute();
           } else {
@@ -140,13 +141,13 @@ sensor:
           int next_room = prev_room;
           int next_target = prev_target;
           if (id(menu_active)) {
-            if (id(menu_level) == 5) {
+            if (id(menu_level) == ${menu_level_lighting_rooms}) {
               const int idx = id(menu_index);
               if (idx >= 0 && idx < room_count) {
                 next_room = idx;
                 next_target = 0;
               }
-            } else if (id(menu_level) == 6) {
+            } else if (id(menu_level) == ${menu_level_lighting_targets}) {
               const int room = id(menu_light_room);
               const int count = target_count + 1;
               const int back_idx = count - 1;
@@ -239,7 +240,7 @@ interval:
           if (id(lighting_resume_menu_pending) && !id(menu_active) && !lighting_activity_active) {
             id(menu_active) = true;
             int lvl = id(lighting_resume_menu_level);
-            if (lvl < 1) lvl = 7;
+            if (lvl < 1) lvl = ${menu_level_lighting_adjust};
             int idx = id(lighting_resume_menu_index);
             if (idx < 0) idx = 0;
             id(menu_level) = lvl;

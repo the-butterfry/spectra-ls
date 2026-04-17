@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.71 -->
+<!-- Version: 2026.04.17.72 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
+
+- ESPHome/UI Architecture: Replace hardcoded menu-level magic numbers in active lighting/UI control paths with named menu-level constants from substitutions to reduce transition fragility and improve v-next maintainability.
 
 - ESPHome/Lighting Architecture: Centralize lighting value-adjust transition flow into a single script path (`start_lighting_value_adjust`) to eliminate duplicated menu-to-adjust state writes and reduce transition drift risk as v-next menu behavior expands.
 

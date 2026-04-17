@@ -1,14 +1,14 @@
-<!-- Description: Human-readable overview and deployment guide for the Spectra LS Home Assistant + ESPHome system. -->
-<!-- Version: 2026.04.17.13 -->
+<!-- Description: Human-readable overview and deployment guide for the Spectra Level / Source (L/S) Home Assistant + ESPHome system. -->
+<!-- Version: 2026.04.17.14 -->
 <!-- Last updated: 2026-04-17 -->
 
-# Spectra LS System
+# Spectra Level / Source
 
 **⚠️ State of project (published 2026-04-16): Active heavy development on `main`. Not currently recommended for fresh production installations unless you are comfortable with frequent updates and occasional migration adjustments.**
 
-Home Assistant unifies and automates devices and routines across your home; Spectra LS brings that power back into your hands as an intelligent physical control surface. With tactile knobs, smooth sliders, physical switches, dedicated buttons, and rotary dials, you can control whole-home music and lighting by touch instead of living inside phone apps.
+Home Assistant unifies and automates devices and routines across your home; Spectra Level / Source (L/S) brings that power back into your hands as an intelligent physical control surface. With tactile knobs, smooth sliders, physical switches, dedicated buttons, and rotary dials, you can control whole-home music and lighting by touch instead of living inside phone apps.
 
-Behind the scenes, Home Assistant manages room logic, helpers, and automation flow, while ESPHome drives the OLED UI and real-time control behavior. Spectra LS is designed to auto-discover rooms, lighting targets, and audio players from your existing setup, so day-to-day operation needs very little manual configuration.
+Behind the scenes, Home Assistant manages room logic, helpers, and automation flow, while ESPHome drives the OLED UI and real-time control behavior. L/S is designed to auto-discover rooms, lighting targets, and audio players from your existing setup, so day-to-day operation needs very little manual configuration.
 
 On `main`, project direction follows `esphome/spectra_ls_system/v-next-NOTES.md`: hardware-first UX, menu as fallback, deterministic controls, and scalable room/target handling.
 
@@ -90,7 +90,7 @@ Use `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md` as the standard syst
 
 Recommended flow: run 1 → 2 → 3 after deploy, then use 4 for specific action checks and 5 for quick regression smoke tests.
 
-## Audio Clients / Player Types Spectra LS Interacts With
+## Audio Clients / Player Types L/S Interacts With
 
 - **[Music Assistant](https://music-assistant.io/) players** (`media_player` entities) for normalized multi-source metadata and active target context.
 - **[Home Assistant](https://www.home-assistant.io/) media players** (generic `media_player.*`) for cross-integration state/transport interoperability.
@@ -98,17 +98,6 @@ Recommended flow: run 1 → 2 → 3 after deploy, then use 4 for specific action
 - **[Arylic](https://developer.arylic.com/httpapi/) / [LinkPlay](https://linkplay.com/) TCP endpoints** for direct low-latency control (volume, EQ, source, transport fallback).
 - **AirPlay / Apple TV style sources** detected through HA/MA metadata and source-app attributes.
 - **Plex sessions/players** (optional) for now-playing enrichment and local-session filtering logic.
-
-## External References
-
-- Home Assistant documentation: <https://www.home-assistant.io/docs/>
-- ESPHome documentation: <https://esphome.io/>
-- Music Assistant documentation: <https://music-assistant.io/>
-- Arylic HTTP API: <https://developer.arylic.com/httpapi/>
-- Arylic TCP API: <https://developer.arylic.com/tcpapi/#tcp-api>
-- Arylic UART API: <https://developer.arylic.com/uartapi/#uart-api>
-- WiiM HTTP API OpenAPI spec: <https://github.com/cvdlinden/wiim-httpapi>
-- LinkPlay API community archive (reference only): <https://www.n4archive.com/?p=1143>
 
 ## Deployment Guide (Detailed)
 

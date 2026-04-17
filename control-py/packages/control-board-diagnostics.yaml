@@ -1,6 +1,6 @@
 # Description: Diagnostics, OLED contrast controls, and test helpers.
-# Version: 2026.04.10.1
-# Last updated: 2026-04-10
+# Version: 2026.04.16.1
+# Last updated: 2026-04-16
 # Update version/date whenever you change this file.
 #
 # Sections:
@@ -113,7 +113,7 @@ number:
     max_value: 1.0
     step: 0.05
     mode: slider
-    update_interval: 1s
+    update_interval: 10s
     lambda: |-
       float v = id(oled_contrast);
       if (v < 0.0f) v = 0.0f;

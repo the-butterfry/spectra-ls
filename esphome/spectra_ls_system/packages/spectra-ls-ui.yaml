@@ -1,5 +1,5 @@
 # Description: Spectra LS UI/menu input handling + UI fonts + now-playing helper sensors.
-# Version: 2026.04.17.4
+# Version: 2026.04.17.5
 # Last updated: 2026-04-17
 # Update version/date whenever you change this file.
 #
@@ -140,6 +140,13 @@ script:
     then:
       - script.execute: refresh_menu_counts
       - lambda: |-
+          const int LV_MAIN = ${menu_level_main};
+          const int LV_GEAR = ${menu_level_gear};
+          const int LV_LIGHT_ROOMS = ${menu_level_lighting_rooms};
+          const int LV_LIGHT_TARGETS = ${menu_level_lighting_targets};
+          const int LV_LIGHT_ADJUST = ${menu_level_lighting_adjust};
+          const int LV_LIGHT_TOGGLE = ${menu_level_lighting_toggle};
+          const int LV_META = ${menu_level_meta_select};
           id(control_target_prompt_commit) = false;
           id(control_target_prompt_entity) = "";
           id(control_target_popup_active) = false;
@@ -249,50 +256,50 @@ script:
 
           if (!id(menu_active)) {
             id(menu_active) = true;
-            if (id(menu_level) < 1) id(menu_level) = 1;
+            if (id(menu_level) < LV_MAIN) id(menu_level) = LV_MAIN;
             id(menu_index) = id(screen_mode);
             id(lighting_adjust_mode) = 0;
           }
 
-          if (id(menu_level) > 1) {
+          if (id(menu_level) > LV_MAIN) {
             int back_count = 0;
-            if (id(menu_level) == 4) back_count = 3;
-            if (id(menu_level) == 5) back_count = menu_level5_count;
-            else if (id(menu_level) == 6) back_count = menu_level6_count;
-            else if (id(menu_level) == 7) back_count = 4;
-            else if (id(menu_level) == 8) back_count = (id(selected_target) == 0) ? 2 : 3;
-            else if (id(menu_level) == 9) back_count = menu_level9_count;
+            if (id(menu_level) == LV_GEAR) back_count = 3;
+            if (id(menu_level) == LV_LIGHT_ROOMS) back_count = menu_level5_count;
+            else if (id(menu_level) == LV_LIGHT_TARGETS) back_count = menu_level6_count;
+            else if (id(menu_level) == LV_LIGHT_ADJUST) back_count = 4;
+            else if (id(menu_level) == LV_LIGHT_TOGGLE) back_count = (id(selected_target) == 0) ? 2 : 3;
+            else if (id(menu_level) == LV_META) back_count = menu_level9_count;
             if (back_count > 0 && id(menu_index) == (back_count - 1)) {
-              if (id(menu_level) == 4) {
-                id(menu_level) = 1;
+              if (id(menu_level) == LV_GEAR) {
+                id(menu_level) = LV_MAIN;
                 id(menu_index) = 2;
-              } else if (id(menu_level) == 5) {
-                id(menu_level) = 1;
+              } else if (id(menu_level) == LV_LIGHT_ROOMS) {
+                id(menu_level) = LV_MAIN;
                 id(menu_index) = 0;
-              } else if (id(menu_level) == 6) {
-                id(menu_level) = 5;
+              } else if (id(menu_level) == LV_LIGHT_TARGETS) {
+                id(menu_level) = LV_LIGHT_ROOMS;
                 id(menu_index) = id(menu_light_room);
-              } else if (id(menu_level) == 7) {
+              } else if (id(menu_level) == LV_LIGHT_ADJUST) {
                 int back_idx = id(selected_target);
                 if (back_idx < 0) back_idx = 0;
                 const int max_target_idx = menu_level6_count - 2;
                 if (back_idx > max_target_idx) back_idx = max_target_idx;
-                id(menu_level) = 6;
+                id(menu_level) = LV_LIGHT_TARGETS;
                 id(menu_index) = back_idx;
-              } else if (id(menu_level) == 8) {
-                id(menu_level) = 7;
+              } else if (id(menu_level) == LV_LIGHT_TOGGLE) {
+                id(menu_level) = LV_LIGHT_ADJUST;
                 id(menu_index) = 0;
-              } else if (id(menu_level) == 9) {
-                id(menu_level) = 1;
+              } else if (id(menu_level) == LV_META) {
+                id(menu_level) = LV_MAIN;
                 id(menu_index) = 2;
               }
               return;
             }
           }
 
-          if (id(menu_level) == 1) {
+          if (id(menu_level) == LV_MAIN) {
             if (id(menu_index) == 0) {
-              id(menu_level) = 5;
+              id(menu_level) = LV_LIGHT_ROOMS;
               id(menu_light_room) = id(selected_room);
               id(menu_index) = id(menu_light_room);
             } else if (id(menu_index) == 1) {
@@ -304,14 +311,14 @@ script:
               id(last_input_ms) = millis();
               id(np_cache_version) += 1;
             } else if (id(menu_index) == 2) {
-              id(menu_level) = 4;
+              id(menu_level) = LV_GEAR;
               id(menu_index) = 0;
             }
             return;
           }
-          if (id(menu_level) == 4) {
+          if (id(menu_level) == LV_GEAR) {
             if (id(menu_index) == 0) {
-              id(menu_level) = 9;
+              id(menu_level) = LV_META;
               id(menu_index) = 0;
             } else if (id(menu_index) == 1) {
               id(control_target_lock_active) = false;
@@ -324,31 +331,31 @@ script:
               id(menu_level) = 0;
               id(menu_index) = 0;
             } else {
-              id(menu_level) = 1;
+              id(menu_level) = LV_MAIN;
               id(menu_index) = 2;
             }
             return;
           }
-          if (id(menu_level) == 5) {
+          if (id(menu_level) == LV_LIGHT_ROOMS) {
             if (id(menu_index) >= 0 && id(menu_index) < room_count) {
               id(menu_light_room) = id(menu_index);
               id(selected_room) = id(menu_index);
               id(push_room_select_to_ha).execute();
               id(sync_lighting_from_ha).execute();
-              id(menu_level) = 6;
+              id(menu_level) = LV_LIGHT_TARGETS;
               id(menu_index) = 0;
             } else {
-              id(menu_level) = 1;
+              id(menu_level) = LV_MAIN;
               id(menu_index) = 0;
             }
             return;
           }
-          if (id(menu_level) == 6) {
+          if (id(menu_level) == LV_LIGHT_TARGETS) {
             const int room = id(menu_light_room);
             const int count = menu_level6_count;
             const int back_idx = count - 1;
             if (id(menu_index) == back_idx) {
-              id(menu_level) = 5;
+              id(menu_level) = LV_LIGHT_ROOMS;
               id(menu_index) = room;
               return;
             }
@@ -359,29 +366,29 @@ script:
             id(push_target_select_to_ha).execute();
             id(focus_lighting).execute();
             id(sync_lighting_from_ha).execute();
-            id(menu_level) = 7;
+            id(menu_level) = LV_LIGHT_ADJUST;
             id(menu_index) = 0;
             return;
           }
-          if (id(menu_level) == 7) {
+          if (id(menu_level) == LV_LIGHT_ADJUST) {
             if (id(menu_index) == 0) {
-              id(menu_level) = 8;
+              id(menu_level) = LV_LIGHT_TOGGLE;
               id(menu_index) = 0;
             } else if (id(menu_index) == 1) {
-              id(start_lighting_value_adjust).execute(7, 1, 1);
+              id(start_lighting_value_adjust).execute(LV_LIGHT_ADJUST, 1, 1);
             } else if (id(menu_index) == 2) {
-              id(start_lighting_value_adjust).execute(7, 2, 0);
+              id(start_lighting_value_adjust).execute(LV_LIGHT_ADJUST, 2, 0);
             } else {
               int back_idx = id(selected_target);
               if (back_idx < 0) back_idx = 0;
               const int max_target_idx = menu_level6_count - 2;
               if (back_idx > max_target_idx) back_idx = max_target_idx;
-              id(menu_level) = 6;
+              id(menu_level) = LV_LIGHT_TARGETS;
               id(menu_index) = back_idx;
             }
             return;
           }
-          if (id(menu_level) == 8) {
+          if (id(menu_level) == LV_LIGHT_TOGGLE) {
             const int target = id(selected_target);
             const int back_idx = (target == 0) ? 1 : 2;
             if (id(menu_index) == 0) {
@@ -389,12 +396,12 @@ script:
             } else if (target != 0 && id(menu_index) == 1) {
               id(toggle_selected_light).execute();
             } else if (id(menu_index) == back_idx) {
-              id(menu_level) = 7;
+              id(menu_level) = LV_LIGHT_ADJUST;
               id(menu_index) = 0;
             }
             return;
           }
-          if (id(menu_level) == 9) {
+          if (id(menu_level) == LV_META) {
             auto trim_ascii = [](std::string &value) {
               size_t start = value.find_first_not_of(" \t\n\r");
               size_t end = value.find_last_not_of(" \t\n\r");
@@ -447,13 +454,13 @@ script:
               id(meta_popup_label) = "AUTO";
               id(meta_popup_until_ms) = millis() + ${meta_popup_ms};
               id(control_target_popup_active) = false;
-              id(menu_level) = 1;
+              id(menu_level) = LV_MAIN;
               id(menu_index) = 2;
               id(apply_meta_override_selection).execute();
               return;
             }
             if (id(menu_index) == back_idx) {
-              id(menu_level) = 1;
+              id(menu_level) = LV_MAIN;
               id(menu_index) = 2;
               return;
             }
@@ -468,7 +475,7 @@ script:
               }
               id(meta_popup_until_ms) = millis() + ${meta_popup_ms};
               id(control_target_popup_active) = false;
-              id(menu_level) = 1;
+              id(menu_level) = LV_MAIN;
               id(menu_index) = 2;
               id(apply_meta_override_selection).execute();
             }
@@ -502,6 +509,13 @@ binary_sensor:
           ESP_LOGI("input", "Button RP Back");
       - script.execute: note_menu_input
       - lambda: |-
+          const int LV_MAIN = ${menu_level_main};
+          const int LV_GEAR = ${menu_level_gear};
+          const int LV_LIGHT_ROOMS = ${menu_level_lighting_rooms};
+          const int LV_LIGHT_TARGETS = ${menu_level_lighting_targets};
+          const int LV_LIGHT_ADJUST = ${menu_level_lighting_adjust};
+          const int LV_LIGHT_TOGGLE = ${menu_level_lighting_toggle};
+          const int LV_META = ${menu_level_meta_select};
           if (id(control_target_prompt_active)) {
             id(control_target_prompt_active) = false;
           id(control_target_prompt_manual) = false;
@@ -518,38 +532,38 @@ binary_sensor:
             return;
           }
           if (!id(menu_active)) return;
-          if (id(menu_level) == 4) {
-            id(menu_level) = 1;
+          if (id(menu_level) == LV_GEAR) {
+            id(menu_level) = LV_MAIN;
             id(menu_index) = 2;
             return;
           }
-          if (id(menu_level) == 9) {
-            id(menu_level) = 1;
+          if (id(menu_level) == LV_META) {
+            id(menu_level) = LV_MAIN;
             id(menu_index) = 2;
             return;
           }
-          if (id(menu_level) >= 8) {
-            id(menu_level) = 7;
+          if (id(menu_level) >= LV_LIGHT_TOGGLE) {
+            id(menu_level) = LV_LIGHT_ADJUST;
             id(menu_index) = 0;
             return;
           }
-          if (id(menu_level) == 7) {
-            id(menu_level) = 6;
+          if (id(menu_level) == LV_LIGHT_ADJUST) {
+            id(menu_level) = LV_LIGHT_TARGETS;
             id(menu_index) = 0;
             return;
           }
-          if (id(menu_level) == 6) {
-            id(menu_level) = 5;
+          if (id(menu_level) == LV_LIGHT_TARGETS) {
+            id(menu_level) = LV_LIGHT_ROOMS;
             id(menu_index) = id(menu_light_room);
             return;
           }
-          if (id(menu_level) == 5) {
-            id(menu_level) = 1;
+          if (id(menu_level) == LV_LIGHT_ROOMS) {
+            id(menu_level) = LV_MAIN;
             id(menu_index) = 0;
             return;
           }
-          if (id(menu_level) > 1) {
-            id(menu_level) = 1;
+          if (id(menu_level) > LV_MAIN) {
+            id(menu_level) = LV_MAIN;
             id(menu_index) = 0;
             return;
           }
@@ -603,6 +617,13 @@ sensor:
       - script.execute: note_menu_input
       - script.execute: refresh_menu_counts
       - lambda: |-
+          const int LV_MAIN = ${menu_level_main};
+          const int LV_GEAR = ${menu_level_gear};
+          const int LV_LIGHT_ROOMS = ${menu_level_lighting_rooms};
+          const int LV_LIGHT_TARGETS = ${menu_level_lighting_targets};
+          const int LV_LIGHT_ADJUST = ${menu_level_lighting_adjust};
+          const int LV_LIGHT_TOGGLE = ${menu_level_lighting_toggle};
+          const int LV_META = ${menu_level_meta_select};
           const int delta = (int) x;
           if (delta == 0) return;
           ESP_LOGI("input", "Encoder Menu delta=%d", delta);
@@ -668,18 +689,18 @@ sensor:
           const int menu_level9_count = meta_count + 2;
           if (!id(menu_active)) {
             id(menu_active) = true;
-            id(menu_level) = 1;
+            id(menu_level) = LV_MAIN;
             id(menu_index) = id(screen_mode);
             id(lighting_adjust_mode) = 0;
           }
           int count = 0;
-          if (id(menu_level) == 1) count = 3;
-          else if (id(menu_level) == 4) count = 3;
-          else if (id(menu_level) == 5) count = menu_level5_count;
-          else if (id(menu_level) == 6) count = menu_level6_count;
-          else if (id(menu_level) == 7) count = 4;
-          else if (id(menu_level) == 8) count = (id(selected_target) == 0) ? 2 : 3;
-          else if (id(menu_level) == 9) count = menu_level9_count;
+          if (id(menu_level) == LV_MAIN) count = 3;
+          else if (id(menu_level) == LV_GEAR) count = 3;
+          else if (id(menu_level) == LV_LIGHT_ROOMS) count = menu_level5_count;
+          else if (id(menu_level) == LV_LIGHT_TARGETS) count = menu_level6_count;
+          else if (id(menu_level) == LV_LIGHT_ADJUST) count = 4;
+          else if (id(menu_level) == LV_LIGHT_TOGGLE) count = (id(selected_target) == 0) ? 2 : 3;
+          else if (id(menu_level) == LV_META) count = menu_level9_count;
           if (count <= 0) return;
           int idx = id(menu_index) + delta;
           while (idx < 0) idx += count;
@@ -705,7 +726,7 @@ interval:
             id(audio_empty_active) = false;
           }
           if (id(menu_active)) {
-            if (id(menu_level) < 1) id(menu_level) = 1;
+            if (id(menu_level) < ${menu_level_main}) id(menu_level) = ${menu_level_main};
             if (id(menu_index) < 0) id(menu_index) = 0;
           }
           if (playing) {
@@ -716,8 +737,8 @@ interval:
           const uint32_t home_idle_ms = (uint32_t) ${menu_home_idle_ms};
           if (home_idle_ms > 0 && idle_ms > home_idle_ms) {
             if (id(menu_active)) {
-              if (id(menu_level) > 1) {
-                id(menu_level) = 1;
+              if (id(menu_level) > ${menu_level_main}) {
+                id(menu_level) = ${menu_level_main};
                 id(menu_index) = 0;
               }
             }
@@ -731,7 +752,7 @@ interval:
           const bool lighting_hold_active = id(lighting_return_to_audio_ms) > 0 && now < id(lighting_return_to_audio_ms);
           if (playing && id(screen_mode) != 1 && !id(menu_active) && !lighting_hold_active && !hardware_lighting_mode && !lighting_resume_or_hold) {
             id(screen_mode) = 1;
-            id(menu_level) = 1;
+            id(menu_level) = ${menu_level_main};
             id(menu_index) = 0;
           }
           if (id(screen_mode) == 0 && !id(menu_active) && id(lighting_return_to_audio_ms) > 0 && now > id(lighting_return_to_audio_ms) && !hardware_lighting_mode && !lighting_resume_or_hold) {
@@ -744,7 +765,7 @@ interval:
               (now - id(playing_false_since_ms)) >= playback_off_grace_ms) {
             id(screen_mode) = 0;
             id(menu_active) = true;
-            id(menu_level) = 1;
+            id(menu_level) = ${menu_level_main};
             id(menu_index) = 0;
           }
       - script.execute: compute_display_state

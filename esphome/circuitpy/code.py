@@ -1,5 +1,5 @@
 ## Description: RP2040 firmware for Spectra LS input scanning and UART event transport.
-## Version: 2026.04.17.3
+## Version: 2026.04.17.4
 ## Last updated: 2026-04-17
 
 import time
@@ -714,6 +714,52 @@ def get_tracking_calibration(idx, source):
 
 init_calibration_tracking()
 
+
+def build_analog_profiles():
+    profiles = []
+    for idx in range(len(analog_inputs)):
+        name = analog_name_for_index(analog_inputs, idx)
+        profile = {
+            "name": name,
+            "window": min(ANALOG_MEDIAN_WINDOW_BY_NAME.get(name, ANALOG_MEDIAN_WINDOW), ANALOG_MEDIAN_WINDOW_MAX),
+            "threshold": (
+                ANALOG_FILTER_FAST_THRESHOLD_PCT_BY_NAME.get(name, ANALOG_FILTER_FAST_THRESHOLD_PCT) / 100.0
+            ) * 65535.0,
+            "alpha_slow": ANALOG_FILTER_ALPHA_SLOW_BY_NAME.get(name, ANALOG_FILTER_ALPHA_SLOW),
+            "alpha_fast": ANALOG_FILTER_ALPHA_FAST_BY_NAME.get(name, ANALOG_FILTER_ALPHA_FAST),
+            "min_change": ANALOG_MIN_CHANGE_BY_NAME.get(name, ANALOG_MIN_CHANGE),
+            "idle_min_change": ANALOG_IDLE_MIN_CHANGE_BY_NAME.get(name),
+            "confirm_samples": ANALOG_CONFIRM_SAMPLES_BY_NAME.get(name, 0),
+            "confirm_delta": ANALOG_CONFIRM_DELTA_BY_NAME.get(name, 0),
+            "snap_zero": ANALOG_SNAP_ZERO_PCT_BY_NAME.get(name, ANALOG_SNAP_ZERO_PCT),
+            "snap_full": ANALOG_SNAP_FULL_PCT_BY_NAME.get(name, ANALOG_SNAP_FULL_PCT),
+            "reverse": ANALOG_REVERSE_BY_NAME.get(name, False),
+            "debug_stream_enabled": (not DEBUG_ANALOG_STREAM_NAMES) or (name in DEBUG_ANALOG_STREAM_NAMES),
+            "is_named_pot": is_pot_name(name),
+        }
+        profiles.append(profile)
+    return profiles
+
+
+def emit_button_state(event_id, mirror_id, pressed, button_name=None):
+    value = 1 if pressed else 0
+    send_packet(TYPE_BUTTON, event_id, value)
+    if mirror_id is not None:
+        send_packet(TYPE_BUTTON, mirror_id, value)
+    if DEBUG_GLOBAL and DEBUG_BUTTONS_SERIAL and button_name is not None:
+        edge = "fell" if pressed else "rose"
+        print(f"Button {button_name} {edge} (id={event_id})")
+
+
+def maybe_log_encoder_serial(enc, message):
+    if not (DEBUG_GLOBAL and DEBUG_ENCODER_SERIAL):
+        return
+    now = adafruit_ticks.ticks_ms()
+    last_serial_ms = enc.get("last_serial_ms")
+    if last_serial_ms is None or adafruit_ticks.ticks_diff(now, last_serial_ms) >= DEBUG_ENCODER_SERIAL_INTERVAL_MS:
+        enc["last_serial_ms"] = now
+        print(message)
+
 # UART to ESP32-S3
 uart = busio.UART(board.TX, board.RX, baudrate=115200)
 
@@ -741,6 +787,7 @@ analog_pending_count = [0 for _ in range(len(analog_inputs))]
 autocal_trigger_pressed = False
 debug_counter = 0
 last_debug_ms = adafruit_ticks.ticks_ms()
+analog_profiles = build_analog_profiles()
 packet_writer = PacketWriter(uart, debug_enabled=DEBUG_GLOBAL, max_buffer=256)
 send_packet = packet_writer.send_packet
 flush_tx = packet_writer.flush
@@ -778,17 +825,9 @@ while True:
         event_id = BUTTON_EVENT_IDS.get(name)
         mirror_id = MODE_NAV_BUTTON_MIRROR.get(name)
         if deb.fell:
-            send_packet(TYPE_BUTTON, event_id, 1)
-            if mirror_id is not None:
-                send_packet(TYPE_BUTTON, mirror_id, 1)
-            if DEBUG_GLOBAL and DEBUG_BUTTONS_SERIAL:
-                print(f"Button {name} fell (id={event_id})")
+            emit_button_state(event_id, mirror_id, True, name)
         if deb.rose:
-            send_packet(TYPE_BUTTON, event_id, 0)
-            if mirror_id is not None:
-                send_packet(TYPE_BUTTON, mirror_id, 0)
-            if DEBUG_GLOBAL and DEBUG_BUTTONS_SERIAL:
-                print(f"Button {name} rose (id={event_id})")
+            emit_button_state(event_id, mirror_id, False, name)
 
     # Read analog inputs (ADS1015 + internal ADC)
     for idx, analog_entry in enumerate(analog_inputs):
@@ -796,7 +835,8 @@ while True:
             continue
         analog = analog_entry["analog"]
         source = analog_entry.get("source", "external")
-        name = analog_name_for_index(analog_inputs, idx)
+        profile = analog_profiles[idx]
+        name = profile["name"]
         now = adafruit_ticks.ticks_ms()
         if source == "external" and external_adc_disabled_until_ms:
             if adafruit_ticks.ticks_diff(now, external_adc_disabled_until_ms) < 0:
@@ -854,9 +894,7 @@ while True:
         event_id = analog_entry.get("event_id")
         history = analog_history[idx]
         history.append(raw)
-        window = ANALOG_MEDIAN_WINDOW_BY_NAME.get(name, ANALOG_MEDIAN_WINDOW)
-        if window > ANALOG_MEDIAN_WINDOW_MAX:
-            window = ANALOG_MEDIAN_WINDOW_MAX
+        window = profile["window"]
         if len(history) > window:
             history.pop(0)
         sorted_hist = sorted(history)
@@ -869,11 +907,7 @@ while True:
             filtered = float(calibrated)
         else:
             diff = abs(calibrated - previous)
-            threshold_pct = ANALOG_FILTER_FAST_THRESHOLD_PCT_BY_NAME.get(name, ANALOG_FILTER_FAST_THRESHOLD_PCT)
-            threshold = (threshold_pct / 100.0) * 65535.0
-            alpha_slow = ANALOG_FILTER_ALPHA_SLOW_BY_NAME.get(name, ANALOG_FILTER_ALPHA_SLOW)
-            alpha_fast = ANALOG_FILTER_ALPHA_FAST_BY_NAME.get(name, ANALOG_FILTER_ALPHA_FAST)
-            alpha = alpha_fast if diff >= threshold else alpha_slow
+            alpha = profile["alpha_fast"] if diff >= profile["threshold"] else profile["alpha_slow"]
             filtered = previous + (alpha * (calibrated - previous))
         analog_filtered[idx] = filtered
         filtered_value = int(round(filtered))
@@ -888,19 +922,19 @@ while True:
             ANALOG_RAW_MAX_DEFAULT_INTERNAL,
         )
         if ANALOG_OUTPUT_MODE == "percent":
-            snap_zero = ANALOG_SNAP_ZERO_PCT_BY_NAME.get(name, ANALOG_SNAP_ZERO_PCT)
-            snap_full = ANALOG_SNAP_FULL_PCT_BY_NAME.get(name, ANALOG_SNAP_FULL_PCT)
+            snap_zero = profile["snap_zero"]
+            snap_full = profile["snap_full"]
             if snap_zero > 0 and value <= snap_zero:
                 value = 0
             elif snap_full > 0 and value >= (ANALOG_PERCENT_RANGE - snap_full):
                 value = ANALOG_PERCENT_RANGE
-            if ANALOG_REVERSE_BY_NAME.get(name, False):
+            if profile["reverse"]:
                 value = ANALOG_PERCENT_RANGE - value
         last_sent = last_sent_values[idx]
-        min_change = ANALOG_MIN_CHANGE_BY_NAME.get(name, ANALOG_MIN_CHANGE)
-        idle_min_change = ANALOG_IDLE_MIN_CHANGE_BY_NAME.get(name)
-        confirm_samples = ANALOG_CONFIRM_SAMPLES_BY_NAME.get(name, 0)
-        confirm_delta = ANALOG_CONFIRM_DELTA_BY_NAME.get(name, 0)
+        min_change = profile["min_change"]
+        idle_min_change = profile["idle_min_change"]
+        confirm_samples = profile["confirm_samples"]
+        confirm_delta = profile["confirm_delta"]
         if last_sent is not None and idle_min_change is not None:
             last_send = analog_last_send_ms[idx]
             if last_send is not None:
@@ -933,7 +967,7 @@ while True:
             analog_last_send_ms[idx] = now
         last_sent_values[idx] = value
         send_packet(TYPE_ANALOG, event_id, value)
-        if DEBUG_GLOBAL and DEBUG_ANALOG_SERIAL and (not DEBUG_ANALOG_STREAM_NAMES or name in DEBUG_ANALOG_STREAM_NAMES):
+        if DEBUG_GLOBAL and DEBUG_ANALOG_SERIAL and profile["debug_stream_enabled"]:
             now = adafruit_ticks.ticks_ms()
             last_log_ms = analog_last_log_ms[idx]
             last_log_value = analog_last_log_value[idx]
@@ -945,7 +979,7 @@ while True:
                         f"Analog {name} raw={raw} median={median_raw} cal={calibrated} "
                         f"filt={filtered_value} out={value} id={event_id}"
                     )
-        if DEBUG_GLOBAL and is_pot_name(name) and name != "volume_pot":
+        if DEBUG_GLOBAL and profile["is_named_pot"] and name != "volume_pot":
             direction = "up" if (last_sent is None or value > last_sent) else "down" if value < last_sent else "hold"
             print(
                 f"POT {name} {direction} raw={raw} median={median_raw} cal={calibrated} "
@@ -961,20 +995,10 @@ while True:
             autocal_trigger_pressed = autocal_trigger_pressed or enc["deb"].value
         if enc["deb"].rose:
             send_packet(TYPE_BUTTON, press_id, 1)
-            if DEBUG_GLOBAL and DEBUG_ENCODER_SERIAL:
-                now = adafruit_ticks.ticks_ms()
-                last_serial_ms = enc.get("last_serial_ms")
-                if last_serial_ms is None or adafruit_ticks.ticks_diff(now, last_serial_ms) >= DEBUG_ENCODER_SERIAL_INTERVAL_MS:
-                    enc["last_serial_ms"] = now
-                    print(f"Seesaw {cfg.get('name','?')} press")
+            maybe_log_encoder_serial(enc, f"Seesaw {cfg.get('name','?')} press")
         if enc["deb"].fell:
             send_packet(TYPE_BUTTON, press_id, 0)
-            if DEBUG_GLOBAL and DEBUG_ENCODER_SERIAL:
-                now = adafruit_ticks.ticks_ms()
-                last_serial_ms = enc.get("last_serial_ms")
-                if last_serial_ms is None or adafruit_ticks.ticks_diff(now, last_serial_ms) >= DEBUG_ENCODER_SERIAL_INTERVAL_MS:
-                    enc["last_serial_ms"] = now
-                    print(f"Seesaw {cfg.get('name','?')} release")
+            maybe_log_encoder_serial(enc, f"Seesaw {cfg.get('name','?')} release")
 
         pos = enc["encoder"].position
         delta = pos - enc["pos"]
@@ -984,12 +1008,7 @@ while True:
                 step = int(delta) * ENCODER_STEPS_PER_DETENT
                 if step != 0:
                     send_packet(TYPE_ENCODER, cfg.get("delta_id"), step)
-                    if DEBUG_GLOBAL and DEBUG_ENCODER_SERIAL:
-                        now = adafruit_ticks.ticks_ms()
-                        last_serial_ms = enc.get("last_serial_ms")
-                        if last_serial_ms is None or adafruit_ticks.ticks_diff(now, last_serial_ms) >= DEBUG_ENCODER_SERIAL_INTERVAL_MS:
-                            enc["last_serial_ms"] = now
-                            print(f"Seesaw {cfg.get('name','?')} delta={step} pos={pos}")
+                    maybe_log_encoder_serial(enc, f"Seesaw {cfg.get('name','?')} delta={step} pos={pos}")
             else:
                 enc["accum"] += int(delta)
                 steps = int(enc["accum"] / ENCODER_TRANSITIONS_PER_DETENT)
@@ -998,12 +1017,7 @@ while True:
                     step = steps * ENCODER_STEPS_PER_DETENT
                     if step != 0:
                         send_packet(TYPE_ENCODER, cfg.get("delta_id"), step)
-                        if DEBUG_GLOBAL and DEBUG_ENCODER_SERIAL:
-                            now = adafruit_ticks.ticks_ms()
-                            last_serial_ms = enc.get("last_serial_ms")
-                            if last_serial_ms is None or adafruit_ticks.ticks_diff(now, last_serial_ms) >= DEBUG_ENCODER_SERIAL_INTERVAL_MS:
-                                enc["last_serial_ms"] = now
-                                print(f"Seesaw {cfg.get('name','?')} delta={step} pos={pos}")
+                        maybe_log_encoder_serial(enc, f"Seesaw {cfg.get('name','?')} delta={step} pos={pos}")
 
         if DEBUG_ENCODERS:
             now = adafruit_ticks.ticks_ms()

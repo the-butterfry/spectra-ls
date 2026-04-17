@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.57 -->
+<!-- Version: 2026.04.17.58 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
+
+- Docs/README: Normalize shorthand usage to `Spectra L/S` (no standalone `L/S`), change EQ phrasing to `Physical 3-Band EQ`, move Seesaw under an explicit Inputs section, and expand physical-control listing to call out switches/buttons/knobs/sliders/dials.
 
 - Docs/README: Add explicit direct analog-input control wording for Volume + 3-band EQ, document automatic Light/Sound interaction behavior when Home Assistant already knows targets, and include UP2STREAM HD DAC audio-side capability notes (dual-band Wi-Fi, AirPlay 2, Spotify Connect, TIDAL Connect, aptX HD Bluetooth 5.0, no-amp module class) sourced from published product metadata.
 

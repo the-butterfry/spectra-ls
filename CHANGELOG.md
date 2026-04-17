@@ -1,11 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.7 -->
+<!-- Version: 2026.04.17.8 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
 
+- Docs: Normalize section numbering/order in `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md` so rename validation checks run in ascending sequence (9 → 10 → 11).
 - ESPHome: Phase 15 rename step on `spectra_ls_system` path — rename system package include from `packages/control-board-system.yaml` to `packages/spectra-ls-system.yaml` and repoint `esphome/spectra_ls_system.yaml` include.
 - ESPHome: Phase 14 rename step on `spectra_ls_system` path — rename UI package include from `packages/control-board-ui.yaml` to `packages/spectra-ls-ui.yaml` and repoint `esphome/spectra_ls_system.yaml` include.
 - Docs: Add a dedicated `ma_control_hub` package-loader regression template to `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md` for fast PASS/WARN/FAIL checks in HA Developer Tools after reload/restart.

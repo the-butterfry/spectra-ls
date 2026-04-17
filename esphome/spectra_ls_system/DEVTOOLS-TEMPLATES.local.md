@@ -1,5 +1,5 @@
 <!-- Description: Copy/paste Home Assistant Dev Tools template diagnostics for Spectra LS System. -->
-<!-- Version: 2026.04.17.1 -->
+<!-- Version: 2026.04.17.2 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Spectra LS System — Dev Tools Template Validation
@@ -1023,7 +1023,7 @@ Unavailable core entities:
 {% endif %}
 ```
 
-## 11) Rename Step Validation — Peripherals Package (Post-Reload)
+## 9) Rename Step Validation — Peripherals Package (Post-Reload)
 
 ```jinja
 {# =========================
@@ -1137,7 +1137,7 @@ Unavailable core entities:
 {% endif %}
 ```
 
-## 9) Rename Step Validation — UI Package (Post-Reload)
+## 10) Rename Step Validation — UI Package (Post-Reload)
 
 ```jinja
 {# =========================
@@ -1238,7 +1238,7 @@ Unavailable core entities:
 {% endif %}
 ```
 
-## 10) Rename Step Validation — Hardware Package (Post-Reload)
+## 11) Rename Step Validation — Hardware Package (Post-Reload)
 
 ```jinja
 {# =========================

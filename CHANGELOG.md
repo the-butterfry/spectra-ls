@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.61 -->
+<!-- Version: 2026.04.17.62 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
+
+- Docs/README: Replace implementation-heavy input inventory wording with outcome-focused product copy; explicitly call out direct lighting Brightness/Hue/Saturation control over rooms or individual lights and keep the Inputs section centered on what users can do (not internal mechanics).
 
 - Docs/README + v-next NOTES: Add promotional hands-on input examples (including full transport controls: Play/Pause, Next, Back/Previous), strengthen product-forward copy tone, and add a formal v-next crossfade/balance slider requirement: in multi-room mode, slider shifts volume balance between rooms; in single-room mode, slider controls speaker balance.
 

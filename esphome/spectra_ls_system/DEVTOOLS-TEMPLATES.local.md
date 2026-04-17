@@ -1,5 +1,5 @@
 <!-- Description: Copy/paste Home Assistant Dev Tools template diagnostics for Spectra LS System. -->
-<!-- Version: 2026.04.16.8 -->
+<!-- Version: 2026.04.16.9 -->
 <!-- Last updated: 2026-04-16 -->
 
 # Spectra LS System — Dev Tools Template Validation
@@ -803,5 +803,116 @@ Unavailable core entities:
 - Missing helper/entity contracts detected. Fix package/helper load before next rename.
 {% else %}
 - Resolve unavailable/select-option mismatch first, then rerun this template.
+{% endif %}
+```
+
+## 7) Rename Step Validation — Audio TCP Package (Post-Reload)
+
+```jinja
+{# =========================
+  Spectra Rename Step Validation (Audio TCP package rename)
+  Run AFTER: HA reload/restart + ESPHome device online
+  Purpose: confirm no contract regression in audio command surfaces and routing helpers used by renamed package include.
+  ========================= #}
+
+{% set required = [
+  'sensor.ma_control_host',
+  'sensor.ma_control_hosts',
+  'input_select.ma_active_target',
+  'sensor.ma_active_target_by_host',
+  'sensor.ma_active_meta_entity',
+  'sensor.now_playing_entity',
+  'sensor.now_playing_state',
+  'sensor.now_playing_title',
+  'number.control_board_v2_arylic_volume_set',
+  'number.control_board_v2_eq_low',
+  'number.control_board_v2_eq_mid',
+  'number.control_board_v2_eq_high'
+] %}
+
+{% set ns = namespace(missing=[], unavailable=[], ok=0, rows=[]) %}
+{% for eid in required %}
+  {% set exists = states[eid] is not none %}
+  {% set st = states(eid) if exists else 'missing' %}
+  {% if not exists %}
+    {% set ns.missing = ns.missing + [eid] %}
+  {% elif st in ['unknown','unavailable'] %}
+    {% set ns.unavailable = ns.unavailable + [eid] %}
+  {% else %}
+    {% set ns.ok = ns.ok + 1 %}
+  {% endif %}
+  {% set ns.rows = ns.rows + [{'entity':eid,'exists':exists,'state':st}] %}
+{% endfor %}
+
+{% set target = states('input_select.ma_active_target') %}
+{% set target_opts = state_attr('input_select.ma_active_target','options') or [] %}
+{% set target_sel_ok = target in target_opts if (target_opts | length) > 0 else false %}
+{% set host = states('sensor.ma_control_host') %}
+{% set host_ok = host not in ['','none','unknown','unavailable'] %}
+
+{% set volume = states('number.control_board_v2_arylic_volume_set') %}
+{% set eq_low = states('number.control_board_v2_eq_low') %}
+{% set eq_mid = states('number.control_board_v2_eq_mid') %}
+{% set eq_high = states('number.control_board_v2_eq_high') %}
+
+{% set verdict = 'PASS' %}
+{% if (ns.missing | length) > 0 %}
+  {% set verdict = 'FAIL' %}
+{% elif (ns.unavailable | length) > 0 or not target_sel_ok or not host_ok %}
+  {% set verdict = 'WARN' %}
+{% endif %}
+
+### Rename Validation — Audio TCP Package
+- Result: **{{ verdict }}**
+- Timestamp: **{{ now() }}**
+- Checked entities: **{{ required | length }}**
+- OK: **{{ ns.ok }}**
+- Missing: **{{ ns.missing | length }}**
+- Unknown/Unavailable: **{{ ns.unavailable | length }}**
+
+### Routing + selector sanity
+- `input_select.ma_active_target`: **{{ target }}** (options={{ target_opts | length }}, selected_in_options={{ target_sel_ok }})
+- `sensor.ma_control_host`: **{{ host }}** (valid={{ host_ok }})
+- `sensor.ma_control_hosts`: **{{ states('sensor.ma_control_hosts') }}**
+- `sensor.now_playing_entity`: **{{ states('sensor.now_playing_entity') }}**
+
+### Audio command surfaces
+- `number.control_board_v2_arylic_volume_set`: **{{ volume }}**
+- `number.control_board_v2_eq_low`: **{{ eq_low }}**
+- `number.control_board_v2_eq_mid`: **{{ eq_mid }}**
+- `number.control_board_v2_eq_high`: **{{ eq_high }}**
+
+### Missing entities
+{% if (ns.missing | length) == 0 %}
+- none
+{% else %}
+{% for eid in ns.missing %}
+- {{ eid }}
+{% endfor %}
+{% endif %}
+
+### Unknown/Unavailable entities
+{% if (ns.unavailable | length) == 0 %}
+- none
+{% else %}
+{% for eid in ns.unavailable %}
+- {{ eid }}
+{% endfor %}
+{% endif %}
+
+### Detailed table
+| Entity | Exists | State |
+|---|---:|---|
+{% for row in ns.rows %}
+| `{{ row.entity }}` | {{ row.exists }} | {{ row.state }} |
+{% endfor %}
+
+### Next action guidance
+{% if verdict == 'PASS' %}
+- Audio TCP rename step validated. Proceed to next rename slice.
+{% elif (ns.missing | length) > 0 %}
+- Missing audio/routing contracts detected. Restore package include/load before next rename.
+{% else %}
+- Resolve unavailable host/selector/number entities first, then rerun this template.
 {% endif %}
 ```

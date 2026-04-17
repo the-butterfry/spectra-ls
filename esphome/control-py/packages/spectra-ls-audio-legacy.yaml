@@ -1,6 +1,6 @@
-# Description: Audio controls package for Control Board v2.
-# Version: 2026.03.20.3
-# Last updated: 2026-03-20
+# Description: Spectra LS legacy non-TCP audio controls package for Control Board v2.
+# Version: 2026.04.16.1
+# Last updated: 2026-04-16
 # Update version/date whenever you change this file.
 
 binary_sensor:

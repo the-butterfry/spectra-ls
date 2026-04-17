@@ -1,11 +1,13 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.16.25 -->
+<!-- Version: 2026.04.16.26 -->
 <!-- Last updated: 2026-04-16 -->
 
 # Changelog
 
 ## 2026-04-16
 
+- ESPHome: Phase 11 rename step on tracked main path — rename archived rings peripherals file from `esphome/control-py/previous/control-board-peripherals.yaml` to `esphome/control-py/previous/spectra-ls-peripherals-rings-legacy.yaml` (archive-only, not in active includes).
+- ESPHome: Phase 10 rename step on tracked main path — rename legacy non-TCP audio package file from `esphome/control-py/packages/control-board-audio.yaml` to `esphome/control-py/packages/spectra-ls-audio-legacy.yaml` (legacy/stale, TCP package remains authoritative).
 - ESPHome: Phase 9 rename step on tracked main path — rename legacy headless package file from `control-board-headless.yaml` to `spectra-ls-headless.yaml` (no active include references).
 - ESPHome: Phase 8 rename step on tracked main path — rename active peripherals include from `spectra-ls-peripherals-no-rings.yaml` to `spectra-ls-peripherals.yaml` and repoint `esphome/control-board-esp32-tcp.yaml` include.
 - Docs: Update rename validation wording in `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md` from “Peripherals No-Rings” to generic “Peripherals” for the new filename.

@@ -1,5 +1,5 @@
 # Description: Main ESPHome config for Spectra LS System main ESPHome config (ESP32-S3 + RP2040 UART + Arylic TCP).
-# Version: 2026.04.17.1
+# Version: 2026.04.17.2
 # Last updated: 2026-04-17
 # Update version/date whenever you change this file.
 #
@@ -17,8 +17,8 @@ substitutions:
 # Toggle hardware peripherals package (uncomment one):
 # Package map:
 #  - spectra-ls-hardware.yaml: UART + RP2040 hub + raw ADC taps
-#  - control-board-ui.yaml: menu buttons/encoder + fonts + UI helpers
-#  - control-board-system.yaml: globals + intervals + core scripts
+#  - spectra-ls-ui.yaml: menu buttons/encoder + fonts + UI helpers
+#  - spectra-ls-system.yaml: globals + intervals + core scripts
 #  - spectra-ls-diagnostics.yaml: OLED contrast + diagnostics + test buttons
 #  - control-board-audio-tcp.yaml: audio controls + metadata (TCP-only)
 #  - control-board-lighting.yaml: lighting controls + HA sync
@@ -26,8 +26,8 @@ packages:
   # peripherals: !include /config/esphome/spectra_ls_system/control-board-peripherals.yaml
   peripherals: !include /config/esphome/spectra_ls_system/spectra-ls-peripherals.yaml
   hardware: !include /config/esphome/spectra_ls_system/packages/spectra-ls-hardware.yaml
-  ui: !include /config/esphome/spectra_ls_system/packages/control-board-ui.yaml
-  system: !include /config/esphome/spectra_ls_system/packages/control-board-system.yaml
+  ui: !include /config/esphome/spectra_ls_system/packages/spectra-ls-ui.yaml
+  system: !include /config/esphome/spectra_ls_system/packages/spectra-ls-system.yaml
   diagnostics: !include /config/esphome/spectra_ls_system/packages/spectra-ls-diagnostics.yaml
   audio: !include /config/esphome/spectra_ls_system/packages/control-board-audio-tcp.yaml
   lighting: !include /config/esphome/spectra_ls_system/packages/control-board-lighting.yaml

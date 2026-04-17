@@ -1,0 +1,640 @@
+views:
+  - path: default_view
+    title: Home
+    cards:
+      - type: entities
+        entities:
+          - entity: lock.apartment_door
+            name: Apartment Door
+          - entity: binary_sensor.apartment_door
+            name: State
+        title: Front Door
+      - type: entities
+        entities:
+          - entity: person.cory
+            name: Cory
+          - entity: person.cassidy
+        visibility:
+          - condition: user
+            users:
+              - f6488086ed0643d4b425bef089441fcb
+      - show_current: true
+        show_forecast: false
+        type: weather-forecast
+        entity: weather.forecast_home
+        forecast_type: daily
+        round_temperature: true
+        forecast_slots: 5
+      - type: entities
+        entities:
+          - entity: light.star_lamp
+            icon: mdi:star
+            secondary_info: brightness
+          - entity: light.play_gradient_tube
+          - entity: light.reading
+          - entity: light.polaroid_chandelier
+            name: Polaroid Chandelier
+            secondary_info: brightness
+            icon: mdi:chandelier
+          - entity: light.pola_light
+            secondary_info: brightness
+            icon: mdi:clock-outline
+            name: Polaroid Clock
+          - entity: light.turntable_light
+            icon: mdi:record-player
+        title: Lights
+        state_color: true
+      - type: vertical-stack
+        cards:
+          - type: entity
+            name: Keyfob Present
+            entity: binary_sensor.ble_presence_door_keyfob_soft_away
+            icon: mdi:key-wireless
+          - type: entities
+            title: BLE Signal
+            entities:
+              - entity: sensor.ble_presence_door_keyfob_rssi
+                name: RSSI (dBm)
+                icon: mdi:wifi-strength-2
+          - type: entities
+            title: Door Status
+            entities:
+              - entity: binary_sensor.apartment_door
+                name: Door Contact
+                icon: mdi:door-closed
+              - entity: lock.apartment_door
+                name: Apartment Lock
+                icon: mdi:lock-smart
+          - type: entities
+            title: Device Actions
+            entities:
+              - entity: button.ble_presence_door_fob_button
+                icon: mdi:chip
+              - entity: button.ble_presence_door_reboot_ble_proxy
+                name: Reboot BLE Proxy
+                icon: mdi:restart
+        visibility:
+          - condition: user
+            users:
+              - f6488086ed0643d4b425bef089441fcb
+  - type: masonry
+    icon: mdi:lamps-outline
+    title: Lights
+    path: lights
+    cards:
+      - type: vertical-stack
+        cards:
+          - type: horizontal-stack
+            cards:
+              - show_name: true
+                show_icon: true
+                type: button
+                name: All On
+                icon: mdi:lightbulb-group
+                tap_action:
+                  action: call-service
+                  service: light.turn_on
+                  service_data:
+                    entity_id:
+                      - light.star_lamp
+                      - light.reading
+                      - light.play_gradient_tube
+                      - light.pola_light
+                      - light.polaroid_chandelier
+              - type: button
+                name: All Off
+                icon: mdi:lightbulb-off
+                tap_action:
+                  action: call-service
+                  service: light.turn_off
+                  service_data:
+                    entity_id:
+                      - light.star_lamp
+                      - light.reading
+                      - light.play_gradient_tube
+                      - light.pola_light
+                      - light.polaroid_chandelier
+          - type: custom:hue-like-light-card
+            title: Living Room
+            use_hue_icons: true
+            color_wheel: true
+            white_temp: true
+            show_brightness: true
+            compact: false
+            columns: 2
+            entities:
+              - entity: light.star_lamp
+                name: Star Light
+                icon: mdi:star
+                secondary_info: brightness
+                show_effects: true
+                favorites:
+                  - name: Relax
+                    color_temp: 370
+                    brightness: 160
+                  - name: Warm
+                    color_temp: 220
+                    brightness: 200
+                  - name: Read
+                    rgb_color:
+                      - 255
+                      - 244
+                      - 229
+                    brightness: 220
+                  - name: Party
+                    rgb_color:
+                      - 255
+                      - 0
+                      - 128
+                    brightness: 255
+              - entity: light.reading
+                name: Reading Lamp
+                icon: mdi:floor-lamp
+                secondary_info: brightness
+                show_effects: true
+                favorites:
+                  - name: Read Warm
+                    color_temp: 300
+                    brightness: 220
+                  - name: Read Cool
+                    color_temp: 420
+                    brightness: 230
+                  - name: Night
+                    color_temp: 200
+                    brightness: 80
+                  - name: Off-ish
+                    rgb_color:
+                      - 255
+                      - 200
+                      - 150
+                    brightness: 120
+              - entity: light.play_gradient_tube
+                name: Gradient Tube
+                icon: mdi:lightbulb-fluorescent-tube-outline
+                secondary_info: brightness
+                show_effects: true
+                favorites:
+                  - name: Ambient
+                    color_temp: 350
+                    brightness: 140
+                  - name: Warm Glow
+                    color_temp: 240
+                    brightness: 200
+                  - name: Cool Blue
+                    rgb_color:
+                      - 0
+                      - 120
+                      - 255
+                    brightness: 200
+                  - name: Party
+                    rgb_color:
+                      - 255
+                      - 0
+                      - 200
+                    brightness: 255
+          - type: custom:hue-like-light-card
+            title: Kitchen
+            use_hue_icons: true
+            color_wheel: true
+            white_temp: true
+            show_brightness: true
+            compact: true
+            columns: 1
+            entities:
+              - entity: light.pola_light
+                name: Polaroid Clock
+                icon: mdi:clock-outline
+                secondary_info: brightness
+                show_effects: true
+                favorites:
+                  - name: Morning
+                    color_temp: 420
+                    brightness: 230
+                  - name: Cooking
+                    color_temp: 400
+                    brightness: 255
+                  - name: Soft
+                    color_temp: 300
+                    brightness: 160
+                  - name: Party
+                    rgb_color:
+                      - 255
+                      - 80
+                      - 0
+                    brightness: 255
+          - type: custom:hue-like-light-card
+            title: Dining Room
+            use_hue_icons: true
+            color_wheel: true
+            white_temp: true
+            show_brightness: true
+            compact: true
+            columns: 1
+            entities:
+              - entity: light.polaroid_chandelier
+                name: Polaroid Chandelier
+                icon: mdi:chandelier
+                secondary_info: brightness
+                show_effects: true
+                favorites:
+                  - name: Dinner
+                    color_temp: 270
+                    brightness: 180
+                  - name: Bright
+                    color_temp: 400
+                    brightness: 255
+                  - name: Candle
+                    rgb_color:
+                      - 255
+                      - 147
+                      - 41
+                    brightness: 120
+                  - name: Party
+                    rgb_color:
+                      - 200
+                      - 0
+                      - 255
+                    brightness: 255
+  - path: Crosstrek
+    icon: mdi:car-hatchback
+    cards:
+      - type: picture-elements
+        elements:
+          - type: conditional
+            conditions:
+              - entity: lock.2024_crosstrek_wilderness_door_locks
+                state: unlocked
+            elements:
+              - type: image
+                image: /local/img/cx9-all.png
+                style:
+                  top: 50%
+                  left: 50%
+                  width: 100%
+                filter: saturate(1)
+                tap_action: none
+              - type: image
+                image: /local/img/cx9-lock.svg
+                style:
+                  top: 50%
+                  left: 50%
+                  width: 100%
+                filter: saturate(1)
+                tap_action: none
+          - type: state-icon
+            entity: device_tracker.2024_crosstrek_wilderness
+            state_color: false
+            style:
+              top: 16%
+              left: 50%
+          - type: state-label
+            entity: device_tracker.2024_crosstrek_wilderness
+            style:
+              top: 21.5%
+              left: 50%
+          - type: state-icon
+            entity: sensor.2024_crosstrek_wilderness_odometer
+            style:
+              top: 8%
+              left: 92%
+          - type: state-label
+            entity: sensor.2024_crosstrek_wilderness_odometer
+            style:
+              top: 13.5%
+              left: 92%
+          - type: state-icon
+            entity: sensor.2024_crosstrek_wilderness_fuel_level
+            style:
+              top: 83%
+              left: 70%
+          - type: state-label
+            entity: sensor.2024_crosstrek_wilderness_fuel_level
+            style:
+              top: 88%
+              left: 70%
+          - type: state-icon
+            entity: sensor.2024_crosstrek_wilderness_range
+            style:
+              top: 90%
+              left: 92%
+          - type: state-label
+            entity: sensor.2024_crosstrek_wilderness_range
+            style:
+              top: 95%
+              left: 92%
+          - type: state-icon
+            entity: sensor.2024_crosstrek_wilderness_average_fuel_consumption
+            style:
+              top: 90%
+              left: 10%
+          - type: state-label
+            entity: sensor.2024_crosstrek_wilderness_average_fuel_consumption
+            style:
+              top: 95%
+              left: 11%
+          - type: state-icon
+            entity: sensor.2024_crosstrek_wilderness_tire_pressure_front_left
+            state_color: false
+            style:
+              top: 22%
+              left: 25%
+          - type: state-label
+            entity: sensor.2024_crosstrek_wilderness_tire_pressure_front_left
+            style:
+              top: 27%
+              left: 25%
+          - type: state-icon
+            entity: sensor.2024_crosstrek_wilderness_tire_pressure_front_right
+            state_color: false
+            style:
+              top: 22%
+              left: 75%
+          - type: state-label
+            entity: sensor.2024_crosstrek_wilderness_tire_pressure_front_right
+            style:
+              top: 27%
+              left: 75%
+          - type: state-icon
+            entity: sensor.2024_crosstrek_wilderness_tire_pressure_front_left
+            state_color: false
+            style:
+              top: 64.5%
+              left: 25%
+          - type: state-label
+            entity: sensor.2024_crosstrek_wilderness_tire_pressure_front_left
+            style:
+              top: 70%
+              left: 25%
+          - type: state-icon
+            entity: sensor.2024_crosstrek_wilderness_tire_pressure_front_right
+            state_color: false
+            style:
+              top: 64.5%
+              left: 75%
+          - type: state-label
+            entity: sensor.2024_crosstrek_wilderness_tire_pressure_front_right
+            style:
+              top: 70%
+              left: 75%
+        image: /local/img/cx9.svg
+      - type: horizontal-stack
+        cards:
+          - show_name: true
+            show_icon: true
+            type: button
+            tap_action:
+              action: toggle
+            entity: button.2024_crosstrek_wilderness_poll_vehicle
+            show_state: true
+            name: Update
+          - show_name: true
+            show_icon: true
+            type: button
+            tap_action:
+              action: toggle
+            entity: lock.2024_crosstrek_wilderness_door_locks
+            name: Doors
+            icon: mdi:car-door-lock
+            show_state: true
+          - show_name: true
+            show_icon: true
+            type: button
+            tap_action:
+              action: toggle
+            entity: button.2024_crosstrek_wilderness_remote_start
+            name: Remote Start
+            icon: mdi:engine
+            show_state: true
+      - type: entities
+        entities:
+          - entity: lock.2024_crosstrek_wilderness_door_locks
+            name: Doors
+            secondary_info: last-changed
+          - entity: sensor.2024_crosstrek_wilderness_average_fuel_consumption
+            name: Average fuel consumption
+          - entity: binary_sensor.2024_crosstrek_wilderness_front_left_door
+            name: Front left door
+          - entity: binary_sensor.2024_crosstrek_wilderness_front_left_window
+            name: Front left window
+          - entity: binary_sensor.2024_crosstrek_wilderness_front_right_door
+            name: Front right door
+          - entity: binary_sensor.2024_crosstrek_wilderness_front_right_window
+            name: Front right window
+          - entity: sensor.2024_crosstrek_wilderness_fuel_level
+            name: Fuel level
+          - entity: binary_sensor.2024_crosstrek_wilderness_hood
+            name: Hood
+          - entity: binary_sensor.2024_crosstrek_wilderness_ignition
+            name: Ignition
+          - entity: sensor.2024_crosstrek_wilderness_odometer
+            name: Odometer
+          - entity: sensor.2024_crosstrek_wilderness_range
+            name: Range
+          - entity: binary_sensor.2024_crosstrek_wilderness_rear_left_door
+            name: Rear left door
+          - entity: binary_sensor.2024_crosstrek_wilderness_rear_left_window
+            name: Rear left window
+          - entity: binary_sensor.2024_crosstrek_wilderness_rear_right_door
+            name: Rear right door
+          - entity: binary_sensor.2024_crosstrek_wilderness_rear_right_window
+            name: Rear right window
+          - entity: binary_sensor.2024_crosstrek_wilderness_sunroof
+            name: Sunroof
+          - entity: sensor.2024_crosstrek_wilderness_tire_pressure_front_left
+            name: Tire pressure front left
+          - entity: sensor.2024_crosstrek_wilderness_tire_pressure_front_right
+            name: Tire pressure front right
+          - entity: sensor.2024_crosstrek_wilderness_tire_pressure_rear_left
+            name: Tire pressure rear left
+          - entity: sensor.2024_crosstrek_wilderness_tire_pressure_rear_right
+            name: Tire pressure rear right
+          - entity: binary_sensor.2024_crosstrek_wilderness_trouble
+            name: Trouble
+          - entity: binary_sensor.2024_crosstrek_wilderness_trunk
+            name: Trunk
+        title: 2024 Crosstrek Wilderness
+        state_color: true
+    badges:
+      - type: entity
+        show_name: false
+        show_state: true
+        show_icon: true
+        entity: select.2024_crosstrek_wilderness_climate_preset
+        color: ''
+  - type: sections
+    visible:
+      - user: f6488086ed0643d4b425bef089441fcb
+    max_columns: 3
+    icon: mdi:audio-video
+    title: Control Board
+    path: control-board
+    header:
+      title: Spectra L/S
+      subtitle: Level / Source
+    sections:
+      - type: grid
+        column_span: 1
+        columns: 1
+        square: false
+        cards:
+          - type: conditional
+            conditions:
+              - entity: input_select.ma_active_target
+                state: media_player.spectra_ls_2
+            card:
+              type: custom:mini-media-player
+              entity: media_player.spectra_ls_2
+              name: Spectra L/S
+              artwork: cover
+              hide:
+                source: true
+      - type: grid
+        column_span: 1
+        columns: 1
+        square: false
+        cards:
+          - type: entities
+            title: Audio
+            entities:
+              - entity: select.ma_active_target_friendly
+                name: Player (Active Target)
+              - entity: sensor.ma_active_friendly
+                name: Player Name
+              - entity: number.control_board_v2_arylic_volume_set
+                name: Volume (Master)
+              - entity: number.control_board_v2_eq_low
+                name: Bass
+              - entity: number.control_board_v2_eq_mid
+                name: Mid
+              - entity: number.control_board_v2_eq_high
+                name: Treble
+              - entity: button.control_board_v2_eq_reset_flat
+                name: EQ Flat
+          - type: horizontal-stack
+            cards:
+              - type: button
+                name: Play / Pause
+                icon: mdi:play-pause
+                tap_action:
+                  action: toggle
+                entity: button.control_board_v2_audio_play_pause
+              - type: button
+                name: Previous
+                icon: mdi:skip-previous
+                tap_action:
+                  action: toggle
+                entity: button.control_board_v2_audio_previous
+              - type: button
+                name: Next
+                icon: mdi:skip-next
+                tap_action:
+                  action: toggle
+                entity: button.control_board_v2_audio_next
+              - type: button
+                name: Mute
+                icon: mdi:volume-mute
+                tap_action:
+                  action: toggle
+                entity: button.control_board_v2_audio_mute
+          - type: entities
+            title: Display
+            entities:
+              - entity: number.control_board_screen_brightness
+                name: Screen Brightness
+      - type: grid
+        column_span: 1
+        columns: 1
+        square: false
+        cards:
+          - type: entities
+            title: Living Room
+            entities:
+              - entity: light.star_lamp
+                name: Star Lamp
+              - entity: light.play_gradient_tube
+                name: Gradient Tube
+              - entity: light.reading
+                name: Reading Lamp
+          - type: entities
+            title: Dining Room
+            entities:
+              - entity: light.polaroid_chandelier
+                name: Polaroid Chandelier
+          - type: entities
+            title: Kitchen
+            entities:
+              - entity: light.pola_light
+                name: Polaroid Clock
+          - type: entities
+            title: Other
+            entities:
+              - entity: light.turntable_light
+                name: Turntable
+  - type: sections
+    visible:
+      - user: f6488086ed0643d4b425bef089441fcb
+    max_columns: 4
+    icon: mdi:tools
+    title: Control Board Panel
+    path: control-board-panel
+    sections:
+      - type: grid
+        cards:
+          - type: entities
+            title: Routing / Targets
+            entities:
+              - entity: input_select.ma_active_target
+                name: Active Target
+          - type: entities
+            title: Audio Internals
+            entities:
+              - entity: sensor.plex_now_playing_local
+                name: Playback State
+              - entity: sensor.plex_now_playing_local
+                attribute: media_position
+                name: Position
+              - entity: sensor.plex_now_playing_local
+                attribute: media_duration
+                name: Duration
+              - entity: sensor.plex_now_playing_local
+                attribute: volume_level
+                name: Volume
+              - entity: select.control_board_v2_arylic_source
+                name: Source Select
+              - entity: button.control_board_v2_audio_source_cycle
+                name: Source Cycle
+              - entity: button.control_board_v2_ma_target_cycle
+                name: Target Cycle
+          - type: entities
+            title: ESPHome Diagnostics
+            entities:
+              - entity: sensor.control_board_v2_cpu_usage
+                name: CPU Usage
+              - entity: sensor.control_board_v2_cpu_usage_core_0
+                name: CPU Core 0
+              - entity: sensor.control_board_v2_cpu_usage_core_1
+                name: CPU Core 1
+              - entity: sensor.control_board_v2_heap_free
+                name: Heap Free
+              - entity: sensor.control_board_v2_heap_min_free
+                name: Heap Min Free
+              - entity: sensor.control_board_v2_psram_free
+                name: PSRAM Free
+              - entity: sensor.control_board_v2_psram_total
+                name: PSRAM Total
+          - type: entities
+            title: OLED / Debug
+            entities:
+              - entity: number.control_board_v2_oled_contrast
+                name: OLED Contrast
+              - entity: sensor.control_board_v2_oled_contrast_applied
+                name: Contrast Applied
+              - entity: sensor.control_board_v2_oled_contrast_raw
+                name: Contrast Raw
+              - entity: sensor.control_board_v2_oled_contrast_debug
+                name: Contrast Debug
+          - type: entities
+            title: Test Helpers
+            entities:
+              - entity: button.control_board_v2_arylic_test_volume_20
+                name: Test Volume 20

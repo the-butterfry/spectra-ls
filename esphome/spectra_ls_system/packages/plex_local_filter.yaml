@@ -1,0 +1,391 @@
+# Plex local-only now-playing filter (package)
+# Copy into Home Assistant packages/ and include via configuration.yaml.
+
+# =====================
+# Tunables (local filter)
+# =====================
+input_text:
+  plex_local_allowed_subnets:
+    name: Plex Local Allowed Subnets
+    initial: "192.168.10.,192.168.30."
+    max: 255
+  plex_local_denylist:
+    name: Plex Local Denylist
+    initial: "iphone,pixel,macbook"
+    max: 255
+
+# =====================
+# Plex sessions source
+# =====================
+rest:
+  - resource: !secret plex_sessions_url
+    scan_interval: 5
+    sensor:
+      - name: plex_session_first_ip
+        value_template: >
+          {% set xml = (value | default('')) | string %}
+          {% set players = xml | regex_findall('(<Player[^>]*>)') %}
+          {% if players | length == 0 %}
+            
+          {% else %}
+            {% set p = players[0] %}
+            {% set ip_match = p | regex_findall('address=\"([^\"]+)\"') %}
+            {{ ip_match[0] if ip_match | length > 0 else '' }}
+          {% endif %}
+
+      - name: plex_session_first_local
+        value_template: >
+          {% set xml = (value | default('')) | string %}
+          {% set players = xml | regex_findall('(<Player[^>]*>)') %}
+          {% if players | length == 0 %}
+            
+          {% else %}
+            {% set p = players[0] %}
+            {% set local_match = p | regex_findall('local=\"([01])\"') %}
+            {{ local_match[0] if local_match | length > 0 else '' }}
+          {% endif %}
+
+      - name: plex_session_first_title
+        value_template: >
+          {% set xml = (value | default('')) | string %}
+          {% set players = xml | regex_findall('(<Player[^>]*>)') %}
+          {% if players | length == 0 %}
+            
+          {% else %}
+            {% set p = players[0] %}
+            {% set title_match = p | regex_findall('title=\"([^\"]+)\"') %}
+            {% set device_match = p | regex_findall('device=\"([^\"]+)\"') %}
+            {{ title_match[0] if title_match | length > 0 else (device_match[0] if device_match | length > 0 else '') }}
+          {% endif %}
+
+      - name: plex_session_allowed_ip
+        value_template: >
+          {% set xml = (value | default('')) | string %}
+          {% set subnets = (states('input_text.plex_local_allowed_subnets') | string).split(',') %}
+          {% set denylist = (states('input_text.plex_local_denylist') | lower | regex_replace('\\s+', '')).split(',') %}
+          {% set players = xml | regex_findall('(<Player[^>]*>)') %}
+          {% set ns = namespace(ip='') %}
+          {% for p in players %}
+            {% set ip_match = p | regex_findall('address=\"([^\"]+)\"') %}
+            {% set local_match = p | regex_findall('local=\"([01])\"') %}
+            {% set title_match = p | regex_findall('title=\"([^\"]+)\"') %}
+            {% set device_match = p | regex_findall('device=\"([^\"]+)\"') %}
+            {% set ip_raw = (ip_match[0] if ip_match|length > 0 else '') %}
+            {% set ip_parts = ip_raw | regex_findall('(\\d+)') %}
+            {% set ip = ip_parts | join('.') %}
+            {% set local = local_match[0] if local_match|length > 0 else '0' %}
+            {% set title = title_match[0] if title_match|length > 0 else (device_match[0] if device_match|length > 0 else '') %}
+            {% set title_low = title | lower %}
+            {% set denied = false %}
+            {% for d in denylist %}
+              {% if d and d in title_low %}
+                {% set denied = true %}
+              {% endif %}
+            {% endfor %}
+            {% set in_lan = false %}
+            {% for s in subnets %}
+              {% set s_parts = s | regex_findall('(\\d+)') %}
+              {% set s_norm = s_parts | join('.') %}
+              {% if s_norm and (ip == s_norm or ip.startswith(s_norm ~ '.')) %}
+                {% set in_lan = true %}
+              {% endif %}
+            {% endfor %}
+            {% if local == '1' and in_lan and not denied %}
+              {% set ns.ip = ip %}
+              {% break %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.ip }}
+
+      - name: plex_session_allowed_title
+        value_template: >
+          {% set xml = (value | default('')) | string %}
+          {% set subnets = (states('input_text.plex_local_allowed_subnets') | string).split(',') %}
+          {% set denylist = (states('input_text.plex_local_denylist') | lower | regex_replace('\\s+', '')).split(',') %}
+          {% set players = xml | regex_findall('(<Player[^>]*>)') %}
+          {% set ns = namespace(title='') %}
+          {% for p in players %}
+            {% set ip_match = p | regex_findall('address=\"([^\"]+)\"') %}
+            {% set local_match = p | regex_findall('local=\"([01])\"') %}
+            {% set title_match = p | regex_findall('title=\"([^\"]+)\"') %}
+            {% set device_match = p | regex_findall('device=\"([^\"]+)\"') %}
+            {% set ip_raw = (ip_match[0] if ip_match|length > 0 else '') %}
+            {% set ip_parts = ip_raw | regex_findall('(\\d+)') %}
+            {% set ip = ip_parts | join('.') %}
+            {% set local = local_match[0] if local_match|length > 0 else '0' %}
+            {% set title = title_match[0] if title_match|length > 0 else (device_match[0] if device_match|length > 0 else '') %}
+            {% set title_low = title | lower %}
+            {% set denied = false %}
+            {% for d in denylist %}
+              {% if d and d in title_low %}
+                {% set denied = true %}
+              {% endif %}
+            {% endfor %}
+            {% set in_lan = false %}
+            {% for s in subnets %}
+              {% set s_parts = s | regex_findall('(\\d+)') %}
+              {% set s_norm = s_parts | join('.') %}
+              {% if s_norm and (ip == s_norm or ip.startswith(s_norm ~ '.')) %}
+                {% set in_lan = true %}
+              {% endif %}
+            {% endfor %}
+            {% if local == '1' and in_lan and not denied %}
+              {% set ns.title = title %}
+              {% break %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.title }}
+
+# =====================
+# Derived sensors
+# =====================
+template:
+  - sensor:
+      - name: plex_sessions_raw_meta_count
+        state: >
+          {% set meta = state_attr('sensor.cory_plex_sessions_raw', 'Metadata') %}
+          {% if meta is none %}
+            {% set meta = state_attr('sensor.cory_plex_sessions_raw', 'metadata') %}
+          {% endif %}
+          {% if meta is mapping and 'Metadata' in meta %}
+            {% set meta_list = meta['Metadata'] %}
+          {% elif meta is iterable and meta is not string %}
+            {% set meta_list = meta %}
+          {% else %}
+            {% set meta_list = [] %}
+          {% endif %}
+          {{ meta_list | length }}
+
+      - name: plex_session_raw_first_ip
+        state: >
+          {% set meta = state_attr('sensor.cory_plex_sessions_raw', 'Metadata') %}
+          {% if meta is none %}
+            {% set meta = state_attr('sensor.cory_plex_sessions_raw', 'metadata') %}
+          {% endif %}
+          {% if meta is iterable and meta is not string and meta | length > 0 %}
+            {% set item = meta[0] %}
+            {% set player = item.get('Player') if item.get('Player') is not none else item.get('player', {}) %}
+            {{ player.get('address', '') if player is mapping else '' }}
+          {% endif %}
+
+      - name: plex_session_raw_first_local
+        state: >
+          {% set meta = state_attr('sensor.cory_plex_sessions_raw', 'Metadata') %}
+          {% if meta is none %}
+            {% set meta = state_attr('sensor.cory_plex_sessions_raw', 'metadata') %}
+          {% endif %}
+          {% if meta is iterable and meta is not string and meta | length > 0 %}
+            {% set item = meta[0] %}
+            {% set player = item.get('Player') if item.get('Player') is not none else item.get('player', {}) %}
+            {{ player.get('local', '') if player is mapping else '' }}
+          {% endif %}
+
+      - name: plex_session_raw_first_title
+        state: >
+          {% set meta = state_attr('sensor.cory_plex_sessions_raw', 'Metadata') %}
+          {% if meta is none %}
+            {% set meta = state_attr('sensor.cory_plex_sessions_raw', 'metadata') %}
+          {% endif %}
+          {% if meta is iterable and meta is not string and meta | length > 0 %}
+            {% set item = meta[0] %}
+            {% set player = item.get('Player') if item.get('Player') is not none else item.get('player', {}) %}
+            {% set title = player.get('title', '') if player is mapping else '' %}
+            {% if not title and player is mapping %}
+              {% set title = player.get('device', '') %}
+            {% endif %}
+            {{ title }}
+          {% endif %}
+
+      - name: plex_session_raw_first_in_lan
+        state: >
+          {% set ip_raw = states('sensor.plex_session_raw_first_ip') | string %}
+          {% set ip_parts = ip_raw | regex_findall('(\\d+)') %}
+          {% set ip = ip_parts | join('.') %}
+          {% set subnets = (states('input_text.plex_local_allowed_subnets') | string).split(',') %}
+          {% set in_lan = false %}
+          {% for s in subnets %}
+            {% set s_parts = s | regex_findall('(\\d+)') %}
+            {% set s_norm = s_parts | join('.') %}
+            {% if s_norm and (ip == s_norm or ip.startswith(s_norm ~ '.')) %}
+              {% set in_lan = true %}
+            {% endif %}
+          {% endfor %}
+          {{ in_lan }}
+
+      - name: plex_session_raw_first_denied
+        state: >
+          {% set title = states('sensor.plex_session_raw_first_title') | lower %}
+          {% set denylist = (states('input_text.plex_local_denylist') | lower | regex_replace('\\s+', '')).split(',') %}
+          {% set denied = false %}
+          {% for d in denylist %}
+            {% if d and d in title %}
+              {% set denied = true %}
+            {% endif %}
+          {% endfor %}
+          {{ denied }}
+
+      - name: plex_session_raw_first_local_ok
+        state: >
+          {% set local = states('sensor.plex_session_raw_first_local') %}
+          {{ local in ['true', 'True', '1', 'on', 'ON'] or local == 'True' or local == 'true' }}
+
+      - name: plex_session_allowed_ip_raw
+        state: >
+          {% set meta = state_attr('sensor.cory_plex_sessions_raw', 'Metadata') %}
+          {% if meta is none %}
+            {% set meta = state_attr('sensor.cory_plex_sessions_raw', 'metadata') %}
+          {% endif %}
+          {% if meta is mapping and 'Metadata' in meta %}
+            {% set meta_list = meta['Metadata'] %}
+          {% elif meta is iterable and meta is not string %}
+            {% set meta_list = meta %}
+          {% else %}
+            {% set meta_list = [] %}
+          {% endif %}
+          {% set subnets = (states('input_text.plex_local_allowed_subnets') | string).split(',') %}
+          {% set denylist = (states('input_text.plex_local_denylist') | lower | regex_replace('\\s+', '')).split(',') %}
+          {% set ns = namespace(ip='') %}
+          {% if meta_list | length > 0 %}
+            {% for item in meta_list %}
+              {% set player = {} %}
+              {% if item is mapping %}
+                {% set player = item.get('Player') if item.get('Player') is not none else item.get('player', {}) %}
+              {% endif %}
+              {% set ip_raw = (player.get('address', '') if player is mapping else '') | string %}
+              {% set ip_parts = ip_raw | regex_findall('(\\d+)') %}
+              {% set ip = ip_parts | join('.') %}
+              {% set local = player.get('local') if player is mapping else None %}
+              {% set title = player.get('title', '') if player is mapping else '' %}
+              {% if not title and player is mapping %}
+                {% set title = player.get('device', '') %}
+              {% endif %}
+              {% set title_low = title | lower %}
+              {% set denied = false %}
+              {% for d in denylist %}
+                {% if d and d in title_low %}
+                  {% set denied = true %}
+                {% endif %}
+              {% endfor %}
+              {% set in_lan = false %}
+              {% for s in subnets %}
+                {% set s_parts = s | regex_findall('(\\d+)') %}
+                {% set s_norm = s_parts | join('.') %}
+                {% if s_norm and (ip == s_norm or ip.startswith(s_norm ~ '.')) %}
+                  {% set in_lan = true %}
+                {% endif %}
+              {% endfor %}
+              {% set local_ok = local in [true, 'true', 'True', '1', 1] %}
+              {% if local_ok and in_lan and not denied %}
+                {% set ns.ip = ip %}
+                {% break %}
+              {% endif %}
+            {% endfor %}
+          {% endif %}
+          {{ ns.ip }}
+
+      - name: plex_session_allowed_title_raw
+        state: >
+          {% set meta = state_attr('sensor.cory_plex_sessions_raw', 'Metadata') %}
+          {% if meta is none %}
+            {% set meta = state_attr('sensor.cory_plex_sessions_raw', 'metadata') %}
+          {% endif %}
+          {% if meta is mapping and 'Metadata' in meta %}
+            {% set meta_list = meta['Metadata'] %}
+          {% elif meta is iterable and meta is not string %}
+            {% set meta_list = meta %}
+          {% else %}
+            {% set meta_list = [] %}
+          {% endif %}
+          {% set subnets = (states('input_text.plex_local_allowed_subnets') | string).split(',') %}
+          {% set denylist = (states('input_text.plex_local_denylist') | lower | regex_replace('\\s+', '')).split(',') %}
+          {% set ns = namespace(title='') %}
+          {% if meta_list | length > 0 %}
+            {% for item in meta_list %}
+              {% set player = {} %}
+              {% if item is mapping %}
+                {% set player = item.get('Player') if item.get('Player') is not none else item.get('player', {}) %}
+              {% endif %}
+              {% set ip_raw = (player.get('address', '') if player is mapping else '') | string %}
+              {% set ip_parts = ip_raw | regex_findall('(\\d+)') %}
+              {% set ip = ip_parts | join('.') %}
+              {% set local = player.get('local') if player is mapping else None %}
+              {% set title = player.get('title', '') if player is mapping else '' %}
+              {% if not title and player is mapping %}
+                {% set title = player.get('device', '') %}
+              {% endif %}
+              {% set title_low = title | lower %}
+              {% set denied = false %}
+              {% for d in denylist %}
+                {% if d and d in title_low %}
+                  {% set denied = true %}
+                {% endif %}
+              {% endfor %}
+              {% set in_lan = false %}
+              {% for s in subnets %}
+                {% set s_parts = s | regex_findall('(\\d+)') %}
+                {% set s_norm = s_parts | join('.') %}
+                {% if s_norm and (ip == s_norm or ip.startswith(s_norm ~ '.')) %}
+                  {% set in_lan = true %}
+                {% endif %}
+              {% endfor %}
+              {% set local_ok = local in [true, 'true', 'True', '1', 1] %}
+              {% if local_ok and in_lan and not denied %}
+                {% set ns.title = title %}
+                {% break %}
+              {% endif %}
+            {% endfor %}
+          {% endif %}
+          {{ ns.title }}
+
+      - name: plex_session_allowed_ip_effective
+        state: >
+          {% set raw = states('sensor.plex_session_allowed_ip_raw') %}
+          {% if raw | length > 0 %}
+            {{ raw }}
+          {% else %}
+            {{ states('sensor.plex_session_allowed_ip') }}
+          {% endif %}
+
+      - name: plex_session_allowed_title_effective
+        state: >
+          {% set raw = states('sensor.plex_session_allowed_title_raw') %}
+          {% if raw | length > 0 %}
+            {{ raw }}
+          {% else %}
+            {{ states('sensor.plex_session_allowed_title') }}
+          {% endif %}
+
+  - binary_sensor:
+      - name: plex_session_allowed
+        delay_off: 15s
+        state: >
+          {{ states('sensor.plex_session_allowed_ip_effective') | length > 0 }}
+
+  - sensor:
+      - name: plex_now_playing_local
+        unique_id: plex_now_playing_local
+        variables:
+          allowed: "{{ is_state('binary_sensor.plex_session_allowed', 'on') }}"
+        state: >
+          {% if allowed %}
+            {{ states('sensor.cory_plex_now_playing_session') }}
+          {% else %}
+            idle
+          {% endif %}
+        attributes:
+          media_title: >
+            {{ state_attr('sensor.cory_plex_now_playing_session','media_title') if allowed else '' }}
+          media_artist: >
+            {{ state_attr('sensor.cory_plex_now_playing_session','media_artist') if allowed else '' }}
+          media_album_name: >
+            {{ state_attr('sensor.cory_plex_now_playing_session','media_album_name') if allowed else '' }}
+          source: >
+            {{ state_attr('sensor.cory_plex_now_playing_session','source') if allowed else '' }}
+          app_name: >
+            {{ state_attr('sensor.cory_plex_now_playing_session','app_name') if allowed else '' }}
+          media_position: >
+            {{ state_attr('sensor.cory_plex_now_playing_session','media_position') if allowed else 0 }}
+          media_duration: >
+            {{ state_attr('sensor.cory_plex_now_playing_session','media_duration') if allowed else 0 }}
+          volume_level: >
+            {{ state_attr('sensor.cory_plex_now_playing_session','volume_level') if allowed else 0 }}

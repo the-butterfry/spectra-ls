@@ -1,12 +1,12 @@
 # Description: Spectra LS System substitutions for ESPHome main config and packages.
-# Version: 2026.04.17.2
+# Version: 2026.04.17.3
 # Last updated: 2026-04-17
 # Spectra LS substitutions scoped to spectra_ls_system.
 # Use absolute paths for assets so this file can move with spectra_ls_system.
 
 # === Spectra LS System (ESP32-S3) ===
 device_name: spectra-ls-system
-friendly_name: "Spectra L/S System"
+friendly_name: "Spectra LS System"
 
 wifi_ssid: !secret wifi_ssid
 wifi_password: !secret wifi_password

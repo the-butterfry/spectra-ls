@@ -1,11 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.22 -->
+<!-- Version: 2026.04.17.23 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
 
+- ESPHome: Update `esphome/spectra_ls_system/substitutions.yaml` `friendly_name` to remove reserved URL path separator (`/`) and avoid 2026.7.0 validation failure.
 - RP2040/Architecture: Pass 3B.1 removes dead legacy inline autocalibration/tracking functions and globals from `code.py` now that `sls_calibration_runtime.py` is authoritative, reducing monolith drift and keeping loop behavior manager-driven.
 - RP2040/Docs+Architecture: Add per-file RP ownership/instruction contracts at top of all RP firmware source files (`boot.py`, `code.py`, `sls_*.py`) and add a detailed RP legend document on-device (`CIRCUITPY`) with mirrored repo copy; begin Pass 3B by extracting autocalibration/tracking state machine responsibilities toward a dedicated runtime module to reduce monolith drift risk.
 - RP2040/Architecture: Pass 3 introduces reusable runtime helper functions for button-edge emit/log flow and precomputed analog channel profiles to reduce repeated hot-path lookups/branches while preserving packet format and behavioral semantics.

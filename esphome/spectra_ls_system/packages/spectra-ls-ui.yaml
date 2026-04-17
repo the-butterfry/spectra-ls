@@ -1,5 +1,5 @@
 # Description: Spectra LS UI/menu input handling + UI fonts + now-playing helper sensors.
-# Version: 2026.04.17.6
+# Version: 2026.04.17.7
 # Last updated: 2026-04-17
 # Update version/date whenever you change this file.
 #
@@ -255,6 +255,14 @@ script:
           const int menu_level9_count = meta_count + 2;
 
           if (!id(menu_active)) {
+            if (id(screen_mode) == 0) {
+              id(menu_active) = true;
+              id(menu_level) = LV_LIGHT_ROOMS;
+              id(menu_light_room) = id(selected_room);
+              id(menu_index) = id(menu_light_room);
+              id(lighting_adjust_mode) = 0;
+              return;
+            }
             id(menu_active) = true;
             if (id(menu_level) < LV_MAIN) id(menu_level) = LV_MAIN;
             id(menu_index) = id(screen_mode);

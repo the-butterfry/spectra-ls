@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.51 -->
+<!-- Version: 2026.04.17.52 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
+
+- Docs/README: Set front-page title and first project mention to **Spectra Level / Source** (with immediate **L/S** shorthand), normalize remaining visible **Spectra LS** wording to **L/S**, and remove the dedicated external-links block including the dead `n4archive` reference in favor of inline linked hardware/ecosystem mentions.
 
 - Docs/README: Convert front-page hardware/audio ecosystem mentions to inline manufacturer/project URLs (MCUs, input ICs, control interface ecosystems, HDMI/ARC reference, ESS ES9038Q2M, and OLED controller references) so readers can jump directly from each mention to its canonical project/vendor page.
 

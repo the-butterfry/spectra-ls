@@ -1,11 +1,13 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.1 -->
+<!-- Version: 2026.04.17.2 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
 
+- ESPHome: Phase 13 rename step on `spectra_ls_system` path — rename hardware package include from `packages/control-board-hardware.yaml` to `packages/spectra-ls-hardware.yaml` and repoint `esphome/spectra_ls_system.yaml` include.
+- ESPHome: Phase 12 rename step on `spectra_ls_system` path — rename active peripherals include from `control-board-peripherals-no-rings.yaml` to `spectra-ls-peripherals.yaml` and repoint `esphome/spectra_ls_system.yaml` include.
 - Repo: Stop syncing archived `previous/` trees to GitHub by ignoring `esphome/control-py/previous/` and `esphome/spectra_ls_system/previous/`.
 - ESPHome: Move legacy/stale package files out of active paths into `previous/` (non-runtime archive storage).
 - Repo: Sync `esphome/spectra_ls_system/` content to `main` so GitHub reflects the active spectra_ls_system project tree.

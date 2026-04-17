@@ -1,12 +1,12 @@
 <!-- Description: Human-readable overview and deployment guide for the Spectra LS Home Assistant + ESPHome system. -->
-<!-- Version: 2026.04.16.2 -->
+<!-- Version: 2026.04.16.3 -->
 <!-- Last updated: 2026-04-16 -->
 
 # Spectra LS System
 
-Spectra LS is a whole-home control system for audio and lighting, built on Home Assistant, ESPHome, and Music Assistant. It is designed to give you fast, physical control at the wall while keeping room state, source state, and automations in sync.
+Home Assistant unifies and automates devices and routines across your home; Spectra LS brings that power back into your hands as an intelligent physical control surface. With tactile knobs, smooth sliders, physical switches, dedicated buttons, and rotary dials, you can control whole-home music and lighting by touch instead of living inside phone apps.
 
-In practice, Home Assistant manages rooms, helpers, and automation logic; ESPHome drives the OLED interface and real-time control behavior; and the hardware input layer feeds clean button/encoder/pot events into that stack. The result is a responsive, hardware-first experience for source control, transport, volume, EQ, lighting target selection, and lighting adjustment, with sensible fallback behavior when upstream states are briefly noisy or delayed.
+Behind the scenes, Home Assistant manages room logic, helpers, and automation flow, while ESPHome drives the OLED UI and real-time control behavior. Input hardware feeds clean control events into that stack, so transport, source selection, volume, EQ, lighting target selection, and lighting adjustments stay quick and natural even when upstream state updates are briefly noisy.
 
 ## System Interaction (Moderate Detail)
 
@@ -29,6 +29,15 @@ In practice, Home Assistant manages rooms, helpers, and automation logic; ESPHom
 - TCP-only audio control path (no UART control path unless explicitly enabled).
 - Hardware-first UX: encoder/button/pot interactions remain responsive during HA update noise.
 - Diagnostic/log cadence hardening to reduce publish spam and improve readability.
+
+## Audio Clients / Player Types Spectra LS Interacts With
+
+- **Music Assistant players** (`media_player` entities) for normalized multi-source metadata and active target context.
+- **Home Assistant media players** (generic `media_player.*`) for cross-integration state/transport interoperability.
+- **WiiM Audio integration players** for transport-oriented control paths in supported rooms.
+- **Arylic / LinkPlay TCP endpoints** for direct low-latency control (volume, EQ, source, transport fallback).
+- **AirPlay / Apple TV style sources** detected through HA/MA metadata and source-app attributes.
+- **Plex sessions/players** (optional) for now-playing enrichment and local-session filtering logic.
 
 ## Deployment Guide (Detailed)
 

@@ -1,5 +1,5 @@
 <!-- Description: Human-readable overview and deployment guide for the Spectra Level / Source (Spectra L/S) Home Assistant + ESPHome system. -->
-<!-- Version: 2026.04.17.20 -->
+<!-- Version: 2026.04.17.21 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Spectra Level / Source
@@ -41,6 +41,8 @@ On `main`, project direction follows `esphome/spectra_ls_system/v-next-NOTES.md`
 
 Spectra Level / Source (Spectra L/S) is designed for real-world use right where you live: place it on the coffee table and treat it as your home digital-to-analog control hub. From the couch or desk, you get tactile control over sources, routing, and playback without living inside phone apps. Under the hood, it still maintains a controlled end-to-end path for signal quality, timing stability, and conversion transparency.
 
+Spectra L/S also supports whole-home multi-speaker playback with tight room-to-room synchronization, so one tap can keep every room locked to the same track and timing. You can also split zones for independent playback when needed, including routing supported audio-input sources into grouped multi-room streaming.
+
 - HDMI input from an ARC-capable source is supported in the source chain.
 - ARC digital audio is split/extracted and routed into the final output conversion stage.
 - Audio-side streaming/control capabilities (from UP2STREAM HD DAC product data): dual-band Wi-Fi, AirPlay 2, Spotify Connect, TIDAL Connect, and aptX HD Bluetooth 5.0.
@@ -48,6 +50,13 @@ Spectra Level / Source (Spectra L/S) is designed for real-world use right where 
 - Conversion target capability: **192kHz / 24-bit**.
 - Board class: no-amp streaming DAC/preamp module.
 - Supports: `FLAC`, `MP3`, `AAC`, `AAC+`, `ALAC`, `APE`, `WAV`.
+
+#### HD DAC Capability Cutsheet
+
+- **Wireless Capability**: AirPlay 2, Spotify Connect, TIDAL Connect, Wi-Fi, Bluetooth with aptX HD, DLNA, UPnP.
+- **Multi-room**: AirPlay 2 multi-room grouping, synchronized same-audio playback across rooms, and different songs in different rooms.
+- **Music Service**: Spotify, Apple Music, Amazon Music, Tidal, Qobuz HD, TuneIn, Internet Radio, BBC Radio, Napster, iHeart Radio, Radio Paradise.
+- **Local Music Source**: phone storage, NAS, USB stick.
 
 ### Recommended Screen
 

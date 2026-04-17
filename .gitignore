@@ -1,6 +1,6 @@
 # Description: Top-level ignore rules for Home Assistant monorepo.
-# Version: 2026.04.16.3
-# Last updated: 2026-04-16
+# Version: 2026.04.17.2
+# Last updated: 2026-04-17
 
 # Secrets / credentials
 secrets.yaml
@@ -36,6 +36,10 @@ esphome_repo_src/
 .worktrees/
 test.txt
 
+# Archived project trees (local-only; do not sync to GitHub)
+esphome/control-py/previous/
+esphome/spectra_ls_system/previous/
+
 # Local secret variants
 spectra_ls_secrets.yaml
 
@@ -58,3 +62,7 @@ scenes.yaml
 !blueprints/**
 !custom_components/
 !custom_components/**
+
+# Re-ignore archived previous folders after broad re-include rules above
+esphome/control-py/previous/**
+esphome/spectra_ls_system/previous/**

@@ -1,0 +1,241 @@
+# Control Board v2 substitutions scoped to control-py
+# Use absolute paths for assets so this file can move with control-py.
+
+# === Control Board v2 (ESP32-S3) ===
+device_name: control-board-v2
+friendly_name: "Control Board v2"
+
+wifi_ssid: !secret wifi_ssid
+wifi_password: !secret wifi_password
+static_ip: 192.168.10.40
+gateway_ip: 192.168.10.1
+subnet_mask: 255.255.255.0
+dns1_ip: 192.168.10.1
+dns2_ip: 1.1.1.1
+
+# Analog potentiometer settings
+volume_pot_send_interval_ms: "50"
+volume_pot_backoff_ms: "200"
+volume_pot_settle_ms: "120"
+volume_pot_jump_steps: "3"
+eq_pot_send_interval_ms: "200"
+eq_pot_settle_ms: "120"
+eq_pot_jump_steps: "3"
+eq_min: "-10"
+eq_max: "10"
+
+# LinkPlay HTTP(S) status (primary device)
+arylic_tcp_host: 192.168.10.50
+arylic_tcp_port: "8899"
+arylic_http_host: 192.168.10.50
+arylic_http_scheme: "https"
+arylic_http_port: "443"
+arylic_http_poll_ms: "5000"
+arylic_http_enabled: "false"
+# Secondary LinkPlay device (HTTP only)
+arylic_lr_http_host: 192.168.10.51
+arylic_lr_http_scheme: "http"
+arylic_lr_http_port: "80"
+arylic_lr_http_poll_ms: "10000"
+arylic_lr_http_enabled: "false"
+# LR TCP control (defaults to LinkPlay TCP port)
+arylic_lr_tcp_host: 192.168.10.51
+arylic_lr_tcp_port: "8899"
+# Audio control routing (map HA/MA players -> physical devices)
+arylic_lr_targets_csv: "${ma_target_living_room}"
+arylic_spectra_targets_csv: "${ma_target_spectra}"
+
+# Legacy MA target substitutions (unused; keep empty to avoid warnings)
+ma_target_living_room: ""
+ma_target_spectra: ""
+
+# ESP32-S3 board
+esp32_board: esp32-s3-devkitc-1
+
+# UART to RP2040
+rp2040_uart_tx: GPIO17
+rp2040_uart_rx: GPIO18
+
+# OLED (SSD1309-compatible; ESPHome uses SSD1306 128x64)
+oled_sda_pin: GPIO8
+oled_scl_pin: GPIO9
+oled_address: 0x3C
+oled_model: "SSD1306 128x64"
+
+# Rooms / lights
+room_living: room_1
+room_dining: room_2
+room_kitchen: room_3
+room_bedroom: room_4
+
+# Room lighting groups ("All" target)
+living_room_group: light.room_1_lights
+dining_room_group: light.room_2_lights
+kitchen_room_group: light.room_3_lights
+bedroom_room_group: light.room_4_lights
+
+# Now Playing metadata (from MA active sensors)
+ha_ma_active_title: sensor.ma_active_title
+ha_ma_active_artist: sensor.ma_active_artist
+ha_ma_active_album: sensor.ma_active_album
+ha_ma_active_app: sensor.ma_active_app
+ha_ma_active_source: sensor.ma_active_source
+ha_ma_active_state: sensor.ma_active_state
+ha_ma_active_duration: sensor.ma_active_duration
+ha_ma_active_position: sensor.ma_active_position
+ha_ma_active_volume: sensor.ma_active_volume
+ha_ma_meta_candidates: sensor.ma_meta_candidates
+ha_ma_meta_low_confidence: binary_sensor.ma_meta_low_confidence
+ha_ma_meta_override_active: input_boolean.ma_meta_override_active
+ha_ma_meta_override_entity: input_text.ma_meta_override_entity
+
+# HA script to apply HS + brightness
+ha_light_script: script.control_board_set_light_dynamic
+
+# HA input_select helpers
+input_select_room: input_select.control_board_room
+input_select_target: input_select.control_board_target
+
+# Room option labels
+room_label_living: "Room 1"
+room_label_dining: "Room 2"
+room_label_kitchen: "Room 3"
+room_label_bedroom: "Room 4"
+
+# Target option labels
+target_label_all: "All"
+target_label_star: "Target 1"
+target_label_tube: "Target 2"
+target_label_reading: "Target 3"
+target_label_chandelier: "Target 4"
+target_label_polaroid_clock: "Target 5"
+
+living_light_primary: light.room_1_primary
+living_light_1: light.room_1_primary
+living_light_2: light.room_1_light_2
+living_light_3: light.room_1_light_3
+
+dining_light_primary: light.room_2_primary
+dining_light_1: light.room_2_primary
+
+kitchen_light_primary: light.room_3_primary
+kitchen_light_1: light.room_3_primary
+
+bedroom_light_primary: light.room_4_primary
+bedroom_light_1: light.room_4_primary
+
+# Tunables
+audio_poll_interval_ms: "5000"
+encoder_rate_limit_hz: "2"
+boot_fade_ms: "2000"
+ring_active_window_ms: "1500"
+lighting_hue_step_deg: "3"
+lighting_sat_step: "2"
+lighting_send_interval_ms: "150"
+brightness_send_interval_ms: "150"
+# Arylic TCP tunables (documented; implemented in control-py/components/arylic_tcp.h)
+arylic_tcp_timeout_ms: "120"
+arylic_tcp_min_interval_ms: "50"
+arylic_tcp_dup_suppress_ms: "50"
+arylic_tcp_backoff_ms: "200"
+# If true, volume control is TCP-only (no HA/MA volume_set calls)
+volume_tcp_only: "true"
+screensaver_idle_ms: "30000"
+screensaver_update_ms: "2000"
+ha_audio_refresh_ms: "6000"
+heartbeat_interval_ms: "60000"
+audio_max_volume_pct: "90"
+audio_ui_min: "1"
+audio_ui_max: "11"
+now_playing_font_size: "10"
+now_playing_mid_font_size: "9"
+now_playing_small_font_size: "9"
+menu_font_size: "9"
+menu_line_height: "12"
+menu_line_height_list: "12"
+menu_list_top_pad: "1"
+menu_blank_idle_ms: "10000"
+menu_home_idle_ms: "30000"
+now_playing_return_ms: "5000"
+audio_empty_duration_ms: "5000"
+menu_debug: "false"
+menu_debug_label: "MENU"
+menu_tile_margin: "4"
+menu_tile_gap: "4"
+menu_tile_border: "1"
+menu_tile_border_selected: "2"
+menu_tile_icon_pad: "4"
+menu_tile_icon_font_size: "18"
+menu_tile_icon_play_font_size: "26"
+menu_tile_icon_stroke: "2"
+boot_menu_ms: "5000"
+meta_pos_stall_ms: "15000"
+meta_stale_ms: "45000"
+meta_end_tolerance_s: "2"
+meta_playing_grace_ms: "15000"
+meta_refresh_ms: "5000"
+meta_refresh_tick_ms: "500"
+meta_pause_timeout_ms: "60000"
+eq_overlay_ms: "5000"
+lighting_slider_ui_brightness_only: "true"
+ui_font_file: "/config/esphome/control-py/OCR-B.ttf"
+splash_font_file: "/config/esphome/control-py/OCR-A.ttf"
+splash_duration_ms: "8000"
+splash_title_left: "SPECTRA L"
+splash_title_right: "S"
+splash_subtitle_left: "Level"
+splash_subtitle_right: "Source"
+splash_symbol_gap_px: "1"
+splash_title_offset_px: "0"
+splash_subtitle_offset_px: "0"
+splash_title_font_size: "12"
+splash_subtitle_font_size: "10"
+splash_symbol_font_size: "11"
+scroll_speed_ms: "100"
+scroll_gap_px: "16"
+meta_override_reset_ms: "120000"
+source_popup_ms: "5000"
+meta_popup_ms: "3500"
+control_target_prompt_cooldown_ms: "15000"
+control_target_prompt_grace_ms: "8000"
+audio_wake_hold_ms: "5000"
+arylic_source_cycle_codes: "NET,BT,LINE-IN,LINE-IN2"
+arylic_source_cycle_labels: "Wi-Fi,Bluetooth,Line In 1,Line In 2"
+# Loop section profiling (display)
+loop_section_debug: "false"
+loop_section_log_interval_ms: "5000"
+loop_section_log_min_ms: "10"
+# New physical button for meta source override
+meta_select_button_id: "40"
+# Meta source labels
+meta_source_label_auto: "Auto"
+meta_source_label_arylic: "Device A"
+meta_source_label_1: "Source 1"
+meta_source_label_2: "Source 2"
+meta_source_label_3: "Source 3"
+meta_source_label_4: "Source 4"
+meta_source_label_5: "Source 5"
+meta_source_label_6: "Source 6"
+
+# System defaults
+eq_boot_ignore_ms: "5000"
+lighting_slider_force_brightness_mode: "true"
+
+# === Lighting Controller ===
+button_name: "Living Room Button"
+button_id: lighting_button_1
+button_gpio: GPIO4
+button2_name: "Dining Room Button"
+button2_id: lighting_button_2
+button2_gpio: GPIO5
+living_area: living_room
+dining_area: dining_room
+
+# === BLE Presence (Door) ===
+keyfob1_name: "Cory Fob"
+keyfob1_mac: "DD:88:00:00:0A:6E"
+keyfob1_tracker_id: "keyfob_ble_1"
+keyfob1_person_entity: "person.cory"
+keyfob1_person_name: "Cory"
+door_contact_entity: "binary_sensor.apartment_door_bt"
+door_lock_entity: "lock.apartment_door"

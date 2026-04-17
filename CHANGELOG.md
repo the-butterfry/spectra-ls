@@ -1,8 +1,14 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.16.26 -->
-<!-- Last updated: 2026-04-16 -->
+<!-- Version: 2026.04.17.1 -->
+<!-- Last updated: 2026-04-17 -->
 
 # Changelog
+
+## 2026-04-17
+
+- Repo: Stop syncing archived `previous/` trees to GitHub by ignoring `esphome/control-py/previous/` and `esphome/spectra_ls_system/previous/`.
+- ESPHome: Move legacy/stale package files out of active paths into `previous/` (non-runtime archive storage).
+- Repo: Sync `esphome/spectra_ls_system/` content to `main` so GitHub reflects the active spectra_ls_system project tree.
 
 ## 2026-04-16
 

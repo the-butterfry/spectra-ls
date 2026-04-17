@@ -1,8 +1,0 @@
-# Description: Spectra LS headless package (no OLED/LED init) for Control Board v2.
-# Version: 2026.04.16.1
-# Last updated: 2026-04-16
-# Update version/date whenever you change this file.
-# Headless package: intentionally empty to avoid initializing OLED/LED hardware.
-esphome:
-  name: ${device_name}
-  friendly_name: ${friendly_name}

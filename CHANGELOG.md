@@ -1,11 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.16.7 -->
+<!-- Version: 2026.04.16.8 -->
 <!-- Last updated: 2026-04-16 -->
 
 # Changelog
 
 ## 2026-04-16
 
+- Docs: Declare `esphome/spectra_ls_system/v-next-NOTES.md` as the `main` branch direction source and require `README.md` alignment to that hardware-first roadmap.
 - Docs: Update README elevator pitch to plain-English whole-home audio + lighting focus and add explicit audio clients/player types section (Music Assistant, HA media_player, WiiM integration, Arylic/LinkPlay, AirPlay/Apple TV, Plex optional).
 - Docs: Rewrite README project-intent intro to emphasize whole-home audio + lighting control and simplify system interaction language.
 - Docs: Add mandatory shared-contract go/no-go checklist (`.github/SHARED-CONTRACT-CHECKLIST.md`) and wire it into branch runbook + Copilot directives.

@@ -3,7 +3,7 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 ---
 
 <!-- Description: Workspace Copilot operating instructions for Home Assistant + ESPHome. -->
-<!-- Version: 2026.04.16.3 -->
+<!-- Version: 2026.04.16.4 -->
 <!-- Last updated: 2026-04-16 -->
 
 # GitHub Copilot Instructions — Home Assistant + ESPHome
@@ -35,6 +35,7 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 - For **spectra_ls_system** changes under `esphome/spectra_ls_system/`: read `esphome/spectra_ls_system/v-next-NOTES.md`.
 - For **stabilized v2** changes under `esphome/control-py/`: read `esphome/control-py/NOTES-control-board-2.md`.
 - Update `CHANGELOG.md` for any functional change **before** editing code.
+- Keep `README.md` aligned with `esphome/spectra_ls_system/v-next-NOTES.md` for `main` branch direction (project intent, hardware-first model, and interaction priorities).
 - If behavior or architecture changes, update the **active** notes file:
 	- spectra_ls_system: `esphome/spectra_ls_system/v-next-NOTES.md`
 	- v2: `esphome/control-py/NOTES-control-board-2.md`

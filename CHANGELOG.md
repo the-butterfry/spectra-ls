@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.59 -->
+<!-- Version: 2026.04.17.60 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
+
+- Docs/README: Replace dry input inventory copy with concrete control behavior notes for the lighting slider (brightness mapping + debounced sends), room switching (cycle + input_select sync), and the implemented multi-room transition/crossfade path via `script.control_board_set_light_dynamic` transition support.
 
 - Docs/README: Add an explicit `HD DAC Capability Cutsheet` block (wireless stack, multi-room behavior, music-service list, and local-source support) and add plain-language whole-home multi-speaker synchronization copy (same-track room lock + independent room playback) without protocol-insider wording.
 

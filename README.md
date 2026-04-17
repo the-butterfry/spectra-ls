@@ -1,5 +1,5 @@
 <!-- Description: Human-readable overview and deployment guide for the Spectra Level / Source (Spectra L/S) Home Assistant + ESPHome system. -->
-<!-- Version: 2026.04.17.21 -->
+<!-- Version: 2026.04.17.22 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Spectra Level / Source
@@ -22,6 +22,9 @@ On `main`, project direction follows `esphome/spectra_ls_system/v-next-NOTES.md`
 ### Inputs (Switches, Buttons, Knobs, Sliders, Dials)
 
 - Physical control inventory in v-next: multiple switches, dedicated buttons, rotary dials/encoders, analog knobs/pots, and analog sliders.
+- Lighting slider behavior (RP2040 analog `sensor_id: 101`): maps directly to brightness (`0–100%`) for the currently selected room/target, forces temporary brightness-adjust mode for immediate visual feedback, and debounces sends so movement settles into a clean update instead of noisy bursts.
+- Room switching behavior: the Room Select control cycles rooms and resets target to `All`; when room/target menus are active, the lighting slider can also move selection and push the chosen room/target back to Home Assistant `input_select` helpers.
+- Multi-room crossfade path: the active HA lighting script (`script.control_board_set_light_dynamic`) supports room/area-wide transition seconds; when transitions are used, grouped room updates fade together for smooth multi-room crossfades instead of hard on/off jumps.
 
 - **[PCF8575](https://www.nxp.com/products/interfaces/ic-spi-i3c-interface-devices/general-purpose-i-o-gpio/remote-16-bit-i-o-expander-for-ic-bus:PCF8575)** digital expander (active at `0x20`; optional expansion at `0x21`) for button/switch inputs.
 - **[Seesaw](https://learn.adafruit.com/adafruit-seesaw-atsamd09-breakout/overview) rotary encoders** (menu + lighting encoders).

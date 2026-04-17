@@ -1,5 +1,5 @@
 # Description: Spectra LS OLED-only peripherals package (no LED rings) for Control Board v2.
-# Version: 2026.04.17.9
+# Version: 2026.04.17.11
 # Last updated: 2026-04-17
 # Update version/date whenever you change this file.
 esphome:
@@ -598,16 +598,14 @@ script:
             boot_menu_until_ms = now + (uint32_t) ${boot_menu_ms};
           }
 
-          enum DisplayState {
-            STATE_SPLASH = 0,
-            STATE_BOOT_MENU = 1,
-            STATE_MENU = 2,
-            STATE_NOW_PLAYING = 3,
-            STATE_EQ = 4,
-            STATE_LIGHTING = 5,
-            STATE_SCREENSAVER = 6,
-            STATE_BLANK = 7
-          };
+          const int STATE_SPLASH = ${display_state_splash};
+          const int STATE_BOOT_MENU = ${display_state_boot_menu};
+          const int STATE_MENU = ${display_state_menu};
+          const int STATE_NOW_PLAYING = ${display_state_now_playing};
+          const int STATE_EQ = ${display_state_eq};
+          const int STATE_LIGHTING = ${display_state_lighting};
+          const int STATE_SCREENSAVER = ${display_state_screensaver};
+          const int STATE_BLANK = ${display_state_blank};
 
           const bool menu_active_now = id(menu_active);
           const bool playing = id(playing_effective);
@@ -757,16 +755,14 @@ display:
         }
         return out;
       };
-      enum DisplayState {
-        STATE_SPLASH = 0,
-        STATE_BOOT_MENU = 1,
-        STATE_MENU = 2,
-        STATE_NOW_PLAYING = 3,
-        STATE_EQ = 4,
-        STATE_LIGHTING = 5,
-        STATE_SCREENSAVER = 6,
-        STATE_BLANK = 7
-      };
+      const int STATE_SPLASH = ${display_state_splash};
+      const int STATE_BOOT_MENU = ${display_state_boot_menu};
+      const int STATE_MENU = ${display_state_menu};
+      const int STATE_NOW_PLAYING = ${display_state_now_playing};
+      const int STATE_EQ = ${display_state_eq};
+      const int STATE_LIGHTING = ${display_state_lighting};
+      const int STATE_SCREENSAVER = ${display_state_screensaver};
+      const int STATE_BLANK = ${display_state_blank};
       auto log_loop_section = [&](const char *name, uint32_t start_ms) {
         if (!${loop_section_debug}) return;
         const uint32_t dur = millis() - start_ms;
@@ -794,6 +790,11 @@ display:
         }
         value = value.substr(start, end - start + 1);
       };
+      auto is_placeholder_option = [&](const std::string &value) {
+        if (value.empty()) return true;
+        std::string low = to_lower_ascii(value);
+        return low == "unknown" || low == "unavailable" || low == "none" || low == "null" || low == "idle";
+      };
       auto parse_options = [&](const std::string &raw) -> std::vector<std::string> {
         std::vector<std::string> out;
         if (raw.empty()) return out;
@@ -818,14 +819,14 @@ display:
           }
           if (!in_quote && ch == ',') {
             trim_ascii(token);
-            if (!token.empty()) out.push_back(token);
+            if (!token.empty() && !is_placeholder_option(token)) out.push_back(token);
             token.clear();
             continue;
           }
           token.push_back(ch);
         }
         trim_ascii(token);
-        if (!token.empty()) out.push_back(token);
+        if (!token.empty() && !is_placeholder_option(token)) out.push_back(token);
         return out;
       };
       if (id(splash_until_ms) == 0) {

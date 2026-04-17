@@ -1,5 +1,5 @@
 # Description: Spectra LS core state + globals + system intervals + shared scripts.
-# Version: 2026.04.17.1
+# Version: 2026.04.17.2
 # Last updated: 2026-04-17
 # Update version/date whenever you change this file.
 #
@@ -449,6 +449,18 @@ globals:
     type: int
     restore_value: no
     initial_value: "0"
+  - id: hardware_mode
+    type: int
+    restore_value: no
+    initial_value: "2"
+  - id: control_class
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: menu_override_active
+    type: bool
+    restore_value: no
+    initial_value: "false"
 
   # Calibration state
   - id: calibration_active
@@ -1551,6 +1563,7 @@ script:
           static uint32_t last_log = 0;
           const uint32_t now = millis();
           id(last_input_ms) = now;
+          id(menu_override_active) = true;
           if (now - last_log > 1000) {
             ESP_LOGI("input", "note_menu_input (menu_active=%d calib=%d)", id(menu_active), id(calibration_active));
             last_log = now;

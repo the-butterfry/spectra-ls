@@ -1,5 +1,5 @@
 # Description: Template entities for ma_control_hub runtime routing, metadata, and now-playing state surfaces.
-# Version: 2026.04.17.1
+# Version: 2026.04.17.4
 # Last updated: 2026-04-17
 
 - sensor:
@@ -963,6 +963,9 @@
       state: >-
         {% set target = states('input_select.ma_active_target') %}
         {% set valid_target = target not in ['none','unknown','unavailable',''] %}
+        {% set fallback_enabled = is_state('input_boolean.ma_control_fallback_enabled','on') %}
+        {% set active_path = states('sensor.ma_active_control_path') %}
+        {% set control_capable = is_state('binary_sensor.ma_active_control_capable','on') %}
         {% set rooms_raw = state_attr('sensor.spectra_ls_rooms_raw','rooms') %}
         {% set rooms = [] %}
         {% if rooms_raw is string %}
@@ -980,11 +983,17 @@
         {% endif %}
         {% set members = state_attr(target,'group_members') or state_attr(target,'members') or [] %}
         {% set target_host = '' %}
-        {% if valid_target %}
+        {% if valid_target and control_capable and active_path == 'linkplay_tcp' %}
           {% set target_entries = (rooms | selectattr('entity','equalto', target) | list) %}
           {% set target_entry = (target_entries[0] if (target_entries | length) > 0 else none) %}
           {% if target_entry is not none and target_entry.tcp_host is defined and target_entry.tcp_host not in ['','unknown','unavailable'] %}
             {% set target_host = target_entry.tcp_host %}
+          {% endif %}
+          {% if target_host == '' %}
+            {% set target_ip = state_attr(target,'ip_address') or '' %}
+            {% if target_ip not in ['','none','unknown','unavailable','None', none] %}
+              {% set target_host = target_ip %}
+            {% endif %}
           {% endif %}
         {% endif %}
         {% if target_host != '' %}
@@ -998,7 +1007,7 @@
               {% endif %}
             {% endfor %}
           {% endfor %}
-          {% if hosts | length == 0 %}
+          {% if hosts | length == 0 and fallback_enabled %}
             {% set primary_entity = states('input_text.spectra_ls_target_primary_entity') %}
             {% set room_entity = states('input_text.spectra_ls_target_room_entity') %}
             {% set primary_host = states('input_text.spectra_ls_target_primary_tcp_host') %}
@@ -1009,7 +1018,7 @@
               {% set hosts = [room_host] %}
             {% endif %}
           {% endif %}
-          {% if hosts | length == 0 %}
+          {% if hosts | length == 0 and fallback_enabled %}
             {% set candidates = [states('sensor.ma_detected_receiver_entity'), states('sensor.ma_active_meta_entity'), target] %}
             {% set ns = namespace(picked='') %}
             {% for c in candidates %}
@@ -1034,6 +1043,30 @@
             {% endif %}
           {% endif %}
           {{ hosts | unique | join(',') if (hosts | length) > 0 else '' }}
+        {% endif %}
+    - name: MA Active Control Path
+      state: >-
+        {% set target = states('input_select.ma_active_target') %}
+        {% if target in ['','none','unknown','unavailable'] %}
+          {{ 'none' }}
+        {% else %}
+          {% set rooms_raw = state_attr('sensor.spectra_ls_rooms_raw','rooms') %}
+          {% set rooms = (rooms_raw | from_json) if rooms_raw is string else (rooms_raw or []) %}
+          {% set entry = (rooms | selectattr('entity','equalto', target) | list | first) %}
+          {% set hardware_family = (entry.hardware_family if entry is not none and entry.hardware_family is defined else '') | lower %}
+          {% set path_hint = (entry.control_path if entry is not none and entry.control_path is defined else '') | lower %}
+          {% set control_capable_hint = (entry.control_capable if entry is not none and entry.control_capable is defined else '') %}
+          {% set cap_l = (control_capable_hint | string | lower) %}
+          {% set ip = state_attr(target,'ip_address') or '' %}
+          {% set model = (state_attr(target,'device_model') or '') | lower %}
+          {% set manufacturer = (state_attr(target,'manufacturer') or '') | lower %}
+          {% set purpose = (state_attr(target,'integration_purpose') or '') | lower %}
+          {% set ma_ok = state_attr(target,'music_assistant_compatible') %}
+          {% set hint = (hardware_family ~ ' ' ~ model ~ ' ' ~ manufacturer ~ ' ' ~ purpose ~ ' ' ~ target) %}
+          {% set inferred = 'linkplay_tcp' if (ip not in ['','none','unknown','unavailable','None', none] and ((ma_ok is true) or ('arylic' in hint) or ('linkplay' in hint) or ('up2stream' in hint))) else 'other' %}
+          {% set path = (path_hint if path_hint in ['linkplay_tcp','other'] else inferred) %}
+          {% set control_capable = (cap_l in ['1','true','yes','on']) if cap_l not in ['','none','unknown','unavailable'] else (path == 'linkplay_tcp') %}
+          {{ path if control_capable else 'other' }}
         {% endif %}
     - name: MA Control Targets
       state: >-
@@ -1478,6 +1511,20 @@
         {% set members = state_attr(t,'group_members') or state_attr(t,'members') or [] %}
         {{ members | length }}
 - binary_sensor:
+    - name: MA Active Control Capable
+      state: >-
+        {% set target = states('input_select.ma_active_target') %}
+        {% if target in ['','none','unknown','unavailable'] %}
+          {{ false }}
+        {% else %}
+          {% set rooms_raw = state_attr('sensor.spectra_ls_rooms_raw','rooms') %}
+          {% set rooms = (rooms_raw | from_json) if rooms_raw is string else (rooms_raw or []) %}
+          {% set entry = (rooms | selectattr('entity','equalto', target) | list | first) %}
+          {% set cap_hint = (entry.control_capable if entry is not none and entry.control_capable is defined else '') %}
+          {% set cap_l = (cap_hint | string | lower) %}
+          {% set path = states('sensor.ma_active_control_path') %}
+          {{ (cap_l in ['1','true','yes','on']) if cap_l not in ['','none','unknown','unavailable'] else (path == 'linkplay_tcp') }}
+        {% endif %}
     - name: MA Meta Stale
       state: >-
         {% set age = states('sensor.ma_meta_age_s') | float(9999) %}

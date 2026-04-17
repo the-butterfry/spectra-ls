@@ -1,3 +1,8 @@
+# Description: Music Assistant control hub scripts (target options, auto-select, control helpers).
+# Version: 2026.04.17.4
+# Last updated: 2026-04-17
+# Update version/date whenever you change this file.
+
 ma_update_target_options:
   mode: restart
   sequence:
@@ -25,6 +30,31 @@ ma_update_target_options:
             {% endif %}
           {% endfor %}
           {{ ns.list }}
+        discovered_targets: >-
+          {% set players = state_attr('sensor.ma_players','result') or [] %}
+          {% set ns = namespace(list=[]) %}
+          {% for p in players %}
+            {% set ent = (p.entity_id if p.entity_id is defined else '') %}
+            {% set ip = (state_attr(ent,'ip_address') if ent not in ['','none','unknown','unavailable'] else '') or (p.ip_address if p.ip_address is defined else '') %}
+            {% set model = (state_attr(ent,'device_model') if ent not in ['','none','unknown','unavailable'] else '') or '' %}
+            {% set manufacturer = (state_attr(ent,'manufacturer') if ent not in ['','none','unknown','unavailable'] else '') or '' %}
+            {% set purpose = (state_attr(ent,'integration_purpose') if ent not in ['','none','unknown','unavailable'] else '') or '' %}
+            {% set ma_ok = (state_attr(ent,'music_assistant_compatible') if ent not in ['','none','unknown','unavailable'] else none) %}
+            {% set cap_hint = (state_attr(ent,'control_capable') if ent not in ['','none','unknown','unavailable'] else '') %}
+            {% set cap_l = (cap_hint | string | lower) %}
+            {% set hint = (model ~ ' ' ~ manufacturer ~ ' ' ~ purpose ~ ' ' ~ ent) | lower %}
+            {% set is_linkplay = ('arylic' in hint) or ('linkplay' in hint) or ('up2stream' in hint) %}
+            {% set control_path = 'linkplay_tcp' if (ip not in ['','none','unknown','unavailable','None', none] and ((ma_ok is true) or is_linkplay)) else 'other' %}
+            {% set control_capable = (cap_l in ['1','true','yes','on']) if cap_l not in ['','none','unknown','unavailable'] else (control_path == 'linkplay_tcp') %}
+            {% if ent not in ['','none','unknown','unavailable']
+                  and (ent | regex_match('^media_player\\.'))
+                  and states[ent] is not none
+                  and control_path == 'linkplay_tcp'
+                  and control_capable %}
+              {% set ns.list = ns.list + [ent] %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.list }}
         detected_receiver: >-
           {{ states('sensor.ma_detected_receiver_entity') }}
         detected_valid: >-
@@ -40,10 +70,11 @@ ma_update_target_options:
           {{ current_norm in ['none','unknown','unavailable',''] }}
         final_options: >-
           {% set extra = ([current] if (current_norm not in ['none','unknown','unavailable',''] and current not in known_targets) else []) %}
-          {{ (['none'] + known_targets + extra) | unique | list }}
+          {{ (['none'] + known_targets + discovered_targets + extra) | unique | list }}
         default_option: >-
-          {% set last_ok = last_valid not in ['none','unknown','unavailable',''] and last_valid in known_targets %}
-          {{ (current if current_norm not in ['none','unknown','unavailable',''] else (last_valid if last_ok else (known_targets[0] if (known_targets | length) > 0 else 'none'))) }}
+          {% set selectable = (known_targets + discovered_targets) | unique | list %}
+          {% set last_ok = last_valid not in ['none','unknown','unavailable',''] and last_valid in selectable %}
+          {{ (current if current_norm not in ['none','unknown','unavailable',''] else (last_valid if last_ok else (selectable[0] if (selectable | length) > 0 else 'none'))) }}
     - service: input_select.set_options
       data:
         entity_id: input_select.ma_active_target
@@ -150,6 +181,18 @@ ma_auto_select:
           {% endif %}
         pick_ready: >-
           {{ pick not in ['','none','unknown','unavailable'] and pick in (state_attr('input_select.ma_active_target','options') or []) and pick_state not in ['','unknown','unavailable'] }}
+        first_active_allowed: >-
+          {% set opts = (state_attr('input_select.ma_active_target','options') or []) %}
+          {% set ns = namespace(ent='') %}
+          {% for e in opts %}
+            {% if ns.ent == '' and e is string and e.startswith('media_player.') and states[e] is not none %}
+              {% set st = states(e) | lower %}
+              {% if st in ['playing','paused'] %}
+                {% set ns.ent = e %}
+              {% endif %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.ent }}
     - choose:
         - conditions: "{{ pick_ready }}"
           sequence:
@@ -157,6 +200,12 @@ ma_auto_select:
               data:
                 entity_id: input_select.ma_active_target
                 option: "{{ pick }}"
+        - conditions: "{{ first_active_allowed not in ['', 'none', 'unknown', 'unavailable'] }}"
+          sequence:
+            - service: input_select.select_option
+              data:
+                entity_id: input_select.ma_active_target
+                option: "{{ first_active_allowed }}"
         - conditions: "{{ not pick_ready }}"
           sequence:
             - stop: "Auto-select skipped (no active playing target)."

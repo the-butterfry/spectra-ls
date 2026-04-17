@@ -1,3 +1,7 @@
+// Description: Shared Arylic TCP transport helpers for Spectra LS System (queueing, coalescing, and send path).
+// Version: 2026.04.17.3
+// Last updated: 2026-04-17
+
 #pragma once
 
 #include "esphome.h"
@@ -16,6 +20,50 @@
 namespace esphome {
 namespace arylic_tcp {
 
+#ifndef SLS_ARYLIC_TCP_TIMEOUT_MS
+#define SLS_ARYLIC_TCP_TIMEOUT_MS 120
+#endif
+
+#ifndef SLS_ARYLIC_TCP_MIN_INTERVAL_MS
+#define SLS_ARYLIC_TCP_MIN_INTERVAL_MS 50
+#endif
+
+#ifndef SLS_ARYLIC_TCP_DUP_SUPPRESS_MS
+#define SLS_ARYLIC_TCP_DUP_SUPPRESS_MS 50
+#endif
+
+#ifndef SLS_ARYLIC_TCP_BACKOFF_MS
+#define SLS_ARYLIC_TCP_BACKOFF_MS 200
+#endif
+
+#ifndef SLS_ARYLIC_TCP_BURST_GUARD_ENABLED
+#define SLS_ARYLIC_TCP_BURST_GUARD_ENABLED 1
+#endif
+
+#ifndef SLS_ARYLIC_TCP_BURST_WINDOW_MS
+#define SLS_ARYLIC_TCP_BURST_WINDOW_MS 180
+#endif
+
+#ifndef SLS_ARYLIC_TCP_BURST_MAX_SENDS
+#define SLS_ARYLIC_TCP_BURST_MAX_SENDS 3
+#endif
+
+#ifndef SLS_ARYLIC_TCP_QUEUE_LEN
+#define SLS_ARYLIC_TCP_QUEUE_LEN 16
+#endif
+
+#ifndef SLS_ARYLIC_TCP_WORKER_STACK
+#define SLS_ARYLIC_TCP_WORKER_STACK 4096
+#endif
+
+#ifndef SLS_ARYLIC_TCP_WORKER_PRIO
+#define SLS_ARYLIC_TCP_WORKER_PRIO 1
+#endif
+
+#ifndef SLS_ARYLIC_TCP_LOG_INTERVAL_MS
+#define SLS_ARYLIC_TCP_LOG_INTERVAL_MS 500
+#endif
+
 inline void append_le_u32(std::vector<uint8_t> &out, uint32_t value) {
 	out.push_back(static_cast<uint8_t>(value & 0xFF));
 	out.push_back(static_cast<uint8_t>((value >> 8) & 0xFF));
@@ -26,7 +74,7 @@ inline void append_le_u32(std::vector<uint8_t> &out, uint32_t value) {
 inline void log_tx_throttled(const char *host, uint16_t port, const std::string &payload) {
 	static uint32_t last_log_ms = 0;
 	const uint32_t now = millis();
-	if (now - last_log_ms < 500) return;
+	if (now - last_log_ms < static_cast<uint32_t>(SLS_ARYLIC_TCP_LOG_INTERVAL_MS)) return;
 	last_log_ms = now;
 	ESP_LOGI("arylic_tcp", "TX host=%s port=%u payload=%s", host ? host : "", (unsigned) port,
 					 payload.c_str());
@@ -36,13 +84,17 @@ inline bool send_payload(const char *host, uint16_t port, const std::string &pay
 
 constexpr size_t ARYLIC_TCP_HOST_LEN = 64;
 constexpr size_t ARYLIC_TCP_PAYLOAD_LEN = 128;
-constexpr size_t ARYLIC_TCP_QUEUE_LEN = 16;
-constexpr uint32_t ARYLIC_TCP_TIMEOUT_MS = 120;
-constexpr uint32_t ARYLIC_TCP_MIN_INTERVAL_MS = 50;
-constexpr uint32_t ARYLIC_TCP_DUP_SUPPRESS_MS = 50;
-constexpr uint32_t ARYLIC_TCP_BACKOFF_MS = 200;
-constexpr uint32_t ARYLIC_TCP_WORKER_STACK = 4096;
-constexpr UBaseType_t ARYLIC_TCP_WORKER_PRIO = 1;
+constexpr size_t ARYLIC_TCP_QUEUE_LEN = static_cast<size_t>(SLS_ARYLIC_TCP_QUEUE_LEN);
+constexpr uint32_t ARYLIC_TCP_TIMEOUT_MS = static_cast<uint32_t>(SLS_ARYLIC_TCP_TIMEOUT_MS);
+constexpr uint32_t ARYLIC_TCP_MIN_INTERVAL_MS = static_cast<uint32_t>(SLS_ARYLIC_TCP_MIN_INTERVAL_MS);
+constexpr uint32_t ARYLIC_TCP_DUP_SUPPRESS_MS = static_cast<uint32_t>(SLS_ARYLIC_TCP_DUP_SUPPRESS_MS);
+constexpr uint32_t ARYLIC_TCP_BACKOFF_MS = static_cast<uint32_t>(SLS_ARYLIC_TCP_BACKOFF_MS);
+// Reversible burst guard: set false to disable and restore previous behavior.
+constexpr bool ARYLIC_TCP_BURST_GUARD_ENABLED = (SLS_ARYLIC_TCP_BURST_GUARD_ENABLED != 0);
+constexpr uint32_t ARYLIC_TCP_BURST_WINDOW_MS = static_cast<uint32_t>(SLS_ARYLIC_TCP_BURST_WINDOW_MS);
+constexpr uint8_t ARYLIC_TCP_BURST_MAX_SENDS = static_cast<uint8_t>(SLS_ARYLIC_TCP_BURST_MAX_SENDS);
+constexpr uint32_t ARYLIC_TCP_WORKER_STACK = static_cast<uint32_t>(SLS_ARYLIC_TCP_WORKER_STACK);
+constexpr UBaseType_t ARYLIC_TCP_WORKER_PRIO = static_cast<UBaseType_t>(SLS_ARYLIC_TCP_WORKER_PRIO);
 
 struct ArylicTcpItem {
 	char host[ARYLIC_TCP_HOST_LEN];
@@ -58,6 +110,8 @@ struct ArylicTcpRecent {
 	uint16_t port;
 	uint32_t last_send_ms;
 	uint32_t last_enqueue_ms;
+	uint32_t burst_window_start_ms;
+	uint8_t burst_send_count;
 	char last_payload[ARYLIC_TCP_PAYLOAD_LEN];
 	char last_sent_payload[ARYLIC_TCP_PAYLOAD_LEN];
 };
@@ -74,6 +128,31 @@ inline bool tcp_backoff_active() {
 inline void tcp_backoff_start() {
 	const uint32_t now = millis();
 	arylic_tcp_backoff_until_ms = now + ARYLIC_TCP_BACKOFF_MS;
+}
+
+inline uint32_t compute_burst_guard_wait_ms(ArylicTcpRecent *recent) {
+	if (!ARYLIC_TCP_BURST_GUARD_ENABLED || recent == nullptr) return 0;
+	const uint32_t now = millis();
+	if (recent->burst_window_start_ms == 0 || now - recent->burst_window_start_ms >= ARYLIC_TCP_BURST_WINDOW_MS) {
+		recent->burst_window_start_ms = now;
+		recent->burst_send_count = 0;
+		return 0;
+	}
+	if (recent->burst_send_count < ARYLIC_TCP_BURST_MAX_SENDS) return 0;
+	return ARYLIC_TCP_BURST_WINDOW_MS - (now - recent->burst_window_start_ms);
+}
+
+inline void note_burst_send(ArylicTcpRecent *recent) {
+	if (!ARYLIC_TCP_BURST_GUARD_ENABLED || recent == nullptr) return;
+	const uint32_t now = millis();
+	if (recent->burst_window_start_ms == 0 || now - recent->burst_window_start_ms >= ARYLIC_TCP_BURST_WINDOW_MS) {
+		recent->burst_window_start_ms = now;
+		recent->burst_send_count = 1;
+		return;
+	}
+	if (recent->burst_send_count < 0xFF) {
+		recent->burst_send_count++;
+	}
 }
 
 inline ArylicTcpRecent *find_recent(const char *host, uint16_t port) {
@@ -94,6 +173,8 @@ inline ArylicTcpRecent *find_recent(const char *host, uint16_t port) {
 		empty->port = port;
 		empty->last_send_ms = 0;
 		empty->last_enqueue_ms = 0;
+		empty->burst_window_start_ms = 0;
+		empty->burst_send_count = 0;
 		empty->last_payload[0] = '\0';
 		empty->last_sent_payload[0] = '\0';
 		return empty;
@@ -117,6 +198,17 @@ inline void arylic_tcp_worker(void *) {
 			if (recent->last_payload[0] != '\0' &&
 					strncmp(recent->last_payload, payload.c_str(), ARYLIC_TCP_PAYLOAD_LEN) != 0) {
 				payload = recent->last_payload;
+			}
+			const uint32_t burst_wait_ms = compute_burst_guard_wait_ms(recent);
+			if (burst_wait_ms > 0) {
+				static uint32_t last_burst_log_ms = 0;
+				const uint32_t now = millis();
+				if (now - last_burst_log_ms >= 500) {
+					last_burst_log_ms = now;
+					ESP_LOGI("arylic_tcp", "burst_guard host=%s port=%u wait=%ums", item.host,
+							 (unsigned) item.port, (unsigned) burst_wait_ms);
+				}
+				vTaskDelay(pdMS_TO_TICKS(burst_wait_ms));
 			}
 			if (recent->last_sent_payload[0] != '\0' &&
 					strncmp(recent->last_sent_payload, payload.c_str(), ARYLIC_TCP_PAYLOAD_LEN) == 0) {
@@ -332,6 +424,7 @@ inline bool send_payload(const char *host, uint16_t port, const std::string &pay
 	::close(sock);
 	if (recent != nullptr) {
 		recent->last_send_ms = millis();
+		note_burst_send(recent);
 		strncpy(recent->last_sent_payload, payload.c_str(), ARYLIC_TCP_PAYLOAD_LEN - 1);
 		recent->last_sent_payload[ARYLIC_TCP_PAYLOAD_LEN - 1] = '\0';
 	}

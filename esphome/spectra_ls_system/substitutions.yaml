@@ -1,13 +1,20 @@
 # Description: Spectra LS System substitutions for ESPHome main config and packages.
-# Version: 2026.04.17.3
+# Version: 2026.04.17.11
 # Last updated: 2026-04-17
 # Spectra LS substitutions scoped to spectra_ls_system.
 # Use absolute paths for assets so this file can move with spectra_ls_system.
 
-# === Spectra LS System (ESP32-S3) ===
+# === Core Identity ===
+# Purpose: identity shown in HA/ESPHome and used for OTA/API naming.
+# Gain: consistent discoverability and logs across environments.
+# Risk: changing device_name can affect integrations that pin hostname/entity naming.
 device_name: spectra-ls-system
 friendly_name: "Spectra LS System"
 
+# === Network ===
+# Purpose: static network identity and resolver settings.
+# Gain: stable OTA/API target and lower reconnect friction.
+# Risk: wrong IP/gateway/dns can make OTA/API appear flaky or offline.
 wifi_ssid: !secret wifi_ssid
 wifi_password: !secret wifi_password
 static_ip: 192.168.10.40
@@ -16,43 +23,74 @@ subnet_mask: 255.255.255.0
 dns1_ip: 192.168.10.1
 dns2_ip: 1.1.1.1
 
-# Analog potentiometer settings
-volume_pot_send_interval_ms: "50"
-volume_pot_backoff_ms: "200"
-volume_pot_settle_ms: "120"
-volume_pot_jump_steps: "3"
-eq_pot_send_interval_ms: "200"
-eq_pot_settle_ms: "120"
-eq_pot_jump_steps: "3"
+# === Audio Control Tuning (Stage 2) ===
+# Purpose: primary responsiveness controls for volume/EQ feel.
+# Gain: lower intervals/settle improve live feel and reduce "lag" perception.
+# Risk: too aggressive values can increase command churn and transport timeouts.
+#
+# Pot timing + defer behavior:
+# - send_interval: minimum send spacing under motion.
+# - settle_ms: defer window to absorb jitter/micro-movements.
+# - jump_steps: large moves bypass defer path for immediate response.
+volume_pot_send_interval_ms: "25"
+volume_pot_settle_ms: "50"
+volume_pot_jump_steps: "1"
+eq_pot_send_interval_ms: "25"
+eq_pot_settle_ms: "50"
+eq_pot_jump_steps: "1"
 eq_min: "-10"
 eq_max: "10"
 
-# LinkPlay HTTP(S) status (primary device)
-arylic_tcp_host: 192.168.10.50
+# Arylic TCP pacing/coalescing (implemented in components/arylic_tcp.h)
+# Purpose: transport-level pacing, duplicate suppression, and failure handling.
+# Gain: tune per-network stability without editing C++.
+# Risk: very low pacing can flood weak links; very high pacing can feel sluggish.
+arylic_tcp_timeout_ms: "140"
+arylic_tcp_min_interval_ms: "45"
+arylic_tcp_dup_suppress_ms: "45"
+arylic_tcp_backoff_ms: "220"
+# Purpose: burst safety gate during rapid sweeps.
+# Gain: protects target/player from sustained command storms.
+# Risk: if too strict, can feel like "rubber banding" under fast twists.
+arylic_tcp_burst_guard_enabled: "1"
+arylic_tcp_burst_window_ms: "120"
+arylic_tcp_burst_max_sends: "5"
+# Purpose: queue/worker/log shaping for transport subsystem.
+# Gain: allows matching queue depth and task resources to install complexity.
+# Risk: excessive queue depth can increase stale-command latency; low stack/priority can starve worker.
+arylic_tcp_queue_len: "16"
+arylic_tcp_worker_stack: "4096"
+arylic_tcp_worker_prio: "1"
+arylic_tcp_log_interval_ms: "500"
+
+# === Arylic / LinkPlay Endpoints + Routing ===
+# Purpose: primary endpoint and optional HTTP status polling controls.
+# Gain: central host/port control for transport paths.
+# Risk: mismatched host/port produces connect timeouts and false lag symptoms.
+# Runtime authority note:
+# - Active TCP control host(s)/port are resolved dynamically from HA (`sensor.ma_control_hosts`,
+#   `sensor.ma_control_host`, `sensor.ma_control_port`) in spectra-ls-audio-tcp.yaml.
+# - Values below are bootstrap/fallback defaults used before HA host sensors are available.
+# Primary device (bootstrap TCP + optional HTTP status)
+arylic_tcp_host: 192.168.1.50
 arylic_tcp_port: "8899"
-arylic_http_host: 192.168.10.50
+arylic_http_host: 192.168.1.50
 arylic_http_scheme: "https"
 arylic_http_port: "443"
 arylic_http_poll_ms: "5000"
 arylic_http_enabled: "false"
-# Secondary LinkPlay device (HTTP only)
-arylic_lr_http_host: 192.168.10.51
+
+# Secondary device (bootstrap HTTP optional, TCP control supported via HA host resolution)
+arylic_lr_http_host: 192.168.1.51
 arylic_lr_http_scheme: "http"
 arylic_lr_http_port: "80"
 arylic_lr_http_poll_ms: "10000"
 arylic_lr_http_enabled: "false"
-# LR TCP control (defaults to LinkPlay TCP port)
-arylic_lr_tcp_host: 192.168.10.51
-arylic_lr_tcp_port: "8899"
-# Audio control routing (map HA/MA players -> physical devices)
-arylic_lr_targets_csv: "${ma_target_living_room}"
-arylic_spectra_targets_csv: "${ma_target_spectra}"
 
-# Legacy MA target substitutions (unused; keep empty to avoid warnings)
-ma_target_living_room: ""
-ma_target_spectra: ""
-
-# ESP32-S3 board
+# === Hardware Pins / Board ===
+# Purpose: board profile and UART bridge to RP2040 input MCU.
+# Gain: one place to retarget pinout for board revisions.
+# Risk: pin mismatches can silently break controls/UI data paths.
 esp32_board: esp32-s3-devkitc-1
 
 # UART to RP2040
@@ -65,18 +103,10 @@ oled_scl_pin: GPIO9
 oled_address: 0x3C
 oled_model: "SSD1306 128x64"
 
-# Rooms / lights
-room_living: room_1
-room_dining: room_2
-room_kitchen: room_3
-room_bedroom: room_4
-
-# Room lighting groups ("All" target)
-living_room_group: light.room_1_lights
-dining_room_group: light.room_2_lights
-kitchen_room_group: light.room_3_lights
-bedroom_room_group: light.room_4_lights
-
+# === Home Assistant / Music Assistant Entities ===
+# Purpose: entity contracts consumed by active packages.
+# Gain: decouples package logic from site-specific entity naming.
+# Risk: renamed helpers/entities without updating here can break routing/metadata.
 # Now Playing metadata (from MA active sensors)
 ha_ma_active_title: sensor.ma_active_title
 ha_ma_active_artist: sensor.ma_active_artist
@@ -100,6 +130,8 @@ input_select_room: input_select.control_board_room
 input_select_target: input_select.control_board_target
 
 # Room option labels
+# Purpose: fallback labels for rendered menus/popups.
+# Gain: quick UX relabeling without package edits.
 room_label_living: "Room 1"
 room_label_dining: "Room 2"
 room_label_kitchen: "Room 3"
@@ -113,74 +145,22 @@ target_label_reading: "Target 3"
 target_label_chandelier: "Target 4"
 target_label_polaroid_clock: "Target 5"
 
-living_light_primary: light.room_1_primary
-living_light_1: light.room_1_primary
-living_light_2: light.room_1_light_2
-living_light_3: light.room_1_light_3
-
-dining_light_primary: light.room_2_primary
-dining_light_1: light.room_2_primary
-
-kitchen_light_primary: light.room_3_primary
-kitchen_light_1: light.room_3_primary
-
-bedroom_light_primary: light.room_4_primary
-bedroom_light_1: light.room_4_primary
-
-# Tunables
+# === System Runtime Cadence ===
+# Purpose: global scheduler/update cadence used by multiple packages.
+# Gain: central control of background update frequency and idle behavior.
+# Risk: very low intervals increase CPU/useful work contention.
 audio_poll_interval_ms: "5000"
-encoder_rate_limit_hz: "2"
-boot_fade_ms: "2000"
-ring_active_window_ms: "1500"
-lighting_hue_step_deg: "3"
-lighting_sat_step: "2"
-lighting_send_interval_ms: "150"
-brightness_send_interval_ms: "150"
-# Arylic TCP tunables (documented; implemented in spectra_ls_system/components/arylic_tcp.h)
-arylic_tcp_timeout_ms: "120"
-arylic_tcp_min_interval_ms: "50"
-arylic_tcp_dup_suppress_ms: "50"
-arylic_tcp_backoff_ms: "200"
-# If true, volume control is TCP-only (no HA/MA volume_set calls)
-volume_tcp_only: "true"
+heartbeat_interval_ms: "60000"
 screensaver_idle_ms: "30000"
 screensaver_update_ms: "2000"
-ha_audio_refresh_ms: "6000"
-heartbeat_interval_ms: "60000"
-audio_max_volume_pct: "90"
-audio_ui_min: "1"
-audio_ui_max: "11"
-now_playing_font_size: "10"
-now_playing_mid_font_size: "9"
-now_playing_small_font_size: "9"
-menu_font_size: "9"
-menu_line_height: "12"
-menu_line_height_list: "12"
-menu_list_top_pad: "1"
-menu_blank_idle_ms: "10000"
-menu_home_idle_ms: "30000"
-now_playing_return_ms: "5000"
-audio_empty_duration_ms: "5000"
-menu_debug: "false"
-menu_debug_label: "MENU"
-menu_tile_margin: "4"
-menu_tile_gap: "4"
-menu_tile_border: "1"
-menu_tile_border_selected: "2"
-menu_tile_icon_pad: "4"
-menu_tile_icon_font_size: "18"
-menu_tile_icon_play_font_size: "26"
-menu_tile_icon_stroke: "2"
+boot_fade_ms: "2000"
 boot_menu_ms: "5000"
-meta_pos_stall_ms: "15000"
-meta_stale_ms: "45000"
-meta_end_tolerance_s: "2"
-meta_playing_grace_ms: "15000"
-meta_refresh_ms: "5000"
-meta_refresh_tick_ms: "500"
-meta_pause_timeout_ms: "60000"
-eq_overlay_ms: "5000"
-lighting_slider_ui_brightness_only: "true"
+ring_active_window_ms: "1500"
+encoder_rate_limit_hz: "2"
+
+# === UI Display + Typography ===
+# Purpose: text rendering, splash styling, and scroll readability.
+# Gain: change look-and-feel without touching package display code.
 ui_font_file: "spectra_ls_system/OCR-B.ttf"
 splash_font_file: "spectra_ls_system/OCR-A.ttf"
 splash_duration_ms: "8000"
@@ -194,23 +174,77 @@ splash_subtitle_offset_px: "0"
 splash_title_font_size: "12"
 splash_subtitle_font_size: "10"
 splash_symbol_font_size: "11"
+now_playing_font_size: "10"
+now_playing_mid_font_size: "9"
+now_playing_small_font_size: "9"
 scroll_speed_ms: "100"
 scroll_gap_px: "16"
+
+# === UI Menu Layout + Behavior ===
+# Purpose: menu spacing, tile styling, and idle/return behavior.
+# Gain: tune navigation feel independent of transport/audio logic.
+menu_font_size: "9"
+menu_line_height: "12"
+menu_line_height_list: "12"
+menu_list_top_pad: "1"
+menu_blank_idle_ms: "10000"
+menu_home_idle_ms: "30000"
+menu_debug: "false"
+menu_debug_label: "MENU"
+menu_tile_margin: "4"
+menu_tile_gap: "4"
+menu_tile_border: "1"
+menu_tile_border_selected: "2"
+menu_tile_icon_font_size: "18"
+menu_tile_icon_play_font_size: "26"
+
+# === Audio UX + Metadata Windows ===
+# Purpose: now-playing/overlay windows and audio-facing UI ranges.
+# Gain: smoother perceived audio UX without changing transport internals.
+ha_audio_refresh_ms: "6000"
+audio_max_volume_pct: "90"
+audio_ui_min: "1"
+audio_ui_max: "11"
+now_playing_return_ms: "5000"
+audio_empty_duration_ms: "5000"
+eq_overlay_ms: "3000"
+meta_pos_stall_ms: "15000"
+meta_stale_ms: "45000"
+meta_end_tolerance_s: "2"
+meta_playing_grace_ms: "15000"
+meta_refresh_ms: "5000"
+meta_refresh_tick_ms: "500"
+meta_pause_timeout_ms: "60000"
 meta_override_reset_ms: "120000"
-source_popup_ms: "5000"
 meta_popup_ms: "3500"
+source_popup_ms: "5000"
+audio_wake_hold_ms: "5000"
+
+# === Audio Control-Target Prompting + Loop Tuning ===
+# Purpose: prompt gating, control loop cadence, and operational logging.
+# Gain: tune responsiveness + guardrails without package rewrites.
 control_target_prompt_cooldown_ms: "15000"
 control_target_prompt_grace_ms: "8000"
-audio_wake_hold_ms: "5000"
+# During boot/reconnect, transient ambiguity sensors can briefly read true
+# while target+hosts are already valid; this grace prevents false prompt loops.
+control_target_boot_ambiguous_grace_ms: "15000"
+# Main audio loop cadence (prompt state + deferred pot flush); lower is snappier, higher is calmer.
+audio_control_loop_interval_ms: "150"
+# Force-sync cadence for active target helper; lower can recover stale helper states faster.
+ma_target_refresh_interval_ms: "15000"
+# Meta override settle delay after cycle command before label refresh.
+meta_override_settle_ms: "160"
+# Local input/log throttles (debug smoothness vs log volume).
+input_raw_log_interval_ms: "700"
+input_send_log_interval_ms: "450"
+audio_gate_log_interval_ms: "1200"
+
+# === Audio Source Cycle + Meta Labels ===
+# Purpose: source cycling contract and user-facing meta source labels.
 arylic_source_cycle_codes: "NET,BT,LINE-IN,LINE-IN2"
 arylic_source_cycle_labels: "Wi-Fi,Bluetooth,Line In 1,Line In 2"
-# Loop section profiling (display)
-loop_section_debug: "false"
-loop_section_log_interval_ms: "5000"
-loop_section_log_min_ms: "10"
 # New physical button for meta source override
 meta_select_button_id: "40"
-# Meta source labels
 meta_source_label_auto: "Auto"
 meta_source_label_arylic: "Device A"
 meta_source_label_1: "Source 1"
@@ -220,25 +254,17 @@ meta_source_label_4: "Source 4"
 meta_source_label_5: "Source 5"
 meta_source_label_6: "Source 6"
 
-# System defaults
-eq_boot_ignore_ms: "5000"
+# === Lighting UX Tunables ===
+# Purpose: lighting slider mode and send pacing for hue/sat/brightness UI paths.
+lighting_hue_step_deg: "5"
+lighting_sat_step: "2"
+lighting_send_interval_ms: "150"
+brightness_send_interval_ms: "150"
+lighting_slider_ui_brightness_only: "true"
 lighting_slider_force_brightness_mode: "true"
 
-# === Lighting Controller ===
-button_name: "Living Room Button"
-button_id: lighting_button_1
-button_gpio: GPIO4
-button2_name: "Dining Room Button"
-button2_id: lighting_button_2
-button2_gpio: GPIO5
-living_area: living_room
-dining_area: dining_room
-
-# === BLE Presence (Door) ===
-keyfob1_name: "Cory Fob"
-keyfob1_mac: "DD:88:00:00:0A:6E"
-keyfob1_tracker_id: "keyfob_ble_1"
-keyfob1_person_entity: "person.cory"
-keyfob1_person_name: "Cory"
-door_contact_entity: "binary_sensor.apartment_door_bt"
-door_lock_entity: "lock.apartment_door"
+# === Display Loop Profiling (Debug) ===
+# Purpose: optional profiling for display loop sections.
+loop_section_debug: "false"
+loop_section_log_interval_ms: "5000"
+loop_section_log_min_ms: "10"

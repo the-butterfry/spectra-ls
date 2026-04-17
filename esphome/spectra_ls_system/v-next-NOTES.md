@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.17.5 -->
+<!-- Version: 2026.04.17.12 -->
 <!-- Last updated: 2026-04-17 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -62,6 +62,91 @@
 2. **Menu is fallback**: menu encoder remains functional, but hardware changes reassert control.
 3. **Generalizable**: works for installs with 1–N rooms and multiple audio targets.
 4. **Deterministic**: hardware switch positions always map to clear actions, no ambiguous prompts.
+
+## HDMI ARC Ingest + Final DAC Path (Active Hardware Note)
+
+- Spectra Level / Source should be treated as a **fully integrated high-fidelity system path** (ingest + routing + conversion), not a DAC-only feature claim.
+- ES9038Q2M capability is framed as the final conversion stage in a broader source-to-output architecture optimized for signal integrity and deterministic control routing.
+
+- Source path includes **HDMI input from an ARC-capable source**.
+- ARC digital audio is split/extracted and carried as the digital program feed into the final conversion stage.
+- Final output conversion target is the **ESS ES9038Q2M DAC** (`ESS 9038Q2M`).
+- Output capability target for this path: **192kHz / 24-bit**.
+- Expected codec/file compatibility on the digital playback chain:
+  - `FLAC`
+  - `MP3`
+  - `AAC`
+  - `AAC+`
+  - `ALAC`
+  - `APE`
+  - `WAV`
+
+Implementation guidance:
+
+- Treat ARC ingest as part of source-path selection/routing validation (same deterministic control-path rules as other sources).
+- Keep this note in sync with README hardware reference to avoid drift in published hardware capabilities.
+
+## MA/HA Discovery + Control Routing Contract (Active)
+
+- Discovery-first is the baseline: newly discovered compatible players should appear without requiring static per-site host mapping edits.
+- Static/manual host mapping remains as a safety fallback only and should be **disabled by default** to keep no-override testing honest.
+- Every discovered/selected target must be classified into a control routing class before command send:
+  - `linkplay_tcp` (supported now)
+  - `other` (placeholder for future code paths)
+- Override entries should carry full routing metadata to match discovery data quality:
+  - `hardware_family` (example: `linkplay`)
+  - `control_path` (example: `linkplay_tcp`)
+  - `control_capable` (boolean; can receive direct hardware controls like POT/EQ)
+  - `capabilities` (optional list for control feature matrix)
+- Command dispatch must follow control class, not just host presence, so unsupported classes are visible but not incorrectly routed.
+
+## Control-Path + Hardware-Family Roadmap (As-Wired + Next)
+
+### Current wiring snapshot (implemented)
+
+- Discovery-first target onboarding is active via MA player data and HA entity attributes.
+- Manual/static fallback routing is opt-in and defaults off via `input_boolean.ma_control_fallback_enabled`.
+- Active target routing surfaces:
+  - `sensor.ma_active_control_path`
+  - `binary_sensor.ma_active_control_capable`
+  - `sensor.ma_control_hosts`
+- Override metadata contract is wired in `packages/spectra_ls_setup.yaml` room entries and extra JSON:
+  - `hardware_family`
+  - `control_path`
+  - `control_capable`
+  - `capabilities`
+- Currently supported dispatch path:
+  - `linkplay_tcp` (control-capable targets only)
+- Non-supported path behavior:
+  - tagged as `other`
+  - visible for diagnostics/selection context
+  - intentionally not routed for direct control sends
+
+### Family/codepath roadmap
+
+1. **Phase R1 — LinkPlay hardening (now)**
+    - Keep `linkplay_tcp` as the only routed path.
+    - Expand `capabilities` usage from informational to enforced feature gates (for example EQ, source cycle, transport subfeatures).
+
+2. **Phase R2 — Additional family onboarding**
+    - Add first non-LinkPlay family tag under `hardware_family`.
+    - Introduce dedicated `control_path` value for that family (do not reuse `linkplay_tcp`).
+    - Route only after a family-specific command adapter exists.
+
+3. **Phase R3 — Capability matrix routing**
+    - Move from boolean `control_capable` to per-feature capability routing decisions using `capabilities`.
+    - Gate each direct hardware command type by both `control_path` and required capability.
+
+4. **Phase R4 — Unified adapter contract**
+    - Standardize a per-family adapter interface so new paths plug into the same decision layer.
+    - Maintain discovery-first default and fallback-off policy across all families.
+
+### No-go guardrails for future families
+
+- Do not route a new `control_path` until:
+  - host/endpoint resolution is deterministic,
+  - command semantics are validated for that family,
+  - `control_capable`/`capabilities` mappings are explicitly defined.
 
 ## Pathing + Naming Safety Guardrails (Do Not Skip)
 
@@ -453,3 +538,10 @@ Current state note (2026-04-17):
 - Root `spectra_ls_primary_tcp_host.yaml` and `spectra_ls_room_tcp_host.yaml` are local-only and untracked from GitHub.
 - Active `ma_control_hub` host defaults are secrets-based via `!secret spectra_ls_primary_tcp_host` and `!secret spectra_ls_room_tcp_host`.
 - This backlog item is the planned path to evolve from simple host keys to a universal product-grade host inventory/override model.
+
+Phase progression note (2026-04-17 update):
+
+- **Phase B event fidelity fix applied**: RP2040 now emits selector/control-class (`120`, `121`) as `TYPE_ANALOG` packets so index values (0–4 / 0–2) are preserved end-to-end instead of collapsing to boolean button state.
+- **Phase C ingest wired (initial)**: `spectra-ls-hardware.yaml` now consumes `120`–`124`, updates global `hardware_mode`/`control_class`, and applies deterministic mode-to-UI routing with menu override clear-on-hardware-change behavior.
+- Mode-nav mirrored events (`122`–`124`) are currently scoped to hardware mode 4 (System/Meta) to avoid transport/menu double-trigger conflicts while preserving existing button behavior in other modes.
+- **Virtual harness added (temporary diagnostics path)**: `spectra-ls-diagnostics.yaml` now exposes virtual mode/control injectors plus mode-nav test buttons and a one-shot battery script. These invoke shared handler scripts in `spectra-ls-hardware.yaml`, allowing HA-side flow validation without touching RP2040 wiring while preserving a single behavior path.

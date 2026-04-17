@@ -1,5 +1,5 @@
 # Description: Main ESPHome config for Spectra LS System main ESPHome config (ESP32-S3 + RP2040 UART + Arylic TCP).
-# Version: 2026.04.17.3
+# Version: 2026.04.17.8
 # Last updated: 2026-04-17
 # Update version/date whenever you change this file.
 #
@@ -35,6 +35,19 @@ packages:
 esphome:
   name: ${device_name}
   friendly_name: ${friendly_name}
+  platformio_options:
+    build_flags:
+      - -DSLS_ARYLIC_TCP_TIMEOUT_MS=${arylic_tcp_timeout_ms}
+      - -DSLS_ARYLIC_TCP_MIN_INTERVAL_MS=${arylic_tcp_min_interval_ms}
+      - -DSLS_ARYLIC_TCP_DUP_SUPPRESS_MS=${arylic_tcp_dup_suppress_ms}
+      - -DSLS_ARYLIC_TCP_BACKOFF_MS=${arylic_tcp_backoff_ms}
+      - -DSLS_ARYLIC_TCP_BURST_GUARD_ENABLED=${arylic_tcp_burst_guard_enabled}
+      - -DSLS_ARYLIC_TCP_BURST_WINDOW_MS=${arylic_tcp_burst_window_ms}
+      - -DSLS_ARYLIC_TCP_BURST_MAX_SENDS=${arylic_tcp_burst_max_sends}
+      - -DSLS_ARYLIC_TCP_QUEUE_LEN=${arylic_tcp_queue_len}
+      - -DSLS_ARYLIC_TCP_WORKER_STACK=${arylic_tcp_worker_stack}
+      - -DSLS_ARYLIC_TCP_WORKER_PRIO=${arylic_tcp_worker_prio}
+      - -DSLS_ARYLIC_TCP_LOG_INTERVAL_MS=${arylic_tcp_log_interval_ms}
   includes:
     - /config/esphome/spectra_ls_system/components/arylic_tcp.h
 
@@ -45,8 +58,12 @@ esphome:
           service: script.ma_update_target_options
       - delay: 200ms
       - lambda: |-
-          id(splash_until_ms) = millis() + ${splash_duration_ms};
-          id(boot_fade_start_ms) = millis();
+          if (id(splash_until_ms) == 0) {
+            id(splash_until_ms) = millis() + ${splash_duration_ms};
+          }
+          if (id(boot_fade_start_ms) == 0) {
+            id(boot_fade_start_ms) = millis();
+          }
       - lambda: |-
           float v = id(oled_contrast);
           if (v < 0.0f) v = 0.0f;
@@ -102,6 +119,7 @@ api:
 
 ota:
   - platform: esphome
+  - platform: web_server
 
 external_components:
   - source:

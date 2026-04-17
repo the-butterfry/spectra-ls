@@ -1,5 +1,5 @@
 # Description: Spectra LS UI/menu input handling + UI fonts + now-playing helper sensors.
-# Version: 2026.04.17.3
+# Version: 2026.04.17.4
 # Last updated: 2026-04-17
 # Update version/date whenever you change this file.
 #
@@ -368,27 +368,9 @@ script:
               id(menu_level) = 8;
               id(menu_index) = 0;
             } else if (id(menu_index) == 1) {
-              id(lighting_resume_menu_pending) = true;
-              id(lighting_resume_menu_level) = 7;
-              id(lighting_resume_menu_index) = 1;
-              id(lighting_menu_hold_until_ms) = 0;
-              id(lighting_adjust_mode) = 0;
-              id(lighting_mode_hue) = true;
-              id(lighting_return_to_audio_ms) = millis() + ${lighting_hold_ms};
-              id(screen_mode) = 0;
-              id(menu_active) = false;
-              id(menu_level) = 0;
+              id(start_lighting_value_adjust).execute(7, 1, 1);
             } else if (id(menu_index) == 2) {
-              id(lighting_resume_menu_pending) = true;
-              id(lighting_resume_menu_level) = 7;
-              id(lighting_resume_menu_index) = 2;
-              id(lighting_menu_hold_until_ms) = 0;
-              id(lighting_adjust_mode) = 0;
-              id(lighting_mode_hue) = false;
-              id(lighting_return_to_audio_ms) = millis() + ${lighting_hold_ms};
-              id(screen_mode) = 0;
-              id(menu_active) = false;
-              id(menu_level) = 0;
+              id(start_lighting_value_adjust).execute(7, 2, 0);
             } else {
               int back_idx = id(selected_target);
               if (back_idx < 0) back_idx = 0;

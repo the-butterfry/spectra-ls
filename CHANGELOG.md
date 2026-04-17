@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.70 -->
+<!-- Version: 2026.04.17.71 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
+
+- ESPHome/Lighting Architecture: Centralize lighting value-adjust transition flow into a single script path (`start_lighting_value_adjust`) to eliminate duplicated menu-to-adjust state writes and reduce transition drift risk as v-next menu behavior expands.
 
 - ESPHome/Lighting UX Flow: Rework lighting value adjustment behavior so Hue/Saturation (and lighting adjust paths) do not get pre-empted by active playback; after adjustment activity ends, UI returns to the same lighting menu context, holds for 5000ms, then gracefully transitions to Home (no active playback) or Now Playing (when active).
 

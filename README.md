@@ -1,14 +1,43 @@
 <!-- Description: Human-readable overview and deployment guide for the Spectra LS Home Assistant + ESPHome system. -->
-<!-- Version: 2026.04.16.4 -->
+<!-- Version: 2026.04.16.5 -->
 <!-- Last updated: 2026-04-16 -->
 
 # Spectra LS System
+
+**⚠️ State of project (published 2026-04-16): Active heavy development on `main`. Not currently recommended for fresh production installations unless you are comfortable with frequent updates and occasional migration adjustments.**
 
 Home Assistant unifies and automates devices and routines across your home; Spectra LS brings that power back into your hands as an intelligent physical control surface. With tactile knobs, smooth sliders, physical switches, dedicated buttons, and rotary dials, you can control whole-home music and lighting by touch instead of living inside phone apps.
 
 Behind the scenes, Home Assistant manages room logic, helpers, and automation flow, while ESPHome drives the OLED UI and real-time control behavior. Input hardware feeds clean control events into that stack, so transport, source selection, volume, EQ, lighting target selection, and lighting adjustments stay quick and natural even when upstream state updates are briefly noisy.
 
 On `main`, project direction follows `esphome/spectra_ls_system/v-next-NOTES.md`: hardware-first UX, menu as fallback, deterministic controls, and scalable room/target handling.
+
+## Hardware Reference (Current + Recommended)
+
+### MCUs
+
+- **ESP32-S3** (`esp32-s3-devkitc-1`): OLED/UI rendering, Home Assistant API integration, network control paths.
+- **RP2040 (CircuitPython)**: physical input scanning and event publishing upstream.
+
+### Expanders / Input ICs
+
+- **PCF8575** digital expander (active at `0x20`; optional expansion at `0x21`) for button/switch inputs.
+- **Seesaw rotary encoders** (menu + lighting encoders).
+- **ADS1015** analog ADC for high-resolution pots (volume, EQ bass/treble, lighting slider).
+- **RP2040 internal ADC** for EQ mid channel.
+- **ADS7830** (recommended expansion, `0x49`) for additional low-resolution selector/switch channels.
+
+### Control Interfaces
+
+- **Home Assistant API** (`api:` in ESPHome) for entity state and helper orchestration.
+- **Wi-Fi/TCP control** to Arylic/LinkPlay/WiiM-class endpoints (primary real-time audio control path).
+- **RP2040 ↔ ESP32 UART** event transport for hardware controls.
+- **I2C buses** for OLED and local input peripherals (PCF8575 / Seesaw / ADC devices).
+
+### Recommended Screen
+
+- **I2C OLED, SSD1306 128x64 mode** (configured `oled_model: "SSD1306 128x64"`, typical address `0x3C`).
+- SSD1309-compatible modules are supported when driven in SSD1306 mode in current configs.
 
 ## System Interaction (Moderate Detail)
 

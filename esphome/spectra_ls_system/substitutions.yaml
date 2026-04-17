@@ -1,5 +1,5 @@
 # Description: Spectra LS System substitutions for ESPHome main config and packages.
-# Version: 2026.04.17.14
+# Version: 2026.04.17.15
 # Last updated: 2026-04-17
 # Spectra LS substitutions scoped to spectra_ls_system.
 # Use absolute paths for assets so this file can move with spectra_ls_system.
@@ -184,13 +184,24 @@ scroll_gap_px: "16"
 # Purpose: menu spacing, tile styling, and idle/return behavior.
 # Gain: tune navigation feel independent of transport/audio logic.
 # Named menu-level constants to avoid magic-number drift in UI/lighting lambdas.
+menu_level_none: "0"
 menu_level_main: "1"
+menu_level_calibration: "3"
 menu_level_gear: "4"
 menu_level_lighting_rooms: "5"
 menu_level_lighting_targets: "6"
 menu_level_lighting_adjust: "7"
 menu_level_lighting_toggle: "8"
 menu_level_meta_select: "9"
+# Shared screen-mode constants.
+screen_mode_lighting: "0"
+screen_mode_audio: "1"
+# Shared hardware-mode constants.
+hardware_mode_lighting_rooms: "0"
+hardware_mode_lighting_targets: "1"
+hardware_mode_audio_targets: "2"
+hardware_mode_audio_transport: "3"
+hardware_mode_system_meta: "4"
 menu_font_size: "9"
 menu_line_height: "12"
 menu_line_height_list: "12"

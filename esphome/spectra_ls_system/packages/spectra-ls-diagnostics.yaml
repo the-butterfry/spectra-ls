@@ -1,6 +1,6 @@
 # Description: Spectra LS diagnostics, OLED contrast controls, and test helpers.
-# Version: 2026.04.17.2
-# Last updated: 2026-04-16
+# Version: 2026.04.17.3
+# Last updated: 2026-04-17
 # Update version/date whenever you change this file.
 #
 # Sections:
@@ -224,10 +224,12 @@ script:
 
       - script.execute:
           id: sls_apply_mode_selector_index
-          next_mode: 4
+          next_mode: ${hardware_mode_system_meta}
       - delay: 120ms
       - lambda: |-
-          const bool ok = (id(hardware_mode) == 4) && id(menu_active) && (id(menu_level) == 4);
+          const bool ok = (id(hardware_mode) == ${hardware_mode_system_meta}) &&
+                  id(menu_active) &&
+                  (id(menu_level) == ${menu_level_gear});
           if (ok) {
             id(virtual_input_test_pass_count)++;
             ESP_LOGI("virt_test", "PASS mode=4 enters system/meta menu");
@@ -288,10 +290,12 @@ script:
 
       - script.execute:
           id: sls_apply_mode_selector_index
-          next_mode: 0
+          next_mode: ${hardware_mode_lighting_rooms}
       - delay: 120ms
       - lambda: |-
-          const bool ok = (id(hardware_mode) == 0) && id(menu_active) && (id(menu_level) == 5);
+          const bool ok = (id(hardware_mode) == ${hardware_mode_lighting_rooms}) &&
+                  id(menu_active) &&
+                  (id(menu_level) == ${menu_level_lighting_rooms});
           if (ok) {
             id(virtual_input_test_pass_count)++;
             ESP_LOGI("virt_test", "PASS mode=0 routes to room selection");
@@ -302,10 +306,12 @@ script:
 
       - script.execute:
           id: sls_apply_mode_selector_index
-          next_mode: 1
+          next_mode: ${hardware_mode_lighting_targets}
       - delay: 120ms
       - lambda: |-
-          const bool ok = (id(hardware_mode) == 1) && id(menu_active) && (id(menu_level) == 6);
+          const bool ok = (id(hardware_mode) == ${hardware_mode_lighting_targets}) &&
+                  id(menu_active) &&
+                  (id(menu_level) == ${menu_level_lighting_targets});
           if (ok) {
             id(virtual_input_test_pass_count)++;
             ESP_LOGI("virt_test", "PASS mode=1 routes to target selection");
@@ -316,10 +322,13 @@ script:
 
       - script.execute:
           id: sls_apply_mode_selector_index
-          next_mode: 2
+          next_mode: ${hardware_mode_audio_targets}
       - delay: 120ms
       - lambda: |-
-          const bool ok = (id(hardware_mode) == 2) && !id(menu_active) && (id(menu_level) == 0) && (id(screen_mode) == 1);
+          const bool ok = (id(hardware_mode) == ${hardware_mode_audio_targets}) &&
+                  !id(menu_active) &&
+                  (id(menu_level) == ${menu_level_none}) &&
+                  (id(screen_mode) == ${screen_mode_audio});
           if (ok) {
             id(virtual_input_test_pass_count)++;
             ESP_LOGI("virt_test", "PASS mode=2 routes to audio view");

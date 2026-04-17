@@ -1,10 +1,14 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.77 -->
+<!-- Version: 2026.04.17.78 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
+
+- HA/Lighting Architecture Refactor: Introduce a reusable `sensor.control_board_eligible_light_catalog` contract in `packages/spectra_ls_lighting_hub.yaml` and route room options, target options, room area resolution, target entity resolution, room HS, and room on/off state through that single eligibility source to prevent layered filtering drift.
+
+- Workflow/Instruction Update: Extend `.github/copilot-instructions.md` with an explicit architecture-first directive for this workspace: treat bug reports as signals to improve reusable design and avoid "just make it work" patch layering.
 
 - HA/Lighting Target Hygiene: Harden `packages/spectra_ls_lighting_hub.yaml` target derivation to exclude speaker-like pseudo-light entities (name/entity contains `speaker`) while retaining domain-light routing, preventing entries like `Kitchen speakers` from appearing in lighting target menus.
 

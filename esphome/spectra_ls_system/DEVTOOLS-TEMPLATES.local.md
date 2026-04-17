@@ -1,6 +1,6 @@
 <!-- Description: Copy/paste Home Assistant Dev Tools template diagnostics for Spectra LS System. -->
-<!-- Version: 2026.04.16.14 -->
-<!-- Last updated: 2026-04-16 -->
+<!-- Version: 2026.04.17.1 -->
+<!-- Last updated: 2026-04-17 -->
 
 # Spectra LS System — Dev Tools Template Validation
 
@@ -1341,6 +1341,148 @@ Unavailable core entities:
 - Missing hardware-dependent contracts detected. Restore package include/load before next rename.
 {% else %}
 - Resolve unavailable/selector mismatch first, then rerun this template.
+{% endif %}
+```
+
+## 12) Package Loader Regression Check — `ma_control_hub` (Post-Reload)
+
+```jinja
+{# =========================
+  MA Control Hub Package Loader Regression Check
+  Run AFTER: HA restart or package reload
+  Purpose: quickly detect the exact failure pattern caused by split fragment
+           package-loader conflicts (missing helpers/scripts + invalid package init).
+  ========================= #}
+
+{% set helpers = [
+  'input_boolean.ma_override_active',
+  'input_boolean.ma_meta_override_active',
+  'input_number.ma_balance',
+  'input_number.ma_meta_confidence_min',
+  'input_number.ma_meta_stale_s',
+  'input_number.ma_pos_stall_s',
+  'input_number.ma_end_tolerance_s',
+  'input_number.ma_override_pause_s',
+  'input_number.ma_auto_idle_s',
+  'input_number.ma_auto_playing_s',
+  'input_select.ma_active_target',
+  'input_text.ma_ambiguous_entities',
+  'input_text.ma_server_url',
+  'input_text.ma_meta_override_entity',
+  'input_text.ma_last_valid_target',
+  'input_text.spectra_ls_target_primary_entity',
+  'input_text.spectra_ls_target_primary_meta_entity',
+  'input_text.spectra_ls_target_primary_tcp_host',
+  'input_text.spectra_ls_target_room_entity',
+  'input_text.spectra_ls_target_room_meta_entity',
+  'input_text.spectra_ls_target_room_tcp_host'
+] %}
+
+{% set script_sentinels = [
+  'script.ma_update_target_options',
+  'script.ma_cycle_target',
+  'script.ma_auto_select',
+  'script.ma_set_volume',
+  'script.ma_set_balance'
+] %}
+
+{% set template_sentinels = [
+  'sensor.ma_api_url',
+  'sensor.ma_control_host',
+  'sensor.ma_control_hosts',
+  'sensor.now_playing_entity'
+] %}
+
+{% set automation_ids = [
+  'ma_update_target_options_start',
+  'ma_auto_select_loop',
+  'ma_track_last_valid_target'
+] %}
+
+{% set ns = namespace(total=0, ok=0, missing=[], unavailable=[], rows=[], autom_missing=[]) %}
+
+{% for eid in helpers + script_sentinels + template_sentinels %}
+  {% set ns.total = ns.total + 1 %}
+  {% set exists = states[eid] is not none %}
+  {% set st = states(eid) if exists else 'missing' %}
+  {% if not exists %}
+    {% set ns.missing = ns.missing + [eid] %}
+  {% elif st in ['unknown','unavailable'] %}
+    {% set ns.unavailable = ns.unavailable + [eid] %}
+  {% else %}
+    {% set ns.ok = ns.ok + 1 %}
+  {% endif %}
+  {% set ns.rows = ns.rows + [{'entity':eid,'exists':exists,'state':st}] %}
+{% endfor %}
+
+{% for aid in automation_ids %}
+  {% set ns.total = ns.total + 1 %}
+  {% set probe = namespace(found=false, match='') %}
+  {% for a in states.automation %}
+    {% set current_id = (a.attributes.id if a.attributes is defined and a.attributes.id is defined else '') %}
+    {% if current_id == aid %}
+      {% set probe.found = true %}
+      {% set probe.match = a.entity_id %}
+    {% endif %}
+  {% endfor %}
+  {% if probe.found %}
+    {% set ns.ok = ns.ok + 1 %}
+  {% else %}
+    {% set ns.autom_missing = ns.autom_missing + [aid] %}
+    {% set ns.missing = ns.missing + ['automation_id:' ~ aid] %}
+  {% endif %}
+{% endfor %}
+
+{% set target_host = states('input_text.spectra_ls_target_primary_tcp_host') %}
+{% set room_host = states('input_text.spectra_ls_target_room_tcp_host') %}
+{% set ip_like_primary = target_host is string and (target_host | regex_match('^([0-9]{1,3}\\.){3}[0-9]{1,3}$')) %}
+{% set ip_like_room = room_host is string and (room_host | regex_match('^([0-9]{1,3}\\.){3}[0-9]{1,3}$')) %}
+
+{% set verdict = 'PASS' %}
+{% if (ns.missing | length) > 0 %}
+  {% set verdict = 'FAIL' %}
+{% elif (ns.unavailable | length) > 0 or not ip_like_primary or not ip_like_room %}
+  {% set verdict = 'WARN' %}
+{% endif %}
+
+### Package Loader Regression Check — `ma_control_hub`
+- Result: **{{ verdict }}**
+- Timestamp: **{{ now() }}**
+- Checked signals: **{{ ns.total }}**
+- OK: **{{ ns.ok }}**
+- Missing: **{{ ns.missing | length }}**
+- Unknown/Unavailable: **{{ ns.unavailable | length }}**
+
+### Host include surfaces
+- `input_text.spectra_ls_target_primary_tcp_host`: **{{ target_host }}** (ipv4_like={{ ip_like_primary }})
+- `input_text.spectra_ls_target_room_tcp_host`: **{{ room_host }}** (ipv4_like={{ ip_like_room }})
+
+### Missing entities/IDs
+{% if (ns.missing | length) == 0 %}
+- none
+{% else %}
+{% for e in ns.missing %}
+- {{ e }}
+{% endfor %}
+{% endif %}
+
+### Unknown/Unavailable entities
+{% if (ns.unavailable | length) == 0 %}
+- none
+{% else %}
+{% for e in ns.unavailable %}
+- {{ e }}
+{% endfor %}
+{% endif %}
+
+### Quick diagnosis
+{% if verdict == 'PASS' %}
+- `ma_control_hub` package surfaces look healthy.
+{% elif (ns.missing | length) >= 8 %}
+- Broad helper/script loss detected; this strongly suggests package-loader conflict or package init failure.
+- Check repository guardrail script output and ensure only `.inc` fragments exist under `packages/ma_control_hub/`.
+{% else %}
+- Partial contract loss detected; inspect package reload logs and missing IDs above.
 {% endif %}
 ```
 <!-- EOF -->

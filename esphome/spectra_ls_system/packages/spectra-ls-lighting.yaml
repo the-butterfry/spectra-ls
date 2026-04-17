@@ -1,5 +1,5 @@
 # Description: Lighting controls package for Spectra LS System.
-# Version: 2026.04.17.5
+# Version: 2026.04.17.6
 # Last updated: 2026-04-17
 # Update version/date whenever you change this file.
 
@@ -515,6 +515,27 @@ text_sensor:
       return std::string("${target_label_reading}");
 
 script:
+  - id: start_lighting_value_adjust
+    mode: restart
+    parameters:
+      return_menu_level: int
+      return_menu_index: int
+      hue_mode: int
+    then:
+      - lambda: |-
+          id(lighting_resume_menu_pending) = true;
+          id(lighting_resume_menu_level) = return_menu_level;
+          id(lighting_resume_menu_index) = return_menu_index;
+          id(lighting_menu_hold_until_ms) = 0;
+          id(lighting_adjust_mode) = 0;
+          id(lighting_mode_hue) = (hue_mode != 0);
+          id(lighting_return_to_audio_ms) = millis() + ${lighting_hold_ms};
+          id(screen_mode) = 0;
+          id(menu_active) = false;
+          id(menu_level) = 0;
+          id(menu_index) = 0;
+      - script.execute: compute_display_state
+
   - id: focus_lighting
     mode: restart
     then:

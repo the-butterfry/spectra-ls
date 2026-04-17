@@ -1,11 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.16.2 -->
+<!-- Version: 2026.04.16.3 -->
 <!-- Last updated: 2026-04-16 -->
 
 # Changelog
 
 ## 2026-04-16
 
+- ESPHome: Reduce number state publish spam by throttling template number update intervals (`EQ Low/Mid/High`, `Arylic Volume Set`) from 500ms to 5s and `OLED Contrast` from 1s to 10s.
 - ESPHome: Canonicalize secrets structure to `esphome/secrets.yaml` and remove duplicate per-project `secrets.yaml` under `esphome/spectra_ls_system/`.
 - Repo: Add tracked `esphome/secrets.example.yaml` template while keeping real secret files ignored.
 - Repo: Establish concurrent dual-branch operations with dedicated `menu-only` worktree under `.worktrees/menu-only`.

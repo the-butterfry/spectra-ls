@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Description: Validate MA control hub package split layout and required host include files.
-# Version: 2026.04.17.1
+# Description: Validate MA control hub package split layout and secrets-based host defaults.
+# Version: 2026.04.17.2
 # Last updated: 2026-04-17
 
 set -euo pipefail
@@ -47,17 +47,17 @@ if grep -Eq 'ma_control_hub/.*\.yaml' packages/ma_control_hub.yaml; then
   fail "packages/ma_control_hub.yaml references .yaml fragment(s); expected .inc only"
 fi
 
-# 4) Required include-root host files must exist with IPv4-like scalar values
-host_files=(
-  spectra_ls_primary_tcp_host.yaml
-  spectra_ls_room_tcp_host.yaml
-)
+# 4) input_text host defaults must be secrets-based (never include tracked per-user files)
+input_text_fragment="packages/ma_control_hub/input_text.inc"
+[[ -f "$input_text_fragment" ]] || fail "missing fragment: $input_text_fragment"
 
-for f in "${host_files[@]}"; do
-  [[ -f "$f" ]] || fail "missing host include file: /config/$f"
-  v="$(grep -v '^#' "$f" | tr -d '[:space:]')"
-  [[ -n "$v" ]] || fail "host include file empty: /config/$f"
-  [[ "$v" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || fail "host include is not IPv4-like in /config/$f: $v"
-done
+grep -q 'initial:[[:space:]]*!secret[[:space:]]*spectra_ls_primary_tcp_host' "$input_text_fragment" \
+  || fail "primary host default must use !secret spectra_ls_primary_tcp_host"
+grep -q 'initial:[[:space:]]*!secret[[:space:]]*spectra_ls_room_tcp_host' "$input_text_fragment" \
+  || fail "room host default must use !secret spectra_ls_room_tcp_host"
 
-echo "PASS: ma_control_hub layout + host includes are valid"
+if grep -Eq 'spectra_ls_(primary|room)_tcp_host\.yaml' "$input_text_fragment"; then
+  fail "input_text host defaults must not use include files"
+fi
+
+echo "PASS: ma_control_hub layout + secrets-based host defaults are valid"

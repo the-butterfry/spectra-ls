@@ -1,5 +1,5 @@
 # Description: Top-level ignore rules for Home Assistant monorepo.
-# Version: 2026.04.17.3
+# Version: 2026.04.17.4
 # Last updated: 2026-04-17
 
 # Secrets / credentials
@@ -42,6 +42,8 @@ esphome/spectra_ls_system/previous/
 
 # Local secret variants
 spectra_ls_secrets.yaml
+spectra_ls_primary_tcp_host.yaml
+spectra_ls_room_tcp_host.yaml
 
 # Non-spectra HA root files (out of repo scope)
 configuration.yaml

@@ -1,3 +1,7 @@
+## Description: MA control hub input_text helper defaults and target mappings.
+## Version: 2026.04.17.1
+## Last updated: 2026-04-17
+
 ma_ambiguous_entities:
   name: MA Ambiguous Entities (force prompt)
   initial: "media_player.the_oracle_2"
@@ -30,7 +34,7 @@ spectra_ls_target_primary_meta_entity:
   mode: text
 spectra_ls_target_primary_tcp_host:
   name: Spectra LS Target (Primary) TCP Host
-  initial: !include /config/spectra_ls_primary_tcp_host.yaml
+  initial: !secret spectra_ls_primary_tcp_host
   max: 255
   mode: text
 spectra_ls_target_room_entity:
@@ -45,6 +49,6 @@ spectra_ls_target_room_meta_entity:
   mode: text
 spectra_ls_target_room_tcp_host:
   name: Spectra LS Target (Room) TCP Host
-  initial: !include /config/spectra_ls_room_tcp_host.yaml
+  initial: !secret spectra_ls_room_tcp_host
   max: 255
   mode: text

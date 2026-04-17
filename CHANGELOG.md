@@ -1,11 +1,13 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.15 -->
+<!-- Version: 2026.04.17.16 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
 
+- Productization: de-track `spectra_ls_primary_tcp_host.yaml` and `spectra_ls_room_tcp_host.yaml` from git/GitHub while keeping local files in place; host defaults now use secrets-based values and these per-user endpoint files are ignored to prevent personal config pollution.
+- Docs/Policy: add explicit universal-product directive in `.github/copilot-instructions.md` forbidding tracked per-user host/IP config artifacts.
 - Docs/Policy: Add a required pre-flight checklist to `.github/copilot-instructions.md` for any file move/delete operation; session must show backup path, planned `CHANGELOG.md` line, and restore command/path before execution.
 - Docs/Policy: Strengthen `.github/copilot-instructions.md` with mandatory file move/delete governance — deletes now require non-repo backup + changelog entry + restore path, and moves/renames must be changelogged with source/destination paths.
 - Repo/ESPHome: Rename `esphome/secrets.example.yaml` to `esphome/secrets.example` so the secrets template is not treated as an ESPHome dashboard project.

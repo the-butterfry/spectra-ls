@@ -3,7 +3,7 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 ---
 
 <!-- Description: Workspace Copilot operating instructions for Home Assistant + ESPHome. -->
-<!-- Version: 2026.04.17.2 -->
+<!-- Version: 2026.04.17.3 -->
 <!-- Last updated: 2026-04-17 -->
 
 # GitHub Copilot Instructions — Home Assistant + ESPHome
@@ -72,6 +72,7 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 - Automations should be idempotent and guard against missing entities.
  - Avoid renaming helpers or entity IDs without explicit approval and a migration note.
 - When diagnosing HA issues, do **not** ask the user to manually check entity states; provide a complete Developer Tools template they can paste and run.
+- Productization rule: do **not** track per-user host/IP files or unique local config artifacts in git (for example root-level `*_tcp_host.yaml`, site-specific endpoint lists, or personal environment mappings). Use `!secret`/ignored local files for deployment-specific values and keep repository defaults universal.
 
 ## YAML Style
 - Keep YAML blocks ordered and consistent: `esphome` → platform → `wifi` → `api` → `logger` → components.

@@ -1,5 +1,5 @@
 # Description: Main ESPHome config for Control Board v2 (ESP32-S3 + RP2040 UART + Arylic TCP).
-# Version: 2026.04.16.6
+# Version: 2026.04.16.7
 # Last updated: 2026-04-16
 # Update version/date whenever you change this file.
 #
@@ -24,7 +24,7 @@ substitutions:
 #  - spectra-ls-lighting.yaml: lighting controls + HA sync
 packages:
   # peripherals: !include /config/esphome/control-py/control-board-peripherals.yaml
-  peripherals: !include /config/esphome/control-py/control-board-peripherals-no-rings.yaml
+  peripherals: !include /config/esphome/control-py/spectra-ls-peripherals-no-rings.yaml
   hardware: !include /config/esphome/control-py/packages/spectra-ls-hardware.yaml
   ui: !include /config/esphome/control-py/packages/spectra-ls-ui.yaml
   system: !include /config/esphome/control-py/packages/spectra-ls-system.yaml

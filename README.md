@@ -1,5 +1,5 @@
 <!-- Description: Human-readable overview and deployment guide for the Spectra Level / Source (Spectra L/S) Home Assistant + ESPHome system. -->
-<!-- Version: 2026.04.17.24 -->
+<!-- Version: 2026.04.17.25 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Spectra Level / Source
@@ -80,27 +80,19 @@ Spectra L/S also supports whole-home multi-speaker playback with tight room-to-r
 - **I2C OLED, [SSD1306](https://www.solomon-systech.com/product/ssd1306/) 128x64 mode** (configured `oled_model: "SSD1306 128x64"`, typical address `0x3C`).
 - SSD1309-compatible modules are supported when driven in SSD1306 mode in current configs.
 
-## System Interaction (Moderate Detail)
+## What It Feels Like to Use Spectra L/S
 
-- **Home Assistant (`/mnt/homeassistant`)**
-  - Owns automations, templates, helper entities, and package-level orchestration.
-  - Exposes canonical state and control helpers consumed by ESPHome.
-- **ESPHome (ESP32-S3)**
-  - `main`: `esphome/spectra_ls_system.yaml` + `esphome/spectra_ls_system/`
-  - `menu-only`: `esphome/control-board-esp32-tcp.yaml` + `esphome/control-py/`
-  - Handles OLED rendering, API integration, and TCP control execution.
-- **RP2040 (CircuitPython)**
-  - Live source of truth: `CIRCUITPY/`
-  - Repo mirror: `esphome/circuitpy/`
-  - Reads hardware inputs and emits event stream consumed by ESPHome.
+- **Instant physical control**: adjust sound and lights in real time from dedicated controls, not nested app screens.
+- **Room-aware operation**: jump between rooms quickly and control the right targets without reconfiguring every step.
+- **Always-clear feedback**: the OLED keeps navigation and active actions visible, so you always know what you’re controlling.
+- **Reliable day-to-day flow**: physical actions stay responsive even when the smart-home stack is busy in the background.
 
-## Key Feature Points
+## Why People Love This Form Factor
 
-- Stable dual-branch operations (`main` + `menu-only`) with worktree-safe workflow.
-- Shared-contract parity gate for RP2040 protocol, control API, and helper/entity contracts.
-- TCP-only audio control path (no UART control path unless explicitly enabled).
-- Hardware-first UX: encoder/button/pot interactions remain responsive during HA update noise.
-- Diagnostic/log cadence hardening to reduce publish spam and improve readability.
+- It turns whole-home control into a tactile experience you can use by feel.
+- It keeps “party mode” and “wind-down mode” one move away.
+- It reduces phone dependence for common actions like transport, room lighting, and tone shaping.
+- It makes shared spaces easier: anyone can walk up, understand it, and use it fast.
 
 ## System Test Overview (Dev Tools Templates)
 
@@ -114,14 +106,14 @@ Use `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md` as the standard syst
 
 Recommended flow: run 1 → 2 → 3 after deploy, then use 4 for specific action checks and 5 for quick regression smoke tests.
 
-## Audio Clients / Player Types Spectra L/S Interacts With
+## Works with the Audio Ecosystem You Already Have
 
-- **[Music Assistant](https://music-assistant.io/) players** (`media_player` entities) for normalized multi-source metadata and active target context.
-- **Home Assistant media players** (generic `media_player.*`) for cross-integration state/transport interoperability.
-- **[WiiM](https://www.wiimhome.com/) Audio integration players** for transport-oriented control paths in supported rooms.
-- **[Arylic](https://developer.arylic.com/httpapi/) / [LinkPlay](https://linkplay.com/) TCP endpoints** for direct low-latency control (volume, EQ, source, transport fallback).
-- **AirPlay / Apple TV style sources** detected through HA/MA metadata and source-app attributes.
-- **Plex sessions/players** (optional) for now-playing enrichment and local-session filtering logic.
+- Music Assistant players
+- Home Assistant media players
+- WiiM-based rooms
+- Arylic/LinkPlay-class endpoints
+- AirPlay / Apple TV style sources
+- Plex sessions/players (optional)
 
 ## Deployment Guide (Detailed)
 

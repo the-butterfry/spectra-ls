@@ -1,6 +1,6 @@
-# Description: Lighting controls package for Control Board v2.
-# Version: 2026.04.12.1
-# Last updated: 2026-04-12
+# Description: Lighting controls package for Spectra LS system.
+# Version: 2026.04.16.0
+# Last updated: 2026-04-16
 # Update version/date whenever you change this file.
 
 binary_sensor:

@@ -1,14 +1,14 @@
-<!-- Description: Human-readable overview and deployment guide for the Spectra Level / Source (L/S) Home Assistant + ESPHome system. -->
-<!-- Version: 2026.04.17.19 -->
+<!-- Description: Human-readable overview and deployment guide for the Spectra Level / Source (Spectra L/S) Home Assistant + ESPHome system. -->
+<!-- Version: 2026.04.17.20 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Spectra Level / Source
 
 **⚠️ State of project (published 2026-04-16): Active heavy development on `main`. Not currently recommended for fresh production installations unless you are comfortable with frequent updates and occasional migration adjustments.**
 
-[Home Assistant](https://www.home-assistant.io/) unifies and automates devices and routines across your home; Spectra Level / Source (L/S) brings that power back into your hands as an intelligent physical control surface. With tactile knobs, smooth sliders, physical switches, dedicated buttons, and rotary dials, direct analog inputs drive Volume and 3-band EQ (bass/mid/treble) control for everything from everyday listening to a home dance party.
+[Home Assistant](https://www.home-assistant.io/) unifies and automates devices and routines across your home; Spectra Level / Source (Spectra L/S) brings that power back into your hands as an intelligent physical control surface. With tactile knobs, smooth sliders, physical switches, dedicated buttons, and rotary dials, direct analog inputs drive Volume and Physical 3-Band EQ control for everything from everyday listening to a home dance party.
 
-Behind the scenes, Home Assistant manages room logic, helpers, and automation flow, while ESPHome drives the OLED UI and real-time control behavior. In v-next, multiple switches and dials expand functionality while keeping the interface simple and clear, and the screen stays responsive to inputs with visual menu feedback as you navigate. If Home Assistant already knows a smart light or sound target, L/S can discover it and interact automatically, including direct tuning/control workflows from the hardware interface.
+Behind the scenes, Home Assistant manages room logic, helpers, and automation flow, while ESPHome drives the OLED UI and real-time control behavior. In v-next, multiple switches and dials expand functionality while keeping the interface simple and clear, and the screen stays responsive to inputs with visual menu feedback as you navigate. If Home Assistant already knows a smart light or sound target, Spectra L/S can discover it and interact automatically, including direct tuning/control workflows from the hardware interface.
 
 On `main`, project direction follows `esphome/spectra_ls_system/v-next-NOTES.md`: hardware-first UX, menu as fallback, deterministic controls, and scalable room/target handling.
 
@@ -19,14 +19,16 @@ On `main`, project direction follows `esphome/spectra_ls_system/v-next-NOTES.md`
 - **[ESP32-S3](https://www.espressif.com/en/products/socs/esp32-s3)** (`[esp32-s3-devkitc-1](https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32s3/esp32-s3-devkitc-1/index.html)`): OLED/UI rendering, Home Assistant API integration, network control paths.
 - **[RP2040](https://www.raspberrypi.com/products/rp2040/) ([CircuitPython](https://circuitpython.org/))**: physical input scanning and event publishing upstream.
 
-### Expanders / Input ICs
+### Inputs (Switches, Buttons, Knobs, Sliders, Dials)
+
+- Physical control inventory in v-next: multiple switches, dedicated buttons, rotary dials/encoders, analog knobs/pots, and analog sliders.
 
 - **[PCF8575](https://www.nxp.com/products/interfaces/ic-spi-i3c-interface-devices/general-purpose-i-o-gpio/remote-16-bit-i-o-expander-for-ic-bus:PCF8575)** digital expander (active at `0x20`; optional expansion at `0x21`) for button/switch inputs.
 - **[Seesaw](https://learn.adafruit.com/adafruit-seesaw-atsamd09-breakout/overview) rotary encoders** (menu + lighting encoders).
-- **[ADS1015](https://www.ti.com/product/ADS1015)** analog ADC for high-resolution pots (volume, EQ bass/treble, lighting slider).
+- **[ADS1015](https://www.ti.com/product/ADS1015)** analog ADC for high-resolution knobs/pots (Volume, Physical 3-Band EQ, lighting slider).
 - **RP2040 internal ADC** for EQ mid channel.
 - **[ADS7830](https://www.ti.com/product/ADS7830)** (recommended expansion, `0x49`) for additional low-resolution selector/switch channels.
-- v-next analog control surface emphasis: direct analog Volume + 3-band EQ with additional switches/dials for expanded control coverage.
+- v-next analog control surface emphasis: direct analog Volume + Physical 3-Band EQ with additional switches/dials for expanded control coverage.
 
 ### Control Interfaces
 
@@ -37,7 +39,7 @@ On `main`, project direction follows `esphome/spectra_ls_system/v-next-NOTES.md`
 
 ### Digital Audio Ingest + Final DAC Path
 
-Spectra Level / Source (L/S) is designed for real-world use right where you live: place it on the coffee table and treat it as your home digital-to-analog control hub. From the couch or desk, you get tactile control over sources, routing, and playback without living inside phone apps. Under the hood, it still maintains a controlled end-to-end path for signal quality, timing stability, and conversion transparency.
+Spectra Level / Source (Spectra L/S) is designed for real-world use right where you live: place it on the coffee table and treat it as your home digital-to-analog control hub. From the couch or desk, you get tactile control over sources, routing, and playback without living inside phone apps. Under the hood, it still maintains a controlled end-to-end path for signal quality, timing stability, and conversion transparency.
 
 - HDMI input from an ARC-capable source is supported in the source chain.
 - ARC digital audio is split/extracted and routed into the final output conversion stage.
@@ -86,7 +88,7 @@ Use `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md` as the standard syst
 
 Recommended flow: run 1 → 2 → 3 after deploy, then use 4 for specific action checks and 5 for quick regression smoke tests.
 
-## Audio Clients / Player Types L/S Interacts With
+## Audio Clients / Player Types Spectra L/S Interacts With
 
 - **[Music Assistant](https://music-assistant.io/) players** (`media_player` entities) for normalized multi-source metadata and active target context.
 - **Home Assistant media players** (generic `media_player.*`) for cross-integration state/transport interoperability.

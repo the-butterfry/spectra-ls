@@ -1,5 +1,5 @@
 # Description: Lighting controls package for Spectra LS System.
-# Version: 2026.04.17.8
+# Version: 2026.04.17.10
 # Last updated: 2026-04-17
 # Update version/date whenever you change this file.
 
@@ -322,9 +322,19 @@ text_sensor:
     internal: true
 
   - platform: homeassistant
+    id: ha_room_options_catalog
+    entity_id: sensor.control_board_room_options
+    internal: true
+
+  - platform: homeassistant
     id: ha_target_options
     entity_id: ${input_select_target}
     attribute: options
+    internal: true
+
+  - platform: homeassistant
+    id: ha_target_options_catalog
+    entity_id: sensor.control_board_target_options
     internal: true
 
   - platform: homeassistant
@@ -359,6 +369,12 @@ text_sensor:
               }
               v = v.substr(start, end - start + 1);
             };
+            auto is_placeholder = [](const std::string &v) {
+              if (v.empty()) return true;
+              std::string low = v;
+              for (auto &c : low) c = (char) ::tolower(c);
+              return low == "unknown" || low == "unavailable" || low == "none" || low == "null" || low == "idle";
+            };
             for (char ch : raw) {
               if ((ch == '\'' || ch == '"')) {
                 if (!in_quote) { in_quote = true; quote_char = ch; continue; }
@@ -367,14 +383,14 @@ text_sensor:
               if (!in_quote && (ch == '[' || ch == ']')) continue;
               if (!in_quote && ch == ',') {
                 trim(token);
-                if (!token.empty()) out.push_back(token);
+                if (!token.empty() && !is_placeholder(token)) out.push_back(token);
                 token.clear();
                 continue;
               }
               token.push_back(ch);
             }
             trim(token);
-            if (!token.empty()) out.push_back(token);
+            if (!token.empty() && !is_placeholder(token)) out.push_back(token);
             return out;
           };
 
@@ -416,6 +432,12 @@ text_sensor:
               }
               v = v.substr(start, end - start + 1);
             };
+            auto is_placeholder = [](const std::string &v) {
+              if (v.empty()) return true;
+              std::string low = v;
+              for (auto &c : low) c = (char) ::tolower(c);
+              return low == "unknown" || low == "unavailable" || low == "none" || low == "null" || low == "idle";
+            };
             for (char ch : raw) {
               if ((ch == '\'' || ch == '"')) {
                 if (!in_quote) { in_quote = true; quote_char = ch; continue; }
@@ -424,14 +446,14 @@ text_sensor:
               if (!in_quote && (ch == '[' || ch == ']')) continue;
               if (!in_quote && ch == ',') {
                 trim(token);
-                if (!token.empty()) out.push_back(token);
+                if (!token.empty() && !is_placeholder(token)) out.push_back(token);
                 token.clear();
                 continue;
               }
               token.push_back(ch);
             }
             trim(token);
-            if (!token.empty()) out.push_back(token);
+            if (!token.empty() && !is_placeholder(token)) out.push_back(token);
             return out;
           };
 

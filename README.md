@@ -1,5 +1,5 @@
 <!-- Description: Human-readable overview and deployment guide for the Spectra L/S Home Assistant + ESPHome system. -->
-<!-- Version: 2026.04.17.26 -->
+<!-- Version: 2026.04.17.27 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Spectra L/S
@@ -23,19 +23,21 @@ On `main`, direction follows `esphome/spectra_ls_system/v-next-NOTES.md`: hardwa
 
 ### Inputs (Switches, Buttons, Knobs, Sliders, Dials)
 
+#### Controls
+
+#### Lighting Controls
+
 - Direct Lighting Brightness / Hue / Saturation control over whole rooms or individual lights.
 - Fast room switching from hardware, so you can move control from one space to another instantly.
-- One-touch transport controls for audio: Play/Pause, Next, and Back/Previous on the active target.
+- Room-quick lighting flow: tap Room Select to cycle spaces, then move the lighting slider to set brightness for that room/target immediately.
+
+#### Audio Controls
+
+- One-touch transport controls: Play/Pause, Next, and Back/Previous on the active target.
 - Real-time Physical 3-Band EQ + volume shaping to dial in the vibe without leaving the couch.
+- Source + target control from hardware so you can jump between zones and sources with instant OLED feedback.
 
-#### What these controls actually do (real-world examples)
-
-- **Transport command cluster**: dedicated hardware buttons drive full playback control — **Play/Pause**, **Next**, and **Back/Previous** — on the active audio target without hunting through phone menus.
-- **Room-quick lighting flow**: tap Room Select to cycle spaces, then move the lighting slider to set brightness for that room/target immediately; Spectra L/S syncs the selection back to Home Assistant helpers.
-- **Physical 3-Band EQ shaping**: bass, mid, and treble analog controls let you dial a calmer background mix or push a brighter, punchier profile for party mode in real time.
-- **Source + target control from hardware**: source toggle and target selectors keep control on-device so you can jump between zones and sources with instant OLED feedback.
-
-#### v-next crossfade / balance slider (planned feature)
+#### Lighting v-next crossfade / balance slider (planned feature)
 
 - **Multi-room mode**: the slider will shift volume balance between rooms (for example, pull energy toward the living room while easing the kitchen/bedroom).
 - **Single-room mode**: the same slider will switch to left/right speaker balance for precise stereo placement in one room.

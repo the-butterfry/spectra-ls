@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.64 -->
+<!-- Version: 2026.04.17.65 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
+
+- Docs/README: Re-group Inputs feature copy into explicit **Lighting Controls** and **Audio Controls** blocks, and replace the awkward controls-example heading with a concise **Controls** section label for cleaner launch-page flow.
 
 - Docs/README: Final editorial launch-page pass — enforce one-time `Spectra Level / Source (Spectra L/S)` introduction and use `Spectra L/S` thereafter, while tightening opening narrative flow for a cohesive front-to-back product voice.
 

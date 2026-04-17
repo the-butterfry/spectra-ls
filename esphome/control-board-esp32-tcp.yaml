@@ -1,6 +1,6 @@
 # Description: Main ESPHome config for Control Board v2 (ESP32-S3 + RP2040 UART + Arylic TCP).
-# Version: 2026.04.13.3
-# Last updated: 2026-04-13
+# Version: 2026.04.16.1
+# Last updated: 2026-04-16
 # Update version/date whenever you change this file.
 #
 # Setup checklist:
@@ -19,7 +19,7 @@ substitutions:
 #  - control-board-hardware.yaml: UART + RP2040 hub + raw ADC taps
 #  - control-board-ui.yaml: menu buttons/encoder + fonts + UI helpers
 #  - control-board-system.yaml: globals + intervals + core scripts
-#  - control-board-diagnostics.yaml: OLED contrast + diagnostics + test buttons
+#  - spectra-ls-diagnostics.yaml: OLED contrast + diagnostics + test buttons
 #  - control-board-audio-tcp.yaml: audio controls + metadata (TCP-only)
 #  - control-board-lighting.yaml: lighting controls + HA sync
 packages:
@@ -28,7 +28,7 @@ packages:
   hardware: !include /config/esphome/control-py/packages/control-board-hardware.yaml
   ui: !include /config/esphome/control-py/packages/control-board-ui.yaml
   system: !include /config/esphome/control-py/packages/control-board-system.yaml
-  diagnostics: !include /config/esphome/control-py/packages/control-board-diagnostics.yaml
+  diagnostics: !include /config/esphome/control-py/packages/spectra-ls-diagnostics.yaml
   audio: !include /config/esphome/control-py/packages/control-board-audio-tcp.yaml
   lighting: !include /config/esphome/control-py/packages/control-board-lighting.yaml
 

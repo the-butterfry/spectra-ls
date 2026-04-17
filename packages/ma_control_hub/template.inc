@@ -1,3 +1,7 @@
+# Description: Template entities for ma_control_hub runtime routing, metadata, and now-playing state surfaces.
+# Version: 2026.04.17.1
+# Last updated: 2026-04-17
+
 - sensor:
     - name: Spectra LS Rooms JSON
       state: >-
@@ -916,12 +920,25 @@
           {% endfor %}
           {% set ma_state = (ns.p.playback_state if ns.p is not none else '') | default('', true) %}
           {% set ha_state = states(t) | lower %}
-          {% if ha_state == 'paused' and pos_recent %}
+          {% set active_state = states('sensor.ma_active_state') | lower %}
+          {% if ha_state in ['unknown','unavailable','none',''] %}
+            {% if active_state not in ['unknown','unavailable','none',''] %}
+              {{ active_state }}
+            {% elif ma_state and (ma_state | lower) not in ['unknown','unavailable','none',''] %}
+              {{ ma_state | lower }}
+            {% else %}
+              {{ 'idle' }}
+            {% endif %}
+          {% elif ha_state == 'paused' and pos_recent %}
             {{ 'playing' }}
-          {% elif ma_state and ma_state not in ['None', none] %}
-            {{ ma_state }}
+          {% elif ma_state and (ma_state | lower) not in ['none','unknown','unavailable',''] %}
+            {{ ma_state | lower }}
           {% else %}
-            {{ states(t) | default('idle', true) }}
+            {% if ha_state in ['unknown','unavailable','none',''] %}
+              {{ 'idle' }}
+            {% else %}
+              {{ ha_state }}
+            {% endif %}
           {% endif %}
         {% endif %}
     - name: Now Playing Position

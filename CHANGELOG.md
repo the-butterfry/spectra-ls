@@ -1,11 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.8 -->
+<!-- Version: 2026.04.17.9 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
 
+- HA: Harden `sensor.now_playing_state` in `packages/ma_control_hub/template.inc` to avoid propagating transient `unknown/unavailable` from `sensor.now_playing_entity`; fallback now resolves to `sensor.ma_active_state` (or `idle`) for stable rename-step validation and routing diagnostics.
 - Docs: Normalize section numbering/order in `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md` so rename validation checks run in ascending sequence (9 → 10 → 11).
 - ESPHome: Phase 15 rename step on `spectra_ls_system` path — rename system package include from `packages/control-board-system.yaml` to `packages/spectra-ls-system.yaml` and repoint `esphome/spectra_ls_system.yaml` include.
 - ESPHome: Phase 14 rename step on `spectra_ls_system` path — rename UI package include from `packages/control-board-ui.yaml` to `packages/spectra-ls-ui.yaml` and repoint `esphome/spectra_ls_system.yaml` include.

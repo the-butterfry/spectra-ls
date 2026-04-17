@@ -1,5 +1,5 @@
 # Description: Lighting controls package for Spectra LS System.
-# Version: 2026.04.17.3
+# Version: 2026.04.17.4
 # Last updated: 2026-04-17
 # Update version/date whenever you change this file.
 
@@ -151,7 +151,7 @@ sensor:
               const int count = target_count + 1;
               const int back_idx = count - 1;
               const int idx = id(menu_index);
-              if (idx != back_idx) {
+              if (idx >= 0 && idx < back_idx) {
                 int target = idx;
                 next_room = room;
                 next_target = target;
@@ -177,7 +177,7 @@ sensor:
             id(lighting_adjust_mode) = 3;
           }
           if (!id(menu_active)) {
-            id(lighting_return_to_audio_ms) = now + 3000;
+            id(lighting_return_to_audio_ms) = now + ${lighting_hold_ms};
             id(lighting_brightness_pending) = true;
             id(lighting_brightness_pending_until_ms) = now + ${brightness_send_interval_ms};
           } else {
@@ -481,7 +481,7 @@ script:
     mode: restart
     then:
       - lambda: |-
-          id(lighting_return_to_audio_ms) = millis() + 3000;
+          id(lighting_return_to_audio_ms) = millis() + ${lighting_hold_ms};
           id(screen_mode) = 0;
       - script.execute: compute_display_state
 
@@ -674,6 +674,12 @@ script:
       - lambda: |-
           const uint32_t now = millis();
           if (now - id(last_lighting_sent_ms) < ${lighting_send_interval_ms}) return;
+          const bool has_target = id(ha_target_entity_id).has_state() && !id(ha_target_entity_id).state.empty();
+          const bool has_area = id(ha_room_area_id).has_state() && !id(ha_room_area_id).state.empty();
+          if (!has_target && !has_area) {
+            ESP_LOGW("lighting", "skip apply_lighting_common: no target entity or area route");
+            return;
+          }
           id(last_lighting_sent_ms) = now;
           id(hue_ring_active_until_ms) = now + ${ring_active_window_ms};
       - homeassistant.service:
@@ -707,6 +713,12 @@ script:
       - lambda: |-
           const uint32_t now = millis();
           if (now - id(last_brightness_sent_ms) < ${brightness_send_interval_ms}) return;
+          const bool has_target = id(ha_target_entity_id).has_state() && !id(ha_target_entity_id).state.empty();
+          const bool has_area = id(ha_room_area_id).has_state() && !id(ha_room_area_id).state.empty();
+          if (!has_target && !has_area) {
+            ESP_LOGW("lighting", "skip apply_lighting_brightness: no target entity or area route");
+            return;
+          }
           id(last_brightness_sent_ms) = now;
       - homeassistant.service:
           service: ${ha_light_script}
@@ -731,25 +743,42 @@ script:
   - id: toggle_room_lights
     mode: restart
     then:
-      - homeassistant.service:
-          service: light.toggle
-          data:
-            area_id: !lambda |-
-              if (id(ha_room_area_id).has_state()) return std::string(id(ha_room_area_id).state.c_str());
-              return std::string("");
+      - if:
+          condition:
+            lambda: |-
+              return id(ha_room_area_id).has_state() && !id(ha_room_area_id).state.empty();
+          then:
+            - homeassistant.service:
+                service: light.toggle
+                data:
+                  area_id: !lambda |-
+                    return std::string(id(ha_room_area_id).state.c_str());
+          else:
+            - lambda: |-
+                ESP_LOGW("lighting", "skip toggle_room_lights: missing room area id");
 
   - id: toggle_selected_light
     mode: restart
     then:
-      - homeassistant.service:
-          service: light.toggle
-          data:
-            entity_id: !lambda |-
-              if (id(ha_target_entity_id).has_state()) {
-                return std::string(id(ha_target_entity_id).state.c_str());
-              }
-              return std::string("");
-            area_id: !lambda |-
-              if (id(ha_target_entity_id).has_state() && !id(ha_target_entity_id).state.empty()) return std::string("");
-              if (id(ha_room_area_id).has_state()) return std::string(id(ha_room_area_id).state.c_str());
-              return std::string("");
+      - if:
+          condition:
+            lambda: |-
+              const bool has_target = id(ha_target_entity_id).has_state() && !id(ha_target_entity_id).state.empty();
+              const bool has_area = id(ha_room_area_id).has_state() && !id(ha_room_area_id).state.empty();
+              return has_target || has_area;
+          then:
+            - homeassistant.service:
+                service: light.toggle
+                data:
+                  entity_id: !lambda |-
+                    if (id(ha_target_entity_id).has_state()) {
+                      return std::string(id(ha_target_entity_id).state.c_str());
+                    }
+                    return std::string("");
+                  area_id: !lambda |-
+                    if (id(ha_target_entity_id).has_state() && !id(ha_target_entity_id).state.empty()) return std::string("");
+                    if (id(ha_room_area_id).has_state()) return std::string(id(ha_room_area_id).state.c_str());
+                    return std::string("");
+          else:
+            - lambda: |-
+                ESP_LOGW("lighting", "skip toggle_selected_light: no target entity or area route");

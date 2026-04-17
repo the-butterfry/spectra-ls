@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.63 -->
+<!-- Version: 2026.04.17.64 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
+
+- Docs/README: Final editorial launch-page pass — enforce one-time `Spectra Level / Source (Spectra L/S)` introduction and use `Spectra L/S` thereafter, while tightening opening narrative flow for a cohesive front-to-back product voice.
 
 - Docs/README: Rework non-spec sections into product-outcome language (what users feel and can do) by removing file-path/architecture-heavy prose from system interaction and feature sections; keep detailed technical capability data centered in specs/cutsheet areas.
 

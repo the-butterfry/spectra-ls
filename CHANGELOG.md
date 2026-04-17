@@ -1,5 +1,5 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.16.1 -->
+<!-- Version: 2026.04.16.2 -->
 <!-- Last updated: 2026-04-16 -->
 
 # Changelog
@@ -10,6 +10,7 @@
 - Repo: Add tracked `esphome/secrets.example.yaml` template while keeping real secret files ignored.
 - Repo: Establish concurrent dual-branch operations with dedicated `menu-only` worktree under `.worktrees/menu-only`.
 - Docs: Add filesystem safety gate to prevent destructive live-path moves/deletes without reversible snapshot and verification.
+- Repo: Tighten HA tracking scope to Spectra-only (`configuration.yaml`, `packages/`, `esphome/`); stop tracking generic HA root `automations.yaml`, `scripts.yaml`, and `scenes.yaml`.
 
 ## 2026-04-15
 

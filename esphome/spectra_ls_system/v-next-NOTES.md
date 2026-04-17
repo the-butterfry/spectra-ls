@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.17.3 -->
+<!-- Version: 2026.04.17.4 -->
 <!-- Last updated: 2026-04-17 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -172,37 +172,121 @@ Suggested mapping (generalizable across installs):
 
 #### Phase A Start Checklist (must pass before Phase B)
 
-- [ ] **A1: Path authority check**
+- [x] **A1: Path authority check**
   - Planned edit targets must resolve only to `/mnt/homeassistant/esphome/spectra_ls_system.yaml`, `/mnt/homeassistant/esphome/spectra_ls_system/packages/spectra-ls-*.yaml`, `/media/cory/CIRCUITPY/code.py`, and `/mnt/homeassistant/esphome/circuitpy/code.py`.
   - Planned edit targets must exclude `/mnt/homeassistant/esphome/control-py/**` and `/mnt/homeassistant/esphome/control-py/previous/**`.
 
-- [ ] **A2: Include wiring check**
+- [x] **A2: Include wiring check**
   - Verify `spectra_ls_system.yaml` includes only active `spectra-ls-*` package files.
   - Verify include target existence for every referenced package path.
 
-- [ ] **A3: RP2040 parity pre-check**
+- [x] **A3: RP2040 parity pre-check**
   - Confirm live and mirror firmware files are identical before changes.
   - If drift exists, reconcile parity first and document source-of-truth decision.
 
-- [ ] **A4: Event contract reservation**
+- [x] **A4: Event contract reservation**
   - Reserve event ID window for new selector/switch/momentary features.
   - Add an event contract table in this file with columns: `event_id`, `producer`, `consumer`, `notes`.
   - Mark any existing IDs that must not be repurposed.
 
-- [ ] **A5: Ownership map**
+- [x] **A5: Ownership map**
   - Document owner files for each concern: RP2040 scan/debounce/emit, ESPHome event ingest/state, UI/menu override/render state, and HA helper routing.
 
-- [ ] **A6: Safety gates**
+- [x] **A6: Safety gates**
   - Define “no-go” conditions (e.g., missing package include target, RP2040 live/mirror mismatch, unresolved legacy path ambiguity).
   - Define rollback actions and restore commands before functional edits.
 
-- [ ] **A7: Validation gates for phase transition**
+- [x] **A7: Validation gates for phase transition**
   - Define minimum validation set required to move to Phase B/C.
   - Include expected PASS/WARN behavior for templates and what blocks advancement.
 
 - [ ] **A8: Commit boundary**
   - Keep Phase A commit doc-only (notes + optional changelog pointer) with no behavioral code changes.
   - Push Phase A commit before opening Phase B implementation work.
+
+#### Phase A Verification Snapshot (2026-04-17)
+
+- A1 verified: authoritative target files exist only in `spectra_ls_system` + RP2040 live/mirror paths.
+- A2 verified: `spectra_ls_system.yaml` package includes point to active `spectra-ls-*` files with valid include targets.
+- A3 verified: RP2040 live/mirror parity is clean.
+- RP2040 live SHA256 (`/media/cory/CIRCUITPY/code.py`): `41b9b828bf43556e982d8c035d2ef4fad8589f794ee45dbc3cf79b19736bd647`
+- RP2040 mirror SHA256 (`/mnt/homeassistant/esphome/circuitpy/code.py`): `41b9b828bf43556e982d8c035d2ef4fad8589f794ee45dbc3cf79b19736bd647`
+
+#### Event Contract Reservation (Phase A)
+
+Existing event IDs in use (do not repurpose):
+
+- Debug: `0`
+- Buttons: `20`, `21`, `22`, `31`–`37`
+- Analog controls: `101`, `102`, `104`, `105`, `106`
+
+Reserved window for v-next selector/switch/momentary contract: `120`–`129`
+
+| event_id | producer | consumer | notes |
+| --- | --- | --- | --- |
+| 120 | RP2040 `code.py` | ESPHome `spectra-ls-hardware.yaml` + `spectra-ls-ui.yaml` | `mode_selector_index` (0–4), edge/event-on-change |
+| 121 | RP2040 `code.py` | ESPHome `spectra-ls-hardware.yaml` | `control_class_index` (0–2), edge/event-on-change |
+| 122 | RP2040 `code.py` | ESPHome `spectra-ls-ui.yaml` | `mode_next_item` momentary press |
+| 123 | RP2040 `code.py` | ESPHome `spectra-ls-ui.yaml` | `mode_prev_item` momentary press |
+| 124 | RP2040 `code.py` | ESPHome `spectra-ls-ui.yaml` | `mode_confirm` momentary press |
+| 125–129 | Reserved | Reserved | keep unassigned for follow-on controls/long-press variants |
+
+#### Ownership Map (Phase A)
+
+- RP2040 scan/debounce/emit owner:
+
+  - live: `/media/cory/CIRCUITPY/code.py`
+  - mirror: `/mnt/homeassistant/esphome/circuitpy/code.py`
+- ESPHome event ingest/state owner:
+
+  - `/mnt/homeassistant/esphome/spectra_ls_system/packages/spectra-ls-hardware.yaml`
+  - `/mnt/homeassistant/esphome/spectra_ls_system/packages/spectra-ls-system.yaml`
+- UI/menu override/render owner:
+
+  - `/mnt/homeassistant/esphome/spectra_ls_system/packages/spectra-ls-ui.yaml`
+  - `/mnt/homeassistant/esphome/spectra_ls_system/packages/spectra-ls-peripherals.yaml`
+- HA helper/routing owner:
+
+  - `/mnt/homeassistant/packages/ma_control_hub.yaml`
+  - `/mnt/homeassistant/packages/ma_control_hub/*.inc`
+
+#### Safety Gates (Phase A)
+
+No-Go conditions before Phase B:
+
+- Any missing include target from `spectra_ls_system.yaml` package map.
+- RP2040 live/mirror checksum mismatch.
+- Planned edits touching `/mnt/homeassistant/esphome/control-py/**` without explicit request.
+- Undefined/overlapping event IDs with existing active IDs.
+
+Rollback baseline and commands (doc-only Phase A / pre-Phase B prep):
+
+- Baseline commit on `main`: `a504d36`
+- Full repo rollback to baseline:
+
+  - `cd /mnt/homeassistant && git reset --hard a504d36`
+- RP2040 mirror-to-live firmware restore (if live diverges unintentionally):
+
+  - `cp /mnt/homeassistant/esphome/circuitpy/code.py /media/cory/CIRCUITPY/code.py`
+
+#### Validation Gates (A → B/C)
+
+Minimum required PASS set before entering Phase B/C implementation:
+
+- Include map sanity:
+
+  - `spectra_ls_system.yaml` references only existing `spectra-ls-*` packages.
+- RP2040 parity sanity:
+
+  - live + mirror `code.py` checksum match at handoff.
+- Event contract sanity:
+
+  - no collision between reserved window `120`–`129` and active event IDs.
+
+Expected WARN/PASS interpretation:
+
+- WARN allowed: non-blocking runtime helper naming drift (`control_board_*`) under deferred cleanup policy.
+- BLOCKER/No-Go: include target missing, checksum mismatch, event ID collision, or edits outside Phase A scope.
 
 1. **Phase B — RP2040 input capture**
    - Implement selector/switch/momentary scan + debounce + edge-trigger emit.
@@ -231,6 +315,7 @@ Suggested mapping (generalizable across installs):
 ### Phase 1 — RP2040 CircuitPython (input scanning)
 
 **Files**:
+
 - `/media/cory/CIRCUITPY/code.py` (authoritative live firmware)
 - `/mnt/homeassistant/esphome/circuitpy/code.py` (required mirror sync in same change set)
 
@@ -265,6 +350,7 @@ Suggested mapping (generalizable across installs):
 ### Phase 2 — ESPHome (ESP32-S3)
 
 **Files**:
+
 - `/config/esphome/spectra_ls_system/packages/spectra-ls-hardware.yaml`
 - `/config/esphome/spectra_ls_system/packages/spectra-ls-ui.yaml`
 - `/config/esphome/spectra_ls_system/packages/spectra-ls-system.yaml` (if shared routing state is needed)
@@ -308,11 +394,13 @@ Suggested mapping (generalizable across installs):
 ## Wiring / Hardware Choices
 
 ### Recommended 5-way selector approach
+
 - **Resistor ladder** into ADS7830 channel
 - ADS7830 @ **0x49** to avoid ADS1015 conflict
 - Use deadbands between thresholds to avoid chatter
 
 ### Alternate approach
+
 - Discrete 5 pins on PCF8575 (P9–P13)
 - Requires more GPIO, but simpler firmware
 

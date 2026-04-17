@@ -1,5 +1,5 @@
 # Description: Spectra LS UI/menu input handling + UI fonts + now-playing helper sensors.
-# Version: 2026.04.17.2
+# Version: 2026.04.17.3
 # Last updated: 2026-04-17
 # Update version/date whenever you change this file.
 #
@@ -368,14 +368,24 @@ script:
               id(menu_level) = 8;
               id(menu_index) = 0;
             } else if (id(menu_index) == 1) {
+              id(lighting_resume_menu_pending) = true;
+              id(lighting_resume_menu_level) = 7;
+              id(lighting_resume_menu_index) = 1;
+              id(lighting_menu_hold_until_ms) = 0;
               id(lighting_adjust_mode) = 0;
               id(lighting_mode_hue) = true;
+              id(lighting_return_to_audio_ms) = millis() + ${lighting_hold_ms};
               id(screen_mode) = 0;
               id(menu_active) = false;
               id(menu_level) = 0;
             } else if (id(menu_index) == 2) {
+              id(lighting_resume_menu_pending) = true;
+              id(lighting_resume_menu_level) = 7;
+              id(lighting_resume_menu_index) = 2;
+              id(lighting_menu_hold_until_ms) = 0;
               id(lighting_adjust_mode) = 0;
               id(lighting_mode_hue) = false;
+              id(lighting_return_to_audio_ms) = millis() + ${lighting_hold_ms};
               id(screen_mode) = 0;
               id(menu_active) = false;
               id(menu_level) = 0;
@@ -702,6 +712,7 @@ interval:
           const uint32_t idle_ms = now - id(last_input_ms);
           const bool playing = id(playing_effective);
           const bool hardware_lighting_mode = (id(hardware_mode) == 0) || (id(hardware_mode) == 1);
+          const bool lighting_resume_or_hold = id(lighting_resume_menu_pending) || (id(lighting_menu_hold_until_ms) > now);
           if (id(last_screen_mode) < 0) {
             id(last_screen_mode) = id(screen_mode);
           } else if (id(last_screen_mode) != id(screen_mode)) {
@@ -736,12 +747,12 @@ interval:
             id(screen_mode) = 0;
           }
           const bool lighting_hold_active = id(lighting_return_to_audio_ms) > 0 && now < id(lighting_return_to_audio_ms);
-          if (playing && id(screen_mode) != 1 && !id(menu_active) && !lighting_hold_active && !hardware_lighting_mode) {
+          if (playing && id(screen_mode) != 1 && !id(menu_active) && !lighting_hold_active && !hardware_lighting_mode && !lighting_resume_or_hold) {
             id(screen_mode) = 1;
             id(menu_level) = 1;
             id(menu_index) = 0;
           }
-          if (id(screen_mode) == 0 && !id(menu_active) && id(lighting_return_to_audio_ms) > 0 && now > id(lighting_return_to_audio_ms) && !hardware_lighting_mode) {
+          if (id(screen_mode) == 0 && !id(menu_active) && id(lighting_return_to_audio_ms) > 0 && now > id(lighting_return_to_audio_ms) && !hardware_lighting_mode && !lighting_resume_or_hold) {
             id(screen_mode) = 1;
             id(lighting_return_to_audio_ms) = 0;
           }

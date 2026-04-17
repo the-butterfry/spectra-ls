@@ -1,5 +1,5 @@
 # Description: Lighting controls package for Spectra LS System.
-# Version: 2026.04.17.4
+# Version: 2026.04.17.5
 # Last updated: 2026-04-17
 # Update version/date whenever you change this file.
 
@@ -231,8 +231,46 @@ interval:
   - interval: 250ms
     then:
       - lambda: |-
-          if (id(lighting_adjust_mode) != 3) return;
           const uint32_t now = millis();
+          const bool lighting_activity_active = (now < id(brightness_active_until_ms)) ||
+                                                (now < id(hue_ring_active_until_ms)) ||
+                                                (now < id(brightness_slider_only_until_ms));
+
+          if (id(lighting_resume_menu_pending) && !id(menu_active) && !lighting_activity_active) {
+            id(menu_active) = true;
+            int lvl = id(lighting_resume_menu_level);
+            if (lvl < 1) lvl = 7;
+            int idx = id(lighting_resume_menu_index);
+            if (idx < 0) idx = 0;
+            id(menu_level) = lvl;
+            id(menu_index) = idx;
+            id(screen_mode) = 0;
+            id(lighting_menu_hold_until_ms) = now + ${lighting_menu_return_hold_ms};
+            id(lighting_resume_menu_pending) = false;
+            id(lighting_adjust_mode) = 0;
+            id(lighting_return_to_audio_ms) = 0;
+            id(compute_display_state).execute();
+            return;
+          }
+
+          if (id(menu_active) && id(lighting_menu_hold_until_ms) > 0 && now >= id(lighting_menu_hold_until_ms)) {
+            id(menu_active) = false;
+            id(menu_level) = 0;
+            id(menu_index) = 0;
+            id(lighting_menu_hold_until_ms) = 0;
+            if (id(playing_effective)) {
+              id(screen_mode) = 1;
+            } else {
+              id(screen_mode) = 0;
+              id(menu_active) = true;
+              id(menu_level) = 1;
+              id(menu_index) = 0;
+            }
+            id(compute_display_state).execute();
+            return;
+          }
+
+          if (id(lighting_adjust_mode) != 3) return;
           if (id(menu_active)) {
             id(lighting_adjust_mode) = 0;
             return;

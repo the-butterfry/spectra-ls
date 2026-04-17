@@ -1,5 +1,5 @@
 # Description: Spectra LS core state + globals + system intervals + shared scripts.
-# Version: 2026.04.17.2
+# Version: 2026.04.17.3
 # Last updated: 2026-04-17
 # Update version/date whenever you change this file.
 #
@@ -426,6 +426,22 @@ globals:
     restore_value: no
     initial_value: "0"
   - id: lighting_return_to_audio_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: lighting_resume_menu_pending
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: lighting_resume_menu_level
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: lighting_resume_menu_index
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: lighting_menu_hold_until_ms
     type: uint32_t
     restore_value: no
     initial_value: "0"

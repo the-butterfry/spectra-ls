@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.72 -->
+<!-- Version: 2026.04.17.73 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
+
+- ESPHome/UI Regression Fix: Remove implicit top-level menu re-entry after lighting-adjust hold and playback-stop transitions so the UI no longer auto-shows literal `Lighting / Audio / Gear` tiles unless the menu is explicitly opened by user input.
 
 - ESPHome/UI Architecture: Replace hardcoded menu-level magic numbers in active lighting/UI control paths with named menu-level constants from substitutions to reduce transition fragility and improve v-next maintainability.
 

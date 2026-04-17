@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.17.12 -->
+<!-- Version: 2026.04.17.13 -->
 <!-- Last updated: 2026-04-17 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -62,6 +62,22 @@
 2. **Menu is fallback**: menu encoder remains functional, but hardware changes reassert control.
 3. **Generalizable**: works for installs with 1–N rooms and multiple audio targets.
 4. **Deterministic**: hardware switch positions always map to clear actions, no ambiguous prompts.
+5. **Crossfade/Balance slider mode (v-next)**: one slider surface with mode-aware behavior — room-to-room balance in multi-room mode, and left/right speaker balance in single-room mode.
+
+## v-next Feature Requirement — Crossfade / Balance Slider
+
+This is a required top-line feature for v-next.
+
+- In **multi-room mode**, the slider controls **volume balance between rooms** (crossfade-style weighting), not just a global absolute level.
+- In **single-room mode**, the slider controls **left/right speaker balance** for that room.
+- Mode-to-slider behavior must be explicit on OLED so users always know whether they are balancing rooms or balancing speakers.
+
+Implementation notes (planning contract):
+
+- Add a normalized slider value domain (for example `-100..100`) for directional balance semantics.
+- Multi-room balance path should map slider direction into weighted per-room gain adjustments with clamping and rate limiting.
+- Single-room balance path should map slider direction into stereo L/R balance (or equivalent device-supported control path).
+- Keep fallback behavior safe: if a target path does not support balance controls, hold current mix and expose a clear UI/status notice.
 
 ## HDMI ARC Ingest + Final DAC Path (Active Hardware Note)
 

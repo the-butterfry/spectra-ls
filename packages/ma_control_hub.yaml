@@ -1,17 +1,17 @@
 ## MUSIC ASSISTANT CONTROL HUB PACKAGE (split)
 # Description: Control hub and meta resolver split into focused package files.
-# Version: 2026.04.16.0
+# Version: 2026.04.16.1
 # Last updated: 2026-04-16
 
-input_select: !include ma_control_hub/input_select.yaml
-input_boolean: !include ma_control_hub/input_boolean.yaml
-input_number: !include ma_control_hub/input_number.yaml
-input_text: !include ma_control_hub/input_text.yaml
+input_select: !include ma_control_hub/input_select.inc
+input_boolean: !include ma_control_hub/input_boolean.inc
+input_number: !include ma_control_hub/input_number.inc
+input_text: !include ma_control_hub/input_text.inc
 
-rest: !include ma_control_hub/rest.yaml
-rest_command: !include ma_control_hub/rest_command.yaml
+rest: !include ma_control_hub/rest.inc
+rest_command: !include ma_control_hub/rest_command.inc
 
-script: !include ma_control_hub/script.yaml
-automation: !include ma_control_hub/automation.yaml
+script: !include ma_control_hub/script.inc
+automation: !include ma_control_hub/automation.inc
 
-template: !include ma_control_hub/template.yaml
+template: !include ma_control_hub/template.inc

@@ -1,11 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.16.14 -->
+<!-- Version: 2026.04.16.15 -->
 <!-- Last updated: 2026-04-16 -->
 
 # Changelog
 
 ## 2026-04-16
 
+- HA: Prevent `ma_control_hub` split fragments from being misloaded as standalone packages by renaming `packages/ma_control_hub/*.yaml` to `*.inc` and updating `packages/ma_control_hub.yaml` includes.
 - HA: Restore `packages/ma_control_hub.yaml` and all split files from `menu-only` branch for parity, and revert temporary absolute include-root rewrite.
 - HA: Fix `packages/ma_control_hub.yaml` include roots to `/config/packages/ma_control_hub/*` so YAML reload resolves split package files correctly.
 - ESPHome: Phase 1 rename step on tracked main path — rename active diagnostics package to `spectra-ls-diagnostics.yaml` and repoint `esphome/control-board-esp32-tcp.yaml` include.

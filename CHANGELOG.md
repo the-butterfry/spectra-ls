@@ -1,11 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.18 -->
+<!-- Version: 2026.04.17.19 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
 
+- RP2040/Architecture: Pass 2 modularization extracts analog/calibration helper functions from `code.py` into `sls_analog.py` and `sls_calibration.py` (live `CIRCUITPY` + repo mirror) while preserving runtime loop behavior and packet contract.
 - RP2040/Architecture: Begin v-next-safe modularization of firmware by extracting config/protocol/input-decode helpers from monolithic `code.py` into dedicated modules in live `CIRCUITPY/` with synchronized mirror under `esphome/circuitpy/`; preserve existing packet contract and runtime behavior.
 - RP2040/Phase B: Add hardware input-capture contract in `CIRCUITPY/code.py` + mirror `esphome/circuitpy/code.py` for v-next reserved events (`120`–`124`) including mode selector, control-class selector, and mode-navigation momentary event emits; preserve existing event IDs and behavior while adding parallel v-next event path.
 - Productization: de-track `spectra_ls_primary_tcp_host.yaml` and `spectra_ls_room_tcp_host.yaml` from git/GitHub while keeping local files in place; host defaults now use secrets-based values and these per-user endpoint files are ignored to prevent personal config pollution.

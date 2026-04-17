@@ -1,5 +1,5 @@
 ## Description: RP2040 firmware for Spectra LS input scanning and UART event transport.
-## Version: 2026.04.17.1
+## Version: 2026.04.17.2
 ## Last updated: 2026-04-17
 
 import time
@@ -10,6 +10,28 @@ import digitalio
 import adafruit_ticks
 from adafruit_debouncer import Debouncer
 from adafruit_pcf8575 import PCF8575
+from sls_config import (
+    BUTTON_PINS,
+    BUTTON_EVENT_IDS,
+    MODE_SELECTOR_EVENT_ID,
+    CONTROL_CLASS_EVENT_ID,
+    MODE_SELECTOR_PINS,
+    CONTROL_CLASS_PINS,
+    CONTROL_CLASS_MAP,
+    MODE_NAV_BUTTON_MIRROR,
+)
+from sls_inputs_pcf import (
+    setup_pcf_inputs,
+    decode_mode_selector,
+    decode_control_class,
+)
+from sls_protocol import (
+    PacketWriter,
+    TYPE_BUTTON,
+    TYPE_ANALOG,
+    TYPE_ENCODER,
+    TYPE_DEBUG,
+)
 try:
     from adafruit_seesaw.seesaw import Seesaw
     from adafruit_seesaw.rotaryio import IncrementalEncoder
@@ -785,135 +807,14 @@ init_calibration_tracking()
 # UART to ESP32-S3
 uart = busio.UART(board.TX, board.RX, baudrate=115200)
 
-# -----------------------------
-# Button setup
-# -----------------------------
-# Map PCF8575 pins to logical button names
-BUTTON_PINS = {
-    "room": 0,
-    "source": 1,
-    "back": 2,
-    "home": 3,
-    "prev": 4,
-    "play": 5,
-    "next": 6,
-    "mute": 7,
-    "select": 8,
-}
-
-BUTTON_EVENT_IDS = {
-    "room": 31,
-    "source": 35,
-    "back": 36,
-    "prev": 34,
-    "play": 32,
-    "next": 33,
-    "mute": 22,
-    "select": 37,
-}
-
-# -----------------------------
-# Phase B v-next input contract
-# -----------------------------
-# Reserved event IDs from v-next notes (Phase A): 120-129
-MODE_SELECTOR_EVENT_ID = 120      # value: 0-4
-CONTROL_CLASS_EVENT_ID = 121      # value: 0-2
-MODE_NEXT_ITEM_EVENT_ID = 122     # momentary button value: 1/0
-MODE_PREV_ITEM_EVENT_ID = 123     # momentary button value: 1/0
-MODE_CONFIRM_EVENT_ID = 124       # momentary button value: 1/0
-
-# Discrete selector wiring on spare PCF8575 inputs.
-# One-hot expected: exactly one active-low pin selected maps to index 0-4.
-MODE_SELECTOR_PINS = [9, 10, 11, 12, 13]
-
-# 3-way control class selector on two pins (active-low):
-# (True, False) -> 0 (Auto)
-# (False, True) -> 1 (Primary Hardware)
-# (True, True) -> 2 (Room Hardware)
-# (False, False) -> invalid / disconnected (no emit)
-CONTROL_CLASS_PINS = [14, 15]
-CONTROL_CLASS_MAP = {
-    (True, False): 0,
-    (False, True): 1,
-    (True, True): 2,
-}
-
-# Mirror existing physical buttons into v-next mode-navigation events.
-MODE_NAV_BUTTON_MIRROR = {
-    "next": MODE_NEXT_ITEM_EVENT_ID,
-    "back": MODE_PREV_ITEM_EVENT_ID,
-    "select": MODE_CONFIRM_EVENT_ID,
-}
-
 # Create debouncers
-buttons = {}
-mode_selector_inputs = []
-control_class_inputs = []
-if pcf is not None:
-    for name, pin in BUTTON_PINS.items():
-        p = pcf.get_pin(pin)
-        try:
-            if PCF8575_PULLUPS:
-                p.switch_to_input(pull=digitalio.Pull.UP)
-            else:
-                p.switch_to_input()
-        except NotImplementedError:
-            p.direction = digitalio.Direction.INPUT
-        buttons[name] = Debouncer(lambda p=p: not p.value)
-
-    for idx, pin in enumerate(MODE_SELECTOR_PINS):
-        p = pcf.get_pin(pin)
-        try:
-            if PCF8575_PULLUPS:
-                p.switch_to_input(pull=digitalio.Pull.UP)
-            else:
-                p.switch_to_input()
-        except NotImplementedError:
-            p.direction = digitalio.Direction.INPUT
-        mode_selector_inputs.append({"index": idx, "deb": Debouncer(lambda p=p: not p.value)})
-
-    for pin in CONTROL_CLASS_PINS:
-        p = pcf.get_pin(pin)
-        try:
-            if PCF8575_PULLUPS:
-                p.switch_to_input(pull=digitalio.Pull.UP)
-            else:
-                p.switch_to_input()
-        except NotImplementedError:
-            p.direction = digitalio.Direction.INPUT
-        control_class_inputs.append(Debouncer(lambda p=p: not p.value))
-
-# -----------------------------
-# Helper: send binary event to ESP32-S3
-# -----------------------------
-TYPE_BUTTON = 0x01
-TYPE_ANALOG = 0x02
-TYPE_ENCODER = 0x03
-TYPE_DEBUG = 0xF0
-
-def send_packet(event_type, event_id, value):
-    global tx_len, last_activity_ms
-    if event_id is None:
-        return
-    if not DEBUG_GLOBAL and event_type == TYPE_DEBUG:
-        return
-    ts = adafruit_ticks.ticks_ms() & 0xFFFFFFFF
-    if tx_len + 10 > len(tx_buffer):
-        _flush_tx()
-    tx_buffer[tx_len] = 0xAA
-    tx_buffer[tx_len + 1] = 0x55
-    tx_buffer[tx_len + 2] = event_type & 0xFF
-    tx_buffer[tx_len + 3] = event_id & 0xFF
-    tx_buffer[tx_len + 4] = (ts >> 24) & 0xFF
-    tx_buffer[tx_len + 5] = (ts >> 16) & 0xFF
-    tx_buffer[tx_len + 6] = (ts >> 8) & 0xFF
-    tx_buffer[tx_len + 7] = ts & 0xFF
-    value &= 0xFFFF
-    tx_buffer[tx_len + 8] = (value >> 8) & 0xFF
-    tx_buffer[tx_len + 9] = value & 0xFF
-    tx_len += 10
-    if event_type != TYPE_DEBUG:
-        last_activity_ms = ts
+buttons, mode_selector_inputs, control_class_inputs = setup_pcf_inputs(
+    pcf,
+    PCF8575_PULLUPS,
+    BUTTON_PINS,
+    MODE_SELECTOR_PINS,
+    CONTROL_CLASS_PINS,
+)
 
 # -----------------------------
 # Main loop
@@ -930,37 +831,14 @@ analog_pending_count = [0 for _ in range(len(analog_inputs))]
 autocal_trigger_pressed = False
 debug_counter = 0
 last_debug_ms = adafruit_ticks.ticks_ms()
-last_activity_ms = 0
-MAX_TX_BUFFER = 256
-tx_buffer = bytearray(MAX_TX_BUFFER)
-tx_len = 0
-
-def _flush_tx():
-    global tx_len
-    if tx_len > 0:
-        uart.write(tx_buffer[:tx_len])
-        tx_len = 0
+packet_writer = PacketWriter(uart, debug_enabled=DEBUG_GLOBAL, max_buffer=256)
+send_packet = packet_writer.send_packet
+flush_tx = packet_writer.flush
+last_mode_selector_index = None
+last_control_class_index = None
 
 def _is_pot_name(name):
     return "pot" in name
-
-
-def _decode_mode_selector(states):
-    active_count = 0
-    active_idx = None
-    for idx, state in enumerate(states):
-        if state:
-            active_count += 1
-            active_idx = idx
-    if active_count == 1:
-        return active_idx
-    return None
-
-
-def _decode_control_class(states):
-    if len(states) != 2:
-        return None
-    return CONTROL_CLASS_MAP.get((states[0], states[1]))
 
 
 while True:
@@ -973,22 +851,17 @@ while True:
     mode_states = [entry["deb"].value for entry in mode_selector_inputs]
     control_states = [deb.value for deb in control_class_inputs]
 
-    mode_selector_index = _decode_mode_selector(mode_states)
-    control_class_index = _decode_control_class(control_states)
+    mode_selector_index = decode_mode_selector(mode_states)
+    control_class_index = decode_control_class(control_states, CONTROL_CLASS_MAP)
 
-    if not hasattr(_decode_mode_selector, "last_index"):
-        _decode_mode_selector.last_index = None
-    if not hasattr(_decode_control_class, "last_index"):
-        _decode_control_class.last_index = None
-
-    if mode_selector_index is not None and mode_selector_index != _decode_mode_selector.last_index:
-        _decode_mode_selector.last_index = mode_selector_index
+    if mode_selector_index is not None and mode_selector_index != last_mode_selector_index:
+        last_mode_selector_index = mode_selector_index
         send_packet(TYPE_BUTTON, MODE_SELECTOR_EVENT_ID, mode_selector_index)
         if DEBUG_GLOBAL and DEBUG_BUTTONS_SERIAL:
             print(f"Mode selector -> {mode_selector_index} (id={MODE_SELECTOR_EVENT_ID})")
 
-    if control_class_index is not None and control_class_index != _decode_control_class.last_index:
-        _decode_control_class.last_index = control_class_index
+    if control_class_index is not None and control_class_index != last_control_class_index:
+        last_control_class_index = control_class_index
         send_packet(TYPE_BUTTON, CONTROL_CLASS_EVENT_ID, control_class_index)
         if DEBUG_GLOBAL and DEBUG_BUTTONS_SERIAL:
             print(f"Control class -> {control_class_index} (id={CONTROL_CLASS_EVENT_ID})")
@@ -1227,7 +1100,7 @@ while True:
 
     if DEBUG_UART:
         now = adafruit_ticks.ticks_ms()
-        if last_activity_ms and adafruit_ticks.ticks_diff(now, last_activity_ms) > DEBUG_UART_IDLE_SUPPRESS_MS:
+        if packet_writer.last_activity_ms and adafruit_ticks.ticks_diff(now, packet_writer.last_activity_ms) > DEBUG_UART_IDLE_SUPPRESS_MS:
             pass
         elif DEBUG_GLOBAL and adafruit_ticks.ticks_diff(now, last_debug_ms) >= DEBUG_INTERVAL_MS:
             last_debug_ms = now
@@ -1239,6 +1112,6 @@ while True:
     update_autocal_trigger(autocal_trigger_pressed)
     autocal_trigger_pressed = False
 
-    _flush_tx()
+    flush_tx()
 
     time.sleep(0.01)

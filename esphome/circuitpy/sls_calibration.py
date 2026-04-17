@@ -1,6 +1,10 @@
 # Description: Calibration persistence and scaling helpers for Spectra LS RP2040 firmware.
-# Version: 2026.04.17.1
+# Version: 2026.04.17.2
 # Last updated: 2026-04-17
+#
+# RP FILE CONTRACT:
+# - Owns calibration load/save/apply utilities.
+# - Must NOT read hardware directly or orchestrate main-loop transitions.
 
 import json
 

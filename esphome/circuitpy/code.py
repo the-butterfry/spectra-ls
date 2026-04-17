@@ -1,6 +1,14 @@
 ## Description: RP2040 firmware for Spectra LS input scanning and UART event transport.
-## Version: 2026.04.17.4
+## Version: 2026.04.17.5
 ## Last updated: 2026-04-17
+#
+# RP FILE CONTRACT:
+# - Owns hardware initialization and main-loop orchestration only.
+# - Delegates protocol framing to sls_protocol.py.
+# - Delegates PCF input setup/decode to sls_inputs_pcf.py.
+# - Delegates analog math to sls_analog.py.
+# - Delegates calibration persistence to sls_calibration.py.
+# - Delegates autocal/tracking runtime state to sls_calibration_runtime.py.
 
 import time
 import board
@@ -37,6 +45,7 @@ from sls_calibration import (
     apply_calibration,
     calibration_missing,
 )
+from sls_calibration_runtime import CalibrationRuntimeManager
 from sls_analog import (
     clamp_value,
     scale_analog_value,
@@ -602,13 +611,8 @@ def update_autocal_trigger(pressed):
         if AUTOCAL_REQUIRE_RELEASE:
             autocal_armed = True
 
-if AUTOCAL_ENABLED and AUTOCAL_BOOT_IF_MISSING:
-    boot_names = AUTOCAL_BOOT_CHANNEL_NAMES or AUTOCAL_CHANNEL_NAMES
-    missing = [name for name in (boot_names or []) if calibration_missing(calibration, name)]
-    if missing:
-        if DEBUG_CALIBRATION_SERIAL:
-            print(f"Boot auto-cal: {', '.join(missing)}")
-        start_autocalibration(missing)
+# NOTE: Legacy inline autocal bootstrap path is retained for rollback reference,
+# but runtime behavior is now delegated to CalibrationRuntimeManager below.
 
 tracking_indices = []
 tracking_min = {}
@@ -712,7 +716,8 @@ def get_tracking_calibration(idx, source):
         return None
     return {"min": int(min_val), "max": int(max_val)}
 
-init_calibration_tracking()
+# NOTE: Legacy inline tracking init path is retained for rollback reference,
+# but runtime behavior is now delegated to CalibrationRuntimeManager below.
 
 
 def build_analog_profiles():
@@ -759,6 +764,52 @@ def maybe_log_encoder_serial(enc, message):
     if last_serial_ms is None or adafruit_ticks.ticks_diff(now, last_serial_ms) >= DEBUG_ENCODER_SERIAL_INTERVAL_MS:
         enc["last_serial_ms"] = now
         print(message)
+
+
+CAL_RUNTIME_CONFIG = {
+    "AUTOCAL_ENABLED": AUTOCAL_ENABLED,
+    "AUTOCAL_CHANNEL_NAMES": AUTOCAL_CHANNEL_NAMES,
+    "AUTOCAL_TRIGGER_HOLD_MS": AUTOCAL_TRIGGER_HOLD_MS,
+    "AUTOCAL_REQUIRE_RELEASE": AUTOCAL_REQUIRE_RELEASE,
+    "AUTOCAL_COOLDOWN_MS": AUTOCAL_COOLDOWN_MS,
+    "AUTOCAL_DURATION_MS": AUTOCAL_DURATION_MS,
+    "AUTOCAL_SETTLE_MS": AUTOCAL_SETTLE_MS,
+    "AUTOCAL_HEADROOM_PCT": AUTOCAL_HEADROOM_PCT,
+    "AUTOCAL_TRIM_PCT": AUTOCAL_TRIM_PCT,
+    "AUTOCAL_SAMPLE_LIMIT": AUTOCAL_SAMPLE_LIMIT,
+    "AUTOCAL_MIN_SAMPLES": AUTOCAL_MIN_SAMPLES,
+    "AUTOCAL_EDGE_PCT": AUTOCAL_EDGE_PCT,
+    "AUTOCAL_EDGE_MIN_SAMPLES": AUTOCAL_EDGE_MIN_SAMPLES,
+    "AUTOCAL_EDGE_HEADROOM_PCT": AUTOCAL_EDGE_HEADROOM_PCT,
+    "AUTOCAL_BOOT_IF_MISSING": AUTOCAL_BOOT_IF_MISSING,
+    "AUTOCAL_BOOT_CHANNEL_NAMES": AUTOCAL_BOOT_CHANNEL_NAMES,
+    "AUTOCAL_MIN_RANGE": AUTOCAL_MIN_RANGE,
+    "AUTOCAL_SUSPEND_OUTPUT": AUTOCAL_SUSPEND_OUTPUT,
+    "CALIBRATION_ENABLED": CALIBRATION_ENABLED,
+    "CALIBRATION_FILE": CALIBRATION_FILE,
+    "CALIBRATION_TRACKING_ENABLED": CALIBRATION_TRACKING_ENABLED,
+    "CALIBRATION_TRACKING_CHANNEL_NAMES": CALIBRATION_TRACKING_CHANNEL_NAMES,
+    "CALIBRATION_TRACKING_MIN_RANGE": CALIBRATION_TRACKING_MIN_RANGE,
+    "CALIBRATION_TRACKING_SETTLE_MS": CALIBRATION_TRACKING_SETTLE_MS,
+    "CALIBRATION_TRACKING_DYNAMIC": CALIBRATION_TRACKING_DYNAMIC,
+    "CALIBRATION_TRACKING_EDGE_PCT": CALIBRATION_TRACKING_EDGE_PCT,
+    "CALIBRATION_TRACKING_EDGE_MIN_SAMPLES": CALIBRATION_TRACKING_EDGE_MIN_SAMPLES,
+}
+
+cal_runtime = CalibrationRuntimeManager(
+    analog_inputs=analog_inputs,
+    calibration=calibration,
+    save_calibration=save_calibration,
+    calibration_missing=calibration_missing,
+    analog_name_for_index=analog_name_for_index,
+    analog_source_for_index=analog_source_for_index,
+    cfg=CAL_RUNTIME_CONFIG,
+    ticks_ms=adafruit_ticks.ticks_ms,
+    ticks_diff=adafruit_ticks.ticks_diff,
+    debug_calibration_serial=DEBUG_CALIBRATION_SERIAL,
+)
+cal_runtime.maybe_boot_autocal()
+cal_runtime.init_calibration_tracking()
 
 # UART to ESP32-S3
 uart = busio.UART(board.TX, board.RX, baudrate=115200)
@@ -858,37 +909,26 @@ while True:
             external_adc_fail_count = 0
         last_raw = analog_last_raw[idx]
         analog_last_raw[idx] = raw
-        current_autocal_idx = autocal_current_index()
-        if autocal_active and current_autocal_idx == idx:
-            now = adafruit_ticks.ticks_ms()
-            if adafruit_ticks.ticks_diff(now, autocal_start_ms) >= AUTOCAL_SETTLE_MS:
-                autocal_samples.append(raw)
-                if len(autocal_samples) > AUTOCAL_SAMPLE_LIMIT:
-                    autocal_samples.pop(0)
-                if autocal_raw_min is None or raw < autocal_raw_min:
-                    autocal_raw_min = raw
-                if autocal_raw_max is None or raw > autocal_raw_max:
-                    autocal_raw_max = raw
-            if adafruit_ticks.ticks_diff(now, autocal_start_ms) >= AUTOCAL_DURATION_MS:
-                autocal_finish_channel()
-                current_autocal_idx = autocal_current_index()
-            if AUTOCAL_SUSPEND_OUTPUT and current_autocal_idx == idx:
-                continue
-        if (not autocal_active or current_autocal_idx != idx) and last_raw is not None and abs(raw - last_raw) < ANALOG_RAW_MIN_CHANGE:
+        current_autocal_idx = cal_runtime.current_autocal_index()
+        if cal_runtime.process_autocal_sample(idx, raw, now):
+            continue
+        current_autocal_idx = cal_runtime.current_autocal_index()
+
+        if (not cal_runtime.autocal_active or current_autocal_idx != idx) and last_raw is not None and abs(raw - last_raw) < ANALOG_RAW_MIN_CHANGE:
             last_send = analog_last_send_ms[idx]
             if ANALOG_SEND_INTERVAL_MS and last_send is not None:
                 now = adafruit_ticks.ticks_ms()
                 if adafruit_ticks.ticks_diff(now, last_send) < ANALOG_SEND_INTERVAL_MS:
                     continue
-        if not autocal_active:
-            update_calibration_tracking(idx, raw)
+        if not cal_runtime.autocal_active:
+            cal_runtime.update_calibration_tracking(idx, raw)
         cal = calibration.get(source, {}).get(name)
         if cal is None:
             legacy = CALIBRATION_LEGACY_MAP.get(name)
             if legacy:
                 cal = calibration.get(source, {}).get(legacy)
         if (cal is None or cal.get("min") is None or cal.get("max") is None):
-            tracked = get_tracking_calibration(idx, source)
+            tracked = cal_runtime.get_tracking_calibration(idx)
             if tracked is not None:
                 cal = tracked
         event_id = analog_entry.get("event_id")
@@ -1037,7 +1077,7 @@ while True:
 
     if AUTOCAL_TRIGGER_BUTTON and AUTOCAL_TRIGGER_BUTTON in buttons:
         autocal_trigger_pressed = autocal_trigger_pressed or buttons[AUTOCAL_TRIGGER_BUTTON].value
-    update_autocal_trigger(autocal_trigger_pressed)
+    cal_runtime.update_autocal_trigger(autocal_trigger_pressed)
     autocal_trigger_pressed = False
 
     flush_tx()

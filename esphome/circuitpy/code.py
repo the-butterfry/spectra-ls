@@ -1,3 +1,7 @@
+## Description: RP2040 firmware for Spectra LS input scanning and UART event transport.
+## Version: 2026.04.17.1
+## Last updated: 2026-04-17
+
 import time
 import json
 import board
@@ -808,8 +812,43 @@ BUTTON_EVENT_IDS = {
     "select": 37,
 }
 
+# -----------------------------
+# Phase B v-next input contract
+# -----------------------------
+# Reserved event IDs from v-next notes (Phase A): 120-129
+MODE_SELECTOR_EVENT_ID = 120      # value: 0-4
+CONTROL_CLASS_EVENT_ID = 121      # value: 0-2
+MODE_NEXT_ITEM_EVENT_ID = 122     # momentary button value: 1/0
+MODE_PREV_ITEM_EVENT_ID = 123     # momentary button value: 1/0
+MODE_CONFIRM_EVENT_ID = 124       # momentary button value: 1/0
+
+# Discrete selector wiring on spare PCF8575 inputs.
+# One-hot expected: exactly one active-low pin selected maps to index 0-4.
+MODE_SELECTOR_PINS = [9, 10, 11, 12, 13]
+
+# 3-way control class selector on two pins (active-low):
+# (True, False) -> 0 (Auto)
+# (False, True) -> 1 (Primary Hardware)
+# (True, True) -> 2 (Room Hardware)
+# (False, False) -> invalid / disconnected (no emit)
+CONTROL_CLASS_PINS = [14, 15]
+CONTROL_CLASS_MAP = {
+    (True, False): 0,
+    (False, True): 1,
+    (True, True): 2,
+}
+
+# Mirror existing physical buttons into v-next mode-navigation events.
+MODE_NAV_BUTTON_MIRROR = {
+    "next": MODE_NEXT_ITEM_EVENT_ID,
+    "back": MODE_PREV_ITEM_EVENT_ID,
+    "select": MODE_CONFIRM_EVENT_ID,
+}
+
 # Create debouncers
 buttons = {}
+mode_selector_inputs = []
+control_class_inputs = []
 if pcf is not None:
     for name, pin in BUTTON_PINS.items():
         p = pcf.get_pin(pin)
@@ -821,6 +860,28 @@ if pcf is not None:
         except NotImplementedError:
             p.direction = digitalio.Direction.INPUT
         buttons[name] = Debouncer(lambda p=p: not p.value)
+
+    for idx, pin in enumerate(MODE_SELECTOR_PINS):
+        p = pcf.get_pin(pin)
+        try:
+            if PCF8575_PULLUPS:
+                p.switch_to_input(pull=digitalio.Pull.UP)
+            else:
+                p.switch_to_input()
+        except NotImplementedError:
+            p.direction = digitalio.Direction.INPUT
+        mode_selector_inputs.append({"index": idx, "deb": Debouncer(lambda p=p: not p.value)})
+
+    for pin in CONTROL_CLASS_PINS:
+        p = pcf.get_pin(pin)
+        try:
+            if PCF8575_PULLUPS:
+                p.switch_to_input(pull=digitalio.Pull.UP)
+            else:
+                p.switch_to_input()
+        except NotImplementedError:
+            p.direction = digitalio.Direction.INPUT
+        control_class_inputs.append(Debouncer(lambda p=p: not p.value))
 
 # -----------------------------
 # Helper: send binary event to ESP32-S3
@@ -884,17 +945,69 @@ def _is_pot_name(name):
     return "pot" in name
 
 
+def _decode_mode_selector(states):
+    active_count = 0
+    active_idx = None
+    for idx, state in enumerate(states):
+        if state:
+            active_count += 1
+            active_idx = idx
+    if active_count == 1:
+        return active_idx
+    return None
+
+
+def _decode_control_class(states):
+    if len(states) != 2:
+        return None
+    return CONTROL_CLASS_MAP.get((states[0], states[1]))
+
+
 while True:
+    # Update Phase B selector/switch inputs and emit only on valid state transitions.
+    for entry in mode_selector_inputs:
+        entry["deb"].update()
+    for deb in control_class_inputs:
+        deb.update()
+
+    mode_states = [entry["deb"].value for entry in mode_selector_inputs]
+    control_states = [deb.value for deb in control_class_inputs]
+
+    mode_selector_index = _decode_mode_selector(mode_states)
+    control_class_index = _decode_control_class(control_states)
+
+    if not hasattr(_decode_mode_selector, "last_index"):
+        _decode_mode_selector.last_index = None
+    if not hasattr(_decode_control_class, "last_index"):
+        _decode_control_class.last_index = None
+
+    if mode_selector_index is not None and mode_selector_index != _decode_mode_selector.last_index:
+        _decode_mode_selector.last_index = mode_selector_index
+        send_packet(TYPE_BUTTON, MODE_SELECTOR_EVENT_ID, mode_selector_index)
+        if DEBUG_GLOBAL and DEBUG_BUTTONS_SERIAL:
+            print(f"Mode selector -> {mode_selector_index} (id={MODE_SELECTOR_EVENT_ID})")
+
+    if control_class_index is not None and control_class_index != _decode_control_class.last_index:
+        _decode_control_class.last_index = control_class_index
+        send_packet(TYPE_BUTTON, CONTROL_CLASS_EVENT_ID, control_class_index)
+        if DEBUG_GLOBAL and DEBUG_BUTTONS_SERIAL:
+            print(f"Control class -> {control_class_index} (id={CONTROL_CLASS_EVENT_ID})")
+
     # Update button debouncers
     for name, deb in buttons.items():
         deb.update()
         event_id = BUTTON_EVENT_IDS.get(name)
+        mirror_id = MODE_NAV_BUTTON_MIRROR.get(name)
         if deb.fell:
             send_packet(TYPE_BUTTON, event_id, 1)
+            if mirror_id is not None:
+                send_packet(TYPE_BUTTON, mirror_id, 1)
             if DEBUG_GLOBAL and DEBUG_BUTTONS_SERIAL:
                 print(f"Button {name} fell (id={event_id})")
         if deb.rose:
             send_packet(TYPE_BUTTON, event_id, 0)
+            if mirror_id is not None:
+                send_packet(TYPE_BUTTON, mirror_id, 0)
             if DEBUG_GLOBAL and DEBUG_BUTTONS_SERIAL:
                 print(f"Button {name} rose (id={event_id})")
 

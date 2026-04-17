@@ -1,11 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.16 -->
+<!-- Version: 2026.04.17.17 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
 
+- RP2040/Phase B: Add hardware input-capture contract in `CIRCUITPY/code.py` + mirror `esphome/circuitpy/code.py` for v-next reserved events (`120`–`124`) including mode selector, control-class selector, and mode-navigation momentary event emits; preserve existing event IDs and behavior while adding parallel v-next event path.
 - Productization: de-track `spectra_ls_primary_tcp_host.yaml` and `spectra_ls_room_tcp_host.yaml` from git/GitHub while keeping local files in place; host defaults now use secrets-based values and these per-user endpoint files are ignored to prevent personal config pollution.
 - Docs/Policy: add explicit universal-product directive in `.github/copilot-instructions.md` forbidding tracked per-user host/IP config artifacts.
 - Docs/Policy: Add a required pre-flight checklist to `.github/copilot-instructions.md` for any file move/delete operation; session must show backup path, planned `CHANGELOG.md` line, and restore command/path before execution.

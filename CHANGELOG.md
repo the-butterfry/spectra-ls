@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.67 -->
+<!-- Version: 2026.04.17.68 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
+
+- ESPHome/Lighting Hardening: Add structural guardrails for v-next stability by removing hardcoded lighting hold timing (new substitution), sanitizing slider selection index handling in room/target menu contexts, and gating HA light service dispatch when neither target entity nor area routing is available.
 
 - ESPHome/Lighting Audit Fix: Correct display-state gating so lighting render windows honor `hue_ring_active_until_ms` (not only brightness/audio windows), preventing Hue/Saturation lighting views from dropping back to the main/menu screen during active adjustments.
 

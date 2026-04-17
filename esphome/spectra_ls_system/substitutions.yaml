@@ -1,5 +1,5 @@
 # Description: Spectra LS System substitutions for ESPHome main config and packages.
-# Version: 2026.04.17.11
+# Version: 2026.04.17.12
 # Last updated: 2026-04-17
 # Spectra LS substitutions scoped to spectra_ls_system.
 # Use absolute paths for assets so this file can move with spectra_ls_system.
@@ -258,6 +258,7 @@ meta_source_label_6: "Source 6"
 # Purpose: lighting slider mode and send pacing for hue/sat/brightness UI paths.
 lighting_hue_step_deg: "5"
 lighting_sat_step: "2"
+lighting_hold_ms: "3000"
 lighting_send_interval_ms: "150"
 brightness_send_interval_ms: "150"
 lighting_slider_ui_brightness_only: "true"

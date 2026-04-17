@@ -3,7 +3,7 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 ---
 
 <!-- Description: Workspace Copilot operating instructions for Home Assistant + ESPHome. -->
-<!-- Version: 2026.04.16.4 -->
+<!-- Version: 2026.04.16.5 -->
 <!-- Last updated: 2026-04-16 -->
 
 # GitHub Copilot Instructions — Home Assistant + ESPHome
@@ -92,7 +92,7 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 	- v2 baseline: `esphome/control-py/`, `esphome/control-board-esp32-tcp.yaml`
 	- spectra_ls_system: `esphome/spectra_ls_system/`, `esphome/spectra_ls_system.yaml`
 	- RP2040 mirror: `esphome/circuitpy/`
-	- HA root config (Spectra-only): `configuration.yaml`
+	- HA config placeholder guide: `SPECTRA-HA-CONFIG-PLACEHOLDERS.md`
 	- HA packages: `packages/`
 - Use **`menu-only`** for the stabilized control-py/menu baseline; use **`main`** for spectra_ls_system once we start generating from notes.
 - For shared contract changes (RP2040 event protocol, control API behavior, helper/entity contracts), require **one** before merge:

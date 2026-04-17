@@ -1,5 +1,5 @@
 # Description: Spectra LS lighting hub (rooms/targets from HA Areas).
-# Version: 2026.04.17.7
+# Version: 2026.04.17.8
 # Last updated: 2026-04-17
 # Update version/date whenever you change this file.
 #
@@ -46,7 +46,13 @@ template:
                 ('rgbww' in modes_blob) or
                 ('white' in modes_blob)
               %}
-              {% if supports_dimming_or_color and ('speaker' not in ent_low) and ('speaker' not in label_low) %}
+              {% set supports_onoff_or_legacy =
+                ('onoff' in modes_blob) or
+                (modes is none) or
+                (state_attr(ent, 'brightness') is not none)
+              %}
+              {% set is_availableish = states(ent) | lower not in ['unavailable', 'unknown', 'none'] %}
+              {% if (supports_dimming_or_color or supports_onoff_or_legacy) and is_availableish and ('speaker' not in ent_low) and ('speaker' not in label_low) %}
                 {% set ns.items = ns.items + [{'area_id': area_id, 'area_name': room_name, 'entity_id': ent, 'label': label}] %}
               {% endif %}
             {% endfor %}

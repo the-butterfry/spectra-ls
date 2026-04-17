@@ -1,5 +1,5 @@
 # Description: Spectra LS OLED-only peripherals package (no LED rings) for Control Board v2.
-# Version: 2026.04.17.11
+# Version: 2026.04.17.14
 # Last updated: 2026-04-17
 # Update version/date whenever you change this file.
 esphome:
@@ -125,7 +125,7 @@ interval:
           const bool arylic_recent = id(arylic_last_meta_ms) > 0 && (now - id(arylic_last_meta_ms)) < meta_stale_ms;
           const bool lr_recent = id(arylic_lr_last_meta_ms) > 0 && (now - id(arylic_lr_last_meta_ms)) < meta_stale_ms;
           const bool ha_recent_playing = id(ha_audio1_last_playing_ms) > 0 && (now - id(ha_audio1_last_playing_ms)) < meta_stale_ms;
-          if (!playing && id(last_playing_state) && (arylic_source_active || arylic_recent || lr_recent)) {
+          if (!playing && id(last_playing_state) && (arylic_recent || lr_recent)) {
             playing = true;
           }
           auto activity_recent = [&](uint32_t meta_ms, uint32_t pos_ms) {
@@ -143,7 +143,7 @@ interval:
           if (playing && !arylic_source_active && !arylic_recent && !lr_recent && !any_activity_recent && !ha_state_playing && !ha_recent_playing) {
             playing = false;
           }
-          if (playing_raw || arylic_source_active || arylic_recent || lr_recent) {
+          if (playing_raw || arylic_recent || lr_recent || state_playing1) {
             id(last_playing_true_ms) = now;
           }
           const uint32_t playing_grace_ms = (uint32_t) ${meta_playing_grace_ms};
@@ -395,12 +395,13 @@ interval:
           const bool has_text_meta = !title.empty() || !artist.empty() || !album.empty();
 
           const bool recent_playing_cache = id(last_playing_true_ms) > 0 && (now - id(last_playing_true_ms)) < meta_stale_ms;
-          const bool display_hold = playing || state_active1 || recent_playing_cache;
+          const bool display_hold = playing || state_playing1 || recent_playing_cache;
           const bool playing_no_meta = display_hold && (meta_idx < 0 || !has_text_meta);
           if (!display_hold) {
             title.clear();
             artist.clear();
             album.clear();
+            source_label.clear();
           }
 
           if (title.empty()) {
@@ -431,6 +432,10 @@ interval:
           if (source_pill.size() > 6) source_pill = source_pill.substr(0, 6);
           std::string src_display = src;
           if (src_display.empty()) src_display = source_label;
+          if (!display_hold) {
+            source_pill.clear();
+            src_display.clear();
+          }
 
           if (playing_no_meta) {
             if (!id(np_raw_title).empty()) title = id(np_raw_title);
@@ -617,12 +622,12 @@ script:
           const uint32_t menu_home_idle_ms = (uint32_t) ${menu_home_idle_ms};
           const bool audio_mode = id(screen_mode) == 1;
           const bool lighting_mode = id(screen_mode) == 0;
-          auto state_is_active = [](const std::string &s) {
+          auto state_is_playing = [](const std::string &s) {
             std::string low = s;
             for (auto &c : low) c = (char) ::tolower(c);
-            return low == "playing" || low == "paused";
+            return low == "playing";
           };
-          const bool ha_state_active = id(ha_audio_state).has_state() && state_is_active(id(ha_audio_state).state.c_str());
+          const bool ha_state_playing = id(ha_audio_state).has_state() && state_is_playing(id(ha_audio_state).state.c_str());
 
           const bool meta_recent_screen =
             (id(ha_audio_last_meta_ms) > 0 && (now - id(ha_audio_last_meta_ms)) < meta_stale_ms) ||
@@ -646,11 +651,11 @@ script:
           const bool eq_recent_screen = eq_overlay_allowed && eq_overlay_ms > 0 && last_eq_change_ms > 0 &&
             (now - last_eq_change_ms) < eq_overlay_ms && eq_change_after_splash;
           const bool has_cached_meta = !id(np_raw_title).empty() || !id(np_raw_artist).empty() || !id(np_raw_album).empty();
-          const bool meta_recent_allowed = meta_recent_screen && (playing || ha_state_active || active_recent_screen || audio_wake_active);
+          const bool meta_recent_allowed = meta_recent_screen && (playing || ha_state_playing || active_recent_screen || audio_wake_active);
           const bool cached_recent = has_cached_meta && (playing || active_recent_screen);
           const bool playing_recent_hold = id(last_playing_true_ms) > 0 && (now - id(last_playing_true_ms)) < meta_stale_ms;
           const bool ha_playing_recent = id(ha_audio1_last_playing_ms) > 0 && (now - id(ha_audio1_last_playing_ms)) < meta_stale_ms;
-          const bool now_playing_active = (playing || ha_state_active || active_recent_screen || playing_recent_hold || ha_playing_recent || audio_wake_active || meta_recent_allowed || cached_recent);
+          const bool now_playing_active = (playing || ha_state_playing || active_recent_screen || playing_recent_hold || ha_playing_recent || audio_wake_active || meta_recent_allowed || cached_recent);
           const bool no_audio_activity = !playing && !meta_recent_allowed && !active_recent_screen && !audio_wake_active;
           const bool lighting_active = lighting_mode &&
                                        (now < id(brightness_active_until_ms) || now < id(hue_ring_active_until_ms) || now < id(audio_ring_active_until_ms));
@@ -754,6 +759,11 @@ display:
           else out.push_back(ch);
         }
         return out;
+      };
+      auto is_source_placeholder = [&](const std::string &value) {
+        if (value.empty()) return true;
+        std::string low = to_lower_ascii(value);
+        return low == "unknown" || low == "unavailable" || low == "none" || low == "null" || low == "idle";
       };
       const int STATE_SPLASH = ${display_state_splash};
       const int STATE_BOOT_MENU = ${display_state_boot_menu};
@@ -945,17 +955,35 @@ display:
       if (id(arylic_source).has_state() && !id(arylic_source).state.empty()) {
         src = id(arylic_source).state.c_str();
       }
+      if (is_source_placeholder(src)) {
+        src.clear();
+      }
       if (src.empty() && !id(arylic_source_state).empty()) {
         src = id(arylic_source_state);
+      }
+      if (is_source_placeholder(src)) {
+        src.clear();
       }
       if (src.empty() && !id(arylic_lr_source_state).empty()) {
         src = id(arylic_lr_source_state);
       }
+      if (is_source_placeholder(src)) {
+        src.clear();
+      }
       if (src.empty() && id(ha_audio_app).has_state() && !id(ha_audio_app).state.empty()) {
         src = id(ha_audio_app).state.c_str();
       }
+      if (is_source_placeholder(src)) {
+        src.clear();
+      }
       if (src.empty() && id(ha_audio_source).has_state() && !id(ha_audio_source).state.empty()) {
         src = id(ha_audio_source).state.c_str();
+      }
+      if (is_source_placeholder(src)) {
+        src.clear();
+      }
+      if (src.empty()) {
+        src = "HA not accessible";
       }
       const bool playing = id(playing_effective);
       int vol = id(np_disp_vol);
@@ -1109,10 +1137,24 @@ display:
       static std::vector<std::string> room_opts;
       static std::string meta_opts_raw;
       static std::vector<std::string> meta_opts;
+
+      auto pick_best_options_raw = [&](const std::string &primary_raw, const std::string &secondary_raw) {
+        const auto primary = parse_options(primary_raw);
+        if (!primary.empty()) return primary_raw;
+        const auto secondary = parse_options(secondary_raw);
+        if (!secondary.empty()) return secondary_raw;
+        return primary_raw;
+      };
+
       std::string target_opts_state;
       if (id(ha_target_options).has_state()) {
         target_opts_state = id(ha_target_options).state.c_str();
       }
+      std::string target_opts_catalog_state;
+      if (id(ha_target_options_catalog).has_state()) {
+        target_opts_catalog_state = id(ha_target_options_catalog).state.c_str();
+      }
+      target_opts_state = pick_best_options_raw(target_opts_state, target_opts_catalog_state);
       if (target_opts_state != target_opts_raw) {
         target_opts_raw = target_opts_state;
         target_opts = parse_options(target_opts_raw);
@@ -1121,6 +1163,11 @@ display:
       if (id(ha_room_options).has_state()) {
         room_opts_state = id(ha_room_options).state.c_str();
       }
+      std::string room_opts_catalog_state;
+      if (id(ha_room_options_catalog).has_state()) {
+        room_opts_catalog_state = id(ha_room_options_catalog).state.c_str();
+      }
+      room_opts_state = pick_best_options_raw(room_opts_state, room_opts_catalog_state);
       if (room_opts_state != room_opts_raw) {
         room_opts_raw = room_opts_state;
         room_opts = parse_options(room_opts_raw);

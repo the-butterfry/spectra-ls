@@ -1,5 +1,5 @@
 # Description: Spectra LS UI/menu input handling + UI fonts + now-playing helper sensors.
-# Version: 2026.04.17.8
+# Version: 2026.04.17.9
 # Last updated: 2026-04-17
 # Update version/date whenever you change this file.
 #
@@ -70,15 +70,28 @@ script:
           };
 
           int room_count = 4;
+          int room_primary = 0;
+          int room_catalog = 0;
           if (id(ha_room_options).has_state()) {
-            const int parsed = parse_options_count(id(ha_room_options).state.c_str());
-            if (parsed > 0) room_count = parsed;
+            room_primary = parse_options_count(id(ha_room_options).state.c_str());
           }
+          if (id(ha_room_options_catalog).has_state()) {
+            room_catalog = parse_options_count(id(ha_room_options_catalog).state.c_str());
+          }
+          if (room_primary > 0) room_count = room_primary;
+          else if (room_catalog > 0) room_count = room_catalog;
+
           int target_count = 0;
+          int target_primary = 0;
+          int target_catalog = 0;
           if (id(ha_target_options).has_state()) {
-            const int parsed = parse_options_count(id(ha_target_options).state.c_str());
-            if (parsed > 0) target_count = parsed;
+            target_primary = parse_options_count(id(ha_target_options).state.c_str());
           }
+          if (id(ha_target_options_catalog).has_state()) {
+            target_catalog = parse_options_count(id(ha_target_options_catalog).state.c_str());
+          }
+          if (target_primary > 0) target_count = target_primary;
+          else if (target_catalog > 0) target_count = target_catalog;
 
             int meta_count = 0;
             if (id(ha_meta_candidates_names).has_state()) {

@@ -1,10 +1,20 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.82 -->
+<!-- Version: 2026.04.17.86 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
+
+- HA/Lighting Control-Hub Recovery: Broaden `sensor.control_board_eligible_light_catalog` eligibility in `packages/spectra_ls_lighting_hub.yaml` to include on/off and legacy light entities (while still excluding speaker-like pseudo-lights), preventing false-empty room/target catalogs that caused ESP menus to fall back to generic room labels.
+
+- ESPHome/Source Status UX Hardening: Normalize source placeholders and surface explicit fallback status (`HA not accessible`) in OLED source resolution when all source feeds are empty/unavailable, removing ambiguous blank/unknown source states.
+
+- ESPHome/HA Option Intake Resilience: Add dual-source room/target option feeds (`input_select` attribute options + catalog sensors) and prefer non-empty parsed lists for OLED menu rendering and UI count refresh paths, preventing transient helper-state gaps from collapsing lighting menus to static fallback room labels.
+
+- ESPHome/Now-Playing Architecture Hardening: Remove source-only activity from playback truth in `spectra-ls-peripherals.yaml` (no longer promotes passive source labels into active playback), tighten display hold to real playing/recent-playing signals, and clear source fallback caches when hold is inactive so idle state resolves to true blank.
+
+- ESPHome/Option Parser Contract Hardening: Apply placeholder-value filtering (`unknown`, `unavailable`, `none`, `null`, `idle`) to duplicated dynamic option parsers in `spectra-ls-lighting.yaml` so HA transient states cannot contaminate room/target selector mapping paths.
 
 - ESPHome/Lighting Menu Resilience Fix: Sanitize dynamic option parsing in `spectra-ls-peripherals.yaml` so placeholder HA values (`unknown`, `unavailable`, `none`, `null`, `idle`) are dropped instead of rendered as real menu entries; Lighting Rooms now correctly falls back to configured room labels when HA options are temporarily unavailable.
 

@@ -1,5 +1,5 @@
 # Description: Spectra LS OLED-only peripherals package (no LED rings) for Control Board v2.
-# Version: 2026.04.17.6
+# Version: 2026.04.17.8
 # Last updated: 2026-04-17
 # Update version/date whenever you change this file.
 esphome:
@@ -661,7 +661,7 @@ script:
           const bool lighting_idle_now_playing = lighting_mode && idle_now_playing && now_playing_active;
 
           int display_state_value = STATE_BLANK;
-          if (boot_menu_active) display_state_value = STATE_BOOT_MENU;
+          if (boot_menu_active && menu_active_now) display_state_value = STATE_BOOT_MENU;
           else if (eq_recent_screen) display_state_value = STATE_EQ;
           else if (no_audio_activity && idle_ms > (uint32_t) ${menu_blank_idle_ms}) display_state_value = STATE_BLANK;
           else if (menu_active_now) display_state_value = STATE_MENU;
@@ -1361,9 +1361,18 @@ display:
 
       if (menu_draw_active) {
         const uint32_t section_start_ms = millis();
+        const int LV_MAIN = ${menu_level_main};
+        int menu_level_render = id(menu_level);
+        int menu_index_render = id(menu_index);
+        if (display_state_value == STATE_BOOT_MENU && menu_level_render < LV_MAIN) {
+          menu_level_render = LV_MAIN;
+          if (menu_index_render < 0 || menu_index_render > 2) {
+            menu_index_render = 0;
+          }
+        }
         menu_last_active = 1;
-        menu_last_level = id(menu_level);
-        menu_last_index = id(menu_index);
+        menu_last_level = menu_level_render;
+        menu_last_index = menu_index_render;
         menu_last_draw_ms = now;
         it.fill(COLOR_OFF);
         const char *menu_main[] = {"Lighting", "Audio", "Gear"};
@@ -1415,29 +1424,29 @@ display:
         int count = 3;
         bool use_dynamic_list = false;
         std::vector<std::string> dynamic_items;
-        if (id(menu_level) == 5) {
+        if (menu_level_render == ${menu_level_lighting_rooms}) {
           dynamic_items = rooms_dynamic;
           count = (int) dynamic_items.size();
           use_dynamic_list = true;
         }
-        else if (id(menu_level) == 4) {
+        else if (menu_level_render == ${menu_level_gear}) {
           dynamic_items = gear_dynamic;
           count = (int) dynamic_items.size();
           use_dynamic_list = true;
         }
-        else if (id(menu_level) == 6) {
+        else if (menu_level_render == ${menu_level_lighting_targets}) {
           dynamic_items = targets_dynamic;
           count = (int) dynamic_items.size();
           use_dynamic_list = true;
         }
-        else if (id(menu_level) == 9) {
+        else if (menu_level_render == ${menu_level_meta_select}) {
           dynamic_items = meta_dynamic;
           count = (int) dynamic_items.size();
           use_dynamic_list = true;
         }
-        else if (id(menu_level) == 7) {
+        else if (menu_level_render == ${menu_level_lighting_adjust}) {
           const int count_adjust = 4;
-          int idx_adjust = id(menu_index);
+          int idx_adjust = menu_index_render;
           if (idx_adjust < 0 || idx_adjust >= count_adjust) idx_adjust = 0;
           const int room = id(selected_room);
           const int target = id(selected_target);
@@ -1479,11 +1488,11 @@ display:
           log_loop_section("menu_adjust", section_start_ms);
           return;
         }
-        else if (id(menu_level) == 8) {
+        else if (menu_level_render == ${menu_level_lighting_toggle}) {
           const int room = id(selected_room);
           const int target = id(selected_target);
           const int count_toggle = (target == 0) ? 2 : 3;
-          int idx_toggle = id(menu_index);
+          int idx_toggle = menu_index_render;
           if (idx_toggle < 0 || idx_toggle >= count_toggle) idx_toggle = 0;
           std::string room_label = pick_room_label(room, "${room_label_living}");
           std::string target_label = (target == 0) ? room_label : pick_target_label(target, "Light");
@@ -1528,9 +1537,9 @@ display:
           log_loop_section("menu_toggle", section_start_ms);
           return;
         }
-        int idx = id(menu_index);
+        int idx = menu_index_render;
         if (idx < 0 || idx >= count) idx = 0;
-        if (id(menu_level) == 1) {
+        if (menu_level_render == LV_MAIN) {
           const int columns = 2;
           const int margin = ${menu_tile_margin};
           const int gap = ${menu_tile_gap};
@@ -1580,7 +1589,7 @@ display:
           log_loop_section("menu_tiles", section_start_ms);
           return;
         }
-        if (id(menu_level) == 9) {
+        if (menu_level_render == ${menu_level_meta_select}) {
           it.printf(w / 2, 0, id(font_menu), COLOR_ON, TextAlign::TOP_CENTER, "Meta Player");
           const int list_h = ${menu_line_height_list};
           const int highlight_extra = 3;

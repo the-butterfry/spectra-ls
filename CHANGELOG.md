@@ -1,10 +1,14 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.73 -->
+<!-- Version: 2026.04.17.75 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
+
+- ESPHome/UI Navigation Fix: Eliminate boot-time ghost root-menu rendering that was visually presenting menu tiles without an active menu state, causing dead-end-feeling navigation and hidden menu semantics.
+
+- ESPHome/UI Menu Fix: Force boot/root menu rendering to the icon-tile root level so fallback/boot states no longer show literal `Lighting / Audio / Gear` list text; those labels are internal root-category semantics behind icon navigation.
 
 - ESPHome/UI Regression Fix: Remove implicit top-level menu re-entry after lighting-adjust hold and playback-stop transitions so the UI no longer auto-shows literal `Lighting / Audio / Gear` tiles unless the menu is explicitly opened by user input.
 

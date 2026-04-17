@@ -1,5 +1,5 @@
 # Description: Spectra LS core state + globals + system intervals + shared scripts.
-# Version: 2026.04.17.3
+# Version: 2026.04.17.4
 # Last updated: 2026-04-17
 # Update version/date whenever you change this file.
 #
@@ -1560,6 +1560,7 @@ script:
     mode: restart
     then:
       - lambda: |-
+          const int LV_NONE = ${menu_level_none};
           static uint32_t last_log = 0;
           const uint32_t now = millis();
           id(last_input_ms) = now;
@@ -1569,7 +1570,7 @@ script:
           }
           if (id(calibration_active)) return;
           id(menu_active) = false;
-          id(menu_level) = 0;
+            id(menu_level) = LV_NONE;
       - script.execute: compute_display_state
 
   - id: note_menu_input
@@ -1591,6 +1592,7 @@ script:
     mode: restart
     then:
       - lambda: |-
+          const int LV_CAL = ${menu_level_calibration};
           id(calibration_auto_active) = true;
           id(calibration_auto_channel) = 0;
           id(calibration_channel) = 0;
@@ -1600,7 +1602,7 @@ script:
           id(calibration_max) = 0;
           id(calibration_active) = true;
           id(menu_active) = true;
-          id(menu_level) = 3;
+          id(menu_level) = LV_CAL;
           id(menu_index) = 0;
           id(calibration_channel_name) = "SLIDER A0";
 

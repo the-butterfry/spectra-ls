@@ -3,7 +3,7 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 ---
 
 <!-- Description: Workspace Copilot operating instructions for Home Assistant + ESPHome. -->
-<!-- Version: 2026.04.17.5 -->
+<!-- Version: 2026.04.17.6 -->
 <!-- Last updated: 2026-04-17 -->
 
 # GitHub Copilot Instructions — Home Assistant + ESPHome
@@ -15,6 +15,7 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 - Keep changes minimal, reversible, and well-scoped; avoid unrelated refactors.
 - Explain tradeoffs briefly when multiple valid approaches exist.
 - Apply best coding practices and forward-thinking logic (extensibility, portability, upgrade safety, observability).
+- Treat reported bugs as architecture signals: investigate for reusable, lightweight root-cause improvements first; avoid "just make it work" layering and call out when a deeper refactor is the correct fix.
  - If a request conflicts with these instructions, call it out and propose a safe alternative.
  - When uncertain, ask one concise question before making assumptions.
 

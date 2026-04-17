@@ -1,5 +1,5 @@
 # Description: Spectra LS hardware UART wiring + RP2040/Arylic hubs + raw ADC taps.
-# Version: 2026.04.17.3
+# Version: 2026.04.17.4
 # Last updated: 2026-04-17
 # Update version/date whenever you change this file.
 #
@@ -28,9 +28,18 @@ script:
       next_mode: int
     then:
       - lambda: |-
+          const int MODE_LIGHT_ROOMS = ${hardware_mode_lighting_rooms};
+          const int MODE_LIGHT_TARGETS = ${hardware_mode_lighting_targets};
+          const int MODE_SYSTEM_META = ${hardware_mode_system_meta};
+          const int SCREEN_LIGHT = ${screen_mode_lighting};
+          const int SCREEN_AUDIO = ${screen_mode_audio};
+          const int LV_NONE = ${menu_level_none};
+          const int LV_GEAR = ${menu_level_gear};
+          const int LV_LIGHT_ROOMS = ${menu_level_lighting_rooms};
+          const int LV_LIGHT_TARGETS = ${menu_level_lighting_targets};
           int mode = next_mode;
           if (mode < 0) mode = 0;
-          if (mode > 4) mode = 4;
+          if (mode > MODE_SYSTEM_META) mode = MODE_SYSTEM_META;
           if (mode == id(hardware_mode)) return;
           const uint32_t now = millis();
           id(hardware_mode) = mode;
@@ -42,37 +51,37 @@ script:
           id(control_target_prompt_entity) = "";
           id(last_input_ms) = now;
 
-          if (mode == 0) {
-            id(screen_mode) = 0;
+          if (mode == MODE_LIGHT_ROOMS) {
+            id(screen_mode) = SCREEN_LIGHT;
             id(menu_active) = true;
-            id(menu_level) = 5;
+            id(menu_level) = LV_LIGHT_ROOMS;
             int room_idx = id(selected_room);
             if (room_idx < 0) room_idx = 0;
             id(menu_index) = room_idx;
             return;
           }
 
-          if (mode == 1) {
-            id(screen_mode) = 0;
+          if (mode == MODE_LIGHT_TARGETS) {
+            id(screen_mode) = SCREEN_LIGHT;
             id(menu_active) = true;
-            id(menu_level) = 6;
+            id(menu_level) = LV_LIGHT_TARGETS;
             int target_idx = id(selected_target);
             if (target_idx < 0) target_idx = 0;
             id(menu_index) = target_idx;
             return;
           }
 
-          if (mode == 4) {
-            id(screen_mode) = 1;
+          if (mode == MODE_SYSTEM_META) {
+            id(screen_mode) = SCREEN_AUDIO;
             id(menu_active) = true;
-            id(menu_level) = 4;
+            id(menu_level) = LV_GEAR;
             id(menu_index) = 0;
             return;
           }
 
-          id(screen_mode) = 1;
+          id(screen_mode) = SCREEN_AUDIO;
           id(menu_active) = false;
-          id(menu_level) = 0;
+          id(menu_level) = LV_NONE;
           id(menu_index) = 0;
           id(audio_wake_until_ms) = now + ${audio_wake_hold_ms};
 
@@ -91,24 +100,27 @@ script:
     mode: restart
     then:
       - lambda: |-
-          if (id(hardware_mode) != 4) return;
+          const int MODE_SYSTEM_META = ${hardware_mode_system_meta};
+          const int LV_GEAR = ${menu_level_gear};
+          const int LV_META = ${menu_level_meta_select};
+          if (id(hardware_mode) != MODE_SYSTEM_META) return;
           id(menu_override_active) = false;
           id(last_input_ms) = millis();
           if (!id(menu_active)) {
             id(menu_active) = true;
-            id(menu_level) = 4;
+            id(menu_level) = LV_GEAR;
             id(menu_index) = 0;
             return;
           }
           int count = 0;
-          if (id(menu_level) == 4) {
+          if (id(menu_level) == LV_GEAR) {
             count = 3;
-          } else if (id(menu_level) == 9) {
+          } else if (id(menu_level) == LV_META) {
             int meta_count = id(menu_meta_count);
             if (meta_count < 0) meta_count = 0;
             count = meta_count + 2;
           } else {
-            id(menu_level) = 4;
+            id(menu_level) = LV_GEAR;
             id(menu_index) = 0;
             return;
           }
@@ -121,24 +133,27 @@ script:
     mode: restart
     then:
       - lambda: |-
-          if (id(hardware_mode) != 4) return;
+          const int MODE_SYSTEM_META = ${hardware_mode_system_meta};
+          const int LV_GEAR = ${menu_level_gear};
+          const int LV_META = ${menu_level_meta_select};
+          if (id(hardware_mode) != MODE_SYSTEM_META) return;
           id(menu_override_active) = false;
           id(last_input_ms) = millis();
           if (!id(menu_active)) {
             id(menu_active) = true;
-            id(menu_level) = 4;
+            id(menu_level) = LV_GEAR;
             id(menu_index) = 0;
             return;
           }
           int count = 0;
-          if (id(menu_level) == 4) {
+          if (id(menu_level) == LV_GEAR) {
             count = 3;
-          } else if (id(menu_level) == 9) {
+          } else if (id(menu_level) == LV_META) {
             int meta_count = id(menu_meta_count);
             if (meta_count < 0) meta_count = 0;
             count = meta_count + 2;
           } else {
-            id(menu_level) = 4;
+            id(menu_level) = LV_GEAR;
             id(menu_index) = 0;
             return;
           }
@@ -153,14 +168,14 @@ script:
       - if:
           condition:
             lambda: |-
-              return id(hardware_mode) == 4;
+              return id(hardware_mode) == ${hardware_mode_system_meta};
           then:
             - script.execute: note_menu_input
             - lambda: |-
                 id(menu_override_active) = false;
                 if (!id(menu_active)) {
                   id(menu_active) = true;
-                  id(menu_level) = 4;
+                  id(menu_level) = ${menu_level_gear};
                   id(menu_index) = 0;
                   return;
                 }

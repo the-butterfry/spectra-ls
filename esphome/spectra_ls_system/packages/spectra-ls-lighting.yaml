@@ -1,5 +1,5 @@
 # Description: Lighting controls package for Spectra LS System.
-# Version: 2026.04.17.1
+# Version: 2026.04.17.3
 # Last updated: 2026-04-17
 # Update version/date whenever you change this file.
 
@@ -110,16 +110,14 @@ sensor:
     internal: true
     accuracy_decimals: 0
     on_value:
-      - if:
-          condition:
-            lambda: |-
-              return id(menu_active);
-          then:
-            - script.execute: note_menu_input
-            - script.execute: focus_lighting
-          else:
-            - script.execute: note_user_input
-            - script.execute: focus_lighting
+      - lambda: |-
+          const bool room_target_menu_active = id(menu_active) && (id(menu_level) == 5 || id(menu_level) == 6);
+          if (room_target_menu_active) {
+            id(note_menu_input).execute();
+          } else {
+            id(note_user_input).execute();
+          }
+          id(focus_lighting).execute();
       - script.execute: refresh_menu_counts
       - lambda: |-
           static float last_sent_pct = -1000.0f;
@@ -483,6 +481,7 @@ script:
     mode: restart
     then:
       - lambda: |-
+          id(lighting_return_to_audio_ms) = millis() + 3000;
           id(screen_mode) = 0;
       - script.execute: compute_display_state
 

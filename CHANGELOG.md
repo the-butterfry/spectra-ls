@@ -1,10 +1,16 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.79 -->
+<!-- Version: 2026.04.17.82 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
+
+- ESPHome/Lighting Menu Resilience Fix: Sanitize dynamic option parsing in `spectra-ls-peripherals.yaml` so placeholder HA values (`unknown`, `unavailable`, `none`, `null`, `idle`) are dropped instead of rendered as real menu entries; Lighting Rooms now correctly falls back to configured room labels when HA options are temporarily unavailable.
+
+- ESPHome/OLED Idle-State Fix: Prevent stale source labels (for example `YOUTUBE`) from holding Now Playing when no active playback exists by tightening display-active gating to playing/recent-media signals and clearing source-fallback fields when media display hold is inactive.
+
+- ESPHome/Display Contract Refactor: Move display-state IDs to shared substitutions and replace local enum literals in `spectra-ls-peripherals.yaml` state computation/render paths, keeping display mode semantics centralized and reusable across package evolution.
 
 - ESPHome/Nav Constants Refactor: Add shared menu-count/fallback-count substitutions and replace active hardcoded menu counts/branch sizes in UI, hardware nav handlers, and OLED menu rendering paths to reduce cross-file drift and make menu evolution centrally tunable.
 

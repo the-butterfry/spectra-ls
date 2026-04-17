@@ -3,8 +3,8 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 ---
 
 <!-- Description: Workspace Copilot operating instructions for Home Assistant + ESPHome. -->
-<!-- Version: 2026.04.16.5 -->
-<!-- Last updated: 2026-04-16 -->
+<!-- Version: 2026.04.17.2 -->
+<!-- Last updated: 2026-04-17 -->
 
 # GitHub Copilot Instructions — Home Assistant + ESPHome
 
@@ -115,6 +115,21 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 	2) proving restore commands,
 	3) post-change path verification of critical entrypoints.
 - If any verification fails, immediately rollback filesystem changes before continuing.
+
+## File Move/Delete Changelog Policy (Required)
+- Any file **delete** requires all of the following in the same change set:
+	1) Create a backup copy in a **non-repository** backup path (outside tracked repo scope).
+	2) Record the delete and backup location in `CHANGELOG.md`.
+	3) Provide explicit restore path/commands in the session summary.
+- Any file **move/rename** must be recorded in `CHANGELOG.md` with source and destination paths.
+- Never perform silent file moves/deletes; if changelog or backup requirements cannot be met, treat as **No-Go**.
+
+### Pre-Flight Checklist (Required before any move/delete)
+- Before executing **any** file move/delete, the session must explicitly show all three:
+	1) **Backup path** (non-repo location)
+	2) **Planned `CHANGELOG.md` line** (what will be recorded)
+	3) **Restore command/path** (exact rollback instruction)
+- If any pre-flight item is missing, do not execute the move/delete.
 
 ## Workspace Path Authority
 - Use `/mnt/homeassistant` as the **authoritative** Home Assistant workspace path for all reads/writes.

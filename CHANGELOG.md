@@ -1,11 +1,15 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.9 -->
+<!-- Version: 2026.04.17.15 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
 
+- Docs/Policy: Add a required pre-flight checklist to `.github/copilot-instructions.md` for any file move/delete operation; session must show backup path, planned `CHANGELOG.md` line, and restore command/path before execution.
+- Docs/Policy: Strengthen `.github/copilot-instructions.md` with mandatory file move/delete governance — deletes now require non-repo backup + changelog entry + restore path, and moves/renames must be changelogged with source/destination paths.
+- Repo/ESPHome: Rename `esphome/secrets.example.yaml` to `esphome/secrets.example` so the secrets template is not treated as an ESPHome dashboard project.
+- ESPHome: Phase 16 rename step on `spectra_ls_system` path — rename final active package includes from `control-board-audio-tcp.yaml` and `control-board-lighting.yaml` to `spectra-ls-audio-tcp.yaml` and `spectra-ls-lighting.yaml`, and repoint `esphome/spectra_ls_system.yaml` include map/comments.
 - HA: Harden `sensor.now_playing_state` in `packages/ma_control_hub/template.inc` to avoid propagating transient `unknown/unavailable` from `sensor.now_playing_entity`; fallback now resolves to `sensor.ma_active_state` (or `idle`) for stable rename-step validation and routing diagnostics.
 - Docs: Normalize section numbering/order in `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md` so rename validation checks run in ascending sequence (9 → 10 → 11).
 - ESPHome: Phase 15 rename step on `spectra_ls_system` path — rename system package include from `packages/control-board-system.yaml` to `packages/spectra-ls-system.yaml` and repoint `esphome/spectra_ls_system.yaml` include.

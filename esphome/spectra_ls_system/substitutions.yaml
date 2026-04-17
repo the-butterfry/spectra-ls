@@ -1,9 +1,12 @@
-# Control Board v2 substitutions scoped to control-py
-# Use absolute paths for assets so this file can move with control-py.
+# Description: Spectra LS System substitutions for ESPHome main config and packages.
+# Version: 2026.04.17.2
+# Last updated: 2026-04-17
+# Spectra LS substitutions scoped to spectra_ls_system.
+# Use absolute paths for assets so this file can move with spectra_ls_system.
 
-# === Control Board v2 (ESP32-S3) ===
-device_name: control-board-v2
-friendly_name: "Control Board v2"
+# === Spectra LS System (ESP32-S3) ===
+device_name: spectra-ls-system
+friendly_name: "Spectra L/S System"
 
 wifi_ssid: !secret wifi_ssid
 wifi_password: !secret wifi_password
@@ -133,7 +136,7 @@ lighting_hue_step_deg: "3"
 lighting_sat_step: "2"
 lighting_send_interval_ms: "150"
 brightness_send_interval_ms: "150"
-# Arylic TCP tunables (documented; implemented in control-py/components/arylic_tcp.h)
+# Arylic TCP tunables (documented; implemented in spectra_ls_system/components/arylic_tcp.h)
 arylic_tcp_timeout_ms: "120"
 arylic_tcp_min_interval_ms: "50"
 arylic_tcp_dup_suppress_ms: "50"
@@ -178,8 +181,8 @@ meta_refresh_tick_ms: "500"
 meta_pause_timeout_ms: "60000"
 eq_overlay_ms: "5000"
 lighting_slider_ui_brightness_only: "true"
-ui_font_file: "/config/esphome/control-py/OCR-B.ttf"
-splash_font_file: "/config/esphome/control-py/OCR-A.ttf"
+ui_font_file: "spectra_ls_system/OCR-B.ttf"
+splash_font_file: "spectra_ls_system/OCR-A.ttf"
 splash_duration_ms: "8000"
 splash_title_left: "SPECTRA L"
 splash_title_right: "S"

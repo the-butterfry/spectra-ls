@@ -1,17 +1,17 @@
-# Description: Music Assistant hub control + mapping for Spectra LS controls (split include)
-# Version: 2026.04.16.1
+## MUSIC ASSISTANT CONTROL HUB PACKAGE (split)
+# Description: Control hub and meta resolver split into focused package files.
+# Version: 2026.04.16.0
 # Last updated: 2026-04-16
-# Update version/date whenever you change this file.
 
-input_select: !include /config/packages/ma_control_hub/input_select.yaml
-input_boolean: !include /config/packages/ma_control_hub/input_boolean.yaml
-input_number: !include /config/packages/ma_control_hub/input_number.yaml
-input_text: !include /config/packages/ma_control_hub/input_text.yaml
+input_select: !include ma_control_hub/input_select.yaml
+input_boolean: !include ma_control_hub/input_boolean.yaml
+input_number: !include ma_control_hub/input_number.yaml
+input_text: !include ma_control_hub/input_text.yaml
 
-rest: !include /config/packages/ma_control_hub/rest.yaml
-rest_command: !include /config/packages/ma_control_hub/rest_command.yaml
+rest: !include ma_control_hub/rest.yaml
+rest_command: !include ma_control_hub/rest_command.yaml
 
-script: !include /config/packages/ma_control_hub/script.yaml
-automation: !include /config/packages/ma_control_hub/automation.yaml
+script: !include ma_control_hub/script.yaml
+automation: !include ma_control_hub/automation.yaml
 
-template: !include /config/packages/ma_control_hub/template.yaml
+template: !include ma_control_hub/template.yaml

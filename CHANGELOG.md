@@ -1,11 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.5 -->
+<!-- Version: 2026.04.17.6 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
 
+- Docs: Add a dedicated `ma_control_hub` package-loader regression template to `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md` for fast PASS/WARN/FAIL checks in HA Developer Tools after reload/restart.
 - Repo: Add regression guardrails for `ma_control_hub` split package layout by ignoring `packages/ma_control_hub/*.yaml` (allow only `.inc`) and adding `.github/validate-ma-control-hub-layout.sh` to fail fast on duplicate fragments or missing host include files.
 - HA: Fix `ma_control_hub` package loader conflicts by removing duplicate `packages/ma_control_hub/*.yaml` split fragments (keep `.inc` only) so `!include_dir_named packages` does not auto-load sub-fragments as standalone packages.
 - HA: Restore missing `/config/spectra_ls_primary_tcp_host.yaml` and `/config/spectra_ls_room_tcp_host.yaml` include files used by `packages/ma_control_hub/input_text.inc` to resolve startup config load errors.

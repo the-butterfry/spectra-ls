@@ -3,7 +3,7 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 ---
 
 <!-- Description: Workspace Copilot operating instructions for Home Assistant + ESPHome. -->
-<!-- Version: 2026.04.16.2 -->
+<!-- Version: 2026.04.16.3 -->
 <!-- Last updated: 2026-04-16 -->
 
 # GitHub Copilot Instructions — Home Assistant + ESPHome
@@ -106,6 +106,7 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 - Keep `main` and `menu-only` as concurrently operable branches.
 - Use separate worktrees for parallel branch work to avoid destructive checkouts in a live Home Assistant filesystem.
 - Before any shared-contract merge, validate both branches still contain functional entrypoints and required package paths.
+- For any shared-contract change, complete `.github/SHARED-CONTRACT-CHECKLIST.md`; treat unchecked required items as **No-Go**.
 
 ## Filesystem Safety Gate (Required)
 - Do **not** move/delete live workspace directories (for example `esphome/`) without:

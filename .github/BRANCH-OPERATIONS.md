@@ -1,5 +1,5 @@
 <!-- Description: Operational runbook for keeping main and menu-only branches healthy. -->
-<!-- Version: 2026.04.16.1 -->
+<!-- Version: 2026.04.16.2 -->
 <!-- Last updated: 2026-04-16 -->
 
 # Branch Operations Runbook
@@ -23,6 +23,14 @@ Keep `main` (spectra_ls_system active development) and `menu-only` (v2 stabiliza
    - `main`: `esphome/spectra_ls_system.yaml`
    - `menu-only`: `control-board-esp32-tcp.yaml`
 4. Commit and push each branch independently; keep remotes in sync.
+
+## Shared-Contract Parity Gate (Go / No-Go)
+
+Before merging or pushing any shared-contract change, complete `.github/SHARED-CONTRACT-CHECKLIST.md`.
+
+- **Go** only when every required item is checked and evidence is recorded.
+- **No-Go** if any shared-contract item is unchecked or evidence is missing.
+- If parity is intentionally skipped, add explicit divergence + migration note to `CHANGELOG.md` before push.
 
 ## Safety Rules
 

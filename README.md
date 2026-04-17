@@ -1,5 +1,5 @@
 <!-- Description: Human-readable overview and deployment guide for the Spectra L/S Home Assistant + ESPHome system. -->
-<!-- Version: 2026.04.17.27 -->
+<!-- Version: 2026.04.17.28 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Spectra L/S
@@ -58,7 +58,7 @@ On `main`, direction follows `esphome/spectra_ls_system/v-next-NOTES.md`: hardwa
 
 ### Digital Audio Ingest + Final DAC Path
 
-Spectra L/S is designed for real-world use right where you live: place it on the coffee table and treat it as your home digital-to-analog control hub. From the couch or desk, you get tactile control over sources, routing, and playback without living inside phone apps. Under the hood, it still maintains a controlled end-to-end path for signal quality, timing stability, and conversion transparency.
+Spectra L/S is designed for real-world use right where you live: place it on the coffee table and treat it as your home digital-to-analog control hub. From the couch or desk, you get tactile control over sources, routing, and playback without living inside phone apps. Under the hood, it maintains a controlled end-to-end path for signal quality, timing stability, and conversion transparency. In plain terms: a DAC for your home.
 
 Spectra L/S also supports whole-home multi-speaker playback with tight room-to-room synchronization, so one tap can keep every room locked to the same track and timing. You can also split zones for independent playback when needed, including routing supported audio-input sources into grouped multi-room streaming.
 

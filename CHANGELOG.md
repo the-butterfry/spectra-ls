@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.65 -->
+<!-- Version: 2026.04.17.66 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
+
+- Docs/README: Tighten `Digital Audio Ingest + Final DAC Path` intro wording and add an explicit plain-language positioning line: “In plain terms: a DAC for your home.”
 
 - Docs/README: Re-group Inputs feature copy into explicit **Lighting Controls** and **Audio Controls** blocks, and replace the awkward controls-example heading with a concise **Controls** section label for cleaner launch-page flow.
 

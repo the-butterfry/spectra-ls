@@ -1,5 +1,5 @@
 <!-- Description: Copy/paste Home Assistant Dev Tools template diagnostics for Spectra LS System. -->
-<!-- Version: 2026.04.16.9 -->
+<!-- Version: 2026.04.16.10 -->
 <!-- Last updated: 2026-04-16 -->
 
 # Spectra LS System — Dev Tools Template Validation
@@ -914,5 +914,111 @@ Unavailable core entities:
 - Missing audio/routing contracts detected. Restore package include/load before next rename.
 {% else %}
 - Resolve unavailable host/selector/number entities first, then rerun this template.
+{% endif %}
+```
+
+## 8) Rename Step Validation — System Package (Post-Reload)
+
+```jinja
+{# =========================
+  Spectra Rename Step Validation (System package rename)
+  Run AFTER: HA reload/restart + ESPHome device online
+  Purpose: confirm no contract regression in core routing/state surfaces used by renamed system package include.
+  ========================= #}
+
+{% set required = [
+  'sensor.ma_control_host',
+  'sensor.ma_control_hosts',
+  'sensor.ma_api_url',
+  'input_select.ma_active_target',
+  'sensor.ma_active_target_by_host',
+  'sensor.ma_active_meta_entity',
+  'sensor.now_playing_entity',
+  'sensor.now_playing_state',
+  'sensor.now_playing_title',
+  'number.control_board_v2_arylic_volume_set',
+  'input_select.control_board_room',
+  'input_select.control_board_target'
+] %}
+
+{% set ns = namespace(missing=[], unavailable=[], ok=0, rows=[]) %}
+{% for eid in required %}
+  {% set exists = states[eid] is not none %}
+  {% set st = states(eid) if exists else 'missing' %}
+  {% if not exists %}
+    {% set ns.missing = ns.missing + [eid] %}
+  {% elif st in ['unknown','unavailable'] %}
+    {% set ns.unavailable = ns.unavailable + [eid] %}
+  {% else %}
+    {% set ns.ok = ns.ok + 1 %}
+  {% endif %}
+  {% set ns.rows = ns.rows + [{'entity':eid,'exists':exists,'state':st}] %}
+{% endfor %}
+
+{% set target = states('input_select.ma_active_target') %}
+{% set target_opts = state_attr('input_select.ma_active_target','options') or [] %}
+{% set target_sel_ok = target in target_opts if (target_opts | length) > 0 else false %}
+
+{% set room = states('input_select.control_board_room') %}
+{% set room_opts = state_attr('input_select.control_board_room','options') or [] %}
+{% set room_sel_ok = room in room_opts if (room_opts | length) > 0 else false %}
+
+{% set host = states('sensor.ma_control_host') %}
+{% set host_ok = host not in ['','none','unknown','unavailable'] %}
+
+{% set verdict = 'PASS' %}
+{% if (ns.missing | length) > 0 %}
+  {% set verdict = 'FAIL' %}
+{% elif (ns.unavailable | length) > 0 or not target_sel_ok or not room_sel_ok or not host_ok %}
+  {% set verdict = 'WARN' %}
+{% endif %}
+
+### Rename Validation — System Package
+- Result: **{{ verdict }}**
+- Timestamp: **{{ now() }}**
+- Checked entities: **{{ required | length }}**
+- OK: **{{ ns.ok }}**
+- Missing: **{{ ns.missing | length }}**
+- Unknown/Unavailable: **{{ ns.unavailable | length }}**
+
+### Core routing sanity
+- `sensor.ma_control_host`: **{{ host }}** (valid={{ host_ok }})
+- `sensor.ma_control_hosts`: **{{ states('sensor.ma_control_hosts') }}**
+- `input_select.ma_active_target`: **{{ target }}** (options={{ target_opts | length }}, selected_in_options={{ target_sel_ok }})
+- `input_select.control_board_room`: **{{ room }}** (options={{ room_opts | length }}, selected_in_options={{ room_sel_ok }})
+- `sensor.now_playing_entity`: **{{ states('sensor.now_playing_entity') }}**
+
+### Missing entities
+{% if (ns.missing | length) == 0 %}
+- none
+{% else %}
+{% for eid in ns.missing %}
+- {{ eid }}
+{% endfor %}
+{% endif %}
+
+### Unknown/Unavailable entities
+{% if (ns.unavailable | length) == 0 %}
+- none
+{% else %}
+{% for eid in ns.unavailable %}
+- {{ eid }}
+{% endfor %}
+{% endif %}
+
+### Detailed table
+| Entity | Exists | State |
+|---|---:|---|
+{% for row in ns.rows %}
+| `{{ row.entity }}` | {{ row.exists }} | {{ row.state }} |
+{% endfor %}
+
+### Next action guidance
+{% if verdict == 'PASS' %}
+- System rename step validated. Proceed to next rename slice.
+{% elif (ns.missing | length) > 0 %}
+- Missing core contracts detected. Restore package include/load before next rename.
+{% else %}
+- Resolve unavailable/selector mismatch first, then rerun this template.
 {% endif %}
 ```

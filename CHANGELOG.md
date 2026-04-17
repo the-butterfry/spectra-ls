@@ -1,11 +1,13 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.16.18 -->
+<!-- Version: 2026.04.16.19 -->
 <!-- Last updated: 2026-04-16 -->
 
 # Changelog
 
 ## 2026-04-16
 
+- ESPHome: Phase 3 rename step on tracked main path — rename audio TCP package to `spectra-ls-audio-tcp.yaml` and repoint `esphome/control-board-esp32-tcp.yaml` include.
+- Docs: Add targeted post-rename HA reload validation template (audio package step) to `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md` for per-step spectra rename checks.
 - Docs: Add targeted post-rename HA reload validation template (lighting package step) to `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md` for per-step spectra rename checks.
 - ESPHome: Phase 2 rename step on tracked main path — rename lighting package to `spectra-ls-lighting.yaml` and repoint `esphome/control-board-esp32-tcp.yaml` include.
 - Docs: Publish `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md` to `main` and add README high-level system-test overview for Templates 1–5 smoke/diagnostic workflow.

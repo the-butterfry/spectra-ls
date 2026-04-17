@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.68 -->
+<!-- Version: 2026.04.17.69 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
+
+- ESPHome/Lighting Hardening: Make UI auto-routing hardware-mode-aware in `spectra-ls-ui.yaml` so audio-driven auto-flip behavior no longer overrides explicit lighting selector modes (`hardware_mode` 0/1), improving hardware-first determinism for v-next.
 
 - ESPHome/Lighting Hardening: Add structural guardrails for v-next stability by removing hardcoded lighting hold timing (new substitution), sanitizing slider selection index handling in room/target menu contexts, and gating HA light service dispatch when neither target entity nor area routing is available.
 

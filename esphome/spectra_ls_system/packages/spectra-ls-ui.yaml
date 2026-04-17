@@ -1,5 +1,5 @@
 # Description: Spectra LS UI/menu input handling + UI fonts + now-playing helper sensors.
-# Version: 2026.04.17.1
+# Version: 2026.04.17.2
 # Last updated: 2026-04-17
 # Update version/date whenever you change this file.
 #
@@ -701,6 +701,7 @@ interval:
           const uint32_t now = millis();
           const uint32_t idle_ms = now - id(last_input_ms);
           const bool playing = id(playing_effective);
+          const bool hardware_lighting_mode = (id(hardware_mode) == 0) || (id(hardware_mode) == 1);
           if (id(last_screen_mode) < 0) {
             id(last_screen_mode) = id(screen_mode);
           } else if (id(last_screen_mode) != id(screen_mode)) {
@@ -711,10 +712,6 @@ interval:
             id(audio_empty_active) = false;
           }
           if (id(menu_active)) {
-            if (id(menu_level) < 1) id(menu_level) = 1;
-            if (id(menu_index) < 0) id(menu_index) = 0;
-          }
-          if (!id(menu_active) && id(screen_mode) == 0) {
             if (id(menu_level) < 1) id(menu_level) = 1;
             if (id(menu_index) < 0) id(menu_index) = 0;
           }
@@ -739,12 +736,12 @@ interval:
             id(screen_mode) = 0;
           }
           const bool lighting_hold_active = id(lighting_return_to_audio_ms) > 0 && now < id(lighting_return_to_audio_ms);
-          if (playing && id(screen_mode) != 1 && !id(menu_active) && !lighting_hold_active) {
+          if (playing && id(screen_mode) != 1 && !id(menu_active) && !lighting_hold_active && !hardware_lighting_mode) {
             id(screen_mode) = 1;
             id(menu_level) = 1;
             id(menu_index) = 0;
           }
-          if (id(screen_mode) == 0 && !id(menu_active) && id(lighting_return_to_audio_ms) > 0 && now > id(lighting_return_to_audio_ms)) {
+          if (id(screen_mode) == 0 && !id(menu_active) && id(lighting_return_to_audio_ms) > 0 && now > id(lighting_return_to_audio_ms) && !hardware_lighting_mode) {
             id(screen_mode) = 1;
             id(lighting_return_to_audio_ms) = 0;
           }

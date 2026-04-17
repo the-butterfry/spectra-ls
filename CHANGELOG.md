@@ -1,11 +1,13 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.16.22 -->
+<!-- Version: 2026.04.16.23 -->
 <!-- Last updated: 2026-04-16 -->
 
 # Changelog
 
 ## 2026-04-16
 
+- ESPHome: Phase 7 rename step on tracked main path — rename no-rings peripherals file to `spectra-ls-peripherals-no-rings.yaml` and repoint `esphome/control-board-esp32-tcp.yaml` include.
+- Docs: Add targeted post-rename HA reload validation template (peripherals no-rings step) to `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md` for per-step spectra rename checks.
 - ESPHome: Phase 6 rename step on tracked main path — rename hardware package to `spectra-ls-hardware.yaml` and repoint `esphome/control-board-esp32-tcp.yaml` include.
 - Docs: Add targeted post-rename HA reload validation template (hardware package step) to `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md` for per-step spectra rename checks.
 - ESPHome: Phase 5 rename step on tracked main path — rename UI package to `spectra-ls-ui.yaml` and repoint `esphome/control-board-esp32-tcp.yaml` include.

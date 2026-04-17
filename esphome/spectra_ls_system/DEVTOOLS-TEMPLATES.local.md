@@ -1,5 +1,5 @@
 <!-- Description: Copy/paste Home Assistant Dev Tools template diagnostics for Spectra LS System. -->
-<!-- Version: 2026.04.16.12 -->
+<!-- Version: 2026.04.16.13 -->
 <!-- Last updated: 2026-04-16 -->
 
 # Spectra LS System — Dev Tools Template Validation
@@ -806,112 +806,6 @@ Unavailable core entities:
 {% endif %}
 ```
 
-## 10) Rename Step Validation — Hardware Package (Post-Reload)
-
-```jinja
-{# =========================
-  Spectra Rename Step Validation (Hardware package rename)
-  Run AFTER: HA reload/restart + ESPHome device online
-  Purpose: confirm no contract regression in control/selector surfaces that depend on renamed hardware package include.
-  ========================= #}
-
-{% set required = [
-  'sensor.ma_control_host',
-  'sensor.ma_control_hosts',
-  'input_select.ma_active_target',
-  'input_select.control_board_room',
-  'input_select.control_board_target',
-  'sensor.control_board_room_options',
-  'sensor.control_board_target_options',
-  'binary_sensor.control_board_room_on',
-  'binary_sensor.control_board_target_on',
-  'number.control_board_v2_arylic_volume_set',
-  'number.control_board_v2_eq_low',
-  'number.control_board_v2_eq_mid',
-  'number.control_board_v2_eq_high'
-] %}
-
-{% set ns = namespace(missing=[], unavailable=[], ok=0, rows=[]) %}
-{% for eid in required %}
-  {% set exists = states[eid] is not none %}
-  {% set st = states(eid) if exists else 'missing' %}
-  {% if not exists %}
-    {% set ns.missing = ns.missing + [eid] %}
-  {% elif st in ['unknown','unavailable'] %}
-    {% set ns.unavailable = ns.unavailable + [eid] %}
-  {% else %}
-    {% set ns.ok = ns.ok + 1 %}
-  {% endif %}
-  {% set ns.rows = ns.rows + [{'entity':eid,'exists':exists,'state':st}] %}
-{% endfor %}
-
-{% set room = states('input_select.control_board_room') %}
-{% set target = states('input_select.control_board_target') %}
-{% set room_opts = state_attr('input_select.control_board_room','options') or [] %}
-{% set target_opts = state_attr('input_select.control_board_target','options') or [] %}
-{% set room_sel_ok = room in room_opts if (room_opts | length) > 0 else false %}
-{% set target_sel_ok = target in target_opts if (target_opts | length) > 0 else false %}
-
-{% set host = states('sensor.ma_control_host') %}
-{% set host_ok = host not in ['','none','unknown','unavailable'] %}
-
-{% set verdict = 'PASS' %}
-{% if (ns.missing | length) > 0 %}
-  {% set verdict = 'FAIL' %}
-{% elif (ns.unavailable | length) > 0 or not room_sel_ok or not target_sel_ok or not host_ok %}
-  {% set verdict = 'WARN' %}
-{% endif %}
-
-### Rename Validation — Hardware Package
-- Result: **{{ verdict }}**
-- Timestamp: **{{ now() }}**
-- Checked entities: **{{ required | length }}**
-- OK: **{{ ns.ok }}**
-- Missing: **{{ ns.missing | length }}**
-- Unknown/Unavailable: **{{ ns.unavailable | length }}**
-
-### Control + selector sanity
-- `sensor.ma_control_host`: **{{ host }}** (valid={{ host_ok }})
-- `sensor.ma_control_hosts`: **{{ states('sensor.ma_control_hosts') }}**
-- `input_select.control_board_room`: **{{ room }}** (options={{ room_opts | length }}, selected_in_options={{ room_sel_ok }})
-- `input_select.control_board_target`: **{{ target }}** (options={{ target_opts | length }}, selected_in_options={{ target_sel_ok }})
-- `input_select.ma_active_target`: **{{ states('input_select.ma_active_target') }}**
-
-### Missing entities
-{% if (ns.missing | length) == 0 %}
-- none
-{% else %}
-{% for eid in ns.missing %}
-- {{ eid }}
-{% endfor %}
-{% endif %}
-
-### Unknown/Unavailable entities
-{% if (ns.unavailable | length) == 0 %}
-- none
-{% else %}
-{% for eid in ns.unavailable %}
-- {{ eid }}
-{% endfor %}
-{% endif %}
-
-### Detailed table
-| Entity | Exists | State |
-|---|---:|---|
-{% for row in ns.rows %}
-| `{{ row.entity }}` | {{ row.exists }} | {{ row.state }} |
-{% endfor %}
-
-### Next action guidance
-{% if verdict == 'PASS' %}
-- Hardware rename step validated. Proceed to next rename slice.
-{% elif (ns.missing | length) > 0 %}
-- Missing hardware-dependent contracts detected. Restore package include/load before next rename.
-{% else %}
-- Resolve unavailable/selector mismatch first, then rerun this template.
-{% endif %}
-```
-
 ## 7) Rename Step Validation — Audio TCP Package (Post-Reload)
 
 ```jinja
@@ -1129,6 +1023,120 @@ Unavailable core entities:
 {% endif %}
 ```
 
+## 11) Rename Step Validation — Peripherals No-Rings (Post-Reload)
+
+```jinja
+{# =========================
+  Spectra Rename Step Validation (Peripherals no-rings rename)
+  Run AFTER: HA reload/restart + ESPHome device online
+  Purpose: confirm no contract regression in display/routing surfaces after renaming the active no-rings peripherals include.
+  ========================= #}
+
+{% set required = [
+  'sensor.ma_control_host',
+  'sensor.ma_control_hosts',
+  'input_select.ma_active_target',
+  'sensor.ma_active_target_by_host',
+  'sensor.ma_active_meta_entity',
+  'sensor.now_playing_entity',
+  'sensor.now_playing_state',
+  'sensor.now_playing_title',
+  'input_select.control_board_room',
+  'input_select.control_board_target',
+  'number.control_board_v2_arylic_volume_set',
+  'number.control_board_v2_eq_low',
+  'number.control_board_v2_eq_mid',
+  'number.control_board_v2_eq_high'
+] %}
+
+{% set ns = namespace(missing=[], unavailable=[], ok=0, rows=[]) %}
+{% for eid in required %}
+  {% set exists = states[eid] is not none %}
+  {% set st = states(eid) if exists else 'missing' %}
+  {% if not exists %}
+    {% set ns.missing = ns.missing + [eid] %}
+  {% elif st in ['unknown','unavailable'] %}
+    {% set ns.unavailable = ns.unavailable + [eid] %}
+  {% else %}
+    {% set ns.ok = ns.ok + 1 %}
+  {% endif %}
+  {% set ns.rows = ns.rows + [{'entity':eid,'exists':exists,'state':st}] %}
+{% endfor %}
+
+{% set target = states('input_select.ma_active_target') %}
+{% set target_opts = state_attr('input_select.ma_active_target','options') or [] %}
+{% set target_sel_ok = target in target_opts if (target_opts | length) > 0 else false %}
+
+{% set room = states('input_select.control_board_room') %}
+{% set target_light = states('input_select.control_board_target') %}
+{% set room_opts = state_attr('input_select.control_board_room','options') or [] %}
+{% set target_light_opts = state_attr('input_select.control_board_target','options') or [] %}
+{% set room_sel_ok = room in room_opts if (room_opts | length) > 0 else false %}
+{% set target_light_sel_ok = target_light in target_light_opts if (target_light_opts | length) > 0 else false %}
+
+{% set host = states('sensor.ma_control_host') %}
+{% set host_ok = host not in ['','none','unknown','unavailable'] %}
+
+{% set verdict = 'PASS' %}
+{% if (ns.missing | length) > 0 %}
+  {% set verdict = 'FAIL' %}
+{% elif (ns.unavailable | length) > 0 or not target_sel_ok or not room_sel_ok or not target_light_sel_ok or not host_ok %}
+  {% set verdict = 'WARN' %}
+{% endif %}
+
+### Rename Validation — Peripherals No-Rings
+- Result: **{{ verdict }}**
+- Timestamp: **{{ now() }}**
+- Checked entities: **{{ required | length }}**
+- OK: **{{ ns.ok }}**
+- Missing: **{{ ns.missing | length }}**
+- Unknown/Unavailable: **{{ ns.unavailable | length }}**
+
+### Display + routing sanity
+- `sensor.ma_control_host`: **{{ host }}** (valid={{ host_ok }})
+- `sensor.ma_control_hosts`: **{{ states('sensor.ma_control_hosts') }}**
+- `input_select.ma_active_target`: **{{ target }}** (options={{ target_opts | length }}, selected_in_options={{ target_sel_ok }})
+- `sensor.now_playing_entity`: **{{ states('sensor.now_playing_entity') }}**
+- `sensor.now_playing_state`: **{{ states('sensor.now_playing_state') }}**
+- `sensor.now_playing_title`: **{{ states('sensor.now_playing_title') }}**
+- `input_select.control_board_room`: **{{ room }}** (options={{ room_opts | length }}, selected_in_options={{ room_sel_ok }})
+- `input_select.control_board_target`: **{{ target_light }}** (options={{ target_light_opts | length }}, selected_in_options={{ target_light_sel_ok }})
+
+### Missing entities
+{% if (ns.missing | length) == 0 %}
+- none
+{% else %}
+{% for eid in ns.missing %}
+- {{ eid }}
+{% endfor %}
+{% endif %}
+
+### Unknown/Unavailable entities
+{% if (ns.unavailable | length) == 0 %}
+- none
+{% else %}
+{% for eid in ns.unavailable %}
+- {{ eid }}
+{% endfor %}
+{% endif %}
+
+### Detailed table
+| Entity | Exists | State |
+|---|---:|---|
+{% for row in ns.rows %}
+| `{{ row.entity }}` | {{ row.exists }} | {{ row.state }} |
+{% endfor %}
+
+### Next action guidance
+{% if verdict == 'PASS' %}
+- Peripherals no-rings rename step validated. Proceed to next rename slice.
+{% elif (ns.missing | length) > 0 %}
+- Missing display/routing contracts detected. Restore package include/load before next rename.
+{% else %}
+- Resolve unavailable/selector mismatch first, then rerun this template.
+{% endif %}
+```
+
 ## 9) Rename Step Validation — UI Package (Post-Reload)
 
 ```jinja
@@ -1229,3 +1237,110 @@ Unavailable core entities:
 - Resolve unavailable/select-option mismatch first, then rerun this template.
 {% endif %}
 ```
+
+## 10) Rename Step Validation — Hardware Package (Post-Reload)
+
+```jinja
+{# =========================
+  Spectra Rename Step Validation (Hardware package rename)
+  Run AFTER: HA reload/restart + ESPHome device online
+  Purpose: confirm no contract regression in control/selector surfaces that depend on renamed hardware package include.
+  ========================= #}
+
+{% set required = [
+  'sensor.ma_control_host',
+  'sensor.ma_control_hosts',
+  'input_select.ma_active_target',
+  'input_select.control_board_room',
+  'input_select.control_board_target',
+  'sensor.control_board_room_options',
+  'sensor.control_board_target_options',
+  'binary_sensor.control_board_room_on',
+  'binary_sensor.control_board_target_on',
+  'number.control_board_v2_arylic_volume_set',
+  'number.control_board_v2_eq_low',
+  'number.control_board_v2_eq_mid',
+  'number.control_board_v2_eq_high'
+] %}
+
+{% set ns = namespace(missing=[], unavailable=[], ok=0, rows=[]) %}
+{% for eid in required %}
+  {% set exists = states[eid] is not none %}
+  {% set st = states(eid) if exists else 'missing' %}
+  {% if not exists %}
+    {% set ns.missing = ns.missing + [eid] %}
+  {% elif st in ['unknown','unavailable'] %}
+    {% set ns.unavailable = ns.unavailable + [eid] %}
+  {% else %}
+    {% set ns.ok = ns.ok + 1 %}
+  {% endif %}
+  {% set ns.rows = ns.rows + [{'entity':eid,'exists':exists,'state':st}] %}
+{% endfor %}
+
+{% set room = states('input_select.control_board_room') %}
+{% set target = states('input_select.control_board_target') %}
+{% set room_opts = state_attr('input_select.control_board_room','options') or [] %}
+{% set target_opts = state_attr('input_select.control_board_target','options') or [] %}
+{% set room_sel_ok = room in room_opts if (room_opts | length) > 0 else false %}
+{% set target_sel_ok = target in target_opts if (target_opts | length) > 0 else false %}
+
+{% set host = states('sensor.ma_control_host') %}
+{% set host_ok = host not in ['','none','unknown','unavailable'] %}
+
+{% set verdict = 'PASS' %}
+{% if (ns.missing | length) > 0 %}
+  {% set verdict = 'FAIL' %}
+{% elif (ns.unavailable | length) > 0 or not room_sel_ok or not target_sel_ok or not host_ok %}
+  {% set verdict = 'WARN' %}
+{% endif %}
+
+### Rename Validation — Hardware Package
+- Result: **{{ verdict }}**
+- Timestamp: **{{ now() }}**
+- Checked entities: **{{ required | length }}**
+- OK: **{{ ns.ok }}**
+- Missing: **{{ ns.missing | length }}**
+- Unknown/Unavailable: **{{ ns.unavailable | length }}**
+
+### Control + selector sanity
+- `sensor.ma_control_host`: **{{ host }}** (valid={{ host_ok }})
+- `sensor.ma_control_hosts`: **{{ states('sensor.ma_control_hosts') }}**
+- `input_select.control_board_room`: **{{ room }}** (options={{ room_opts | length }}, selected_in_options={{ room_sel_ok }})
+- `input_select.control_board_target`: **{{ target }}** (options={{ target_opts | length }}, selected_in_options={{ target_sel_ok }})
+- `input_select.ma_active_target`: **{{ states('input_select.ma_active_target') }}**
+
+### Missing entities
+{% if (ns.missing | length) == 0 %}
+- none
+{% else %}
+{% for eid in ns.missing %}
+- {{ eid }}
+{% endfor %}
+{% endif %}
+
+### Unknown/Unavailable entities
+{% if (ns.unavailable | length) == 0 %}
+- none
+{% else %}
+{% for eid in ns.unavailable %}
+- {{ eid }}
+{% endfor %}
+{% endif %}
+
+### Detailed table
+| Entity | Exists | State |
+|---|---:|---|
+{% for row in ns.rows %}
+| `{{ row.entity }}` | {{ row.exists }} | {{ row.state }} |
+{% endfor %}
+
+### Next action guidance
+{% if verdict == 'PASS' %}
+- Hardware rename step validated. Proceed to next rename slice.
+{% elif (ns.missing | length) > 0 %}
+- Missing hardware-dependent contracts detected. Restore package include/load before next rename.
+{% else %}
+- Resolve unavailable/selector mismatch first, then rerun this template.
+{% endif %}
+```
+<!-- EOF -->

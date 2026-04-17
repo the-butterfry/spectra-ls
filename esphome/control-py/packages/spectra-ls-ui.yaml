@@ -1,5 +1,5 @@
 # Description: Spectra LS UI/menu input handling + UI fonts + now-playing helper sensors.
-# Version: 2026.04.16.1
+# Version: 2026.04.16.2
 # Last updated: 2026-04-16
 # Update version/date whenever you change this file.
 #
@@ -486,7 +486,7 @@ script:
 # === Menu buttons + encoder ===
 # Guardrail: menu_active/menu_level ownership lives in UI handlers.
 # Do not clear menus from generic input handlers; display state is decided in
-# control-board-peripherals-no-rings.yaml.
+# spectra-ls-peripherals-no-rings.yaml.
 binary_sensor:
   - platform: rp2040_uart
     rp2040_uart_id: rp2040_uart_hub

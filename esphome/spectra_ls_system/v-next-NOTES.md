@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.17.2 -->
+<!-- Version: 2026.04.17.3 -->
 <!-- Last updated: 2026-04-17 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -66,6 +66,8 @@
 ## Pathing + Naming Safety Guardrails (Do Not Skip)
 
 ### Authoritative edit targets for `spectra_ls_system`
+
+- Path context rule: edit files from host paths (`/mnt/homeassistant/...`), but when writing ESPHome include literals use container paths (`/config/...`).
 
 - ESPHome entrypoint: `/mnt/homeassistant/esphome/spectra_ls_system.yaml`
 - Spectra packages only:
@@ -164,31 +166,65 @@ Suggested mapping (generalizable across installs):
 ### Execution Phases (commit-scoped)
 
 1. **Phase A — Path-safe scaffolding + event contract reservation**
-   - Confirm all target files are in `spectra_ls_system` and `CIRCUITPY`+mirror only.
+   - Confirm all target files are in `spectra_ls_system` and `CIRCUITPY` + mirror only.
    - Reserve/record event IDs and mode enum contract in this file.
    - Commit scope: notes + non-behavioral scaffolding only.
 
-2. **Phase B — RP2040 input capture**
+#### Phase A Start Checklist (must pass before Phase B)
+
+- [ ] **A1: Path authority check**
+  - Planned edit targets must resolve only to `/mnt/homeassistant/esphome/spectra_ls_system.yaml`, `/mnt/homeassistant/esphome/spectra_ls_system/packages/spectra-ls-*.yaml`, `/media/cory/CIRCUITPY/code.py`, and `/mnt/homeassistant/esphome/circuitpy/code.py`.
+  - Planned edit targets must exclude `/mnt/homeassistant/esphome/control-py/**` and `/mnt/homeassistant/esphome/control-py/previous/**`.
+
+- [ ] **A2: Include wiring check**
+  - Verify `spectra_ls_system.yaml` includes only active `spectra-ls-*` package files.
+  - Verify include target existence for every referenced package path.
+
+- [ ] **A3: RP2040 parity pre-check**
+  - Confirm live and mirror firmware files are identical before changes.
+  - If drift exists, reconcile parity first and document source-of-truth decision.
+
+- [ ] **A4: Event contract reservation**
+  - Reserve event ID window for new selector/switch/momentary features.
+  - Add an event contract table in this file with columns: `event_id`, `producer`, `consumer`, `notes`.
+  - Mark any existing IDs that must not be repurposed.
+
+- [ ] **A5: Ownership map**
+  - Document owner files for each concern: RP2040 scan/debounce/emit, ESPHome event ingest/state, UI/menu override/render state, and HA helper routing.
+
+- [ ] **A6: Safety gates**
+  - Define “no-go” conditions (e.g., missing package include target, RP2040 live/mirror mismatch, unresolved legacy path ambiguity).
+  - Define rollback actions and restore commands before functional edits.
+
+- [ ] **A7: Validation gates for phase transition**
+  - Define minimum validation set required to move to Phase B/C.
+  - Include expected PASS/WARN behavior for templates and what blocks advancement.
+
+- [ ] **A8: Commit boundary**
+  - Keep Phase A commit doc-only (notes + optional changelog pointer) with no behavioral code changes.
+  - Push Phase A commit before opening Phase B implementation work.
+
+1. **Phase B — RP2040 input capture**
    - Implement selector/switch/momentary scan + debounce + edge-trigger emit.
    - Update both live `CIRCUITPY` and repo mirror in same change set.
    - Commit scope: RP2040 only (plus notes/changelog as needed).
 
-3. **Phase C — ESPHome mode/state wiring**
+1. **Phase C — ESPHome mode/state wiring**
    - Wire incoming events into `spectra-ls-hardware.yaml` + `spectra-ls-ui.yaml`.
    - Add `hardware_mode`, menu override clearing, and deterministic route state updates.
    - Commit scope: spectra package files only.
 
-4. **Phase D — HA helper/routing integration**
+1. **Phase D — HA helper/routing integration**
    - Bind mode transitions to existing helper contracts (`ma_active_target`, room/target selectors).
    - Add only required helper surfaces; avoid broad helper churn.
    - Commit scope: minimal helper/automation updates.
 
-5. **Phase E — Validation + hardening**
+1. **Phase E — Validation + hardening**
    - Run validation templates and confirm pass/warn deltas.
    - Address race/flood/stale-state issues before proceeding.
    - Commit scope: fixes + docs + changelog.
 
-6. **Phase F — Deferred naming cleanup (future trigger only)**
+1. **Phase F — Deferred naming cleanup (future trigger only)**
    - Execute only after all trigger gates in naming section are satisfied.
    - Perform compatibility/cutover/cleanup sequence as documented above.
 

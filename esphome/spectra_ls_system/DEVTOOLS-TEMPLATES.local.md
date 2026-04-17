@@ -1,5 +1,5 @@
 <!-- Description: Copy/paste Home Assistant Dev Tools template diagnostics for Spectra LS System. -->
-<!-- Version: 2026.04.17.2 -->
+<!-- Version: 2026.04.17.4 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Spectra LS System — Dev Tools Template Validation

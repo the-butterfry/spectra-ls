@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.69 -->
+<!-- Version: 2026.04.17.70 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
+
+- ESPHome/Lighting UX Flow: Rework lighting value adjustment behavior so Hue/Saturation (and lighting adjust paths) do not get pre-empted by active playback; after adjustment activity ends, UI returns to the same lighting menu context, holds for 5000ms, then gracefully transitions to Home (no active playback) or Now Playing (when active).
 
 - ESPHome/Lighting Hardening: Make UI auto-routing hardware-mode-aware in `spectra-ls-ui.yaml` so audio-driven auto-flip behavior no longer overrides explicit lighting selector modes (`hardware_mode` 0/1), improving hardware-first determinism for v-next.
 

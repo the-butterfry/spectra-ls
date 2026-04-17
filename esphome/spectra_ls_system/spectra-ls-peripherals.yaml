@@ -1,5 +1,5 @@
 # Description: Spectra LS OLED-only peripherals package (no LED rings) for Control Board v2.
-# Version: 2026.04.17.8
+# Version: 2026.04.17.9
 # Last updated: 2026-04-17
 # Update version/date whenever you change this file.
 esphome:
@@ -1366,7 +1366,7 @@ display:
         int menu_index_render = id(menu_index);
         if (display_state_value == STATE_BOOT_MENU && menu_level_render < LV_MAIN) {
           menu_level_render = LV_MAIN;
-          if (menu_index_render < 0 || menu_index_render > 2) {
+          if (menu_index_render < 0 || menu_index_render >= ${menu_count_root}) {
             menu_index_render = 0;
           }
         }
@@ -1421,7 +1421,7 @@ display:
 
         const char *menu_adjust[] = {"Lighting Values", "Hue", "Saturation", "Back"};
         const char **items = menu_main;
-        int count = 3;
+        int count = ${menu_count_root};
         bool use_dynamic_list = false;
         std::vector<std::string> dynamic_items;
         if (menu_level_render == ${menu_level_lighting_rooms}) {
@@ -1445,7 +1445,7 @@ display:
           use_dynamic_list = true;
         }
         else if (menu_level_render == ${menu_level_lighting_adjust}) {
-          const int count_adjust = 4;
+          const int count_adjust = ${menu_count_lighting_adjust};
           int idx_adjust = menu_index_render;
           if (idx_adjust < 0 || idx_adjust >= count_adjust) idx_adjust = 0;
           const int room = id(selected_room);
@@ -1491,7 +1491,7 @@ display:
         else if (menu_level_render == ${menu_level_lighting_toggle}) {
           const int room = id(selected_room);
           const int target = id(selected_target);
-          const int count_toggle = (target == 0) ? 2 : 3;
+          const int count_toggle = (target == 0) ? ${menu_count_lighting_toggle_all} : ${menu_count_lighting_toggle_target};
           int idx_toggle = menu_index_render;
           if (idx_toggle < 0 || idx_toggle >= count_toggle) idx_toggle = 0;
           std::string room_label = pick_room_label(room, "${room_label_living}");

@@ -1,5 +1,5 @@
 # Description: Spectra LS System substitutions for ESPHome main config and packages.
-# Version: 2026.04.17.15
+# Version: 2026.04.17.16
 # Last updated: 2026-04-17
 # Spectra LS substitutions scoped to spectra_ls_system.
 # Use absolute paths for assets so this file can move with spectra_ls_system.
@@ -202,6 +202,16 @@ hardware_mode_lighting_targets: "1"
 hardware_mode_audio_targets: "2"
 hardware_mode_audio_transport: "3"
 hardware_mode_system_meta: "4"
+# Shared menu-count constants (avoid branch-size magic numbers in lambdas).
+menu_count_root: "3"
+menu_count_gear: "3"
+menu_count_lighting_adjust: "4"
+menu_count_lighting_toggle_all: "2"
+menu_count_lighting_toggle_target: "3"
+menu_count_meta_base: "2"
+menu_room_fallback_count: "4"
+menu_target_fallback_room0_count: "4"
+menu_target_fallback_other_count: "2"
 menu_font_size: "9"
 menu_line_height: "12"
 menu_line_height_list: "12"

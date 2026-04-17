@@ -103,6 +103,8 @@ script:
           const int MODE_SYSTEM_META = ${hardware_mode_system_meta};
           const int LV_GEAR = ${menu_level_gear};
           const int LV_META = ${menu_level_meta_select};
+          const int GEAR_COUNT = ${menu_count_gear};
+          const int META_BASE = ${menu_count_meta_base};
           if (id(hardware_mode) != MODE_SYSTEM_META) return;
           id(menu_override_active) = false;
           id(last_input_ms) = millis();
@@ -114,11 +116,11 @@ script:
           }
           int count = 0;
           if (id(menu_level) == LV_GEAR) {
-            count = 3;
+            count = GEAR_COUNT;
           } else if (id(menu_level) == LV_META) {
             int meta_count = id(menu_meta_count);
             if (meta_count < 0) meta_count = 0;
-            count = meta_count + 2;
+            count = meta_count + META_BASE;
           } else {
             id(menu_level) = LV_GEAR;
             id(menu_index) = 0;
@@ -136,6 +138,8 @@ script:
           const int MODE_SYSTEM_META = ${hardware_mode_system_meta};
           const int LV_GEAR = ${menu_level_gear};
           const int LV_META = ${menu_level_meta_select};
+          const int GEAR_COUNT = ${menu_count_gear};
+          const int META_BASE = ${menu_count_meta_base};
           if (id(hardware_mode) != MODE_SYSTEM_META) return;
           id(menu_override_active) = false;
           id(last_input_ms) = millis();
@@ -147,11 +151,11 @@ script:
           }
           int count = 0;
           if (id(menu_level) == LV_GEAR) {
-            count = 3;
+            count = GEAR_COUNT;
           } else if (id(menu_level) == LV_META) {
             int meta_count = id(menu_meta_count);
             if (meta_count < 0) meta_count = 0;
-            count = meta_count + 2;
+            count = meta_count + META_BASE;
           } else {
             id(menu_level) = LV_GEAR;
             id(menu_index) = 0;

@@ -1,5 +1,5 @@
 # Description: Spectra LS UI/menu input handling + UI fonts + now-playing helper sensors.
-# Version: 2026.04.17.7
+# Version: 2026.04.17.8
 # Last updated: 2026-04-17
 # Update version/date whenever you change this file.
 #
@@ -244,15 +244,15 @@ script:
             return;
           }
           int room_count = id(menu_room_count);
-          if (room_count <= 0) room_count = 4;
+          if (room_count <= 0) room_count = ${menu_room_fallback_count};
           int target_count = id(menu_target_count);
           if (target_count <= 0) {
-            target_count = (id(menu_light_room) == 0) ? 4 : 2;
+            target_count = (id(menu_light_room) == 0) ? ${menu_target_fallback_room0_count} : ${menu_target_fallback_other_count};
           }
           int meta_count = id(menu_meta_count);
           const int menu_level5_count = room_count + 1;
           const int menu_level6_count = target_count + 1;
-          const int menu_level9_count = meta_count + 2;
+          const int menu_level9_count = meta_count + ${menu_count_meta_base};
 
           if (!id(menu_active)) {
             if (id(screen_mode) == 0) {
@@ -271,11 +271,11 @@ script:
 
           if (id(menu_level) > LV_MAIN) {
             int back_count = 0;
-            if (id(menu_level) == LV_GEAR) back_count = 3;
+            if (id(menu_level) == LV_GEAR) back_count = ${menu_count_gear};
             if (id(menu_level) == LV_LIGHT_ROOMS) back_count = menu_level5_count;
             else if (id(menu_level) == LV_LIGHT_TARGETS) back_count = menu_level6_count;
-            else if (id(menu_level) == LV_LIGHT_ADJUST) back_count = 4;
-            else if (id(menu_level) == LV_LIGHT_TOGGLE) back_count = (id(selected_target) == 0) ? 2 : 3;
+            else if (id(menu_level) == LV_LIGHT_ADJUST) back_count = ${menu_count_lighting_adjust};
+            else if (id(menu_level) == LV_LIGHT_TOGGLE) back_count = (id(selected_target) == 0) ? ${menu_count_lighting_toggle_all} : ${menu_count_lighting_toggle_target};
             else if (id(menu_level) == LV_META) back_count = menu_level9_count;
             if (back_count > 0 && id(menu_index) == (back_count - 1)) {
               if (id(menu_level) == LV_GEAR) {
@@ -686,15 +686,15 @@ sensor:
             return;
           }
           int room_count = id(menu_room_count);
-          if (room_count <= 0) room_count = 4;
+          if (room_count <= 0) room_count = ${menu_room_fallback_count};
           int target_count = id(menu_target_count);
           if (target_count <= 0) {
-            target_count = (id(menu_light_room) == 0) ? 4 : 2;
+            target_count = (id(menu_light_room) == 0) ? ${menu_target_fallback_room0_count} : ${menu_target_fallback_other_count};
           }
           int meta_count = id(menu_meta_count);
           const int menu_level5_count = room_count + 1;
           const int menu_level6_count = target_count + 1;
-          const int menu_level9_count = meta_count + 2;
+          const int menu_level9_count = meta_count + ${menu_count_meta_base};
           if (!id(menu_active)) {
             id(menu_active) = true;
             id(menu_level) = LV_MAIN;
@@ -702,12 +702,12 @@ sensor:
             id(lighting_adjust_mode) = 0;
           }
           int count = 0;
-          if (id(menu_level) == LV_MAIN) count = 3;
-          else if (id(menu_level) == LV_GEAR) count = 3;
+          if (id(menu_level) == LV_MAIN) count = ${menu_count_root};
+          else if (id(menu_level) == LV_GEAR) count = ${menu_count_gear};
           else if (id(menu_level) == LV_LIGHT_ROOMS) count = menu_level5_count;
           else if (id(menu_level) == LV_LIGHT_TARGETS) count = menu_level6_count;
-          else if (id(menu_level) == LV_LIGHT_ADJUST) count = 4;
-          else if (id(menu_level) == LV_LIGHT_TOGGLE) count = (id(selected_target) == 0) ? 2 : 3;
+          else if (id(menu_level) == LV_LIGHT_ADJUST) count = ${menu_count_lighting_adjust};
+          else if (id(menu_level) == LV_LIGHT_TOGGLE) count = (id(selected_target) == 0) ? ${menu_count_lighting_toggle_all} : ${menu_count_lighting_toggle_target};
           else if (id(menu_level) == LV_META) count = menu_level9_count;
           if (count <= 0) return;
           int idx = id(menu_index) + delta;

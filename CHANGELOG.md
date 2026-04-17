@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.78 -->
+<!-- Version: 2026.04.17.79 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
+
+- ESPHome/Nav Constants Refactor: Add shared menu-count/fallback-count substitutions and replace active hardcoded menu counts/branch sizes in UI, hardware nav handlers, and OLED menu rendering paths to reduce cross-file drift and make menu evolution centrally tunable.
 
 - HA/Lighting Architecture Refactor: Introduce a reusable `sensor.control_board_eligible_light_catalog` contract in `packages/spectra_ls_lighting_hub.yaml` and route room options, target options, room area resolution, target entity resolution, room HS, and room on/off state through that single eligibility source to prevent layered filtering drift.
 

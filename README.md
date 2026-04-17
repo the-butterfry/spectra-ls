@@ -1,5 +1,5 @@
 <!-- Description: Human-readable overview and deployment guide for the Spectra LS Home Assistant + ESPHome system. -->
-<!-- Version: 2026.04.16.7 -->
+<!-- Version: 2026.04.16.8 -->
 <!-- Last updated: 2026-04-16 -->
 
 # Spectra LS System
@@ -60,6 +60,18 @@ On `main`, project direction follows `esphome/spectra_ls_system/v-next-NOTES.md`
 - TCP-only audio control path (no UART control path unless explicitly enabled).
 - Hardware-first UX: encoder/button/pot interactions remain responsive during HA update noise.
 - Diagnostic/log cadence hardening to reduce publish spam and improve readability.
+
+## System Test Overview (Dev Tools Templates)
+
+Use `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md` as the standard system-test playbook in Home Assistant Developer Tools → Template. The templates are layered so you can move from broad health to precise command-effect verification quickly:
+
+- **Template 1 — Overall Health Check**: verifies package/helper/runtime integrity and sentinel entities.
+- **Template 2 — Audio Control Path Probe**: validates target → host → meta → now-playing routing consistency.
+- **Template 3 — Command Readiness Probe**: confirms writable control surfaces and transport prerequisites.
+- **Template 4 — Command Effect Verification**: before/after snapshot for `number.set_value` validation on a chosen control entity.
+- **Template 5 — One-Screen Smoke Test**: fast go/no-go rollup across the four layers above.
+
+Recommended flow: run 1 → 2 → 3 after deploy, then use 4 for specific action checks and 5 for quick regression smoke tests.
 
 ## Audio Clients / Player Types Spectra LS Interacts With
 

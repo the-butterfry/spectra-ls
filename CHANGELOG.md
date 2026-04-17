@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.55 -->
+<!-- Version: 2026.04.17.56 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
+
+- Docs/README: Expand front-page intended-use messaging to explicitly call out direct analog control for Volume + 3-band EQ (bass/mid/treble), home dance-party usage, v-next multiple switches/dials expansion, and responsive screen/menu navigation feedback.
 
 - Docs/README: Link `Home Assistant` at its first paragraph mention and de-link later duplicate `Home Assistant` link usage so external-linking follows first-mention-only style.
 

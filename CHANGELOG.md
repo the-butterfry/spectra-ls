@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.58 -->
+<!-- Version: 2026.04.17.59 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
+
+- Docs/README: Add an explicit `HD DAC Capability Cutsheet` block (wireless stack, multi-room behavior, music-service list, and local-source support) and add plain-language whole-home multi-speaker synchronization copy (same-track room lock + independent room playback) without protocol-insider wording.
 
 - Docs/README: Normalize shorthand usage to `Spectra L/S` (no standalone `L/S`), change EQ phrasing to `Physical 3-Band EQ`, move Seesaw under an explicit Inputs section, and expand physical-control listing to call out switches/buttons/knobs/sliders/dials.
 

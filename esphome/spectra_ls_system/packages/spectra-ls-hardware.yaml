@@ -1,5 +1,5 @@
 # Description: Spectra LS hardware UART wiring + RP2040/Arylic hubs + raw ADC taps.
-# Version: 2026.04.17.1
+# Version: 2026.04.17.3
 # Last updated: 2026-04-17
 # Update version/date whenever you change this file.
 #
@@ -20,5 +20,207 @@ uart:
 rp2040_uart:
   id: rp2040_uart_hub
   uart_id: uart_rp2040
+
+script:
+  - id: sls_apply_mode_selector_index
+    mode: restart
+    parameters:
+      next_mode: int
+    then:
+      - lambda: |-
+          int mode = next_mode;
+          if (mode < 0) mode = 0;
+          if (mode > 4) mode = 4;
+          if (mode == id(hardware_mode)) return;
+          const uint32_t now = millis();
+          id(hardware_mode) = mode;
+          id(menu_override_active) = false;
+          id(control_target_popup_active) = false;
+          id(control_target_prompt_active) = false;
+          id(control_target_prompt_manual) = false;
+          id(control_target_prompt_commit) = false;
+          id(control_target_prompt_entity) = "";
+          id(last_input_ms) = now;
+
+          if (mode == 0) {
+            id(screen_mode) = 0;
+            id(menu_active) = true;
+            id(menu_level) = 5;
+            int room_idx = id(selected_room);
+            if (room_idx < 0) room_idx = 0;
+            id(menu_index) = room_idx;
+            return;
+          }
+
+          if (mode == 1) {
+            id(screen_mode) = 0;
+            id(menu_active) = true;
+            id(menu_level) = 6;
+            int target_idx = id(selected_target);
+            if (target_idx < 0) target_idx = 0;
+            id(menu_index) = target_idx;
+            return;
+          }
+
+          if (mode == 4) {
+            id(screen_mode) = 1;
+            id(menu_active) = true;
+            id(menu_level) = 4;
+            id(menu_index) = 0;
+            return;
+          }
+
+          id(screen_mode) = 1;
+          id(menu_active) = false;
+          id(menu_level) = 0;
+          id(menu_index) = 0;
+          id(audio_wake_until_ms) = now + ${audio_wake_hold_ms};
+
+  - id: sls_apply_control_class_index
+    mode: restart
+    parameters:
+      next_class: int
+    then:
+      - lambda: |-
+          int cls = next_class;
+          if (cls < 0) cls = 0;
+          if (cls > 2) cls = 2;
+          id(control_class) = cls;
+
+  - id: sls_mode_nav_next_item
+    mode: restart
+    then:
+      - lambda: |-
+          if (id(hardware_mode) != 4) return;
+          id(menu_override_active) = false;
+          id(last_input_ms) = millis();
+          if (!id(menu_active)) {
+            id(menu_active) = true;
+            id(menu_level) = 4;
+            id(menu_index) = 0;
+            return;
+          }
+          int count = 0;
+          if (id(menu_level) == 4) {
+            count = 3;
+          } else if (id(menu_level) == 9) {
+            int meta_count = id(menu_meta_count);
+            if (meta_count < 0) meta_count = 0;
+            count = meta_count + 2;
+          } else {
+            id(menu_level) = 4;
+            id(menu_index) = 0;
+            return;
+          }
+          if (count <= 0) return;
+          int idx = id(menu_index) + 1;
+          while (idx >= count) idx -= count;
+          id(menu_index) = idx;
+
+  - id: sls_mode_nav_prev_item
+    mode: restart
+    then:
+      - lambda: |-
+          if (id(hardware_mode) != 4) return;
+          id(menu_override_active) = false;
+          id(last_input_ms) = millis();
+          if (!id(menu_active)) {
+            id(menu_active) = true;
+            id(menu_level) = 4;
+            id(menu_index) = 0;
+            return;
+          }
+          int count = 0;
+          if (id(menu_level) == 4) {
+            count = 3;
+          } else if (id(menu_level) == 9) {
+            int meta_count = id(menu_meta_count);
+            if (meta_count < 0) meta_count = 0;
+            count = meta_count + 2;
+          } else {
+            id(menu_level) = 4;
+            id(menu_index) = 0;
+            return;
+          }
+          if (count <= 0) return;
+          int idx = id(menu_index) - 1;
+          while (idx < 0) idx += count;
+          id(menu_index) = idx;
+
+  - id: sls_mode_nav_confirm
+    mode: restart
+    then:
+      - if:
+          condition:
+            lambda: |-
+              return id(hardware_mode) == 4;
+          then:
+            - script.execute: note_menu_input
+            - lambda: |-
+                id(menu_override_active) = false;
+                if (!id(menu_active)) {
+                  id(menu_active) = true;
+                  id(menu_level) = 4;
+                  id(menu_index) = 0;
+                  return;
+                }
+            - script.execute: menu_select_action
+
+sensor:
+  - platform: rp2040_uart
+    rp2040_uart_id: rp2040_uart_hub
+    type: analog
+    sensor_id: 120
+    name: "RP Mode Selector Index"
+    id: rp_mode_selector_index
+    internal: true
+    accuracy_decimals: 0
+    on_value:
+      - script.execute:
+          id: sls_apply_mode_selector_index
+          next_mode: !lambda |-
+            return (int) x;
+
+  - platform: rp2040_uart
+    rp2040_uart_id: rp2040_uart_hub
+    type: analog
+    sensor_id: 121
+    name: "RP Control Class Index"
+    id: rp_control_class_index
+    internal: true
+    accuracy_decimals: 0
+    on_value:
+      - script.execute:
+          id: sls_apply_control_class_index
+          next_class: !lambda |-
+            return (int) x;
+
+binary_sensor:
+  - platform: rp2040_uart
+    rp2040_uart_id: rp2040_uart_hub
+    button_id: 122
+    name: "RP Mode Next Item"
+    id: rp_mode_next_item
+    internal: true
+    on_press:
+      - script.execute: sls_mode_nav_next_item
+
+  - platform: rp2040_uart
+    rp2040_uart_id: rp2040_uart_hub
+    button_id: 123
+    name: "RP Mode Prev Item"
+    id: rp_mode_prev_item
+    internal: true
+    on_press:
+      - script.execute: sls_mode_nav_prev_item
+
+  - platform: rp2040_uart
+    rp2040_uart_id: rp2040_uart_hub
+    button_id: 124
+    name: "RP Mode Confirm"
+    id: rp_mode_confirm
+    internal: true
+    on_press:
+      - script.execute: sls_mode_nav_confirm
 
 ## Raw ADC taps are recorded in lighting/audio packages for input processing.

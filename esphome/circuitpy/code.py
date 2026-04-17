@@ -1,5 +1,5 @@
 ## Description: RP2040 firmware for Spectra LS input scanning and UART event transport.
-## Version: 2026.04.17.6
+## Version: 2026.04.17.7
 ## Last updated: 2026-04-17
 #
 # RP FILE CONTRACT:
@@ -578,13 +578,13 @@ while True:
 
     if mode_selector_index is not None and mode_selector_index != last_mode_selector_index:
         last_mode_selector_index = mode_selector_index
-        send_packet(TYPE_BUTTON, MODE_SELECTOR_EVENT_ID, mode_selector_index)
+        send_packet(TYPE_ANALOG, MODE_SELECTOR_EVENT_ID, mode_selector_index)
         if DEBUG_GLOBAL and DEBUG_BUTTONS_SERIAL:
             print(f"Mode selector -> {mode_selector_index} (id={MODE_SELECTOR_EVENT_ID})")
 
     if control_class_index is not None and control_class_index != last_control_class_index:
         last_control_class_index = control_class_index
-        send_packet(TYPE_BUTTON, CONTROL_CLASS_EVENT_ID, control_class_index)
+        send_packet(TYPE_ANALOG, CONTROL_CLASS_EVENT_ID, control_class_index)
         if DEBUG_GLOBAL and DEBUG_BUTTONS_SERIAL:
             print(f"Control class -> {control_class_index} (id={CONTROL_CLASS_EVENT_ID})")
 

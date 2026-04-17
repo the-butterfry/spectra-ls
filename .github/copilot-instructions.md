@@ -3,7 +3,7 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 ---
 
 <!-- Description: Workspace Copilot operating instructions for Home Assistant + ESPHome. -->
-<!-- Version: 2026.04.17.3 -->
+<!-- Version: 2026.04.17.5 -->
 <!-- Last updated: 2026-04-17 -->
 
 # GitHub Copilot Instructions — Home Assistant + ESPHome
@@ -73,6 +73,13 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
  - Avoid renaming helpers or entity IDs without explicit approval and a migration note.
 - When diagnosing HA issues, do **not** ask the user to manually check entity states; provide a complete Developer Tools template they can paste and run.
 - Productization rule: do **not** track per-user host/IP files or unique local config artifacts in git (for example root-level `*_tcp_host.yaml`, site-specific endpoint lists, or personal environment mappings). Use `!secret`/ignored local files for deployment-specific values and keep repository defaults universal.
+
+## Discovery-First Onboarding Policy (Required)
+- Treat auto-discovery as the default operating mode for MA/HA routing and target onboarding.
+- Manual/static host overrides must be available but **disabled by default** (opt-in fallback only).
+- For discovered or overridden players, compute and expose a **control-path tag** before routing control commands (for example `linkplay_tcp`, future non-LinkPlay paths).
+- Carry and honor per-target capability metadata for routing safety: `hardware_family`, `control_capable`, and optional `capabilities` (for example direct POT/EQ control support).
+- Route only through control paths that are explicitly supported by the current firmware/config branch; keep unsupported paths visible as tagged-but-not-routed for future expansion.
 
 ## YAML Style
 - Keep YAML blocks ordered and consistent: `esphome` → platform → `wifi` → `api` → `logger` → components.

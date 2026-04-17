@@ -1,6 +1,6 @@
 <!-- Description: Human-readable overview and deployment guide for the Spectra LS Home Assistant + ESPHome system. -->
-<!-- Version: 2026.04.16.8 -->
-<!-- Last updated: 2026-04-16 -->
+<!-- Version: 2026.04.17.12 -->
+<!-- Last updated: 2026-04-17 -->
 
 # Spectra LS System
 
@@ -33,6 +33,23 @@ On `main`, project direction follows `esphome/spectra_ls_system/v-next-NOTES.md`
 - **Wi-Fi/TCP control** to Arylic/LinkPlay/WiiM-class endpoints (primary real-time audio control path).
 - **RP2040 ↔ ESP32 UART** event transport for hardware controls.
 - **I2C buses** for OLED and local input peripherals (PCF8575 / Seesaw / ADC devices).
+
+### Digital Audio Ingest + Final DAC Path
+
+Spectra Level / Source (L/S) is architected as a fully integrated high-fidelity sound system, not just a DAC-on-a-board implementation. In audio-chain terms, the ES9038Q2M stage is only one node in a controlled end-to-end path: source ingest, digital transport integrity, deterministic routing, and low-noise final conversion. L/S is designed to accept mixed A/V source workflows and render a reference-grade output path with an "audio nerd" focus on signal quality, timing stability, and conversion transparency.
+
+- **HDMI input from an ARC-capable source** is supported in the source chain.
+- ARC digital audio is split/extracted and routed into the final output conversion stage.
+- Final DAC stage: **ESS ES9038Q2M** (`ESS 9038Q2M DAC`).
+- Conversion target capability: **192kHz / 24-bit**.
+- Referenced supported formats on this output chain:
+  - `FLAC`
+  - `MP3`
+  - `AAC`
+  - `AAC+`
+  - `ALAC`
+  - `APE`
+  - `WAV`
 
 ### Recommended Screen
 
@@ -81,6 +98,17 @@ Recommended flow: run 1 → 2 → 3 after deploy, then use 4 for specific action
 - **Arylic / LinkPlay TCP endpoints** for direct low-latency control (volume, EQ, source, transport fallback).
 - **AirPlay / Apple TV style sources** detected through HA/MA metadata and source-app attributes.
 - **Plex sessions/players** (optional) for now-playing enrichment and local-session filtering logic.
+
+## External References
+
+- Home Assistant documentation: <https://www.home-assistant.io/docs/>
+- ESPHome documentation: <https://esphome.io/>
+- Music Assistant documentation: <https://music-assistant.io/>
+- Arylic HTTP API: <https://developer.arylic.com/httpapi/>
+- Arylic TCP API: <https://developer.arylic.com/tcpapi/#tcp-api>
+- Arylic UART API: <https://developer.arylic.com/uartapi/#uart-api>
+- WiiM HTTP API OpenAPI spec: <https://github.com/cvdlinden/wiim-httpapi>
+- LinkPlay API community archive (reference only): <https://www.n4archive.com/?p=1143>
 
 ## Deployment Guide (Detailed)
 

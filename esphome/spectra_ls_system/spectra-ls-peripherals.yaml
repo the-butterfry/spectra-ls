@@ -1,5 +1,5 @@
 # Description: Spectra LS OLED-only peripherals package (no LED rings) for Control Board v2.
-# Version: 2026.04.17.1
+# Version: 2026.04.17.4
 # Last updated: 2026-04-17
 # Update version/date whenever you change this file.
 esphome:
@@ -785,6 +785,49 @@ display:
         last_log_ms = millis();
         ESP_LOGI("loop_np", "%s: %ums", name, (unsigned) dur);
       };
+      auto trim_ascii = [](std::string &value) {
+        size_t start = value.find_first_not_of(" \t\n\r");
+        size_t end = value.find_last_not_of(" \t\n\r");
+        if (start == std::string::npos || end == std::string::npos) {
+          value.clear();
+          return;
+        }
+        value = value.substr(start, end - start + 1);
+      };
+      auto parse_options = [&](const std::string &raw) -> std::vector<std::string> {
+        std::vector<std::string> out;
+        if (raw.empty()) return out;
+        std::string token;
+        bool in_quote = false;
+        char quote_char = 0;
+        for (char ch : raw) {
+          if (ch == '\\') continue;
+          if ((ch == '\'' || ch == '"')) {
+            if (!in_quote) {
+              in_quote = true;
+              quote_char = ch;
+              continue;
+            }
+            if (quote_char == ch) {
+              in_quote = false;
+              continue;
+            }
+          }
+          if (!in_quote && (ch == '[' || ch == ']')) {
+            continue;
+          }
+          if (!in_quote && ch == ',') {
+            trim_ascii(token);
+            if (!token.empty()) out.push_back(token);
+            token.clear();
+            continue;
+          }
+          token.push_back(ch);
+        }
+        trim_ascii(token);
+        if (!token.empty()) out.push_back(token);
+        return out;
+      };
       if (id(splash_until_ms) == 0) {
         id(splash_until_ms) = now + ${splash_duration_ms};
       }
@@ -881,10 +924,7 @@ display:
           }
         } else {
           const std::string splash_subtitle = "Level \\ Source";
-          const bool show_title = stage_elapsed < 1000;
-          if (show_title) {
-            it.printf(center_x, title_y, id(font_splash_title), COLOR_ON, TextAlign::TOP_CENTER, "%s", splash_title.c_str());
-          }
+          it.printf(center_x, title_y, id(font_splash_title), COLOR_ON, TextAlign::TOP_CENTER, "%s", splash_title.c_str());
           it.printf(center_x, subtitle_y, id(font_splash_subtitle), COLOR_ON, TextAlign::TOP_CENTER, "%s", splash_subtitle.c_str());
         }
         log_loop_section(stage == 0 ? "splash_stage1" : "splash_stage2", section_start_ms);
@@ -922,7 +962,6 @@ display:
       const uint32_t idle_ms = now - id(last_input_ms);
       const bool audio_wake_active = id(audio_wake_until_ms) > 0 && now < id(audio_wake_until_ms);
       const int display_state_value = id(display_state);
-      const bool boot_menu_active = (display_state_value == STATE_BOOT_MENU);
       const bool menu_active_now = id(menu_active);
 
       if (id(control_target_prompt_active) || now < id(meta_popup_until_ms)) {
@@ -935,40 +974,6 @@ display:
         it.fill(COLOR_OFF);
         const int line_h = ${menu_line_height_list};
         if (id(control_target_prompt_active)) {
-          auto trim_ascii = [](std::string &value) {
-            size_t start = value.find_first_not_of(" \t\n\r");
-            size_t end = value.find_last_not_of(" \t\n\r");
-            if (start == std::string::npos || end == std::string::npos) {
-              value.clear();
-              return;
-            }
-            value = value.substr(start, end - start + 1);
-          };
-          auto parse_options = [&](const std::string &raw) -> std::vector<std::string> {
-            std::vector<std::string> out;
-            if (raw.empty()) return out;
-            std::string token;
-            bool in_quote = false;
-            char quote_char = 0;
-            for (char ch : raw) {
-              if (ch == '\\') continue;
-              if ((ch == '\'' || ch == '"')) {
-                if (!in_quote) { in_quote = true; quote_char = ch; continue; }
-                if (quote_char == ch) { in_quote = false; continue; }
-              }
-              if (!in_quote && (ch == '[' || ch == ']')) continue;
-              if (!in_quote && ch == ',') {
-                trim_ascii(token);
-                if (!token.empty()) out.push_back(token);
-                token.clear();
-                continue;
-              }
-              token.push_back(ch);
-            }
-            trim_ascii(token);
-            if (!token.empty()) out.push_back(token);
-            return out;
-          };
           std::vector<std::string> items;
           if (id(ha_control_target_labels).has_state()) {
             items = parse_options(id(ha_control_target_labels).state.c_str());
@@ -1103,49 +1108,6 @@ display:
       static std::vector<std::string> room_opts;
       static std::string meta_opts_raw;
       static std::vector<std::string> meta_opts;
-      auto trim_ascii = [](std::string &value) {
-        size_t start = value.find_first_not_of(" \t\n\r");
-        size_t end = value.find_last_not_of(" \t\n\r");
-        if (start == std::string::npos || end == std::string::npos) {
-          value.clear();
-          return;
-        }
-        value = value.substr(start, end - start + 1);
-      };
-      auto parse_options = [&](const std::string &raw) -> std::vector<std::string> {
-        std::vector<std::string> out;
-        if (raw.empty()) return out;
-        std::string token;
-        bool in_quote = false;
-        char quote_char = 0;
-        for (char ch : raw) {
-          if (ch == '\\') continue;
-          if ((ch == '\'' || ch == '"')) {
-            if (!in_quote) {
-              in_quote = true;
-              quote_char = ch;
-              continue;
-            }
-            if (quote_char == ch) {
-              in_quote = false;
-              continue;
-            }
-          }
-          if (!in_quote && (ch == '[' || ch == ']')) {
-            continue;
-          }
-          if (!in_quote && ch == ',') {
-            trim_ascii(token);
-            if (!token.empty()) out.push_back(token);
-            token.clear();
-            continue;
-          }
-          token.push_back(ch);
-        }
-        trim_ascii(token);
-        if (!token.empty()) out.push_back(token);
-        return out;
-      };
       std::string target_opts_state;
       if (id(ha_target_options).has_state()) {
         target_opts_state = id(ha_target_options).state.c_str();
@@ -1752,11 +1714,6 @@ display:
           it.printf(0, h - menu_h, id(font_menu), "${menu_debug_label}");
         }
         log_loop_section("lighting", section_start_ms);
-        return;
-      }
-
-      if (display_state_value == STATE_NOW_PLAYING) {
-        render_now_playing();
         return;
       }
 

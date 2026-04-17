@@ -1,10 +1,11 @@
 # Description: Spectra LS diagnostics, OLED contrast controls, and test helpers.
-# Version: 2026.04.16.1
+# Version: 2026.04.17.2
 # Last updated: 2026-04-16
 # Update version/date whenever you change this file.
 #
 # Sections:
 #  - OLED contrast control + diagnostics
+#  - Virtual input test harness
 #  - Test buttons
 
 # === OLED contrast diagnostics ===
@@ -126,6 +127,42 @@ number:
           id(oled_contrast_apply_count)++;
           id(oled_contrast_last_apply_ms) = millis();
 
+  - platform: template
+    name: "Virtual Mode Selector Index"
+    id: virtual_mode_selector_index
+    internal: false
+    entity_category: diagnostic
+    min_value: 0
+    max_value: 4
+    step: 1
+    mode: box
+    update_interval: 5s
+    lambda: |-
+      return (float) id(hardware_mode);
+    set_action:
+      - script.execute:
+          id: sls_apply_mode_selector_index
+          next_mode: !lambda |-
+            return (int) x;
+
+  - platform: template
+    name: "Virtual Control Class Index"
+    id: virtual_control_class_index
+    internal: false
+    entity_category: diagnostic
+    min_value: 0
+    max_value: 2
+    step: 1
+    mode: box
+    update_interval: 5s
+    lambda: |-
+      return (float) id(control_class);
+    set_action:
+      - script.execute:
+          id: sls_apply_control_class_index
+          next_class: !lambda |-
+            return (int) x;
+
 text_sensor:
   - platform: template
     name: "OLED Contrast Debug"
@@ -139,6 +176,15 @@ text_sensor:
                          id(oled_contrast_last_applied_raw),
                          (unsigned) id(oled_contrast_apply_count),
                          (unsigned) id(oled_contrast_last_apply_ms));
+
+  - platform: template
+    name: "Virtual Input Battery Status"
+    id: virtual_input_battery_status
+    internal: false
+    update_interval: 15s
+    entity_category: diagnostic
+    lambda: |-
+      return str_sprintf("pass=%d fail=%d", id(virtual_input_test_pass_count), id(virtual_input_test_fail_count));
 
 switch:
   - platform: template
@@ -156,8 +202,171 @@ switch:
           ESP_LOGI("cpu_usage", "CPU debug logging disabled (switch)");
           id(cpu_usage_main).set_logging_enabled(false);
 
+# === Virtual input test harness ===
+globals:
+  - id: virtual_input_test_pass_count
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: virtual_input_test_fail_count
+    type: int
+    restore_value: no
+    initial_value: "0"
+
+script:
+  - id: run_virtual_input_battery
+    mode: restart
+    then:
+      - lambda: |-
+          id(virtual_input_test_pass_count) = 0;
+          id(virtual_input_test_fail_count) = 0;
+          ESP_LOGI("virt_test", "Battery start");
+
+      - script.execute:
+          id: sls_apply_mode_selector_index
+          next_mode: 4
+      - delay: 120ms
+      - lambda: |-
+          const bool ok = (id(hardware_mode) == 4) && id(menu_active) && (id(menu_level) == 4);
+          if (ok) {
+            id(virtual_input_test_pass_count)++;
+            ESP_LOGI("virt_test", "PASS mode=4 enters system/meta menu");
+          } else {
+            id(virtual_input_test_fail_count)++;
+            ESP_LOGE("virt_test", "FAIL mode=4 expected menu_active=1 menu_level=4");
+          }
+
+      - script.execute: sls_mode_nav_next_item
+      - delay: 120ms
+      - lambda: |-
+          const bool ok = (id(menu_index) == 1);
+          if (ok) {
+            id(virtual_input_test_pass_count)++;
+            ESP_LOGI("virt_test", "PASS next item increments index");
+          } else {
+            id(virtual_input_test_fail_count)++;
+            ESP_LOGE("virt_test", "FAIL next item expected menu_index=1 got=%d", id(menu_index));
+          }
+
+      - script.execute: sls_mode_nav_prev_item
+      - delay: 120ms
+      - lambda: |-
+          const bool ok = (id(menu_index) == 0);
+          if (ok) {
+            id(virtual_input_test_pass_count)++;
+            ESP_LOGI("virt_test", "PASS prev item decrements index");
+          } else {
+            id(virtual_input_test_fail_count)++;
+            ESP_LOGE("virt_test", "FAIL prev item expected menu_index=0 got=%d", id(menu_index));
+          }
+
+      - script.execute: sls_mode_nav_confirm
+      - delay: 120ms
+      - lambda: |-
+          const bool ok = id(menu_active);
+          if (ok) {
+            id(virtual_input_test_pass_count)++;
+            ESP_LOGI("virt_test", "PASS confirm processed without collapsing menu state");
+          } else {
+            id(virtual_input_test_fail_count)++;
+            ESP_LOGE("virt_test", "FAIL confirm expected menu_active=1");
+          }
+
+      - script.execute:
+          id: sls_apply_control_class_index
+          next_class: 2
+      - delay: 100ms
+      - lambda: |-
+          const bool ok = (id(control_class) == 2);
+          if (ok) {
+            id(virtual_input_test_pass_count)++;
+            ESP_LOGI("virt_test", "PASS control class index set to 2");
+          } else {
+            id(virtual_input_test_fail_count)++;
+            ESP_LOGE("virt_test", "FAIL control class expected 2 got=%d", id(control_class));
+          }
+
+      - script.execute:
+          id: sls_apply_mode_selector_index
+          next_mode: 0
+      - delay: 120ms
+      - lambda: |-
+          const bool ok = (id(hardware_mode) == 0) && id(menu_active) && (id(menu_level) == 5);
+          if (ok) {
+            id(virtual_input_test_pass_count)++;
+            ESP_LOGI("virt_test", "PASS mode=0 routes to room selection");
+          } else {
+            id(virtual_input_test_fail_count)++;
+            ESP_LOGE("virt_test", "FAIL mode=0 expected menu_level=5");
+          }
+
+      - script.execute:
+          id: sls_apply_mode_selector_index
+          next_mode: 1
+      - delay: 120ms
+      - lambda: |-
+          const bool ok = (id(hardware_mode) == 1) && id(menu_active) && (id(menu_level) == 6);
+          if (ok) {
+            id(virtual_input_test_pass_count)++;
+            ESP_LOGI("virt_test", "PASS mode=1 routes to target selection");
+          } else {
+            id(virtual_input_test_fail_count)++;
+            ESP_LOGE("virt_test", "FAIL mode=1 expected menu_level=6");
+          }
+
+      - script.execute:
+          id: sls_apply_mode_selector_index
+          next_mode: 2
+      - delay: 120ms
+      - lambda: |-
+          const bool ok = (id(hardware_mode) == 2) && !id(menu_active) && (id(menu_level) == 0) && (id(screen_mode) == 1);
+          if (ok) {
+            id(virtual_input_test_pass_count)++;
+            ESP_LOGI("virt_test", "PASS mode=2 routes to audio view");
+          } else {
+            id(virtual_input_test_fail_count)++;
+            ESP_LOGE("virt_test", "FAIL mode=2 expected menu off + audio screen");
+          }
+
+      - lambda: |-
+          ESP_LOGI("virt_test", "Battery complete pass=%d fail=%d",
+                   id(virtual_input_test_pass_count),
+                   id(virtual_input_test_fail_count));
+
 # === Test helpers ===
 button:
+  - platform: template
+    name: "Virtual Mode Next Item"
+    id: virtual_mode_next_item
+    internal: false
+    entity_category: diagnostic
+    on_press:
+      - script.execute: sls_mode_nav_next_item
+
+  - platform: template
+    name: "Virtual Mode Prev Item"
+    id: virtual_mode_prev_item
+    internal: false
+    entity_category: diagnostic
+    on_press:
+      - script.execute: sls_mode_nav_prev_item
+
+  - platform: template
+    name: "Virtual Mode Confirm"
+    id: virtual_mode_confirm
+    internal: false
+    entity_category: diagnostic
+    on_press:
+      - script.execute: sls_mode_nav_confirm
+
+  - platform: template
+    name: "Run Virtual Input Battery"
+    id: run_virtual_input_battery_button
+    internal: false
+    entity_category: diagnostic
+    on_press:
+      - script.execute: run_virtual_input_battery
+
   - platform: template
     name: "Arylic Test Volume 20"
     id: arylic_test_volume_20

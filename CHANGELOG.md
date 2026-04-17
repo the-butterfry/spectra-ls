@@ -1,11 +1,56 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.23 -->
+<!-- Version: 2026.04.17.50 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
 
+- Docs/README: Normalize product naming in front-page audio section to introduce **Level / Source** once and use **L/S** shorthand thereafter while preserving published ARC/DAC capability details.
+
+- Docs/README: Strengthen front-page hardware/audio positioning to describe Spectra Level / Source as a fully integrated high-fidelity source-to-output system (not a DAC-only claim), while retaining the explicit ARC ingest → ESS ES9038Q2M conversion path and published 192kHz/24-bit + codec capability references.
+
+- Docs/Hardware Notes: Document HDMI ARC-capable source ingest path (HDMI input → ARC digital audio split/extract → final ESS ES9038Q2M DAC stage) including 192kHz/24-bit target capability and codec support references (`FLAC`, `MP3`, `AAC`, `AAC+`, `ALAC`, `APE`, `WAV`) in project notes/README.
+
+- ESPHome/Diagnostics: Add a temporary virtual-input harness in `esphome/spectra_ls_system/packages/spectra-ls-diagnostics.yaml` with mode/control injectors, mode-nav test buttons, and a one-shot battery script so selector/control-class/menu flows can be validated in HA without physical RP2040 wiring changes.
+- RP2040/Phase B: Fix v-next selector/control-class event fidelity by emitting IDs `120` and `121` as analog packets (index payload preserved) instead of button packets (boolean collapse), updated in both live `CIRCUITPY/code.py` and mirror `esphome/circuitpy/code.py`.
+- ESPHome/Phase C: Add initial `120`–`124` event consumers in `esphome/spectra_ls_system/packages/spectra-ls-hardware.yaml` and new shared state globals in `packages/spectra-ls-system.yaml` (`hardware_mode`, `control_class`, `menu_override_active`) with deterministic mode routing and clear-on-hardware-change menu override behavior.
+
+- Tooling/Build: Harden `bin/esphome_spectra_build_local.sh` + `bin/esphome_spectra_upload_local.sh` for fast iteration with incremental stage sync, stable local artifact copies, build summary output, optional forced clean stage, and upload helper auto-use of latest staged config.
+- ESPHome/OTA: Migrate `esphome/spectra_ls_system.yaml` from legacy `web_server.ota: true` to OTA platform syntax (`ota: - platform: web_server`) for ESPHome 2026.4.0+ compatibility while preserving web UI upload support.
+- Tooling/Build: Add local workstation automation scripts under `bin/` for one-command Spectra LS build kickoff (staging copy + path rewrite + compile artifact reporting) with optional OTA upload, so fast Ryzen-side builds avoid HA VM/Celeron compile bottlenecks without modifying tracked runtime YAML.
+- ESPHome/Web UI: Enable `web_server` OTA exposure in `esphome/spectra_ls_system.yaml` (`web_server.ota: true`) so the built-in device web UI renders the firmware upload form (POST `/update`) for direct binary uploads.
+- UI/Code Cleanup: Deduplicate OLED display lambda option parsing helpers in `esphome/spectra_ls_system/spectra-ls-peripherals.yaml` by reusing a single shared `trim_ascii`/`parse_options` implementation for both control-target prompt and dynamic options lists (no behavior change).
+- UI/Code Cleanup: Remove redundant/unreachable second `STATE_NOW_PLAYING` render branch in `esphome/spectra_ls_system/spectra-ls-peripherals.yaml` display lambda and drop unused local state variable, reducing ambiguity in display-state flow.
+- UI/Splash Stability: Fix startup splash sequence restart in `esphome/spectra_ls_system/spectra-ls-peripherals.yaml` by preventing delayed `on_boot` splash timer reinitialization after the display loop has already started splash timing.
+- UI/Splash Readability: Keep the “SPECTRA” title line visible throughout splash stage 2 (subtitle reveal), removing the abrupt title disappearance while preserving existing splash timing.
+- HA/MA Boot Auto-Select Fix: Update `packages/ma_control_hub/script.inc` so startup default target selection includes discovered targets (not only static room targets), preventing `none` from persisting when discoverable control-capable targets exist.
+- HA/MA Startup UX: Add fallback auto-pick of first active (playing/paused) allowed target when detected receiver is not ready yet, reducing blank-screen/prompt-on-boot behavior while discovery data settles.
+- Docs/Architecture Notes: Expand `esphome/spectra_ls_system/v-next-NOTES.md` with a dedicated control-path/hardware-family roadmap section, including current as-wired implementation snapshot and phased family/codepath expansion plan.
+- HA/MA Override Schema: Extend room/target override contract to carry `hardware_family`, `control_path`, `control_capable`, and `capabilities` metadata so overrides can fully represent control routing intent for current and future device families.
+- HA/MA Capability Routing: Gate control-host resolution on `control_capable` + routed `control_path` (currently `linkplay_tcp`) so direct POT adjustments are sent only to explicitly control-capable targets.
+- HA/MA Routing Policy: Add discovery-first control-path routing in `packages/ma_control_hub/template.inc` with explicit per-target tagging (`linkplay_tcp` now, extensible for future non-LinkPlay paths) and expose active control path as a template sensor.
+- HA/MA Fallback Safety: Add `input_boolean.ma_control_fallback_enabled` (default `off`) in `packages/ma_control_hub/input_boolean.inc` and gate static host override/fallback routing branches behind this tunable for clean no-override testing by default.
+- HA/MA Target Discovery: Tighten discovered target inclusion in `packages/ma_control_hub/script.inc` to include only linkplay-compatible TCP targets by default, while preserving extensibility for future routing classes.
+- Project Guidance: Update `.github/copilot-instructions.md` and `esphome/spectra_ls_system/v-next-NOTES.md` to codify discovery-first onboarding, default-off fallback policy, and per-device control-path decision requirements.
+- HA/MA Auto-Discovery: Enhance `packages/ma_control_hub/script.inc` and `packages/ma_control_hub/template.inc` so MA-discovered players with valid entity IDs and IP addresses are treated as first-class targets/options and TCP host candidates, reducing dependency on static per-room host mappings for plug-in onboarding.
+- HA/MA Routing: In `sensor.ma_control_hosts`, prefer active target entity `ip_address` when available before static fallback mappings, enabling zero-touch control host resolution for newly discovered compatible players.
+- ESPHome/Config Hygiene: Clarify Arylic endpoint section in `esphome/spectra_ls_system/substitutions.yaml` to document HA runtime authority (`sensor.ma_control_hosts` / `sensor.ma_control_port`) and switch bootstrap endpoint defaults to neutral non-site-specific values instead of repo-pinned local hosts.
+- ESPHome/Config Hygiene: Reorganize `esphome/spectra_ls_system/substitutions.yaml` tunables into distinct domain sections (system cadence, display/menu UI, audio UX/prompting, lighting UX, and control-loop/log cadence) to remove mixed random grouping and improve operator readability.
+- Docs: Update `esphome/spectra_ls_system/SUBSTITUTIONS-TUNING-LEGEND.md` with a substitutions layout map so tuning guidance matches the new sectioned structure.
+- ESPHome/Tuning Policy: Adopt B+ as default in `esphome/spectra_ls_system/substitutions.yaml` based on observed low-latency/high-quality network behavior with occasional jitter spikes; reserve B++ as DJ-candidate profile pending extended soak validation.
+- ESPHome/Tuning Surface: Add next-batch substitution tunables for non-transport smoothing in `esphome/spectra_ls_system/substitutions.yaml` (control-target evaluation cadence, MA target sync interval, meta-cycle settle delay, input/log throttle intervals) and wire these into `packages/spectra-ls-audio-tcp.yaml` to remove hardcoded timing constants.
+- Docs: Update `esphome/spectra_ls_system/SUBSTITUTIONS-TUNING-LEGEND.md` with network-quality guidance, B+ default positioning, and B++ DJ-candidate profile notes.
+- ESPHome/Audio UX: Add reboot ambiguity grace handling in `esphome/spectra_ls_system/packages/spectra-ls-audio-tcp.yaml` so a valid MA target + control host can establish lock during early boot even when transient ambiguity sensors report true, preventing repeated post-reboot control-target prompts.
+- ESPHome/Tuning: Apply a tighter B++ responsiveness profile in `esphome/spectra_ls_system/substitutions.yaml` (pot intervals/settle and Arylic TCP pacing/burst/worker tuning) for reduced perceived control lag while preserving transport stability margins.
+- ESPHome/Substitutions: Prune non-spectra dead keys from `esphome/spectra_ls_system/substitutions.yaml` (legacy BLE presence + lighting-controller carryovers and other unreferenced runtime leftovers) and expand section comments into operator-oriented guidance (purpose, gains, risks, and tuning intent).
+- ESPHome/Audio TCP: Add substitution-driven tunables for Arylic TCP worker/log behavior (queue length, worker stack/priority, and TX log throttle) and wire them through build flags into `components/arylic_tcp.h` so they can be tuned without C++ edits.
+- ESPHome/Audio TCP: Wire Arylic TCP pacing constants to compile-time substitution-driven build flags from `esphome/spectra_ls_system/substitutions.yaml` (including newly exposed burst-guard knobs), so tuning values are actually applied without editing `arylic_tcp.h` defaults.
+- Docs: Add `esphome/spectra_ls_system/SUBSTITUTIONS-TUNING-LEGEND.md` with baseline profile sets (Baseline/Safe/Performance/Aggressive), parameter descriptions, and staged test guidance for per-network tuning.
+- ESPHome/Audio TCP: Consolidate duplicated script-level EQ gate/send logic by introducing shared `arylic_set_eq_channel` in `esphome/spectra_ls_system/packages/spectra-ls-audio-tcp.yaml`, with existing `arylic_set_bass/mid/treble` IDs retained as thin compatibility wrappers.
+- ESPHome/Audio TCP: Consolidate duplicated EQ pot update/defer logic in `esphome/spectra_ls_system/packages/spectra-ls-audio-tcp.yaml` into a shared channel-aware script path to reduce repeated hot-path code while preserving per-channel behavior and deferred-send semantics.
+- Docs: Update `README.md` with explicit external reference links (ESPHome, Home Assistant, Music Assistant, and Arylic/LinkPlay API references) for easier operator onboarding.
+- ESPHome/Audio TCP: Add reversible Arylic TCP burst guard in `esphome/spectra_ls_system/components/arylic_tcp.h` to pace sustained command bursts per host/port via a short sliding-window delay (delay/coalesce behavior, no protocol changes) to reduce control-lane chatter while preserving responsiveness.
 - ESPHome: Update `esphome/spectra_ls_system/substitutions.yaml` `friendly_name` to remove reserved URL path separator (`/`) and avoid 2026.7.0 validation failure.
 - RP2040/Architecture: Pass 3B.1 removes dead legacy inline autocalibration/tracking functions and globals from `code.py` now that `sls_calibration_runtime.py` is authoritative, reducing monolith drift and keeping loop behavior manager-driven.
 - RP2040/Docs+Architecture: Add per-file RP ownership/instruction contracts at top of all RP firmware source files (`boot.py`, `code.py`, `sls_*.py`) and add a detailed RP legend document on-device (`CIRCUITPY`) with mirrored repo copy; begin Pass 3B by extracting autocalibration/tracking state machine responsibilities toward a dedicated runtime module to reduce monolith drift risk.

@@ -1,5 +1,5 @@
 <!-- Description: Human-readable overview and deployment guide for the Spectra Level / Source (Spectra L/S) Home Assistant + ESPHome system. -->
-<!-- Version: 2026.04.17.23 -->
+<!-- Version: 2026.04.17.24 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Spectra Level / Source
@@ -23,10 +23,10 @@ On `main`, project direction follows `esphome/spectra_ls_system/v-next-NOTES.md`
 
 ### Inputs (Switches, Buttons, Knobs, Sliders, Dials)
 
-- Physical control inventory in v-next: multiple switches, dedicated buttons, rotary dials/encoders, analog knobs/pots, and analog sliders.
-- Lighting slider behavior (RP2040 analog `sensor_id: 101`): maps directly to brightness (`0–100%`) for the currently selected room/target, forces temporary brightness-adjust mode for immediate visual feedback, and debounces sends so movement settles into a clean update instead of noisy bursts.
-- Room switching behavior: the Room Select control cycles rooms and resets target to `All`; when room/target menus are active, the lighting slider can also move selection and push the chosen room/target back to Home Assistant `input_select` helpers.
-- Multi-room crossfade path: the active HA lighting script (`script.control_board_set_light_dynamic`) supports room/area-wide transition seconds; when transitions are used, grouped room updates fade together for smooth multi-room crossfades instead of hard on/off jumps.
+- Direct Lighting Brightness / Hue / Saturation control over whole rooms or individual lights.
+- Fast room switching from hardware, so you can move control from one space to another instantly.
+- One-touch transport controls for audio: Play/Pause, Next, and Back/Previous on the active target.
+- Real-time Physical 3-Band EQ + volume shaping to dial in the vibe without leaving the couch.
 
 #### What these controls actually do (real-world examples)
 

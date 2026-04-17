@@ -1,9 +1,8 @@
 ## Description: RP2040 firmware for Spectra LS input scanning and UART event transport.
-## Version: 2026.04.17.2
+## Version: 2026.04.17.3
 ## Last updated: 2026-04-17
 
 import time
-import json
 import board
 import busio
 import digitalio
@@ -31,6 +30,20 @@ from sls_protocol import (
     TYPE_ANALOG,
     TYPE_ENCODER,
     TYPE_DEBUG,
+)
+from sls_calibration import (
+    load_calibration,
+    save_calibration,
+    apply_calibration,
+    calibration_missing,
+)
+from sls_analog import (
+    clamp_value,
+    scale_analog_value,
+    read_analog_raw,
+    analog_name_for_index,
+    analog_source_for_index,
+    is_pot_name,
 )
 try:
     from adafruit_seesaw.seesaw import Seesaw
@@ -215,112 +228,6 @@ def i2c_has_address(bus, address):
     finally:
         bus.unlock()
 
-def load_calibration():
-    if not CALIBRATION_ENABLED:
-        return {"internal": {}, "external": {}}
-    try:
-        with open(CALIBRATION_FILE, "r") as handle:
-            data = json.load(handle)
-            if not isinstance(data, dict):
-                return {"internal": {}, "external": {}}
-            data.setdefault("internal", {})
-            data.setdefault("external", {})
-            return data
-    except OSError:
-        return {"internal": {}, "external": {}}
-
-def save_calibration(data):
-    if not CALIBRATION_ENABLED:
-        return False
-    try:
-        with open(CALIBRATION_FILE, "w") as handle:
-            json.dump(data, handle)
-        return True
-    except OSError as exc:
-        err = getattr(exc, "errno", None)
-        if DEBUG_CALIBRATION_SERIAL:
-            print(f"Calibration save failed: {exc}")
-        if err == 30:
-            try:
-                import storage  # type: ignore
-
-                storage.remount("/", readonly=False)
-                with open(CALIBRATION_FILE, "w") as handle:
-                    json.dump(data, handle)
-                if DEBUG_CALIBRATION_SERIAL:
-                    print("Calibration save succeeded after remount")
-                return True
-            except Exception as remount_exc:
-                if DEBUG_CALIBRATION_SERIAL:
-                    print(f"Calibration remount failed: {remount_exc}")
-        return False
-
-def apply_calibration(raw_value, cal):
-    if not CALIBRATION_ENABLED or not cal:
-        return raw_value
-    raw_min = cal.get("min")
-    raw_max = cal.get("max")
-    raw_mid = cal.get("mid")
-    if raw_min is None or raw_max is None:
-        return raw_value
-    if raw_max == raw_min:
-        return raw_value
-    if raw_mid is None or raw_mid == raw_min or raw_mid == raw_max:
-        scaled = int((raw_value - raw_min) * 65535 / (raw_max - raw_min))
-    elif raw_value <= raw_mid:
-        scaled = int((raw_value - raw_min) * 32768 / (raw_mid - raw_min))
-    else:
-        scaled = 32768 + int((raw_value - raw_mid) * 32767 / (raw_max - raw_mid))
-    if scaled < 0:
-        return 0
-    if scaled > 65535:
-        return 65535
-    return scaled
-
-def clamp_value(value, min_value, max_value):
-    if value < min_value:
-        return min_value
-    if value > max_value:
-        return max_value
-    return value
-
-def scale_analog_value(calibrated_value, cal, source):
-    if ANALOG_OUTPUT_MODE == "raw":
-        return int(calibrated_value)
-    if ANALOG_OUTPUT_MODE == "percent":
-        if cal and cal.get("min") is not None and cal.get("max") is not None:
-            max_range = 65535
-        else:
-            max_range = ANALOG_RAW_MAX_DEFAULT_EXTERNAL if source == "external" else ANALOG_RAW_MAX_DEFAULT_INTERNAL
-        if max_range <= 0:
-            return 0
-        scaled = int(round((calibrated_value * ANALOG_PERCENT_RANGE) / max_range))
-        return clamp_value(scaled, 0, ANALOG_PERCENT_RANGE)
-    return int(calibrated_value)
-
-def read_analog_raw(analog, samples):
-    try:
-        if samples <= 1:
-            return analog.value
-        total = 0
-        for _ in range(samples):
-            total += analog.value
-        return int(total / samples)
-    except OSError as exc:
-        if DEBUG_GLOBAL:
-            print(f"Analog read failed: {exc}")
-        return None
-
-def analog_name_for_index(idx):
-    if idx < len(analog_inputs):
-        return analog_inputs[idx].get("name", f"analog_{idx}")
-    return f"analog_{idx}"
-
-def analog_source_for_index(idx):
-    if idx < len(analog_inputs):
-        return analog_inputs[idx].get("source", "external")
-    return "external"
-
 def build_autocal_indices(names_override=None):
     if not AUTOCAL_ENABLED:
         return []
@@ -334,7 +241,7 @@ def build_autocal_indices(names_override=None):
     for idx in range(len(analog_inputs)):
         if not analog_inputs[idx].get("enabled", True):
             continue
-        name = analog_name_for_index(idx)
+        name = analog_name_for_index(analog_inputs, idx)
         if names and name not in names:
             continue
         indices.append(idx)
@@ -401,7 +308,7 @@ elif SEESAW_ENCODERS:
 
 # Analog inputs (ADS1015 external + optional internal ADC)
 analog_inputs = []
-calibration = load_calibration()
+calibration = load_calibration(CALIBRATION_ENABLED, CALIBRATION_FILE)
 calibration.setdefault("internal", {})
 calibration.setdefault("external", {})
 ads = None
@@ -571,8 +478,8 @@ def autocal_begin_channel():
     autocal_start_ms = adafruit_ticks.ticks_ms()
     idx = autocal_current_index()
     if idx is not None:
-        name = analog_name_for_index(idx)
-        autocal_source = analog_source_for_index(idx)
+        name = analog_name_for_index(analog_inputs, idx)
+        autocal_source = analog_source_for_index(analog_inputs, idx)
         if DEBUG_CALIBRATION_SERIAL:
             print(f"Auto-cal start: {name} ({autocal_source})")
 
@@ -582,8 +489,8 @@ def autocal_finish_channel():
     if idx is None:
         autocal_active = False
         return
-    name = analog_name_for_index(idx)
-    source = autocal_source or analog_source_for_index(idx)
+    name = analog_name_for_index(analog_inputs, idx)
+    source = autocal_source or analog_source_for_index(analog_inputs, idx)
     sample_count = len(autocal_samples)
     if sample_count < AUTOCAL_MIN_SAMPLES:
         if DEBUG_CALIBRATION_SERIAL:
@@ -631,7 +538,12 @@ def autocal_finish_channel():
                 "min": int(adjusted_min),
                 "max": int(adjusted_max),
             }
-            saved = save_calibration(calibration)
+            saved = save_calibration(
+                calibration,
+                CALIBRATION_ENABLED,
+                CALIBRATION_FILE,
+                DEBUG_CALIBRATION_SERIAL,
+            )
             if DEBUG_CALIBRATION_SERIAL:
                 if saved:
                     print(
@@ -690,16 +602,9 @@ def update_autocal_trigger(pressed):
         if AUTOCAL_REQUIRE_RELEASE:
             autocal_armed = True
 
-def calibration_missing(name):
-    for source in ("external", "internal"):
-        cal = calibration.get(source, {}).get(name)
-        if cal and cal.get("min") is not None and cal.get("max") is not None:
-            return False
-    return True
-
 if AUTOCAL_ENABLED and AUTOCAL_BOOT_IF_MISSING:
     boot_names = AUTOCAL_BOOT_CHANNEL_NAMES or AUTOCAL_CHANNEL_NAMES
-    missing = [name for name in (boot_names or []) if calibration_missing(name)]
+    missing = [name for name in (boot_names or []) if calibration_missing(calibration, name)]
     if missing:
         if DEBUG_CALIBRATION_SERIAL:
             print(f"Boot auto-cal: {', '.join(missing)}")
@@ -722,14 +627,14 @@ def init_calibration_tracking():
     for idx in range(len(analog_inputs)):
         if not analog_inputs[idx].get("enabled", True):
             continue
-        name = analog_name_for_index(idx)
+        name = analog_name_for_index(analog_inputs, idx)
         if names and name not in names:
             continue
-        if calibration_missing(name):
+        if calibration_missing(calibration, name):
             tracking_indices.append(idx)
     tracking_active = bool(tracking_indices)
     if tracking_active and DEBUG_CALIBRATION_SERIAL:
-        names = ", ".join(analog_name_for_index(idx) for idx in tracking_indices)
+        names = ", ".join(analog_name_for_index(analog_inputs, idx) for idx in tracking_indices)
         print(f"Calibration tracking enabled for: {names}")
 
 def update_calibration_tracking(idx, raw):
@@ -773,11 +678,16 @@ def update_calibration_tracking(idx, raw):
         return
     if adafruit_ticks.ticks_diff(now, tracking_max_ms.get(idx, now)) < CALIBRATION_TRACKING_SETTLE_MS:
         return
-    name = analog_name_for_index(idx)
-    source = analog_source_for_index(idx)
+    name = analog_name_for_index(analog_inputs, idx)
+    source = analog_source_for_index(analog_inputs, idx)
     calibration.setdefault(source, {})
     calibration[source][name] = {"min": int(min_val), "max": int(max_val)}
-    saved = save_calibration(calibration)
+    saved = save_calibration(
+        calibration,
+        CALIBRATION_ENABLED,
+        CALIBRATION_FILE,
+        DEBUG_CALIBRATION_SERIAL,
+    )
     if saved:
         print(f"Calibration saved: {name} min={int(min_val)} max={int(max_val)}")
     else:
@@ -837,10 +747,6 @@ flush_tx = packet_writer.flush
 last_mode_selector_index = None
 last_control_class_index = None
 
-def _is_pot_name(name):
-    return "pot" in name
-
-
 while True:
     # Update Phase B selector/switch inputs and emit only on valid state transitions.
     for entry in mode_selector_inputs:
@@ -890,7 +796,7 @@ while True:
             continue
         analog = analog_entry["analog"]
         source = analog_entry.get("source", "external")
-        name = analog_name_for_index(idx)
+        name = analog_name_for_index(analog_inputs, idx)
         now = adafruit_ticks.ticks_ms()
         if source == "external" and external_adc_disabled_until_ms:
             if adafruit_ticks.ticks_diff(now, external_adc_disabled_until_ms) < 0:
@@ -899,7 +805,7 @@ while True:
                 external_adc_disabled_until_ms = (now + EXTERNAL_ADC_DISABLE_MS) & 0xFFFFFFFF
                 continue
             external_adc_disabled_until_ms = 0
-        raw = read_analog_raw(analog, ANALOG_SAMPLES)
+        raw = read_analog_raw(analog, ANALOG_SAMPLES, DEBUG_GLOBAL)
         if raw is None:
             if source == "external":
                 external_adc_fail_count += 1
@@ -956,7 +862,7 @@ while True:
         sorted_hist = sorted(history)
         median_raw = sorted_hist[len(sorted_hist) // 2] if sorted_hist else raw
 
-        calibrated = apply_calibration(median_raw, cal)
+        calibrated = apply_calibration(median_raw, cal, CALIBRATION_ENABLED)
         calibrated = clamp_value(calibrated, 0, 65535)
         previous = analog_filtered[idx]
         if previous is None:
@@ -972,7 +878,15 @@ while True:
         analog_filtered[idx] = filtered
         filtered_value = int(round(filtered))
 
-        value = scale_analog_value(filtered_value, cal, source)
+        value = scale_analog_value(
+            filtered_value,
+            cal,
+            source,
+            ANALOG_OUTPUT_MODE,
+            ANALOG_PERCENT_RANGE,
+            ANALOG_RAW_MAX_DEFAULT_EXTERNAL,
+            ANALOG_RAW_MAX_DEFAULT_INTERNAL,
+        )
         if ANALOG_OUTPUT_MODE == "percent":
             snap_zero = ANALOG_SNAP_ZERO_PCT_BY_NAME.get(name, ANALOG_SNAP_ZERO_PCT)
             snap_full = ANALOG_SNAP_FULL_PCT_BY_NAME.get(name, ANALOG_SNAP_FULL_PCT)
@@ -1031,7 +945,7 @@ while True:
                         f"Analog {name} raw={raw} median={median_raw} cal={calibrated} "
                         f"filt={filtered_value} out={value} id={event_id}"
                     )
-        if DEBUG_GLOBAL and _is_pot_name(name) and name != "volume_pot":
+        if DEBUG_GLOBAL and is_pot_name(name) and name != "volume_pot":
             direction = "up" if (last_sent is None or value > last_sent) else "down" if value < last_sent else "hold"
             print(
                 f"POT {name} {direction} raw={raw} median={median_raw} cal={calibrated} "

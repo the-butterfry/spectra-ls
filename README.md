@@ -1,12 +1,12 @@
 <!-- Description: Human-readable overview and deployment guide for the Spectra LS Home Assistant + ESPHome system. -->
-<!-- Version: 2026.04.16.1 -->
+<!-- Version: 2026.04.16.2 -->
 <!-- Last updated: 2026-04-16 -->
 
 # Spectra LS System
 
-Spectra LS is a dual-MCU control and display system for whole-home audio, built around Home Assistant, ESPHome, and Music Assistant. The ESP32-S3 runs the OLED UI, Home Assistant state sync, and TCP-based audio control, while an RP2040 scans physical inputs (buttons, encoders, and pots) and publishes normalized events upstream. The goal is a resilient, low-latency hardware UX that stays stable under Home Assistant state churn and network jitter, while keeping branch-safe delivery for both active development (`main`) and stabilized control-path operation (`menu-only`).
+Spectra LS is a whole-home control system for audio and lighting, built on Home Assistant, ESPHome, and Music Assistant. It is designed to give you fast, physical control at the wall while keeping room state, source state, and automations in sync.
 
-At runtime, Home Assistant package logic resolves active room/source context and now-playing metadata, ESPHome renders and mediates user interactions, and the RP2040 provides deterministic local input capture. Key features include source-aware control targeting, menu-driven hardware control surfaces, resilient fallback handling for temporary data gaps, and branch parity controls for shared contracts (protocol/API/helper entity behavior) to avoid drift between operational branches.
+In practice, Home Assistant manages rooms, helpers, and automation logic; ESPHome drives the OLED interface and real-time control behavior; and the hardware input layer feeds clean button/encoder/pot events into that stack. The result is a responsive, hardware-first experience for source control, transport, volume, EQ, lighting target selection, and lighting adjustment, with sensible fallback behavior when upstream states are briefly noisy or delayed.
 
 ## System Interaction (Moderate Detail)
 

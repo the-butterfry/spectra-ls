@@ -1,5 +1,5 @@
 <!-- Description: Human-readable overview and deployment guide for the Spectra Level / Source (Spectra L/S) Home Assistant + ESPHome system. -->
-<!-- Version: 2026.04.17.22 -->
+<!-- Version: 2026.04.17.23 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Spectra Level / Source
@@ -7,6 +7,8 @@
 **⚠️ State of project (published 2026-04-16): Active heavy development on `main`. Not currently recommended for fresh production installations unless you are comfortable with frequent updates and occasional migration adjustments.**
 
 [Home Assistant](https://www.home-assistant.io/) unifies and automates devices and routines across your home; Spectra Level / Source (Spectra L/S) brings that power back into your hands as an intelligent physical control surface. With tactile knobs, smooth sliders, physical switches, dedicated buttons, and rotary dials, direct analog inputs drive Volume and Physical 3-Band EQ control for everything from everyday listening to a home dance party.
+
+This is the point: Spectra L/S lets you run your home audio and lighting like an instrument, not an app screen. Hit Play/Pause, jump Next/Back, shape tone, move brightness, and switch rooms in seconds from the coffee table while the OLED keeps every move clear and immediate.
 
 Behind the scenes, Home Assistant manages room logic, helpers, and automation flow, while ESPHome drives the OLED UI and real-time control behavior. In v-next, multiple switches and dials expand functionality while keeping the interface simple and clear, and the screen stays responsive to inputs with visual menu feedback as you navigate. If Home Assistant already knows a smart light or sound target, Spectra L/S can discover it and interact automatically, including direct tuning/control workflows from the hardware interface.
 
@@ -25,6 +27,18 @@ On `main`, project direction follows `esphome/spectra_ls_system/v-next-NOTES.md`
 - Lighting slider behavior (RP2040 analog `sensor_id: 101`): maps directly to brightness (`0–100%`) for the currently selected room/target, forces temporary brightness-adjust mode for immediate visual feedback, and debounces sends so movement settles into a clean update instead of noisy bursts.
 - Room switching behavior: the Room Select control cycles rooms and resets target to `All`; when room/target menus are active, the lighting slider can also move selection and push the chosen room/target back to Home Assistant `input_select` helpers.
 - Multi-room crossfade path: the active HA lighting script (`script.control_board_set_light_dynamic`) supports room/area-wide transition seconds; when transitions are used, grouped room updates fade together for smooth multi-room crossfades instead of hard on/off jumps.
+
+#### What these controls actually do (real-world examples)
+
+- **Transport command cluster**: dedicated hardware buttons drive full playback control — **Play/Pause**, **Next**, and **Back/Previous** — on the active audio target without hunting through phone menus.
+- **Room-quick lighting flow**: tap Room Select to cycle spaces, then move the lighting slider to set brightness for that room/target immediately; Spectra L/S syncs the selection back to Home Assistant helpers.
+- **Physical 3-Band EQ shaping**: bass, mid, and treble analog controls let you dial a calmer background mix or push a brighter, punchier profile for party mode in real time.
+- **Source + target control from hardware**: source toggle and target selectors keep control on-device so you can jump between zones and sources with instant OLED feedback.
+
+#### v-next crossfade / balance slider (planned feature)
+
+- **Multi-room mode**: the slider will shift volume balance between rooms (for example, pull energy toward the living room while easing the kitchen/bedroom).
+- **Single-room mode**: the same slider will switch to left/right speaker balance for precise stereo placement in one room.
 
 - **[PCF8575](https://www.nxp.com/products/interfaces/ic-spi-i3c-interface-devices/general-purpose-i-o-gpio/remote-16-bit-i-o-expander-for-ic-bus:PCF8575)** digital expander (active at `0x20`; optional expansion at `0x21`) for button/switch inputs.
 - **[Seesaw](https://learn.adafruit.com/adafruit-seesaw-atsamd09-breakout/overview) rotary encoders** (menu + lighting encoders).

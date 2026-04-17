@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.52 -->
+<!-- Version: 2026.04.17.53 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
+
+- Docs/README: Remove the literal “audio nerd” phrasing in the Digital Audio Ingest + Final DAC Path section and replace the multi-bullet codec list with a single concise `Supports: FLAC, MP3, AAC, AAC+, ALAC, APE, WAV.` line.
 
 - Docs/README: Set front-page title and first project mention to **Spectra Level / Source** (with immediate **L/S** shorthand), normalize remaining visible **Spectra LS** wording to **L/S**, and remove the dedicated external-links block including the dead `n4archive` reference in favor of inline linked hardware/ecosystem mentions.
 

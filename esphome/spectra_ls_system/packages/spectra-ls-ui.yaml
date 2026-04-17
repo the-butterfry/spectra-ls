@@ -1,5 +1,5 @@
 # Description: Spectra LS UI/menu input handling + UI fonts + now-playing helper sensors.
-# Version: 2026.04.17.5
+# Version: 2026.04.17.6
 # Last updated: 2026-04-17
 # Update version/date whenever you change this file.
 #
@@ -764,8 +764,8 @@ interval:
               id(playing_false_since_ms) > 0 &&
               (now - id(playing_false_since_ms)) >= playback_off_grace_ms) {
             id(screen_mode) = 0;
-            id(menu_active) = true;
-            id(menu_level) = ${menu_level_main};
+            id(menu_active) = false;
+            id(menu_level) = 0;
             id(menu_index) = 0;
           }
       - script.execute: compute_display_state

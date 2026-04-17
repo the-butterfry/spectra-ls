@@ -1,5 +1,5 @@
 # Description: Lighting controls package for Spectra LS System.
-# Version: 2026.04.17.7
+# Version: 2026.04.17.8
 # Last updated: 2026-04-17
 # Update version/date whenever you change this file.
 
@@ -263,9 +263,6 @@ interval:
               id(screen_mode) = 1;
             } else {
               id(screen_mode) = 0;
-              id(menu_active) = true;
-              id(menu_level) = 1;
-              id(menu_index) = 0;
             }
             id(compute_display_state).execute();
             return;

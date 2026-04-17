@@ -1,5 +1,5 @@
 # Description: Top-level ignore rules for Home Assistant monorepo.
-# Version: 2026.04.17.2
+# Version: 2026.04.17.3
 # Last updated: 2026-04-17
 
 # Secrets / credentials
@@ -66,3 +66,8 @@ scenes.yaml
 # Re-ignore archived previous folders after broad re-include rules above
 esphome/control-py/previous/**
 esphome/spectra_ls_system/previous/**
+
+# Guardrail: prevent accidental reintroduction of split package YAML fragments
+# under ma_control_hub (only .inc files are valid in that folder).
+packages/ma_control_hub/*.yaml
+!packages/ma_control_hub/*.inc

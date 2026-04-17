@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.54 -->
+<!-- Version: 2026.04.17.55 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
+
+- Docs/README: Link `Home Assistant` at its first paragraph mention and de-link later duplicate `Home Assistant` link usage so external-linking follows first-mention-only style.
 
 - Docs/README: Reframe the Digital Audio Ingest section around intended day-to-day use (coffee-table/home digital-to-analog control hub, couch/desk operation) and remove HDMI/ARC hyperlinking in that section while keeping capability statements intact.
 

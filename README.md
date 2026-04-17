@@ -1,12 +1,12 @@
 <!-- Description: Human-readable overview and deployment guide for the Spectra Level / Source (L/S) Home Assistant + ESPHome system. -->
-<!-- Version: 2026.04.17.16 -->
+<!-- Version: 2026.04.17.17 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Spectra Level / Source
 
 **⚠️ State of project (published 2026-04-16): Active heavy development on `main`. Not currently recommended for fresh production installations unless you are comfortable with frequent updates and occasional migration adjustments.**
 
-Home Assistant unifies and automates devices and routines across your home; Spectra Level / Source (L/S) brings that power back into your hands as an intelligent physical control surface. With tactile knobs, smooth sliders, physical switches, dedicated buttons, and rotary dials, you can control whole-home music and lighting by touch instead of living inside phone apps.
+[Home Assistant](https://www.home-assistant.io/) unifies and automates devices and routines across your home; Spectra Level / Source (L/S) brings that power back into your hands as an intelligent physical control surface. With tactile knobs, smooth sliders, physical switches, dedicated buttons, and rotary dials, you can control whole-home music and lighting by touch instead of living inside phone apps.
 
 Behind the scenes, Home Assistant manages room logic, helpers, and automation flow, while ESPHome drives the OLED UI and real-time control behavior. L/S is designed to auto-discover rooms, lighting targets, and audio players from your existing setup, so day-to-day operation needs very little manual configuration.
 
@@ -86,7 +86,7 @@ Recommended flow: run 1 → 2 → 3 after deploy, then use 4 for specific action
 ## Audio Clients / Player Types L/S Interacts With
 
 - **[Music Assistant](https://music-assistant.io/) players** (`media_player` entities) for normalized multi-source metadata and active target context.
-- **[Home Assistant](https://www.home-assistant.io/) media players** (generic `media_player.*`) for cross-integration state/transport interoperability.
+- **Home Assistant media players** (generic `media_player.*`) for cross-integration state/transport interoperability.
 - **[WiiM](https://www.wiimhome.com/) Audio integration players** for transport-oriented control paths in supported rooms.
 - **[Arylic](https://developer.arylic.com/httpapi/) / [LinkPlay](https://linkplay.com/) TCP endpoints** for direct low-latency control (volume, EQ, source, transport fallback).
 - **AirPlay / Apple TV style sources** detected through HA/MA metadata and source-app attributes.

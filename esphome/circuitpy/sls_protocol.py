@@ -1,6 +1,10 @@
 # Description: UART packet writer helpers for Spectra LS RP2040 firmware.
-# Version: 2026.04.17.1
+# Version: 2026.04.17.2
 # Last updated: 2026-04-17
+#
+# RP FILE CONTRACT:
+# - Owns UART framing/wire-format and buffered packet transmission.
+# - Must NOT include hardware input decode, calibration policy, or UI/menu logic.
 
 import adafruit_ticks
 

@@ -1,6 +1,10 @@
 # Description: Shared RP2040 firmware constants for Spectra LS input/event contracts.
-# Version: 2026.04.17.1
+# Version: 2026.04.17.2
 # Last updated: 2026-04-17
+#
+# RP FILE CONTRACT:
+# - Owns constants, IDs, and static pin/event maps only.
+# - Must NOT read hardware, hold mutable runtime state, or emit packets.
 
 BUTTON_PINS = {
     "room": 0,

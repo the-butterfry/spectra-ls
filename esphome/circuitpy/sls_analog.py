@@ -1,6 +1,10 @@
 # Description: Analog read/scale helpers for Spectra LS RP2040 firmware.
-# Version: 2026.04.17.1
+# Version: 2026.04.17.2
 # Last updated: 2026-04-17
+#
+# RP FILE CONTRACT:
+# - Owns analog helper math (read/scale/name/source helpers).
+# - Must NOT persist calibration, manage triggers, or emit packets.
 
 
 def clamp_value(value, min_value, max_value):

@@ -1,11 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.20 -->
+<!-- Version: 2026.04.17.21 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
 
+- RP2040/Docs+Architecture: Add per-file RP ownership/instruction contracts at top of all RP firmware source files (`boot.py`, `code.py`, `sls_*.py`) and add a detailed RP legend document on-device (`CIRCUITPY`) with mirrored repo copy; begin Pass 3B by extracting autocalibration/tracking state machine responsibilities toward a dedicated runtime module to reduce monolith drift risk.
 - RP2040/Architecture: Pass 3 introduces reusable runtime helper functions for button-edge emit/log flow and precomputed analog channel profiles to reduce repeated hot-path lookups/branches while preserving packet format and behavioral semantics.
 - RP2040/Architecture: Pass 2 modularization extracts analog/calibration helper functions from `code.py` into `sls_analog.py` and `sls_calibration.py` (live `CIRCUITPY` + repo mirror) while preserving runtime loop behavior and packet contract.
 - RP2040/Architecture: Begin v-next-safe modularization of firmware by extracting config/protocol/input-decode helpers from monolithic `code.py` into dedicated modules in live `CIRCUITPY/` with synchronized mirror under `esphome/circuitpy/`; preserve existing packet contract and runtime behavior.

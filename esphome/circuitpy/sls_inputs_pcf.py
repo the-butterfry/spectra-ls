@@ -1,6 +1,10 @@
 # Description: PCF8575 input setup and decode helpers for Spectra LS RP2040 firmware.
-# Version: 2026.04.17.1
+# Version: 2026.04.17.2
 # Last updated: 2026-04-17
+#
+# RP FILE CONTRACT:
+# - Owns PCF8575 pin setup and selector decode helpers.
+# - Must NOT emit UART packets or hold non-input runtime orchestration state.
 
 import digitalio
 from adafruit_debouncer import Debouncer

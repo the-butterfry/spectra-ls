@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.56 -->
+<!-- Version: 2026.04.17.57 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
+
+- Docs/README: Add explicit direct analog-input control wording for Volume + 3-band EQ, document automatic Light/Sound interaction behavior when Home Assistant already knows targets, and include UP2STREAM HD DAC audio-side capability notes (dual-band Wi-Fi, AirPlay 2, Spotify Connect, TIDAL Connect, aptX HD Bluetooth 5.0, no-amp module class) sourced from published product metadata.
 
 - Docs/README: Expand front-page intended-use messaging to explicitly call out direct analog control for Volume + 3-band EQ (bass/mid/treble), home dance-party usage, v-next multiple switches/dials expansion, and responsive screen/menu navigation feedback.
 

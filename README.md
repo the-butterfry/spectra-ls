@@ -1,14 +1,14 @@
 <!-- Description: Human-readable overview and deployment guide for the Spectra Level / Source (L/S) Home Assistant + ESPHome system. -->
-<!-- Version: 2026.04.17.18 -->
+<!-- Version: 2026.04.17.19 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Spectra Level / Source
 
 **⚠️ State of project (published 2026-04-16): Active heavy development on `main`. Not currently recommended for fresh production installations unless you are comfortable with frequent updates and occasional migration adjustments.**
 
-[Home Assistant](https://www.home-assistant.io/) unifies and automates devices and routines across your home; Spectra Level / Source (L/S) brings that power back into your hands as an intelligent physical control surface. With tactile knobs, smooth sliders, physical switches, dedicated buttons, and rotary dials, you get direct analog control over Volume and 3-band EQ (bass/mid/treble) for everything from everyday listening to a home dance party.
+[Home Assistant](https://www.home-assistant.io/) unifies and automates devices and routines across your home; Spectra Level / Source (L/S) brings that power back into your hands as an intelligent physical control surface. With tactile knobs, smooth sliders, physical switches, dedicated buttons, and rotary dials, direct analog inputs drive Volume and 3-band EQ (bass/mid/treble) control for everything from everyday listening to a home dance party.
 
-Behind the scenes, Home Assistant manages room logic, helpers, and automation flow, while ESPHome drives the OLED UI and real-time control behavior. In v-next, multiple switches and dials expand functionality while keeping the interface simple and clear, and the screen stays responsive to inputs with visual menu feedback as you navigate. L/S is designed to auto-discover rooms, lighting targets, and audio players from your existing setup, so day-to-day operation needs very little manual configuration.
+Behind the scenes, Home Assistant manages room logic, helpers, and automation flow, while ESPHome drives the OLED UI and real-time control behavior. In v-next, multiple switches and dials expand functionality while keeping the interface simple and clear, and the screen stays responsive to inputs with visual menu feedback as you navigate. If Home Assistant already knows a smart light or sound target, L/S can discover it and interact automatically, including direct tuning/control workflows from the hardware interface.
 
 On `main`, project direction follows `esphome/spectra_ls_system/v-next-NOTES.md`: hardware-first UX, menu as fallback, deterministic controls, and scalable room/target handling.
 
@@ -41,8 +41,10 @@ Spectra Level / Source (L/S) is designed for real-world use right where you live
 
 - HDMI input from an ARC-capable source is supported in the source chain.
 - ARC digital audio is split/extracted and routed into the final output conversion stage.
+- Audio-side streaming/control capabilities (from UP2STREAM HD DAC product data): dual-band Wi-Fi, AirPlay 2, Spotify Connect, TIDAL Connect, and aptX HD Bluetooth 5.0.
 - Final DAC stage: **[ESS ES9038Q2M](https://www.esstech.com/products-overview/es9038q2m/)** (`ESS 9038Q2M DAC`).
 - Conversion target capability: **192kHz / 24-bit**.
+- Board class: no-amp streaming DAC/preamp module.
 - Supports: `FLAC`, `MP3`, `AAC`, `AAC+`, `ALAC`, `APE`, `WAV`.
 
 ### Recommended Screen

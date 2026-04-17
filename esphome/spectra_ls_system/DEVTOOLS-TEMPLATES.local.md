@@ -1,5 +1,5 @@
 <!-- Description: Copy/paste Home Assistant Dev Tools template diagnostics for Spectra LS System. -->
-<!-- Version: 2026.04.16.13 -->
+<!-- Version: 2026.04.16.14 -->
 <!-- Last updated: 2026-04-16 -->
 
 # Spectra LS System — Dev Tools Template Validation
@@ -1023,13 +1023,13 @@ Unavailable core entities:
 {% endif %}
 ```
 
-## 11) Rename Step Validation — Peripherals No-Rings (Post-Reload)
+## 11) Rename Step Validation — Peripherals Package (Post-Reload)
 
 ```jinja
 {# =========================
-  Spectra Rename Step Validation (Peripherals no-rings rename)
+  Spectra Rename Step Validation (Peripherals package rename)
   Run AFTER: HA reload/restart + ESPHome device online
-  Purpose: confirm no contract regression in display/routing surfaces after renaming the active no-rings peripherals include.
+  Purpose: confirm no contract regression in display/routing surfaces after renaming the active peripherals include.
   ========================= #}
 
 {% set required = [
@@ -1084,7 +1084,7 @@ Unavailable core entities:
   {% set verdict = 'WARN' %}
 {% endif %}
 
-### Rename Validation — Peripherals No-Rings
+### Rename Validation — Peripherals Package
 - Result: **{{ verdict }}**
 - Timestamp: **{{ now() }}**
 - Checked entities: **{{ required | length }}**
@@ -1129,7 +1129,7 @@ Unavailable core entities:
 
 ### Next action guidance
 {% if verdict == 'PASS' %}
-- Peripherals no-rings rename step validated. Proceed to next rename slice.
+- Peripherals package rename step validated. Proceed to next rename slice.
 {% elif (ns.missing | length) > 0 %}
 - Missing display/routing contracts detected. Restore package include/load before next rename.
 {% else %}

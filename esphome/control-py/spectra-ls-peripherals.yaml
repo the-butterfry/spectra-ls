@@ -1,5 +1,5 @@
-# Description: Spectra LS OLED-only peripherals package (no LED rings) for Control Board v2.
-# Version: 2026.04.16.1
+# Description: Spectra LS OLED peripherals package for Control Board v2.
+# Version: 2026.04.16.2
 # Last updated: 2026-04-16
 # Update version/date whenever you change this file.
 esphome:

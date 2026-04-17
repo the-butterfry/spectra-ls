@@ -1,11 +1,13 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.16.20 -->
+<!-- Version: 2026.04.16.21 -->
 <!-- Last updated: 2026-04-16 -->
 
 # Changelog
 
 ## 2026-04-16
 
+- ESPHome: Phase 5 rename step on tracked main path — rename UI package to `spectra-ls-ui.yaml` and repoint `esphome/control-board-esp32-tcp.yaml` include.
+- Docs: Add targeted post-rename HA reload validation template (UI package step) to `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md` for per-step spectra rename checks.
 - ESPHome: Phase 4 rename step on tracked main path — rename system package to `spectra-ls-system.yaml` and repoint `esphome/control-board-esp32-tcp.yaml` include.
 - Docs: Add targeted post-rename HA reload validation template (system package step) to `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md` for per-step spectra rename checks.
 - ESPHome: Phase 3 rename step on tracked main path — rename audio TCP package to `spectra-ls-audio-tcp.yaml` and repoint `esphome/control-board-esp32-tcp.yaml` include.

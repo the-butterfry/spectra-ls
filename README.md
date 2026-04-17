@@ -6,7 +6,7 @@
 
 **⚠️ State of project (published 2026-04-16): Active heavy development on `main`. Not currently recommended for fresh production installations unless you are comfortable with frequent updates and occasional migration adjustments.**
 
-[Home Assistant](https://www.home-assistant.io/) unifies and automates devices and routines across your home; Spectra Level / Source (Spectra L/S) is the tactile layer that puts control back in your hands. With physical controls for transport, lighting, volume, and tone, you can shape the atmosphere of your home in seconds from the coffee table.
+[Home Assistant](https://www.home-assistant.io/) unifies and automates devices and routines across your digital home; Spectra Level / Source (Spectra L/S) is the tactile analog layer that puts control back in your hands. With physical controls for transport, lighting, volume, and tone, you can shape the atmosphere of your home in seconds from the coffee table.
 
 Spectra L/S is built to feel immediate. Tap Play/Pause, jump Next/Back, tune brightness and color, and sculpt sound with Physical 3-Band EQ — all with clear OLED feedback that keeps every action obvious.
 

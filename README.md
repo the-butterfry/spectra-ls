@@ -1,14 +1,14 @@
 <!-- Description: Human-readable overview and deployment guide for the Spectra Level / Source (L/S) Home Assistant + ESPHome system. -->
-<!-- Version: 2026.04.17.17 -->
+<!-- Version: 2026.04.17.18 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Spectra Level / Source
 
 **⚠️ State of project (published 2026-04-16): Active heavy development on `main`. Not currently recommended for fresh production installations unless you are comfortable with frequent updates and occasional migration adjustments.**
 
-[Home Assistant](https://www.home-assistant.io/) unifies and automates devices and routines across your home; Spectra Level / Source (L/S) brings that power back into your hands as an intelligent physical control surface. With tactile knobs, smooth sliders, physical switches, dedicated buttons, and rotary dials, you can control whole-home music and lighting by touch instead of living inside phone apps.
+[Home Assistant](https://www.home-assistant.io/) unifies and automates devices and routines across your home; Spectra Level / Source (L/S) brings that power back into your hands as an intelligent physical control surface. With tactile knobs, smooth sliders, physical switches, dedicated buttons, and rotary dials, you get direct analog control over Volume and 3-band EQ (bass/mid/treble) for everything from everyday listening to a home dance party.
 
-Behind the scenes, Home Assistant manages room logic, helpers, and automation flow, while ESPHome drives the OLED UI and real-time control behavior. L/S is designed to auto-discover rooms, lighting targets, and audio players from your existing setup, so day-to-day operation needs very little manual configuration.
+Behind the scenes, Home Assistant manages room logic, helpers, and automation flow, while ESPHome drives the OLED UI and real-time control behavior. In v-next, multiple switches and dials expand functionality while keeping the interface simple and clear, and the screen stays responsive to inputs with visual menu feedback as you navigate. L/S is designed to auto-discover rooms, lighting targets, and audio players from your existing setup, so day-to-day operation needs very little manual configuration.
 
 On `main`, project direction follows `esphome/spectra_ls_system/v-next-NOTES.md`: hardware-first UX, menu as fallback, deterministic controls, and scalable room/target handling.
 
@@ -26,6 +26,7 @@ On `main`, project direction follows `esphome/spectra_ls_system/v-next-NOTES.md`
 - **[ADS1015](https://www.ti.com/product/ADS1015)** analog ADC for high-resolution pots (volume, EQ bass/treble, lighting slider).
 - **RP2040 internal ADC** for EQ mid channel.
 - **[ADS7830](https://www.ti.com/product/ADS7830)** (recommended expansion, `0x49`) for additional low-resolution selector/switch channels.
+- v-next analog control surface emphasis: direct analog Volume + 3-band EQ with additional switches/dials for expanded control coverage.
 
 ### Control Interfaces
 

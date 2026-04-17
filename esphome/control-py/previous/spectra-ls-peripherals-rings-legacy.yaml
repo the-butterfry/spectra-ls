@@ -1,6 +1,6 @@
-# Description: OLED + LED rings peripherals package for Control Board v2.
-# Version: 2026.04.13.1
-# Last updated: 2026-04-13
+# Description: Spectra LS archived OLED + LED rings peripherals package for Control Board v2.
+# Version: 2026.04.16.1
+# Last updated: 2026-04-16
 # Update version/date whenever you change this file.
 substitutions:
   # Defaults (override in main config as needed)

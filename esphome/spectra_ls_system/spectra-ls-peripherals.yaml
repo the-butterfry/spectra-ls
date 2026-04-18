@@ -1,5 +1,5 @@
 # Description: Spectra LS OLED-only peripherals package (no LED rings) for Control Board v2.
-# Version: 2026.04.18.2
+# Version: 2026.04.18.3
 # Last updated: 2026-04-18
 # Update version/date whenever you change this file.
 esphome:
@@ -86,8 +86,12 @@ interval:
 
           const bool state_active1 = id(ha_audio_state).has_state() && state_is_active(id(ha_audio_state).state.c_str());
           const bool state_playing1 = id(ha_audio_state).has_state() && state_is_playing(id(ha_audio_state).state.c_str());
+          const uint32_t meta_stale_ms = (uint32_t) ${meta_stale_ms};
+          const bool ha_recent_meta = id(ha_audio1_last_meta_ms) > 0 && (now - id(ha_audio1_last_meta_ms)) < meta_stale_ms;
+          const bool ha_recent_pos = id(ha_audio_pos_last_ms) > 0 && (now - id(ha_audio_pos_last_ms)) < meta_stale_ms;
+          const bool ha_playback_activity_recent = ha_recent_meta || ha_recent_pos;
           if (state_active1) id(ha_audio1_last_active_ms) = now;
-          if (state_playing1) id(ha_audio1_last_playing_ms) = now;
+          if (state_playing1 && ha_playback_activity_recent) id(ha_audio1_last_playing_ms) = now;
           bool playing_raw = false;
           bool ha_state_playing = false;
           if (state_playing1) { playing_raw = true; ha_state_playing = true; }
@@ -109,7 +113,6 @@ interval:
           }
           const std::string ary_src_low = to_lower_ascii(ary_src);
           const bool arylic_source_active = !ary_src.empty() && ary_src_low != "idle";
-          const uint32_t meta_stale_ms = (uint32_t) ${meta_stale_ms};
           const uint32_t meta_grace_ms = (uint32_t) ${meta_playing_grace_ms};
           auto meta_recent = [&](uint32_t last_ms) {
             return last_ms > 0 && (now - last_ms) < meta_grace_ms;
@@ -141,10 +144,11 @@ interval:
           if (!playing && ha_recent_playing) {
             playing = true;
           }
-          if (playing && !arylic_source_active && !lr_source_active_state && !any_activity_recent && !ha_state_playing && !ha_recent_playing) {
+          const bool ha_state_playing_effective = ha_state_playing && ha_playback_activity_recent;
+          if (playing && !arylic_source_active && !lr_source_active_state && !any_activity_recent && !ha_state_playing_effective && !ha_recent_playing) {
             playing = false;
           }
-          if (playing_raw || arylic_recent || lr_recent || state_playing1) {
+          if (playing_raw || arylic_recent || lr_recent || ha_state_playing_effective) {
             id(last_playing_true_ms) = now;
           }
           const uint32_t playing_grace_ms = (uint32_t) ${meta_playing_grace_ms};
@@ -679,6 +683,43 @@ script:
 
           id(display_state) = display_state_value;
           id(screensaver_active) = (display_state_value == STATE_SCREENSAVER);
+
+          {
+            static int prev_display_state = -1;
+            static int prev_screen_mode = -1;
+            static int prev_no_audio_activity = -1;
+            static int prev_menu_active = -1;
+            static int prev_lighting_active = -1;
+            static uint32_t last_diag_log_ms = 0;
+            const int now_no_audio_activity = no_audio_activity ? 1 : 0;
+            const int now_menu_active = menu_active_now ? 1 : 0;
+            const int now_lighting_active = lighting_active ? 1 : 0;
+            const int now_screen_mode = id(screen_mode);
+            const bool transitioned =
+              (display_state_value != prev_display_state) ||
+              (now_screen_mode != prev_screen_mode) ||
+              (now_no_audio_activity != prev_no_audio_activity) ||
+              (now_menu_active != prev_menu_active) ||
+              (now_lighting_active != prev_lighting_active);
+            if (transitioned && (now - last_diag_log_ms) > 250) {
+              last_diag_log_ms = now;
+              ESP_LOGI("disp_diag",
+                       "state=%d no_audio=%d menu=%d lighting=%d screen_mode=%d np_active=%d playing=%d idle_ms=%u",
+                       display_state_value,
+                       now_no_audio_activity,
+                       now_menu_active,
+                       now_lighting_active,
+                       now_screen_mode,
+                       now_playing_active ? 1 : 0,
+                       playing ? 1 : 0,
+                       (unsigned) idle_ms);
+            }
+            prev_display_state = display_state_value;
+            prev_screen_mode = now_screen_mode;
+            prev_no_audio_activity = now_no_audio_activity;
+            prev_menu_active = now_menu_active;
+            prev_lighting_active = now_lighting_active;
+          }
 
           if (${menu_debug}) {
             static int last_display_state_log = -1;

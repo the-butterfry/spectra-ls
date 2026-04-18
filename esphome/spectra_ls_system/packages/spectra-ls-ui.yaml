@@ -1,5 +1,5 @@
 # Description: Spectra LS UI/menu input handling + UI fonts + now-playing helper sensors.
-# Version: 2026.04.18.10
+# Version: 2026.04.18.13
 # Last updated: 2026-04-18
 # Update version/date whenever you change this file.
 #
@@ -160,9 +160,46 @@ script:
           const int LV_LIGHT_ADJUST = ${menu_level_lighting_adjust};
           const int LV_LIGHT_TOGGLE = ${menu_level_lighting_toggle};
           const int LV_META = ${menu_level_meta_select};
+          const uint32_t now = millis();
           id(control_target_prompt_commit) = false;
           id(control_target_prompt_entity) = "";
           id(control_target_popup_active) = false;
+          if (!id(menu_active)) {
+            if (id(control_target_prompt_active) && !id(control_target_prompt_manual)) {
+              id(control_target_prompt_active) = false;
+              id(control_target_popup_active) = false;
+              id(control_target_prompt_snooze_until_ms) = now + ${control_target_prompt_cooldown_ms};
+            }
+            id(menu_active) = true;
+            id(lighting_adjust_mode) = 0;
+            if (id(screen_mode) == 0) {
+              id(menu_level) = LV_LIGHT_ROOMS;
+              id(menu_light_room) = id(selected_room);
+              id(menu_index) = id(menu_light_room);
+              return;
+            }
+            id(menu_level) = LV_GEAR;
+            id(menu_index) = 0;
+            return;
+          }
+          if (id(control_target_prompt_active) && !id(control_target_prompt_manual)) {
+            id(control_target_prompt_active) = false;
+            id(control_target_popup_active) = false;
+            id(control_target_prompt_snooze_until_ms) = now + ${control_target_prompt_cooldown_ms};
+            if (id(menu_level) < LV_MAIN) {
+              id(menu_active) = true;
+              id(lighting_adjust_mode) = 0;
+              if (id(screen_mode) == 0) {
+                id(menu_level) = LV_LIGHT_ROOMS;
+                id(menu_light_room) = id(selected_room);
+                id(menu_index) = id(menu_light_room);
+              } else {
+                id(menu_level) = LV_GEAR;
+                id(menu_index) = 0;
+              }
+              return;
+            }
+          }
           if (id(control_target_prompt_active)) {
             id(menu_active) = false;
             id(menu_level) = 0;
@@ -210,7 +247,6 @@ script:
               ESP_LOGW("target_prompt", "no targets (raw='%s')", entities_raw.c_str());
               id(control_target_prompt_active) = false;
               id(control_target_prompt_manual) = false;
-              const uint32_t now = millis();
               id(meta_popup_label) = "NO TARGETS";
               id(meta_popup_until_ms) = now + ${meta_popup_ms};
               id(control_target_popup_active) = true;
@@ -234,7 +270,6 @@ script:
                 id(menu_active) = false;
                 id(menu_level) = 0;
                 id(menu_index) = 0;
-                const uint32_t now = millis();
                 id(meta_popup_label) = entity;
                 id(meta_popup_until_ms) = now + ${meta_popup_ms};
                 id(control_target_popup_active) = true;
@@ -266,21 +301,6 @@ script:
           const int menu_level5_count = room_count + 1;
           const int menu_level6_count = target_count + 1;
           const int menu_level9_count = meta_count + ${menu_count_meta_base};
-
-          if (!id(menu_active)) {
-            if (id(screen_mode) == 0) {
-              id(menu_active) = true;
-              id(menu_level) = LV_LIGHT_ROOMS;
-              id(menu_light_room) = id(selected_room);
-              id(menu_index) = id(menu_light_room);
-              id(lighting_adjust_mode) = 0;
-              return;
-            }
-            id(menu_active) = true;
-            if (id(menu_level) < LV_MAIN) id(menu_level) = LV_MAIN;
-            id(menu_index) = id(screen_mode);
-            id(lighting_adjust_mode) = 0;
-          }
 
           if (id(menu_level) > LV_MAIN) {
             int back_count = 0;

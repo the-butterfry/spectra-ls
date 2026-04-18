@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.18.24 -->
+<!-- Version: 2026.04.18.35 -->
 <!-- Last updated: 2026-04-18 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -9,6 +9,28 @@
 > Status: Draft plan. Update as decisions solidify.
 
 ## Latest Contract Update (Lighting)
+
+- Boot first-press submenu contract (follow-up): fixed second interception path where auto control-target prompt could still consume first Select when `menu_active=true` during boot/menu-bootstrap. Auto prompt is now dismissed/snoozed without stealing the first submenu entry press; manual prompt path is unchanged.
+
+- OLED text layout fallback contract hardened: when no full-word two-line split fits, fallback now keeps line 1 word-bounded and fits line 2 with ellipsis instead of character-slicing into orphan tails. This prevents labels like `Snail Conditioner` from rendering as `Conditione`/`r`.
+
+- Boot-time first-press submenu determinism: `menu_select_action` now prioritizes non-menu Select entry before auto control-target prompt consumption. If an auto prompt is active at boot, it is dismissed/snoozed when opening menu so first Select reliably enters submenu. Manual prompt mode remains unchanged.
+
+- OLED progress computation now includes a local bootstrap path when HA position timestamp is still unset (`pos_ms==0`) but playback+duration are available, so first-track render after boot/reconnect no longer waits indefinitely for an initial HA position delta event.
+
+- Unified menu directionality path verified by full-stack sign trace: RP2040 emits raw encoder deltas, UART decode preserves sign, and menu direction inversion belongs only in top-level policy. Canonical policy is `menu_encoder_nav_sign: "-1"` (single inversion point) so left-turn no longer maps to downward list movement.
+
+- Menu Select one-press contract hardened: when menu is inactive, a Select press now enters a submenu directly (`Lighting Rooms` from lighting screen, `Gear` from audio screen) instead of consuming an initial press to land on root-level menu state.
+
+- HA position bootstrap correction: `ha_audio_pos_last_ms` now initializes on first received HA position sample, allowing OLED progress gating/projection to engage even when initial feed position is `0` and unchanged.
+
+- OLED now-playing progress hold fix: when HA position samples remain numerically static during active playback, progress projection now advances from the cached displayed position in the same-track window (duration-aligned) so the progress bar continues moving deterministically instead of pinning at 0.
+
+- Audio transport reliability hardening: Arylic TCP send path now performs one immediate retry per payload and only enters failure backoff after repeated consecutive send/connect failures, reducing brittle drops from single transient timeout events during rapid volume movement.
+
+- Audio transport root-cause correction: queued `VOL` dequeue behavior no longer rewrites popped payloads to mutable `recent->last_payload` (which could produce target/TX mismatch during rapid input). Worker now drops superseded queued volume items and preserves payload immutability for transmitted commands.
+
+- Audio transport anti-replay hardening: `components/arylic_tcp.h` now drops stale queued `VOL` payloads older than a bounded queue age (default `900ms`) before transmit and emits explicit per-volume enqueue logs, so delayed volume echoes can be source-attributed deterministically and stale queue replays are prevented.
 
 - Lighting room/target helper surfaces now follow a **catalog-first** contract in HA package logic:
   - Build eligible lights from `states.light` + `area_id(...)`.

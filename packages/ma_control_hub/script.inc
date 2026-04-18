@@ -1,6 +1,6 @@
 # Description: Music Assistant control hub scripts (target options, auto-select, control helpers).
-# Version: 2026.04.17.11
-# Last updated: 2026-04-17
+# Version: 2026.04.18.12
+# Last updated: 2026-04-18
 # Update version/date whenever you change this file.
 # HUB MUST-READ: Contract parser methodology.
 # - For complex attributes (`rooms`, `candidates_json`, etc.), prefer native sequence/mapping values first.
@@ -39,10 +39,12 @@ ma_update_target_options:
           {% else %}
             {{ [] }}
           {% endif %}
+        excluded_targets: >-
+          {{ (label_entities('no-spectra') + label_entities('no_spectra')) | unique | list }}
         known_targets: >-
           {% set ns = namespace(list=[]) %}
           {% for r in rooms %}
-            {% if r.entity is defined and r.entity not in ['','unknown','unavailable'] and states[r.entity] is not none %}
+            {% if r.entity is defined and r.entity not in ['','unknown','unavailable'] and states[r.entity] is not none and r.entity not in excluded_targets %}
               {% set ns.list = ns.list + [r.entity] %}
             {% endif %}
           {% endfor %}
@@ -66,6 +68,7 @@ ma_update_target_options:
             {% if ent not in ['','none','unknown','unavailable']
                   and (ent | regex_match('^media_player\\.'))
                   and states[ent] is not none
+                  and ent not in excluded_targets
                   and control_path == 'linkplay_tcp'
                   and control_capable %}
               {% set ns.list = ns.list + [ent] %}
@@ -85,13 +88,15 @@ ma_update_target_options:
           {{ (current | lower) if current is not none else '' }}
         current_is_none: >-
           {{ current_norm in ['none','unknown','unavailable',''] }}
+        current_excluded: >-
+          {{ current not in ['none','unknown','unavailable',''] and current in excluded_targets }}
         final_options: >-
-          {% set extra = ([current] if (current_norm not in ['none','unknown','unavailable',''] and current not in known_targets) else []) %}
+          {% set extra = ([current] if (current_norm not in ['none','unknown','unavailable',''] and current not in known_targets and current not in excluded_targets) else []) %}
           {{ (['none'] + known_targets + discovered_targets + extra) | unique | list }}
         default_option: >-
           {% set selectable = (known_targets + discovered_targets) | unique | list %}
           {% set last_ok = last_valid not in ['none','unknown','unavailable',''] and last_valid in selectable %}
-          {{ (current if current_norm not in ['none','unknown','unavailable',''] else (last_valid if last_ok else (selectable[0] if (selectable | length) > 0 else 'none'))) }}
+          {{ (current if (current_norm not in ['none','unknown','unavailable',''] and (not current_excluded) and current in selectable) else (last_valid if last_ok else (selectable[0] if (selectable | length) > 0 else 'none'))) }}
     - service: input_select.set_options
       data:
         entity_id: input_select.ma_active_target

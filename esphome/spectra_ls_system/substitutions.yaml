@@ -1,5 +1,5 @@
 # Description: Spectra LS System substitutions for ESPHome main config and packages.
-# Version: 2026.04.18.21
+# Version: 2026.04.18.24
 # Last updated: 2026-04-18
 # Spectra LS substitutions scoped to spectra_ls_system.
 # Use absolute paths for assets so this file can move with spectra_ls_system.
@@ -32,11 +32,11 @@ dns2_ip: 1.1.1.1
 # - send_interval: minimum send spacing under motion.
 # - settle_ms: defer window to absorb jitter/micro-movements.
 # - jump_steps: large moves bypass defer path for immediate response.
-volume_pot_send_interval_ms: "15"
-volume_pot_settle_ms: "30"
+volume_pot_send_interval_ms: "25"
+volume_pot_settle_ms: "50"
 volume_pot_jump_steps: "1"
-eq_pot_send_interval_ms: "15"
-eq_pot_settle_ms: "30"
+eq_pot_send_interval_ms: "90"
+eq_pot_settle_ms: "60"
 eq_pot_jump_steps: "1"
 eq_min: "-10"
 eq_max: "10"
@@ -45,10 +45,10 @@ eq_max: "10"
 # Purpose: transport-level pacing, duplicate suppression, and failure handling.
 # Gain: tune per-network stability without editing C++.
 # Risk: very low pacing can flood weak links; very high pacing can feel sluggish.
-arylic_tcp_timeout_ms: "100"
-arylic_tcp_min_interval_ms: "20"
-arylic_tcp_dup_suppress_ms: "30"
-arylic_tcp_backoff_ms: "200"
+arylic_tcp_timeout_ms: "140"
+arylic_tcp_min_interval_ms: "45"
+arylic_tcp_dup_suppress_ms: "45"
+arylic_tcp_backoff_ms: "220"
 # Purpose: burst safety gate during rapid sweeps.
 # Gain: protects target/player from sustained command storms.
 # Risk: if too strict, can feel like "rubber banding" under fast twists.
@@ -214,7 +214,7 @@ menu_target_fallback_room0_count: "4"
 menu_target_fallback_other_count: "2"
 # Shared encoder navigation direction for all menu-index movement.
 # -1 = invert RP2040 delta (clockwise advances down/right in menus)
-#  1 = raw RP2040 delta (legacy behavior)
+#  1 = raw RP2040 delta
 menu_encoder_nav_sign: "-1"
 # Shared display-state constants.
 display_state_splash: "0"

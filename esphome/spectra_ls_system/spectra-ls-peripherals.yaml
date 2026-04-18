@@ -1,5 +1,5 @@
 # Description: Spectra LS OLED-only peripherals package (no LED rings) for Control Board v2.
-# Version: 2026.04.18.11
+# Version: 2026.04.18.13
 # Last updated: 2026-04-18
 # Update version/date whenever you change this file.
 esphome:
@@ -276,6 +276,18 @@ interval:
           float duration1 = id(ha_audio_duration_value);
           float pos1 = id(ha_audio_pos_last_value);
           uint32_t pos1_ms = id(ha_audio_pos_last_ms);
+          if (play1 && duration1 > 0.5f && pos1_ms == 0) {
+            const uint32_t cached_ms = id(np_disp_pos_ms);
+            const float cached_dur = id(np_disp_duration);
+            const bool cached_recent = cached_ms > 0 && (now - cached_ms) < meta_stale_ms;
+            const bool same_track_window = cached_dur > 0.5f && fabsf(cached_dur - duration1) <= 2.0f;
+            if (cached_recent && same_track_window) {
+              pos1 = id(np_disp_position);
+              pos1_ms = cached_ms;
+            } else {
+              pos1_ms = now;
+            }
+          }
           if (play1 && pos1_ms > 0) {
             const float elapsed_s = (now - pos1_ms) / 1000.0f;
             if (elapsed_s > 0.0f) {
@@ -573,6 +585,25 @@ interval:
             pos = pos1;
             pos_ms = pos1_ms;
           }
+          if (progress_idx == 1 && play1 && duration > 0.5f) {
+            const uint32_t cached_ms = id(np_disp_pos_ms);
+            const float cached_dur = id(np_disp_duration);
+            const float cached_pos = id(np_disp_position);
+            const bool cached_recent = cached_ms > 0 && (now - cached_ms) < meta_stale_ms;
+            const bool same_track_window = cached_dur > 0.5f && fabsf(cached_dur - duration) <= 2.0f;
+            if (cached_recent && same_track_window) {
+              const bool stream_not_advancing = (pos_ms == 0) || (pos_ms <= cached_ms) || (pos <= (cached_pos + 0.25f));
+              if (stream_not_advancing) {
+                float projected = cached_pos;
+                if (now > cached_ms) projected += (now - cached_ms) / 1000.0f;
+                if (projected > pos) {
+                  pos = projected;
+                  pos_ms = now;
+                }
+              }
+            }
+          }
+
           bool progress_valid = (duration > 0.5f && pos_ms > 0);
           if (progress_valid) {
             id(np_disp_duration) = duration;

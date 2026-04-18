@@ -1,6 +1,6 @@
 // Description: Shared Arylic TCP transport helpers for Spectra LS System (queueing, coalescing, and send path).
-// Version: 2026.04.17.3
-// Last updated: 2026-04-17
+// Version: 2026.04.18.3
+// Last updated: 2026-04-18
 
 #pragma once
 
@@ -64,6 +64,10 @@ namespace arylic_tcp {
 #define SLS_ARYLIC_TCP_LOG_INTERVAL_MS 500
 #endif
 
+#ifndef SLS_ARYLIC_TCP_STALE_VOL_DROP_MS
+#define SLS_ARYLIC_TCP_STALE_VOL_DROP_MS 900
+#endif
+
 inline void append_le_u32(std::vector<uint8_t> &out, uint32_t value) {
 	out.push_back(static_cast<uint8_t>(value & 0xFF));
 	out.push_back(static_cast<uint8_t>((value >> 8) & 0xFF));
@@ -95,11 +99,13 @@ constexpr uint32_t ARYLIC_TCP_BURST_WINDOW_MS = static_cast<uint32_t>(SLS_ARYLIC
 constexpr uint8_t ARYLIC_TCP_BURST_MAX_SENDS = static_cast<uint8_t>(SLS_ARYLIC_TCP_BURST_MAX_SENDS);
 constexpr uint32_t ARYLIC_TCP_WORKER_STACK = static_cast<uint32_t>(SLS_ARYLIC_TCP_WORKER_STACK);
 constexpr UBaseType_t ARYLIC_TCP_WORKER_PRIO = static_cast<UBaseType_t>(SLS_ARYLIC_TCP_WORKER_PRIO);
+constexpr uint32_t ARYLIC_TCP_STALE_VOL_DROP_MS = static_cast<uint32_t>(SLS_ARYLIC_TCP_STALE_VOL_DROP_MS);
 
 struct ArylicTcpItem {
 	char host[ARYLIC_TCP_HOST_LEN];
 	uint16_t port;
 	char payload[ARYLIC_TCP_PAYLOAD_LEN];
+	uint32_t enqueue_ms;
 };
 
 static QueueHandle_t arylic_tcp_queue = nullptr;
@@ -118,6 +124,7 @@ struct ArylicTcpRecent {
 
 static ArylicTcpRecent arylic_tcp_recent[4] = {};
 static uint32_t arylic_tcp_backoff_until_ms = 0;
+static uint8_t arylic_tcp_consecutive_failures = 0;
 
 inline bool tcp_backoff_active() {
 	if (arylic_tcp_backoff_until_ms == 0) return false;
@@ -128,6 +135,29 @@ inline bool tcp_backoff_active() {
 inline void tcp_backoff_start() {
 	const uint32_t now = millis();
 	arylic_tcp_backoff_until_ms = now + ARYLIC_TCP_BACKOFF_MS;
+}
+
+inline void note_send_failure(const char *host, uint16_t port, const char *reason) {
+	if (arylic_tcp_consecutive_failures < 0xFF) arylic_tcp_consecutive_failures++;
+	if (arylic_tcp_consecutive_failures >= 2) {
+		tcp_backoff_start();
+		ESP_LOGW("arylic_tcp", "send failure host=%s port=%u reason=%s count=%u -> backoff %ums",
+					 host ? host : "",
+					 (unsigned) port,
+					 reason ? reason : "unknown",
+					 (unsigned) arylic_tcp_consecutive_failures,
+					 (unsigned) ARYLIC_TCP_BACKOFF_MS);
+	} else {
+		ESP_LOGW("arylic_tcp", "send failure host=%s port=%u reason=%s count=%u (retry window)",
+					 host ? host : "",
+					 (unsigned) port,
+					 reason ? reason : "unknown",
+					 (unsigned) arylic_tcp_consecutive_failures);
+	}
+}
+
+inline void note_send_success() {
+	arylic_tcp_consecutive_failures = 0;
 }
 
 inline uint32_t compute_burst_guard_wait_ms(ArylicTcpRecent *recent) {
@@ -195,9 +225,17 @@ inline void arylic_tcp_worker(void *) {
 		std::string payload(item.payload);
 		ArylicTcpRecent *recent = find_recent(item.host, item.port);
 		if (recent != nullptr) {
-			if (recent->last_payload[0] != '\0' &&
+			const bool payload_is_vol = payload.find(":VOL:") != std::string::npos;
+			const bool recent_is_vol = recent->last_payload[0] != '\0' &&
+											(std::string(recent->last_payload).find(":VOL:") != std::string::npos);
+			if (payload_is_vol && recent_is_vol &&
 					strncmp(recent->last_payload, payload.c_str(), ARYLIC_TCP_PAYLOAD_LEN) != 0) {
-				payload = recent->last_payload;
+				ESP_LOGI("arylic_tcp", "drop superseded queued VOL host=%s port=%u queued=%s latest=%s",
+						 item.host,
+						 (unsigned) item.port,
+						 payload.c_str(),
+						 recent->last_payload);
+				continue;
 			}
 			const uint32_t burst_wait_ms = compute_burst_guard_wait_ms(recent);
 			if (burst_wait_ms > 0) {
@@ -218,6 +256,17 @@ inline void arylic_tcp_worker(void *) {
 					continue;
 				}
 			}
+		}
+		const uint32_t now = millis();
+		const uint32_t age_ms = (item.enqueue_ms == 0) ? 0 : (now - item.enqueue_ms);
+		if (ARYLIC_TCP_STALE_VOL_DROP_MS > 0 && age_ms > ARYLIC_TCP_STALE_VOL_DROP_MS &&
+				payload.find(":VOL:") != std::string::npos) {
+			ESP_LOGW("arylic_tcp", "drop stale queued VOL host=%s port=%u age=%ums payload=%s",
+					 item.host,
+					 (unsigned) item.port,
+					 (unsigned) age_ms,
+					 payload.c_str());
+			continue;
 		}
 		send_payload(item.host, item.port, payload, ARYLIC_TCP_TIMEOUT_MS);
 		vTaskDelay(1);
@@ -267,6 +316,7 @@ inline bool enqueue_payload(const char *host, uint16_t port, const std::string &
 	item.port = port;
 	strncpy(item.payload, payload.c_str(), ARYLIC_TCP_PAYLOAD_LEN - 1);
 	item.payload[ARYLIC_TCP_PAYLOAD_LEN - 1] = '\0';
+	item.enqueue_ms = millis();
 
 	if (recent != nullptr) {
 		recent->last_enqueue_ms = millis();
@@ -336,92 +386,107 @@ inline bool send_payload(const char *host, uint16_t port, const std::string &pay
 
 	log_tx_throttled(host, port, payload);
 
-	int sock = ::socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
-	if (sock < 0) {
-		ESP_LOGW("arylic_tcp", "socket() failed host=%s port=%u errno=%d", host, (unsigned) port, errno);
-		tcp_backoff_start();
-		return false;
-	}
-
-	const uint32_t deadline_ms = millis() + timeout_ms;
-
-	sockaddr_in dest{};
-	dest.sin_family = AF_INET;
-	dest.sin_port = htons(port);
-	dest.sin_addr.s_addr = inet_addr(host);
-	if (dest.sin_addr.s_addr == INADDR_NONE) {
-		ESP_LOGW("arylic_tcp", "invalid host=%s port=%u", host, (unsigned) port);
-		::close(sock);
-		tcp_backoff_start();
-		return false;
-	}
-
-	int flags = ::fcntl(sock, F_GETFL, 0);
-	if (flags >= 0) {
-		::fcntl(sock, F_SETFL, flags | O_NONBLOCK);
-	}
-
-	int conn_res = ::connect(sock, reinterpret_cast<sockaddr *>(&dest), sizeof(dest));
-	if (conn_res != 0) {
-		if (errno != EINPROGRESS) {
-			ESP_LOGW("arylic_tcp", "connect() failed host=%s port=%u errno=%d", host, (unsigned) port, errno);
-			::close(sock);
-			tcp_backoff_start();
-			return false;
-		}
-		const uint32_t wait_ms = remaining_ms(deadline_ms);
-		if (!wait_writable(sock, wait_ms)) {
-			ESP_LOGW("arylic_tcp", "connect() timeout host=%s port=%u", host, (unsigned) port);
-			::close(sock);
-			tcp_backoff_start();
-			return false;
-		}
-		int err = 0;
-		socklen_t err_len = sizeof(err);
-		if (::getsockopt(sock, SOL_SOCKET, SO_ERROR, &err, &err_len) != 0 || err != 0) {
-			ESP_LOGW("arylic_tcp", "connect() failed host=%s port=%u errno=%d", host, (unsigned) port, err);
-			::close(sock);
-			tcp_backoff_start();
-			return false;
-		}
-	}
-
-	size_t total_sent = 0;
-	while (total_sent < packet.size()) {
-		const uint32_t wait_ms = remaining_ms(deadline_ms);
-		if (wait_ms == 0) {
-			ESP_LOGW("arylic_tcp", "send() timeout host=%s port=%u", host, (unsigned) port);
-			::shutdown(sock, SHUT_RDWR);
-			::close(sock);
-			tcp_backoff_start();
-			return false;
-		}
-		if (!wait_writable(sock, wait_ms)) {
-			ESP_LOGW("arylic_tcp", "send() wait timeout host=%s port=%u", host, (unsigned) port);
-			::shutdown(sock, SHUT_RDWR);
-			::close(sock);
-			tcp_backoff_start();
-			return false;
-		}
-		const uint8_t *data = packet.data() + total_sent;
-		const size_t remaining = packet.size() - total_sent;
-		const ssize_t sent = ::send(sock, data, remaining, 0);
-		if (sent > 0) {
-			total_sent += static_cast<size_t>(sent);
+	const uint8_t max_attempts = 2;
+	bool sent_ok = false;
+	for (uint8_t attempt = 1; attempt <= max_attempts; attempt++) {
+		int sock = ::socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
+		if (sock < 0) {
+			ESP_LOGW("arylic_tcp", "socket() failed host=%s port=%u errno=%d attempt=%u", host, (unsigned) port, errno, (unsigned) attempt);
+			note_send_failure(host, port, "socket");
+			if (attempt < max_attempts) vTaskDelay(pdMS_TO_TICKS(20));
 			continue;
 		}
-		if (sent < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
-			continue;
+
+		const uint32_t deadline_ms = millis() + timeout_ms;
+
+		sockaddr_in dest{};
+		dest.sin_family = AF_INET;
+		dest.sin_port = htons(port);
+		dest.sin_addr.s_addr = inet_addr(host);
+		if (dest.sin_addr.s_addr == INADDR_NONE) {
+			ESP_LOGW("arylic_tcp", "invalid host=%s port=%u", host, (unsigned) port);
+			::close(sock);
+			note_send_failure(host, port, "invalid_host");
+			return false;
 		}
-		ESP_LOGW("arylic_tcp", "send() failed host=%s port=%u errno=%d", host, (unsigned) port, errno);
+
+		int flags = ::fcntl(sock, F_GETFL, 0);
+		if (flags >= 0) {
+			::fcntl(sock, F_SETFL, flags | O_NONBLOCK);
+		}
+
+		int conn_res = ::connect(sock, reinterpret_cast<sockaddr *>(&dest), sizeof(dest));
+		if (conn_res != 0) {
+			if (errno != EINPROGRESS) {
+				ESP_LOGW("arylic_tcp", "connect() failed host=%s port=%u errno=%d attempt=%u", host, (unsigned) port, errno, (unsigned) attempt);
+				::close(sock);
+				note_send_failure(host, port, "connect_fail");
+				if (attempt < max_attempts) vTaskDelay(pdMS_TO_TICKS(20));
+				continue;
+			}
+			const uint32_t wait_ms = remaining_ms(deadline_ms);
+			if (!wait_writable(sock, wait_ms)) {
+				ESP_LOGW("arylic_tcp", "connect() timeout host=%s port=%u attempt=%u", host, (unsigned) port, (unsigned) attempt);
+				::close(sock);
+				note_send_failure(host, port, "connect_timeout");
+				if (attempt < max_attempts) vTaskDelay(pdMS_TO_TICKS(20));
+				continue;
+			}
+			int err = 0;
+			socklen_t err_len = sizeof(err);
+			if (::getsockopt(sock, SOL_SOCKET, SO_ERROR, &err, &err_len) != 0 || err != 0) {
+				ESP_LOGW("arylic_tcp", "connect() failed host=%s port=%u errno=%d attempt=%u", host, (unsigned) port, err, (unsigned) attempt);
+				::close(sock);
+				note_send_failure(host, port, "connect_error");
+				if (attempt < max_attempts) vTaskDelay(pdMS_TO_TICKS(20));
+				continue;
+			}
+		}
+
+		size_t total_sent = 0;
+		bool attempt_ok = true;
+		while (total_sent < packet.size()) {
+			const uint32_t wait_ms = remaining_ms(deadline_ms);
+			if (wait_ms == 0) {
+				ESP_LOGW("arylic_tcp", "send() timeout host=%s port=%u attempt=%u", host, (unsigned) port, (unsigned) attempt);
+				attempt_ok = false;
+				break;
+			}
+			if (!wait_writable(sock, wait_ms)) {
+				ESP_LOGW("arylic_tcp", "send() wait timeout host=%s port=%u attempt=%u", host, (unsigned) port, (unsigned) attempt);
+				attempt_ok = false;
+				break;
+			}
+			const uint8_t *data = packet.data() + total_sent;
+			const size_t remaining = packet.size() - total_sent;
+			const ssize_t sent = ::send(sock, data, remaining, 0);
+			if (sent > 0) {
+				total_sent += static_cast<size_t>(sent);
+				continue;
+			}
+			if (sent < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+				continue;
+			}
+			ESP_LOGW("arylic_tcp", "send() failed host=%s port=%u errno=%d attempt=%u", host, (unsigned) port, errno, (unsigned) attempt);
+			attempt_ok = false;
+			break;
+		}
+
 		::shutdown(sock, SHUT_RDWR);
 		::close(sock);
-		tcp_backoff_start();
-		return false;
+
+		if (attempt_ok) {
+			sent_ok = true;
+			break;
+		}
+		note_send_failure(host, port, "send_fail");
+		if (attempt < max_attempts) vTaskDelay(pdMS_TO_TICKS(20));
 	}
 
-	::shutdown(sock, SHUT_RDWR);
-	::close(sock);
+	if (!sent_ok) {
+		return false;
+	}
+	note_send_success();
 	if (recent != nullptr) {
 		recent->last_send_ms = millis();
 		note_burst_send(recent);
@@ -472,6 +537,7 @@ inline bool send_volume(const char *host, uint16_t port, int volume) {
 	if (volume > 100) volume = 100;
 	char cmd[24];
 	snprintf(cmd, sizeof(cmd), "VOL:%d", volume);
+	ESP_LOGI("arylic_tcp", "VOL enqueue host=%s port=%u value=%d", host ? host : "", (unsigned) port, volume);
 	return send_passthrough(host, port, cmd);
 }
 

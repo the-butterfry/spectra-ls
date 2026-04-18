@@ -1,6 +1,6 @@
 # Description: Spectra LS lighting hub (rooms/targets from HA Areas).
-# Version: 2026.04.17.22
-# Last updated: 2026-04-17
+# Version: 2026.04.18.23
+# Last updated: 2026-04-18
 # Update version/date whenever you change this file.
 #
 # Notes:
@@ -27,6 +27,7 @@ template:
         icon: mdi:lightbulb-multiple-outline
         state: >
           {% set ns = namespace(items=[]) %}
+          {% set excluded_entities = (label_entities('no-spectra') + label_entities('no_spectra')) | unique | list %}
           {% for s in states.light %}
             {% set ent = s.entity_id %}
             {% set aid = area_id(ent) %}
@@ -52,7 +53,7 @@ template:
                 (modes is none) or
                 (state_attr(ent, 'brightness') is not none)
               %}
-              {% if (supports_dimming_or_color or supports_onoff_or_legacy) and ('speaker' not in ent_low) and ('speaker' not in label_low) %}
+              {% if (supports_dimming_or_color or supports_onoff_or_legacy) and ('speaker' not in ent_low) and ('speaker' not in label_low) and (ent not in excluded_entities) %}
                 {% set ns.items = ns.items + [{'area_id': aid, 'area_name': room_name, 'entity_id': ent, 'label': label}] %}
               {% endif %}
             {% endif %}
@@ -83,7 +84,7 @@ template:
                     (modes is none) or
                     (state_attr(ent, 'brightness') is not none)
                   %}
-                  {% if (supports_dimming_or_color or supports_onoff_or_legacy) and room_name not in ['', none] and ('speaker' not in ent_low) and ('speaker' not in label_low) %}
+                  {% if (supports_dimming_or_color or supports_onoff_or_legacy) and room_name not in ['', none] and ('speaker' not in ent_low) and ('speaker' not in label_low) and (ent not in excluded_entities) %}
                     {% set ns.items = ns.items + [{'area_id': aid, 'area_name': room_name, 'entity_id': ent, 'label': label}] %}
                   {% endif %}
                 {% endif %}
@@ -94,6 +95,7 @@ template:
         attributes:
           items_json: >
             {% set ns = namespace(items=[]) %}
+            {% set excluded_entities = (label_entities('no-spectra') + label_entities('no_spectra')) | unique | list %}
             {% for s in states.light %}
               {% set ent = s.entity_id %}
               {% set aid = area_id(ent) %}
@@ -119,7 +121,7 @@ template:
                   (modes is none) or
                   (state_attr(ent, 'brightness') is not none)
                 %}
-                {% if (supports_dimming_or_color or supports_onoff_or_legacy) and ('speaker' not in ent_low) and ('speaker' not in label_low) %}
+                {% if (supports_dimming_or_color or supports_onoff_or_legacy) and ('speaker' not in ent_low) and ('speaker' not in label_low) and (ent not in excluded_entities) %}
                   {% set ns.items = ns.items + [{'area_id': aid, 'area_name': room_name, 'entity_id': ent, 'label': label}] %}
                 {% endif %}
               {% endif %}
@@ -150,7 +152,7 @@ template:
                       (modes is none) or
                       (state_attr(ent, 'brightness') is not none)
                     %}
-                    {% if (supports_dimming_or_color or supports_onoff_or_legacy) and room_name not in ['', none] and ('speaker' not in ent_low) and ('speaker' not in label_low) %}
+                    {% if (supports_dimming_or_color or supports_onoff_or_legacy) and room_name not in ['', none] and ('speaker' not in ent_low) and ('speaker' not in label_low) and (ent not in excluded_entities) %}
                       {% set ns.items = ns.items + [{'area_id': aid, 'area_name': room_name, 'entity_id': ent, 'label': label}] %}
                     {% endif %}
                   {% endif %}

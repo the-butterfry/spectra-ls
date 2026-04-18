@@ -1,6 +1,6 @@
 # Description: Top-level ignore rules for Home Assistant monorepo.
-# Version: 2026.04.17.4
-# Last updated: 2026-04-17
+# Version: 2026.04.18.5
+# Last updated: 2026-04-18
 
 # Secrets / credentials
 secrets.yaml
@@ -50,6 +50,8 @@ configuration.yaml
 automations.yaml
 scripts.yaml
 scenes.yaml
+blueprints/
+custom_components/
 
 # Keep canonical sources tracked
 !.github/
@@ -60,10 +62,6 @@ scenes.yaml
 !packages/**
 !esphome/
 !esphome/**
-!blueprints/
-!blueprints/**
-!custom_components/
-!custom_components/**
 
 # Re-ignore archived previous folders after broad re-include rules above
 esphome/control-py/previous/**

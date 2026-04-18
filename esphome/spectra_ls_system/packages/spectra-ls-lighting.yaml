@@ -1,5 +1,5 @@
 # Description: Lighting controls package for Spectra LS System.
-# Version: 2026.04.17.10
+# Version: 2026.04.17.11
 # Last updated: 2026-04-17
 # Update version/date whenever you change this file.
 
@@ -184,50 +184,6 @@ sensor:
           } else {
             id(lighting_brightness_pending) = false;
           }
-  - platform: template
-    name: "Lighting Hue"
-    id: lighting_hue_state
-    internal: true
-    unit_of_measurement: "°"
-    accuracy_decimals: 1
-    update_interval: 500ms
-    lambda: |-
-      return id(lighting_hue);
-  - platform: template
-    name: "Lighting Saturation"
-    id: lighting_sat_state
-    internal: true
-    unit_of_measurement: "%"
-    accuracy_decimals: 1
-    update_interval: 500ms
-    lambda: |-
-      return id(lighting_sat);
-  - platform: template
-    name: "Lighting Brightness"
-    id: lighting_brightness_state
-    internal: true
-    unit_of_measurement: "%"
-    accuracy_decimals: 1
-    update_interval: 500ms
-    lambda: |-
-      return id(lighting_brightness);
-  - platform: template
-    name: "Selected Room Index"
-    id: selected_room_state
-    internal: true
-    accuracy_decimals: 0
-    update_interval: 500ms
-    lambda: |-
-      return (float) id(selected_room);
-  - platform: template
-    name: "Selected Target Index"
-    id: selected_target_state
-    internal: true
-    accuracy_decimals: 0
-    update_interval: 500ms
-    lambda: |-
-      return (float) id(selected_target);
-
 interval:
   - interval: 250ms
     then:

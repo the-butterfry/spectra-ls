@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.17.20 -->
+<!-- Version: 2026.04.17.23 -->
 <!-- Last updated: 2026-04-17 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -57,6 +57,9 @@ This lighting incident defines a reusable harvesting pattern for all complex HA 
   - dual-type readers,
   - single catalog + derived selectors.
 - Implementation status: applied to `packages/ma_control_hub/template.inc` and `packages/ma_control_hub/script.inc` room/candidate parse paths so MA host/target/meta routing remains stable across native object and string JSON attribute payload forms.
+- Iteration status (2026-04-17): completed full `rooms_raw` reader modernization sweep in `packages/ma_control_hub/template.inc` so all remaining room-map consumers now honor sequence + mapping + guarded string JSON contract uniformly.
+- Iteration 2 status (2026-04-17): parser string guards in `packages/ma_control_hub/template.inc` and `packages/ma_control_hub/script.inc` now evaluate sentinel checks using trimmed lowercase payloads (`raw_trim_l`), improving whitespace/case determinism while preserving dual-mode parse semantics.
+- Iteration 4 status (2026-04-17): diagnostics-only publish cadence tuning applied in `packages/spectra-ls-diagnostics.yaml` for virtual harness entities (`Virtual Mode Selector Index`, `Virtual Control Class Index`, `Virtual Input Battery Status`) to reduce idle-state log/state churn without altering routing or behavior-path semantics.
 
 ### Apply this to other entity domains
 

@@ -1,5 +1,5 @@
 <!-- Description: Copy/paste Home Assistant Dev Tools template diagnostics for Spectra LS System. -->
-<!-- Version: 2026.04.17.7 -->
+<!-- Version: 2026.04.17.15 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Spectra LS System — Dev Tools Template Validation
@@ -220,13 +220,26 @@
 
 {% set room_attr = state_attr('sensor.spectra_ls_rooms_raw','rooms') %}
 {% set rooms = [] %}
-{% if room_attr is sequence and room_attr is not string %}
+{% if room_attr is sequence and room_attr is not string and room_attr is not mapping %}
   {% set rooms = room_attr %}
+{% elif room_attr is mapping %}
+  {% set mapped = (room_attr.rooms if room_attr.rooms is defined else (room_attr.result if room_attr.result is defined else [])) %}
+  {% if mapped is sequence and mapped is not string and mapped is not mapping %}
+    {% set rooms = mapped %}
+  {% endif %}
 {% elif room_attr is string %}
-  {% set raw_l = room_attr | lower %}
   {% set raw_trim = room_attr | trim %}
-  {% if raw_l not in ['','none','unknown','unavailable'] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
-    {% set rooms = room_attr | from_json %}
+  {% set raw_trim_l = raw_trim | lower %}
+  {% if raw_trim_l not in ['','none','unknown','unavailable'] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
+    {% set parsed = room_attr | from_json %}
+    {% if parsed is sequence and parsed is not string and parsed is not mapping %}
+      {% set rooms = parsed %}
+    {% elif parsed is mapping %}
+      {% set mapped = (parsed.rooms if parsed.rooms is defined else (parsed.result if parsed.result is defined else [])) %}
+      {% if mapped is sequence and mapped is not string and mapped is not mapping %}
+        {% set rooms = mapped %}
+      {% endif %}
+    {% endif %}
   {% endif %}
 {% endif %}
 
@@ -1659,6 +1672,346 @@ Unavailable core entities:
 - HA is reachable; issue is source/contract flow. Check `sensor.control_board_room_options`, `sensor.control_board_target_options`, and active target/host mapping before blaming HA uptime.
 {% else %}
 - Path looks healthy. If OLED still reports bad source, inspect ESP logs for receive/staleness gating.
+{% endif %}
+```
+
+## 14) Iteration Parser Contract Check — MA Control Hub (Dual-Mode + Mapping)
+
+```jinja
+{# =========================
+  Iteration Parser Contract Check (MA Control Hub)
+  Run AFTER each parser-modernization iteration.
+  Purpose: prove complex payload readers tolerate sequence + mapping + guarded string JSON.
+  ========================= #}
+
+{% set rooms_raw = state_attr('sensor.spectra_ls_rooms_raw','rooms') %}
+{% set candidates_raw = state_attr('sensor.ma_meta_resolver','candidates_json') | default([], true) %}
+
+{% set rooms_type = 'none' %}
+{% if rooms_raw is mapping %}
+  {% set rooms_type = 'mapping' %}
+{% elif rooms_raw is sequence and rooms_raw is not string %}
+  {% set rooms_type = 'sequence' %}
+{% elif rooms_raw is string %}
+  {% set rooms_type = 'string' %}
+{% endif %}
+
+{% set candidates_type = 'none' %}
+{% if candidates_raw is mapping %}
+  {% set candidates_type = 'mapping' %}
+{% elif candidates_raw is sequence and candidates_raw is not string %}
+  {% set candidates_type = 'sequence' %}
+{% elif candidates_raw is string %}
+  {% set candidates_type = 'string' %}
+{% endif %}
+
+{% set ns = namespace(rooms=[], candidates=[]) %}
+
+{# Normalize rooms using modernization contract #}
+{% if rooms_raw is sequence and rooms_raw is not string and rooms_raw is not mapping %}
+  {% set ns.rooms = rooms_raw %}
+{% elif rooms_raw is mapping %}
+  {% set mapped = (rooms_raw.rooms if rooms_raw.rooms is defined else (rooms_raw.result if rooms_raw.result is defined else [])) %}
+  {% if mapped is sequence and mapped is not string and mapped is not mapping %}
+    {% set ns.rooms = mapped %}
+  {% endif %}
+{% elif rooms_raw is string %}
+  {% set raw_trim = rooms_raw | trim %}
+  {% set raw_trim_l = raw_trim | lower %}
+  {% if raw_trim_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
+    {% set parsed = rooms_raw | from_json %}
+    {% if parsed is sequence and parsed is not string and parsed is not mapping %}
+      {% set ns.rooms = parsed %}
+    {% elif parsed is mapping %}
+      {% set mapped = (parsed.rooms if parsed.rooms is defined else (parsed.result if parsed.result is defined else [])) %}
+      {% if mapped is sequence and mapped is not string and mapped is not mapping %}
+        {% set ns.rooms = mapped %}
+      {% endif %}
+    {% endif %}
+  {% endif %}
+{% endif %}
+
+{# Normalize candidates using modernization contract #}
+{% if candidates_raw is sequence and candidates_raw is not string and candidates_raw is not mapping %}
+  {% set ns.candidates = candidates_raw %}
+{% elif candidates_raw is mapping %}
+  {% set mapped = (candidates_raw.candidates if candidates_raw.candidates is defined else (candidates_raw.result if candidates_raw.result is defined else [])) %}
+  {% if mapped is sequence and mapped is not string and mapped is not mapping %}
+    {% set ns.candidates = mapped %}
+  {% endif %}
+{% elif candidates_raw is string %}
+  {% set raw_trim = candidates_raw | trim %}
+  {% set raw_trim_l = raw_trim | lower %}
+  {% if raw_trim_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
+    {% set parsed = candidates_raw | from_json %}
+    {% if parsed is sequence and parsed is not string and parsed is not mapping %}
+      {% set ns.candidates = parsed %}
+    {% elif parsed is mapping %}
+      {% set mapped = (parsed.candidates if parsed.candidates is defined else (parsed.result if parsed.result is defined else [])) %}
+      {% if mapped is sequence and mapped is not string and mapped is not mapping %}
+        {% set ns.candidates = mapped %}
+      {% endif %}
+    {% endif %}
+  {% endif %}
+{% endif %}
+
+{% set room_entities = ns.rooms | selectattr('entity','defined') | map(attribute='entity') | list %}
+{% set candidate_entities = ns.candidates | selectattr('entity','defined') | map(attribute='entity') | list %}
+
+{% set has_core_surfaces =
+  states['sensor.ma_control_hosts'] is not none and
+  states['sensor.ma_control_host'] is not none and
+  states['sensor.now_playing_entity'] is not none and
+  states['sensor.ma_active_meta_entity'] is not none
+%}
+
+{% set verdict = 'PASS' %}
+{% if not has_core_surfaces %}
+  {% set verdict = 'FAIL' %}
+{% elif (ns.rooms | length) == 0 and rooms_type in ['mapping','sequence','string'] %}
+  {% set verdict = 'WARN' %}
+{% elif (ns.candidates | length) == 0 and candidates_type in ['mapping','sequence','string'] %}
+  {% set verdict = 'WARN' %}
+{% endif %}
+
+### Iteration Parser Contract Check — MA Control Hub
+- Result: **{{ verdict }}**
+- Timestamp: **{{ now() }}**
+
+### Raw payload shape
+- `rooms_raw` type: **{{ rooms_type }}**
+- `candidates_json` type: **{{ candidates_type }}**
+
+### Normalized payload outcomes
+- Normalized rooms count: **{{ ns.rooms | length }}**
+- Normalized candidates count: **{{ ns.candidates | length }}**
+- Room entities (sample): **{{ (room_entities[:8] if (room_entities | length) > 0 else []) }}**
+- Candidate entities (sample): **{{ (candidate_entities[:8] if (candidate_entities | length) > 0 else []) }}**
+
+### Core contract surfaces
+- `sensor.ma_control_hosts`: **{{ states('sensor.ma_control_hosts') }}**
+- `sensor.ma_control_host`: **{{ states('sensor.ma_control_host') }}**
+- `sensor.ma_active_meta_entity`: **{{ states('sensor.ma_active_meta_entity') }}**
+- `sensor.now_playing_entity`: **{{ states('sensor.now_playing_entity') }}**
+
+### Next action guidance
+{% if verdict == 'PASS' %}
+- Iteration passed: proceed to next modernization slice.
+{% elif verdict == 'WARN' %}
+- Parser accepted payload shape but normalized result is empty. Inspect upstream payload content for missing `rooms/result` or `candidates/result` keys.
+{% else %}
+- Core contract surface missing. Fix package/runtime load before continuing modernization.
+{% endif %}
+```
+
+## 15) Iteration 2 Parser Guard Check — Trim + Sentinel Determinism
+
+```jinja
+{# =========================
+  Iteration 2 Parser Guard Check
+  Run AFTER trim-guard modernization.
+  Purpose: verify whitespace/case-wrapped sentinel strings do not parse,
+           while real JSON strings still parse to usable lists.
+  ========================= #}
+
+{% set rooms_raw = state_attr('sensor.spectra_ls_rooms_raw','rooms') %}
+{% set candidates_raw = state_attr('sensor.ma_meta_resolver','candidates_json') | default([], true) %}
+
+{% set ns = namespace(rooms=[], candidates=[]) %}
+
+{# Rooms normalization (same contract as runtime readers) #}
+{% if rooms_raw is sequence and rooms_raw is not string and rooms_raw is not mapping %}
+  {% set ns.rooms = rooms_raw %}
+{% elif rooms_raw is mapping %}
+  {% set mapped = (rooms_raw.rooms if rooms_raw.rooms is defined else (rooms_raw.result if rooms_raw.result is defined else [])) %}
+  {% if mapped is sequence and mapped is not string and mapped is not mapping %}
+    {% set ns.rooms = mapped %}
+  {% endif %}
+{% elif rooms_raw is string %}
+  {% set raw_trim = rooms_raw | trim %}
+  {% set raw_trim_l = raw_trim | lower %}
+  {% if raw_trim_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
+    {% set parsed = rooms_raw | from_json %}
+    {% if parsed is sequence and parsed is not string and parsed is not mapping %}
+      {% set ns.rooms = parsed %}
+    {% elif parsed is mapping %}
+      {% set mapped = (parsed.rooms if parsed.rooms is defined else (parsed.result if parsed.result is defined else [])) %}
+      {% if mapped is sequence and mapped is not string and mapped is not mapping %}
+        {% set ns.rooms = mapped %}
+      {% endif %}
+    {% endif %}
+  {% endif %}
+{% endif %}
+
+{# Candidates normalization (same contract as runtime readers) #}
+{% if candidates_raw is sequence and candidates_raw is not string and candidates_raw is not mapping %}
+  {% set ns.candidates = candidates_raw %}
+{% elif candidates_raw is mapping %}
+  {% set mapped = (candidates_raw.candidates if candidates_raw.candidates is defined else (candidates_raw.result if candidates_raw.result is defined else [])) %}
+  {% if mapped is sequence and mapped is not string and mapped is not mapping %}
+    {% set ns.candidates = mapped %}
+  {% endif %}
+{% elif candidates_raw is string %}
+  {% set raw_trim = candidates_raw | trim %}
+  {% set raw_trim_l = raw_trim | lower %}
+  {% if raw_trim_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
+    {% set parsed = candidates_raw | from_json %}
+    {% if parsed is sequence and parsed is not string and parsed is not mapping %}
+      {% set ns.candidates = parsed %}
+    {% elif parsed is mapping %}
+      {% set mapped = (parsed.candidates if parsed.candidates is defined else (parsed.result if parsed.result is defined else [])) %}
+      {% if mapped is sequence and mapped is not string and mapped is not mapping %}
+        {% set ns.candidates = mapped %}
+      {% endif %}
+    {% endif %}
+  {% endif %}
+{% endif %}
+
+{# Sentinel simulation checks #}
+{% set simulated_sentinels = [' unknown ', 'UNAVAILABLE', ' None ', '   '] %}
+{% set sim = namespace(blocked=0,total=0) %}
+{% for s in simulated_sentinels %}
+  {% set sim.total = sim.total + 1 %}
+  {% set s_trim = s | trim %}
+  {% set s_trim_l = s_trim | lower %}
+  {% if s_trim_l in ['unknown','unavailable','none',''] %}
+    {% set sim.blocked = sim.blocked + 1 %}
+  {% endif %}
+{% endfor %}
+
+{% set verdict = 'PASS' %}
+{% if (ns.rooms | length) == 0 %}
+  {% set verdict = 'WARN' %}
+{% endif %}
+{% if (sim.blocked != sim.total) %}
+  {% set verdict = 'FAIL' %}
+{% endif %}
+
+### Iteration 2 Parser Guard Check — Trim + Sentinel Determinism
+- Result: **{{ verdict }}**
+- Timestamp: **{{ now() }}**
+
+### Normalized runtime outcomes
+- Normalized rooms count: **{{ ns.rooms | length }}**
+- Normalized candidates count: **{{ ns.candidates | length }}**
+- `sensor.ma_control_host`: **{{ states('sensor.ma_control_host') }}**
+- `sensor.ma_active_meta_entity`: **{{ states('sensor.ma_active_meta_entity') }}**
+
+### Sentinel trim/lower simulation
+- Simulated sentinels checked: **{{ sim.total }}**
+- Correctly blocked by trim+lower guard: **{{ sim.blocked }}**
+
+### Guidance
+{% if verdict == 'PASS' %}
+- Guard determinism looks healthy. Proceed to next optimization slice.
+{% elif verdict == 'WARN' %}
+- Guard logic is active, but normalized runtime payload looks empty. Inspect upstream rooms/candidates payload content.
+{% else %}
+- Sentinel guard determinism failed. Re-check parser branches for trim+lower checks.
+{% endif %}
+```
+
+## 16) Iteration 4 Diagnostics Chatter Check — Virtual Harness Cadence
+
+```jinja
+{# =========================
+  Iteration 4 Diagnostics Chatter Check
+  Purpose: verify reduced virtual diagnostics idle spam while preserving
+           live interaction visibility.
+  Run once idle, then interact with encoder/buttons/pots and run again.
+  ========================= #}
+
+{% set find = namespace(vm='', vc='', vb='', probe='') %}
+
+{% for n in states.number %}
+  {% set eid = n.entity_id | default('', true) %}
+  {% set eid_l = eid | lower %}
+  {% set fn = (n.attributes.friendly_name if n.attributes is defined and n.attributes.friendly_name is defined else '') | string %}
+  {% set fn_l = fn | lower %}
+  {% if find.vm == '' and ('virtual mode selector index' in fn_l or eid_l.endswith('_virtual_mode_selector_index')) %}
+    {% set find.vm = eid %}
+  {% endif %}
+  {% if find.vc == '' and ('virtual control class index' in fn_l or eid_l.endswith('_virtual_control_class_index')) %}
+    {% set find.vc = eid %}
+  {% endif %}
+  {% if find.probe == '' and ('arylic volume set' in fn_l or eid_l.endswith('_arylic_volume_set')) %}
+    {% set find.probe = eid %}
+  {% endif %}
+{% endfor %}
+
+{% for t in states.sensor %}
+  {% set eid = t.entity_id | default('', true) %}
+  {% set eid_l = eid | lower %}
+  {% set fn = (t.attributes.friendly_name if t.attributes is defined and t.attributes.friendly_name is defined else '') | string %}
+  {% set fn_l = fn | lower %}
+  {% if find.vb == '' and ('virtual input battery status' in fn_l or eid_l.endswith('_virtual_input_battery_status')) %}
+    {% set find.vb = eid %}
+  {% endif %}
+{% endfor %}
+
+{% set vm = find.vm if find.vm != '' else 'number.control_board_v2_virtual_mode_selector_index' %}
+{% set vc = find.vc if find.vc != '' else 'number.control_board_v2_virtual_control_class_index' %}
+{% set vb = find.vb if find.vb != '' else 'sensor.spectra_ls_system_virtual_input_battery_status' %}
+{% set probe = find.probe if find.probe != '' else 'number.control_board_v2_arylic_volume_set' %}
+
+{% set vm_ok = vm != '' and states[vm] is not none %}
+{% set vc_ok = vc != '' and states[vc] is not none %}
+{% set vb_ok = vb != '' and states[vb] is not none %}
+{% set probe_ok = states[probe] is not none %}
+
+{% set vm_age = (as_timestamp(now()) - as_timestamp(states[vm].last_updated)) if vm_ok else none %}
+{% set vc_age = (as_timestamp(now()) - as_timestamp(states[vc].last_updated)) if vc_ok else none %}
+{% set vb_age = (as_timestamp(now()) - as_timestamp(states[vb].last_updated)) if vb_ok else none %}
+{% set probe_age = (as_timestamp(now()) - as_timestamp(states[probe].last_updated)) if probe_ok else none %}
+
+{% set recent_virtual_seen =
+  (vm_ok and vm_age is not none and vm_age <= 60) or
+  (vc_ok and vc_age is not none and vc_age <= 60) or
+  (vb_ok and vb_age is not none and vb_age <= 90)
+%}
+
+{% set interaction_seen =
+  (probe_ok and probe_age is not none and probe_age <= 30) or
+  recent_virtual_seen
+%}
+
+{% set score = 0 %}
+{% if vm_ok %}{% set score = score + 1 %}{% endif %}
+{% if vc_ok %}{% set score = score + 1 %}{% endif %}
+{% if vb_ok %}{% set score = score + 1 %}{% endif %}
+{% if interaction_seen %}{% set score = score + 1 %}{% endif %}
+
+{% set verdict = 'PASS' %}
+{% if not (vm_ok and vc_ok and vb_ok) %}
+  {% set verdict = 'FAIL' %}
+{% elif not interaction_seen %}
+  {% set verdict = 'WARN' %}
+{% endif %}
+
+### Iteration 4 Diagnostics Chatter Check
+- Result: **{{ verdict }}**
+- Timestamp: **{{ now() }}**
+- Score: **{{ score }}/4**
+
+### Virtual harness cadence probes
+- `{{ vm }}` exists={{ vm_ok }}, age_s={{ (vm_age | round(2)) if vm_age is not none else 'n/a' }}
+- `{{ vc }}` exists={{ vc_ok }}, age_s={{ (vc_age | round(2)) if vc_age is not none else 'n/a' }}
+- `{{ vb }}` exists={{ vb_ok }}, age_s={{ (vb_age | round(2)) if vb_age is not none else 'n/a' }}
+
+### Interaction visibility probe
+- `{{ probe }}` exists={{ probe_ok }}, age_s={{ (probe_age | round(2)) if probe_age is not none else 'n/a' }}
+- Recent virtual signal seen (mode/class/battery): **{{ recent_virtual_seen }}**
+- Interaction observed in last 30s: **{{ interaction_seen }}**
+
+### Guidance
+{% if verdict == 'PASS' %}
+- Cadence reduction is healthy: virtual diagnostics are quieter at idle and interaction signals remain visible.
+{% elif not (vm_ok and vc_ok and vb_ok) %}
+- One or more virtual diagnostics entities are missing. Validate ESPHome entity exposure first.
+{% elif not interaction_seen %}
+- Virtual entities exist, but no recent activity was detected on watched probes. Note: physical dials/encoders do not necessarily update virtual test entities; run `Run Virtual Input Battery` or change the virtual mode/class controls, then rerun.
+{% else %}
+- Cadence windows are outside expected bounds. Check diagnostics package update intervals and device connectivity.
 {% endif %}
 ```
 

@@ -32,11 +32,11 @@ dns2_ip: 1.1.1.1
 # - send_interval: minimum send spacing under motion.
 # - settle_ms: defer window to absorb jitter/micro-movements.
 # - jump_steps: large moves bypass defer path for immediate response.
-volume_pot_send_interval_ms: "25"
-volume_pot_settle_ms: "50"
+volume_pot_send_interval_ms: "15"
+volume_pot_settle_ms: "30"
 volume_pot_jump_steps: "1"
-eq_pot_send_interval_ms: "25"
-eq_pot_settle_ms: "50"
+eq_pot_send_interval_ms: "15"
+eq_pot_settle_ms: "30"
 eq_pot_jump_steps: "1"
 eq_min: "-10"
 eq_max: "10"
@@ -45,10 +45,10 @@ eq_max: "10"
 # Purpose: transport-level pacing, duplicate suppression, and failure handling.
 # Gain: tune per-network stability without editing C++.
 # Risk: very low pacing can flood weak links; very high pacing can feel sluggish.
-arylic_tcp_timeout_ms: "140"
-arylic_tcp_min_interval_ms: "45"
-arylic_tcp_dup_suppress_ms: "45"
-arylic_tcp_backoff_ms: "220"
+arylic_tcp_timeout_ms: "100"
+arylic_tcp_min_interval_ms: "20"
+arylic_tcp_dup_suppress_ms: "30"
+arylic_tcp_backoff_ms: "200"
 # Purpose: burst safety gate during rapid sweeps.
 # Gain: protects target/player from sustained command storms.
 # Risk: if too strict, can feel like "rubber banding" under fast twists.

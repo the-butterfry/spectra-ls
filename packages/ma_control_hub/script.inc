@@ -1,7 +1,12 @@
 # Description: Music Assistant control hub scripts (target options, auto-select, control helpers).
-# Version: 2026.04.17.5
+# Version: 2026.04.17.8
 # Last updated: 2026-04-17
 # Update version/date whenever you change this file.
+# HUB MUST-READ: Contract parser methodology.
+# - For complex attributes (`rooms`, `candidates_json`, etc.), prefer native sequence/mapping values first.
+# - Only parse string JSON when trimmed payload starts with `[` or `{` and is not unknown/unavailable/none/''.
+# - Never assume attribute payloads are string-only.
+# - Some readers may still be unpatched; if you touch or find one, patch it to this dual-mode contract in the same change.
 
 ma_update_target_options:
   mode: restart
@@ -11,13 +16,27 @@ ma_update_target_options:
           {% set rooms_raw = state_attr('sensor.spectra_ls_rooms_raw','rooms') %}
           {% if rooms_raw is sequence and rooms_raw is not string and rooms_raw is not mapping %}
             {{ rooms_raw }}
+          {% elif rooms_raw is mapping %}
+            {% set mapped = (rooms_raw.rooms if rooms_raw.rooms is defined else (rooms_raw.result if rooms_raw.result is defined else [])) %}
+            {% if mapped is sequence and mapped is not string and mapped is not mapping %}
+              {{ mapped }}
+            {% else %}
+              {{ [] }}
+            {% endif %}
           {% elif rooms_raw is string %}
-            {% set raw_l = rooms_raw | lower %}
             {% set raw_trim = rooms_raw | trim %}
-            {% if raw_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
+            {% set raw_trim_l = raw_trim | lower %}
+            {% if raw_trim_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
               {% set parsed = rooms_raw | from_json %}
               {% if parsed is sequence and parsed is not string and parsed is not mapping %}
                 {{ parsed }}
+              {% elif parsed is mapping %}
+                {% set mapped = (parsed.rooms if parsed.rooms is defined else (parsed.result if parsed.result is defined else [])) %}
+                {% if mapped is sequence and mapped is not string and mapped is not mapping %}
+                  {{ mapped }}
+                {% else %}
+                  {{ [] }}
+                {% endif %}
               {% else %}
                 {{ [] }}
               {% endif %}

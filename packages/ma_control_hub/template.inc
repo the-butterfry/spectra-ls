@@ -1,15 +1,66 @@
 # Description: Template entities for ma_control_hub runtime routing, metadata, and now-playing state surfaces.
-# Version: 2026.04.17.6
+# Version: 2026.04.17.10
 # Last updated: 2026-04-17
+# HUB MUST-READ: Contract parser methodology.
+# - For complex attributes (`rooms`, `candidates_json`, etc.), prefer native sequence/mapping values first.
+# - Only parse string JSON when trimmed payload starts with `[` or `{` and is not unknown/unavailable/none/''.
+# - Never assume attribute payloads are string-only.
+# - Some readers may still be unpatched; if you touch or find one, patch it to this dual-mode contract in the same change.
 
 - sensor:
     - name: Spectra LS Rooms JSON
       state: >-
-        {% set rooms = state_attr('sensor.spectra_ls_rooms_raw','rooms') or [] %}
+        {% set rooms_raw = state_attr('sensor.spectra_ls_rooms_raw','rooms') %}
+        {% set rooms = [] %}
+        {% if rooms_raw is sequence and rooms_raw is not string and rooms_raw is not mapping %}
+          {% set rooms = rooms_raw %}
+        {% elif rooms_raw is mapping %}
+          {% set mapped = (rooms_raw.rooms if rooms_raw.rooms is defined else (rooms_raw.result if rooms_raw.result is defined else [])) %}
+          {% if mapped is sequence and mapped is not string and mapped is not mapping %}
+            {% set rooms = mapped %}
+          {% endif %}
+        {% elif rooms_raw is string %}
+          {% set raw_trim = rooms_raw | trim %}
+          {% set raw_trim_l = raw_trim | lower %}
+          {% if raw_trim_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
+            {% set parsed = rooms_raw | from_json %}
+            {% if parsed is sequence and parsed is not string and parsed is not mapping %}
+              {% set rooms = parsed %}
+            {% elif parsed is mapping %}
+              {% set mapped = (parsed.rooms if parsed.rooms is defined else (parsed.result if parsed.result is defined else [])) %}
+              {% if mapped is sequence and mapped is not string and mapped is not mapping %}
+                {% set rooms = mapped %}
+              {% endif %}
+            {% endif %}
+          {% endif %}
+        {% endif %}
         {{ rooms | length }}
       attributes:
         rooms_json: >-
-          {% set rooms = state_attr('sensor.spectra_ls_rooms_raw','rooms') or [] %}
+          {% set rooms_raw = state_attr('sensor.spectra_ls_rooms_raw','rooms') %}
+          {% set rooms = [] %}
+          {% if rooms_raw is sequence and rooms_raw is not string and rooms_raw is not mapping %}
+            {% set rooms = rooms_raw %}
+          {% elif rooms_raw is mapping %}
+            {% set mapped = (rooms_raw.rooms if rooms_raw.rooms is defined else (rooms_raw.result if rooms_raw.result is defined else [])) %}
+            {% if mapped is sequence and mapped is not string and mapped is not mapping %}
+              {% set rooms = mapped %}
+            {% endif %}
+          {% elif rooms_raw is string %}
+            {% set raw_trim = rooms_raw | trim %}
+            {% set raw_trim_l = raw_trim | lower %}
+            {% if raw_trim_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
+              {% set parsed = rooms_raw | from_json %}
+              {% if parsed is sequence and parsed is not string and parsed is not mapping %}
+                {% set rooms = parsed %}
+              {% elif parsed is mapping %}
+                {% set mapped = (parsed.rooms if parsed.rooms is defined else (parsed.result if parsed.result is defined else [])) %}
+                {% if mapped is sequence and mapped is not string and mapped is not mapping %}
+                  {% set rooms = mapped %}
+                {% endif %}
+              {% endif %}
+            {% endif %}
+          {% endif %}
           {{ rooms | tojson }}
     - name: MA API URL
       state: >-
@@ -469,13 +520,23 @@
           {% set parsed = [] %}
           {% if raw is sequence and raw is not string and raw is not mapping %}
             {% set parsed = raw %}
+          {% elif raw is mapping %}
+            {% set mapped = (raw.candidates if raw.candidates is defined else (raw.result if raw.result is defined else [])) %}
+            {% if mapped is sequence and mapped is not string and mapped is not mapping %}
+              {% set parsed = mapped %}
+            {% endif %}
           {% elif raw is string %}
-            {% set raw_l = raw | lower %}
             {% set raw_trim = raw | trim %}
-            {% if raw_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
+            {% set raw_trim_l = raw_trim | lower %}
+            {% if raw_trim_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
               {% set candidate = raw | from_json %}
               {% if candidate is sequence and candidate is not string and candidate is not mapping %}
                 {% set parsed = candidate %}
+              {% elif candidate is mapping %}
+                {% set mapped = (candidate.candidates if candidate.candidates is defined else (candidate.result if candidate.result is defined else [])) %}
+                {% if mapped is sequence and mapped is not string and mapped is not mapping %}
+                  {% set parsed = mapped %}
+                {% endif %}
               {% endif %}
             {% endif %}
           {% endif %}
@@ -492,13 +553,23 @@
           {% set parsed = [] %}
           {% if raw is sequence and raw is not string and raw is not mapping %}
             {% set parsed = raw %}
+          {% elif raw is mapping %}
+            {% set mapped = (raw.candidates if raw.candidates is defined else (raw.result if raw.result is defined else [])) %}
+            {% if mapped is sequence and mapped is not string and mapped is not mapping %}
+              {% set parsed = mapped %}
+            {% endif %}
           {% elif raw is string %}
-            {% set raw_l = raw | lower %}
             {% set raw_trim = raw | trim %}
-            {% if raw_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
+            {% set raw_trim_l = raw_trim | lower %}
+            {% if raw_trim_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
               {% set candidate = raw | from_json %}
               {% if candidate is sequence and candidate is not string and candidate is not mapping %}
                 {% set parsed = candidate %}
+              {% elif candidate is mapping %}
+                {% set mapped = (candidate.candidates if candidate.candidates is defined else (candidate.result if candidate.result is defined else [])) %}
+                {% if mapped is sequence and mapped is not string and mapped is not mapping %}
+                  {% set parsed = mapped %}
+                {% endif %}
               {% endif %}
             {% endif %}
           {% endif %}
@@ -590,13 +661,23 @@
         {% set rooms = [] %}
         {% if rooms_raw is sequence and rooms_raw is not string and rooms_raw is not mapping %}
           {% set rooms = rooms_raw %}
+        {% elif rooms_raw is mapping %}
+          {% set mapped = (rooms_raw.rooms if rooms_raw.rooms is defined else (rooms_raw.result if rooms_raw.result is defined else [])) %}
+          {% if mapped is sequence and mapped is not string and mapped is not mapping %}
+            {% set rooms = mapped %}
+          {% endif %}
         {% elif rooms_raw is string %}
-          {% set raw_l = rooms_raw | lower %}
           {% set raw_trim = rooms_raw | trim %}
-          {% if raw_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
+          {% set raw_trim_l = raw_trim | lower %}
+          {% if raw_trim_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
             {% set parsed = rooms_raw | from_json %}
             {% if parsed is sequence and parsed is not string and parsed is not mapping %}
               {% set rooms = parsed %}
+            {% elif parsed is mapping %}
+              {% set mapped = (parsed.rooms if parsed.rooms is defined else (parsed.result if parsed.result is defined else [])) %}
+              {% if mapped is sequence and mapped is not string and mapped is not mapping %}
+                {% set rooms = mapped %}
+              {% endif %}
             {% endif %}
           {% endif %}
         {% endif %}
@@ -661,13 +742,23 @@
           {% set rooms = [] %}
           {% if rooms_raw is sequence and rooms_raw is not string and rooms_raw is not mapping %}
             {% set rooms = rooms_raw %}
+          {% elif rooms_raw is mapping %}
+            {% set mapped = (rooms_raw.rooms if rooms_raw.rooms is defined else (rooms_raw.result if rooms_raw.result is defined else [])) %}
+            {% if mapped is sequence and mapped is not string and mapped is not mapping %}
+              {% set rooms = mapped %}
+            {% endif %}
           {% elif rooms_raw is string %}
-            {% set raw_l = rooms_raw | lower %}
             {% set raw_trim = rooms_raw | trim %}
-            {% if raw_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
+            {% set raw_trim_l = raw_trim | lower %}
+            {% if raw_trim_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
               {% set parsed = rooms_raw | from_json %}
               {% if parsed is sequence and parsed is not string and parsed is not mapping %}
                 {% set rooms = parsed %}
+              {% elif parsed is mapping %}
+                {% set mapped = (parsed.rooms if parsed.rooms is defined else (parsed.result if parsed.result is defined else [])) %}
+                {% if mapped is sequence and mapped is not string and mapped is not mapping %}
+                  {% set rooms = mapped %}
+                {% endif %}
               {% endif %}
             {% endif %}
           {% endif %}
@@ -992,13 +1083,23 @@
         {% set rooms = [] %}
         {% if rooms_raw is sequence and rooms_raw is not string and rooms_raw is not mapping %}
           {% set rooms = rooms_raw %}
+        {% elif rooms_raw is mapping %}
+          {% set mapped = (rooms_raw.rooms if rooms_raw.rooms is defined else (rooms_raw.result if rooms_raw.result is defined else [])) %}
+          {% if mapped is sequence and mapped is not string and mapped is not mapping %}
+            {% set rooms = mapped %}
+          {% endif %}
         {% elif rooms_raw is string %}
-          {% set raw_l = rooms_raw | lower %}
           {% set raw_trim = rooms_raw | trim %}
-          {% if raw_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
+          {% set raw_trim_l = raw_trim | lower %}
+          {% if raw_trim_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
             {% set parsed = rooms_raw | from_json %}
             {% if parsed is sequence and parsed is not string and parsed is not mapping %}
               {% set rooms = parsed %}
+            {% elif parsed is mapping %}
+              {% set mapped = (parsed.rooms if parsed.rooms is defined else (parsed.result if parsed.result is defined else [])) %}
+              {% if mapped is sequence and mapped is not string and mapped is not mapping %}
+                {% set rooms = mapped %}
+              {% endif %}
             {% endif %}
           {% endif %}
         {% endif %}
@@ -1075,13 +1176,23 @@
           {% set rooms = [] %}
           {% if rooms_raw is sequence and rooms_raw is not string and rooms_raw is not mapping %}
             {% set rooms = rooms_raw %}
+          {% elif rooms_raw is mapping %}
+            {% set mapped = (rooms_raw.rooms if rooms_raw.rooms is defined else (rooms_raw.result if rooms_raw.result is defined else [])) %}
+            {% if mapped is sequence and mapped is not string and mapped is not mapping %}
+              {% set rooms = mapped %}
+            {% endif %}
           {% elif rooms_raw is string %}
-            {% set raw_l = rooms_raw | lower %}
             {% set raw_trim = rooms_raw | trim %}
-            {% if raw_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
+            {% set raw_trim_l = raw_trim | lower %}
+            {% if raw_trim_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
               {% set parsed = rooms_raw | from_json %}
               {% if parsed is sequence and parsed is not string and parsed is not mapping %}
                 {% set rooms = parsed %}
+              {% elif parsed is mapping %}
+                {% set mapped = (parsed.rooms if parsed.rooms is defined else (parsed.result if parsed.result is defined else [])) %}
+                {% if mapped is sequence and mapped is not string and mapped is not mapping %}
+                  {% set rooms = mapped %}
+                {% endif %}
               {% endif %}
             {% endif %}
           {% endif %}
@@ -1107,13 +1218,23 @@
         {% set rooms = [] %}
         {% if rooms_raw is sequence and rooms_raw is not string and rooms_raw is not mapping %}
           {% set rooms = rooms_raw %}
+        {% elif rooms_raw is mapping %}
+          {% set mapped = (rooms_raw.rooms if rooms_raw.rooms is defined else (rooms_raw.result if rooms_raw.result is defined else [])) %}
+          {% if mapped is sequence and mapped is not string and mapped is not mapping %}
+            {% set rooms = mapped %}
+          {% endif %}
         {% elif rooms_raw is string %}
-          {% set raw_l = rooms_raw | lower %}
           {% set raw_trim = rooms_raw | trim %}
-          {% if raw_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
+          {% set raw_trim_l = raw_trim | lower %}
+          {% if raw_trim_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
             {% set parsed = rooms_raw | from_json %}
             {% if parsed is sequence and parsed is not string and parsed is not mapping %}
               {% set rooms = parsed %}
+            {% elif parsed is mapping %}
+              {% set mapped = (parsed.rooms if parsed.rooms is defined else (parsed.result if parsed.result is defined else [])) %}
+              {% if mapped is sequence and mapped is not string and mapped is not mapping %}
+                {% set rooms = mapped %}
+              {% endif %}
             {% endif %}
           {% endif %}
         {% endif %}
@@ -1138,13 +1259,23 @@
           {% set rooms = [] %}
           {% if rooms_raw is sequence and rooms_raw is not string and rooms_raw is not mapping %}
             {% set rooms = rooms_raw %}
+          {% elif rooms_raw is mapping %}
+            {% set mapped = (rooms_raw.rooms if rooms_raw.rooms is defined else (rooms_raw.result if rooms_raw.result is defined else [])) %}
+            {% if mapped is sequence and mapped is not string and mapped is not mapping %}
+              {% set rooms = mapped %}
+            {% endif %}
           {% elif rooms_raw is string %}
-            {% set raw_l = rooms_raw | lower %}
             {% set raw_trim = rooms_raw | trim %}
-            {% if raw_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
+            {% set raw_trim_l = raw_trim | lower %}
+            {% if raw_trim_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
               {% set parsed = rooms_raw | from_json %}
               {% if parsed is sequence and parsed is not string and parsed is not mapping %}
                 {% set rooms = parsed %}
+              {% elif parsed is mapping %}
+                {% set mapped = (parsed.rooms if parsed.rooms is defined else (parsed.result if parsed.result is defined else [])) %}
+                {% if mapped is sequence and mapped is not string and mapped is not mapping %}
+                  {% set rooms = mapped %}
+                {% endif %}
               {% endif %}
             {% endif %}
           {% endif %}
@@ -1168,13 +1299,23 @@
           {% set rooms = [] %}
           {% if rooms_raw is sequence and rooms_raw is not string and rooms_raw is not mapping %}
             {% set rooms = rooms_raw %}
+          {% elif rooms_raw is mapping %}
+            {% set mapped = (rooms_raw.rooms if rooms_raw.rooms is defined else (rooms_raw.result if rooms_raw.result is defined else [])) %}
+            {% if mapped is sequence and mapped is not string and mapped is not mapping %}
+              {% set rooms = mapped %}
+            {% endif %}
           {% elif rooms_raw is string %}
-            {% set raw_l = rooms_raw | lower %}
             {% set raw_trim = rooms_raw | trim %}
-            {% if raw_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
+            {% set raw_trim_l = raw_trim | lower %}
+            {% if raw_trim_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
               {% set parsed = rooms_raw | from_json %}
               {% if parsed is sequence and parsed is not string and parsed is not mapping %}
                 {% set rooms = parsed %}
+              {% elif parsed is mapping %}
+                {% set mapped = (parsed.rooms if parsed.rooms is defined else (parsed.result if parsed.result is defined else [])) %}
+                {% if mapped is sequence and mapped is not string and mapped is not mapping %}
+                  {% set rooms = mapped %}
+                {% endif %}
               {% endif %}
             {% endif %}
           {% endif %}
@@ -1241,13 +1382,23 @@
           {% set rooms = [] %}
           {% if rooms_raw is sequence and rooms_raw is not string and rooms_raw is not mapping %}
             {% set rooms = rooms_raw %}
+          {% elif rooms_raw is mapping %}
+            {% set mapped = (rooms_raw.rooms if rooms_raw.rooms is defined else (rooms_raw.result if rooms_raw.result is defined else [])) %}
+            {% if mapped is sequence and mapped is not string and mapped is not mapping %}
+              {% set rooms = mapped %}
+            {% endif %}
           {% elif rooms_raw is string %}
-            {% set raw_l = rooms_raw | lower %}
             {% set raw_trim = rooms_raw | trim %}
-            {% if raw_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
+            {% set raw_trim_l = raw_trim | lower %}
+            {% if raw_trim_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
               {% set parsed = rooms_raw | from_json %}
               {% if parsed is sequence and parsed is not string and parsed is not mapping %}
                 {% set rooms = parsed %}
+              {% elif parsed is mapping %}
+                {% set mapped = (parsed.rooms if parsed.rooms is defined else (parsed.result if parsed.result is defined else [])) %}
+                {% if mapped is sequence and mapped is not string and mapped is not mapping %}
+                  {% set rooms = mapped %}
+                {% endif %}
               {% endif %}
             {% endif %}
           {% endif %}
@@ -1599,13 +1750,23 @@
           {% set rooms = [] %}
           {% if rooms_raw is sequence and rooms_raw is not string and rooms_raw is not mapping %}
             {% set rooms = rooms_raw %}
+          {% elif rooms_raw is mapping %}
+            {% set mapped = (rooms_raw.rooms if rooms_raw.rooms is defined else (rooms_raw.result if rooms_raw.result is defined else [])) %}
+            {% if mapped is sequence and mapped is not string and mapped is not mapping %}
+              {% set rooms = mapped %}
+            {% endif %}
           {% elif rooms_raw is string %}
-            {% set raw_l = rooms_raw | lower %}
             {% set raw_trim = rooms_raw | trim %}
-            {% if raw_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
+            {% set raw_trim_l = raw_trim | lower %}
+            {% if raw_trim_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
               {% set parsed = rooms_raw | from_json %}
               {% if parsed is sequence and parsed is not string and parsed is not mapping %}
                 {% set rooms = parsed %}
+              {% elif parsed is mapping %}
+                {% set mapped = (parsed.rooms if parsed.rooms is defined else (parsed.result if parsed.result is defined else [])) %}
+                {% if mapped is sequence and mapped is not string and mapped is not mapping %}
+                  {% set rooms = mapped %}
+                {% endif %}
               {% endif %}
             {% endif %}
           {% endif %}
@@ -1645,13 +1806,23 @@
         {% set rooms = [] %}
         {% if rooms_raw is sequence and rooms_raw is not string and rooms_raw is not mapping %}
           {% set rooms = rooms_raw %}
+        {% elif rooms_raw is mapping %}
+          {% set mapped = (rooms_raw.rooms if rooms_raw.rooms is defined else (rooms_raw.result if rooms_raw.result is defined else [])) %}
+          {% if mapped is sequence and mapped is not string and mapped is not mapping %}
+            {% set rooms = mapped %}
+          {% endif %}
         {% elif rooms_raw is string %}
-          {% set raw_l = rooms_raw | lower %}
           {% set raw_trim = rooms_raw | trim %}
-          {% if raw_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
+          {% set raw_trim_l = raw_trim | lower %}
+          {% if raw_trim_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
             {% set parsed = rooms_raw | from_json %}
             {% if parsed is sequence and parsed is not string and parsed is not mapping %}
               {% set rooms = parsed %}
+            {% elif parsed is mapping %}
+              {% set mapped = (parsed.rooms if parsed.rooms is defined else (parsed.result if parsed.result is defined else [])) %}
+              {% if mapped is sequence and mapped is not string and mapped is not mapping %}
+                {% set rooms = mapped %}
+              {% endif %}
             {% endif %}
           {% endif %}
         {% endif %}

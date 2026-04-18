@@ -1,5 +1,5 @@
 # Description: Spectra LS diagnostics, OLED contrast controls, and test helpers.
-# Version: 2026.04.17.3
+# Version: 2026.04.17.4
 # Last updated: 2026-04-17
 # Update version/date whenever you change this file.
 #
@@ -136,7 +136,7 @@ number:
     max_value: 4
     step: 1
     mode: box
-    update_interval: 5s
+    update_interval: 15s
     lambda: |-
       return (float) id(hardware_mode);
     set_action:
@@ -154,7 +154,7 @@ number:
     max_value: 2
     step: 1
     mode: box
-    update_interval: 5s
+    update_interval: 15s
     lambda: |-
       return (float) id(control_class);
     set_action:
@@ -181,7 +181,7 @@ text_sensor:
     name: "Virtual Input Battery Status"
     id: virtual_input_battery_status
     internal: false
-    update_interval: 15s
+    update_interval: 30s
     entity_category: diagnostic
     lambda: |-
       return str_sprintf("pass=%d fail=%d", id(virtual_input_test_pass_count), id(virtual_input_test_fail_count));

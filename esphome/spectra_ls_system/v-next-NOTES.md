@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.18.35 -->
+<!-- Version: 2026.04.18.36 -->
 <!-- Last updated: 2026-04-18 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -9,6 +9,10 @@
 > Status: Draft plan. Update as decisions solidify.
 
 ## Latest Contract Update (Lighting)
+
+- Lighting room/target menu slider contract updated: while browsing `Lighting Rooms` or `Lighting Targets` lists, moving the lighting slider now applies brightness immediately for the currently highlighted room/target route (no explicit entry into adjust submenu required).
+
+- Lighting adjust labels now use a shared friendly-caption path (`Brightness/Hue/Sat <friendly target>`), replacing legacy `Lighting Values` text and keeping adjust/menu/render labels consistent across lighting screens.
 
 - Boot first-press submenu contract (follow-up): fixed second interception path where auto control-target prompt could still consume first Select when `menu_active=true` during boot/menu-bootstrap. Auto prompt is now dismissed/snoozed without stealing the first submenu entry press; manual prompt path is unchanged.
 

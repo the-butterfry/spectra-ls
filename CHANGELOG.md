@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.18.53 -->
+<!-- Version: 2026.04.18.54 -->
 <!-- Last updated: 2026-04-18 -->
 
 # Changelog
 
 ## 2026-04-18
+
+- ESPHome/Lighting Menu UX Refactor (`esphome/spectra_ls_system/packages/spectra-ls-lighting.yaml`, `esphome/spectra_ls_system/spectra-ls-peripherals.yaml`): make lighting slider apply **room brightness directly** while browsing Lighting Rooms/Targets lists (no need to enter `All -> Lighting Values` first), and replace legacy `Lighting Values` labeling with reusable friendly labels (`Brightness <friendly name>`, `Hue <friendly name>`, `Sat <friendly name>`) across lighting-adjust menu rendering paths.
 
 - Repo Scope Separation (`.gitignore`, `packages/dst_tuya_ac.yaml`): de-track `packages/dst_tuya_ac.yaml` from the Spectra repository and add an explicit ignore rule so this local AC-specific package is kept outside Spectra versioned scope while preserving the file locally.
 

@@ -1,10 +1,30 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.104 -->
+<!-- Version: 2026.04.17.114 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
+
+- ESPHome/Runtime Cleanup (Code-Side): Remove unreferenced high-frequency internal template sensors from `esphome/spectra_ls_system/packages/spectra-ls-lighting.yaml` (`lighting_hue_state`, `lighting_sat_state`, `lighting_brightness_state`, `selected_room_state`, `selected_target_state`) to eliminate unnecessary 500ms polling work with no behavioral contract impact.
+
+- Docs/DevTools Phase-4 Template Modernization: Update `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md` Template #2 and Template #14 to use the full dual-mode payload contract (native sequence/mapping + guarded string JSON parse) with trimmed lowercase sentinel checks (`raw_trim_l`) for deterministic parser behavior.
+
+- Docs/DevTools Iteration-4 Accuracy Fix: Update `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md` Template #16 to detect virtual battery status using HA `sensor`-domain entities (not `text_sensor` domain) and soften verdict semantics so idle/no-recent-probe activity reports `WARN` rather than hard `FAIL` when core virtual entities are present.
+
+- Docs/DevTools Hotfix: Repair Jinja syntax corruption in `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md` Template #16 (`Iteration 4 Diagnostics Chatter Check`) by removing stray `endif/endfor` mismatches and leaked lines from adjacent templates, restoring valid render behavior in HA Developer Tools.
+
+- Docs/DevTools Diagnostics Hardening: Update `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md` Iteration 4 chatter template virtual-entity discovery to tolerate prefixed `friendly_name` variants (substring match) and reorder tail templates into strict `13 → 14 → 15 → 16` numeric sequence for predictable navigation.
+
+- Docs/DevTools Ordering: Reorder `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md` template sections into strict numeric sequence so the tail block is now `13 → 14 → 15 → 16` (eliminates out-of-order `16/14/15/13` layout).
+
+- Diagnostics/Template Fix (Iteration 4): Harden `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md` Template #16 entity resolution to use `friendly_name` matching with explicit entity-id fallbacks, preventing false FAIL reports where virtual diagnostics exist but `name`-based lookup returns empty IDs.
+
+- ESPHome/Diagnostics Iteration 4: Reduce virtual-input diagnostics chatter in `esphome/spectra_ls_system/packages/spectra-ls-diagnostics.yaml` by slowing passive publish cadence for virtual mode/control/status entities (no behavior-path changes), and add an Iteration 4 DT verification template in `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md` focused on interaction visibility with lower idle spam.
+
+- HA/MA Parser Guard Determinism (Iteration 2): Tighten complex-payload string parser guards in `packages/ma_control_hub/template.inc` and `packages/ma_control_hub/script.inc` to evaluate sentinel checks against trimmed lowercase payloads, reducing whitespace/case-induced drift while preserving dual-mode sequence/mapping behavior.
+
+- HA/MA Full Parser Modernization (Iteration): Expand `packages/ma_control_hub/template.inc` rooms/candidate readers to fully honor the dual-mode contract across remaining call sites (native sequence, native mapping with canonical key extraction, and guarded string JSON parse) and add an iteration DT validation template in `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md` to verify parser-shape compatibility after each modernization pass.
 
 - HA/MA Contract Hardening: Update `packages/ma_control_hub/template.inc` and `packages/ma_control_hub/script.inc` rooms/candidate readers to a dual-mode parser contract (native sequence payloads accepted directly; string JSON payloads parsed only after trim+guard checks), preventing audio routing/meta/control surfaces from collapsing when Home Assistant exposes attribute payloads as non-string objects.
 

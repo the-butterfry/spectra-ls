@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.18.5 -->
+<!-- Version: 2026.04.18.6 -->
 <!-- Last updated: 2026-04-18 -->
 
 # Changelog
 
 ## 2026-04-18
+
+- ESPHome/Now-Playing Idle-Recency Clamp (follow-up): Refine `playing_effective` in `esphome/spectra_ls_system/spectra-ls-peripherals.yaml` so Arylic/LR recency and activity windows only contribute when corresponding sources are non-idle, and only refresh `last_playing_true_ms` under active-source conditions. This prevents idle metadata timestamp churn from holding `play=1`/NP state with empty content.
 
 - ESPHome/Now-Playing Evidence Gate Fix (diagnostic-driven): Use one-cycle `disp_diag` findings to harden `playing_effective` in `esphome/spectra_ls_system/spectra-ls-peripherals.yaml` so HA `state=playing` only refreshes playback-hold timestamps when recent HA playback evidence exists (recent meta or position updates). This prevents stale upstream `playing` flags from pinning the idle display on Now Playing with empty content.
 

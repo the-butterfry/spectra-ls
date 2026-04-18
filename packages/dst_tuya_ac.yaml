@@ -1,5 +1,5 @@
 # Description: DST + Tuya AC package with Fahrenheit controls, schedule automations, and fan-only safeguard rules.
-# Version: 2026.04.18.17
+# Version: 2026.04.18.18
 # Last updated: 2026-04-18
 # config/packages/dst_tuya_ac.yaml
 # DST + Tuya AC package (all temperatures in Fahrenheit)
@@ -268,11 +268,6 @@ script:
           entity_id: fan.ac_fan
         data:
           preset_mode: "low"
-      - service: climate.set_hvac_mode
-        target:
-          entity_id: climate.room_dst
-        data:
-          hvac_mode: "fan_only"
 
   dst_ac_set_cool:
     sequence:
@@ -451,68 +446,6 @@ automation:
                 target:
                   entity_id: script.dst_preset_home
         default: []
-
-  - id: dst_mode_reconciler
-    alias: "DST: Reconcile policy target mode"
-    mode: restart
-    trigger:
-      - platform: state
-        entity_id:
-          - sensor.ac_target_mode
-          - climate.room_dst
-          - climate.snail_conditioner_tuya
-          - input_boolean.ac_away_lock
-          - input_boolean.ac_fan_override
-          - binary_sensor.ac_manual_override_active
-          - binary_sensor.ac_pause_active
-          - binary_sensor.ac_fan_policy_active
-          - binary_sensor.ac_schedule_cool_request
-    action:
-      - variables:
-          target_mode: "{{ states('sensor.ac_target_mode') | lower }}"
-          current_mode: "{{ states('climate.room_dst') | lower }}"
-          tuya_mode: "{{ states('climate.snail_conditioner_tuya') | lower }}"
-      - choose:
-          - conditions:
-              - condition: template
-                value_template: "{{ target_mode in ['unknown','unavailable','none',''] }}"
-            sequence: []
-          - conditions:
-              - condition: template
-                value_template: "{{ target_mode == 'hold' }}"
-            sequence: []
-          - conditions:
-              - condition: template
-                value_template: "{{ target_mode == 'off' and (current_mode != 'off' or tuya_mode != 'off') }}"
-            sequence:
-              - service: script.turn_on
-                target:
-                  entity_id: script.dst_ac_turn_off
-          - conditions:
-              - condition: template
-                value_template: >-
-                  {{ target_mode == 'cool' and (
-                    current_mode != 'cool' or
-                    tuya_mode != 'cool'
-                  ) }}
-            sequence:
-              - service: script.turn_on
-                target:
-                  entity_id: script.dst_ac_set_cool
-          - conditions:
-              - condition: template
-                value_template: "{{ target_mode == 'fan_only' and (current_mode != 'fan_only' or tuya_mode != 'fan_only') }}"
-            sequence:
-              - service: script.turn_on
-                target:
-                  entity_id: script.dst_apply_fan_only_low
-          - conditions:
-              - condition: template
-                value_template: "{{ target_mode == 'dry' and (current_mode != 'dry' or tuya_mode != 'dry') }}"
-            sequence:
-              - service: script.turn_on
-                target:
-                  entity_id: script.dst_ac_set_dry
 
   - id: dst_clear_manual_override_on_outdoor_cool
     alias: "DST: Clear manual hold when outdoor cool and room satisfied"

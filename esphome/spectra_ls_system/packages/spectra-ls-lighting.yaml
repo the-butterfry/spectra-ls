@@ -1,5 +1,5 @@
 # Description: Lighting controls package for Spectra LS System.
-# Version: 2026.04.18.1
+# Version: 2026.04.18.2
 # Last updated: 2026-04-18
 # Update version/date whenever you change this file.
 
@@ -128,6 +128,11 @@ sensor:
       - lambda: |-
           static float last_sent_pct = -1000.0f;
           const uint32_t now = millis();
+          const bool lighting_menu_active = id(menu_active) &&
+                          (id(menu_level) == ${menu_level_lighting_rooms} ||
+                           id(menu_level) == ${menu_level_lighting_targets} ||
+                           id(menu_level) == ${menu_level_lighting_adjust} ||
+                           id(menu_level) == ${menu_level_lighting_toggle});
           float clamped = (float) x;
           if (clamped < 0.0f) clamped = 0.0f;
           if (clamped > 100.0f) clamped = 100.0f;

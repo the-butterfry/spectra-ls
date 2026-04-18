@@ -1,5 +1,5 @@
 // Description: Shared OLED text layout helpers for pixel-accurate centered wrap/fit across Spectra LS display paths.
-// Version: 2026.04.18.3
+// Version: 2026.04.18.4
 // Last updated: 2026-04-18
 
 #pragma once
@@ -120,21 +120,21 @@ inline std::vector<std::string> wrap_two_lines(esphome::display::Display &it, es
   }
 
   const auto words = split_words(text);
+  const auto join_words = [&](int start, int end) {
+    std::string out;
+    for (int i = start; i < end; i++) {
+      if (!out.empty()) out += " ";
+      out += words[i];
+    }
+    return out;
+  };
   if (words.size() >= 2) {
     int best_split = -1;
     int best_score = 1000000;
 
     for (int split = 1; split < static_cast<int>(words.size()); split++) {
-      std::string l1;
-      for (int i = 0; i < split; i++) {
-        if (!l1.empty()) l1 += " ";
-        l1 += words[i];
-      }
-      std::string l2;
-      for (int i = split; i < static_cast<int>(words.size()); i++) {
-        if (!l2.empty()) l2 += " ";
-        l2 += words[i];
-      }
+      std::string l1 = join_words(0, split);
+      std::string l2 = join_words(split, static_cast<int>(words.size()));
 
       const int w1 = text_width_px(it, font, l1);
       const int w2 = text_width_px(it, font, l2);
@@ -167,21 +167,30 @@ inline std::vector<std::string> wrap_two_lines(esphome::display::Display &it, es
     }
 
     if (best_split > 0) {
-      std::string l1;
-      for (int i = 0; i < best_split; i++) {
-        if (!l1.empty()) l1 += " ";
-        l1 += words[i];
-      }
-      std::string l2;
-      for (int i = best_split; i < static_cast<int>(words.size()); i++) {
-        if (!l2.empty()) l2 += " ";
-        l2 += words[i];
-      }
+      std::string l1 = join_words(0, best_split);
+      std::string l2 = join_words(best_split, static_cast<int>(words.size()));
       trim_ascii(l1);
       trim_ascii(l2);
       if (!l1.empty()) lines.push_back(l1);
       if (!l2.empty()) lines.push_back(l2);
       return lines;
+    }
+
+    // Word-preserving fallback for long tails (for example "Snail Conditioner")
+    // when no full-word 2-line split fits. Keep line 1 on word boundaries and
+    // fit line 2 with ellipsis instead of producing orphan single-character tails.
+    for (int split = static_cast<int>(words.size()) - 1; split >= 1; split--) {
+      std::string l1 = join_words(0, split);
+      if (text_width_px(it, font, l1) > max_width) continue;
+      std::string remainder_words = join_words(split, static_cast<int>(words.size()));
+      std::string l2 = fit_text_to_width(it, font, remainder_words, max_width, add_ellipsis);
+      trim_ascii(l1);
+      trim_ascii(l2);
+      if (!l1.empty() && !l2.empty()) {
+        lines.push_back(l1);
+        lines.push_back(l2);
+        return lines;
+      }
     }
   }
 

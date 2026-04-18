@@ -1,10 +1,74 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.18.19 -->
+<!-- Version: 2026.04.18.49 -->
 <!-- Last updated: 2026-04-18 -->
 
 # Changelog
 
 ## 2026-04-18
+
+- Workflow/Git Push Cadence Policy (`.github/copilot-instructions.md`): add mandatory active-session checkpoint push cadence (at least every 10 minutes or on each completed logical slice, whichever comes first) so rollback points remain recent during iterative work.
+
+- HA/AC Numeric Template State Guard (`packages/dst_tuya_ac.yaml`): enforce numeric output for `sensor.dst_room_temp_change_1h` and `sensor.dst_room_temp_rate_1h` even when the raw statistics source is temporarily unavailable, preventing Template integration validator errors that reject non-numeric `unknown` states.
+
+- Repo Ignore-Scope Lockdown (`.gitignore`): stop re-including `blueprints/` and `custom_components/` and explicitly ignore both paths so environment-specific/HA-HACS artifacts are not tracked or uploaded to GitHub from this project repository.
+
+- HA/Global Target Exclusion Filter (`packages/spectra_ls_lighting_hub.yaml`, `packages/ma_control_hub/script.inc`, `packages/ma_control_hub/template.inc`): add centralized `no-spectra` label exclusion so entities tagged with this label are never included in Spectra lighting catalogs, MA discovered/known target option lists, or control-target prompt target catalogs.
+
+- ESPHome/Menu Boot First-Press Intercept Follow-up (`esphome/spectra_ls_system/packages/spectra-ls-ui.yaml`): fix remaining boot-only two-press path where auto control-target prompt could still consume first Select when menu was already active. Auto prompt is now dismissed/snoozed without consuming submenu entry; manual prompt behavior remains unchanged.
+
+- ESPHome/OLED Word-Wrap Tail Fix (`esphome/spectra_ls_system/components/sls_oled_text_layout.h`): replace character-slice fallback behavior for non-fitting multi-word labels with word-preserving fallback + ellipsis on line 2, preventing orphan single-character second lines (for example `Conditione` / `r`) while keeping centered two-line rendering deterministic.
+
+- ESPHome/Menu First-Press Boot Intercept Fix (`esphome/spectra_ls_system/packages/spectra-ls-ui.yaml`): resolve boot-only double-press submenu entry by prioritizing non-menu Select handling before auto control-target prompt consumption; first Select now enters submenu deterministically, while manual control-target prompt behavior remains intact.
+
+- ESPHome/Menu UX One-Press Entry Fix (`esphome/spectra_ls_system/packages/spectra-ls-ui.yaml`): remove two-step submenu entry behavior by routing a non-menu Select press directly into a submenu (`Lighting Rooms` when in lighting screen, `Gear` when in audio screen) instead of consuming an initial press to land on root-menu state.
+
+- ESPHome/Menu Directionality Root-Cause Correction (`esphome/spectra_ls_system/substitutions.yaml`): after full-stack sign trace (RP2040 encoder generation → UART packet decode → unified menu mapper), confirm RP path publishes raw encoder deltas without inversion and restore canonical top-level policy to `menu_encoder_nav_sign: "-1"` so left-turn no longer maps to downward movement.
+
+- ESPHome/OLED Progress Bootstrap Hardening (`esphome/spectra_ls_system/spectra-ls-peripherals.yaml`): add local HA progress timestamp bootstrap when playback is active and duration is known but `ha_audio_pos_last_ms` is still `0` (for example no initial HA position-change event yet). This allows now-playing progress computation to arm and advance from cached/local elapsed time instead of staying permanently invalid.
+
+- ESPHome/Menu Directionality Fix (`esphome/spectra_ls_system/substitutions.yaml`): set unified menu navigation direction policy to raw encoder sign (`menu_encoder_nav_sign: "1"`) so left-turn index motion is no longer inverted into downward movement.
+
+- ESPHome/OLED Progress Bootstrap Fix (`esphome/spectra_ls_system/packages/spectra-ls-audio-tcp.yaml`): initialize `ha_audio_pos_last_ms` on first received HA position sample (even when delta is flat) so now-playing progress logic can arm and project forward instead of remaining permanently invalid when position starts at `0`.
+
+- ESPHome/OLED Progress Hold Fix (`esphome/spectra_ls_system/spectra-ls-peripherals.yaml`): fix static progress-bar behavior when HA position updates remain numerically flat (for example repeated `0`) by projecting from cached displayed position for the same track window while playback is active. This keeps OLED progress advancing deterministically from local elapsed time instead of repeatedly resetting to the non-advancing feed sample.
+
+- ESPHome/Audio Transport Reliability Hardening (`esphome/spectra_ls_system/components/arylic_tcp.h`): make TCP send path resilient to transient network jitter by adding one immediate retry attempt per payload and deferring global backoff until repeated consecutive failures (instead of tripping backoff on a single timeout). This reduces brittle command drops during fast volume sweeps when occasional `connect() timeout` events occur.
+
+- Tooling/OTA Safety Hardening (`bin/esphome_spectra_upload_local.sh`): uploader now rebuilds staged firmware by default before OTA (with `--no-build` escape hatch and `--clean-stage` passthrough), preventing silent stale-artifact uploads that can leave runtime behavior on old transport code despite recent source edits.
+
+- ESPHome/Audio Transport Root-Cause Fix (`esphome/spectra_ls_system/components/arylic_tcp.h`): remove dequeue-time payload mutation for queued `VOL` sends (previously replacing popped payload with `recent->last_payload`) and replace it with deterministic superseded-item drop logic for volume commands only. This eliminates target/TX divergence (for example `Pot send ... target=N` while TX emits a different `VOL:M`) caused by mutable latest-payload rewrite race behavior.
+
+- ESPHome/Audio Transport Anti-Replay Guard (`esphome/spectra_ls_system/components/arylic_tcp.h`): add queue-age protection for volume passthrough commands (`VOL`) so stale queued volume payloads are dropped instead of being transmitted late, and add explicit per-volume enqueue logging to make delayed-source attribution deterministic during ghost-volume investigations. **Shared-contract note:** applied to `spectra_ls_system` (`main`) now for live issue containment; `menu-only` (`esphome/control-py`) parity update is intentionally deferred and tracked as branch divergence until validated migration.
+
+- HA/AC Tuya Authority Enforcement (`packages/dst_tuya_ac.yaml`): make DST controller authoritative over Tuya internal thermostat behavior by setting Tuya cool setpoint farther below DST target (`DST target - 4°F`, clamped to Tuya min/max) and extending `dst_mode_reconciler` to re-assert Tuya mode/setpoint whenever Tuya drifts (`off`/`cool`/`fan_only`/`dry`), preventing app-side Tuya logic from silently overriding policy-selected HVAC intent.
+
+- ESPHome/Audio Tuning Rollback Test (`esphome/spectra_ls_system/substitutions.yaml`): re-apply recommended **Profile B+** control/tcp audio tunings (pot cadence + TCP pacing/coalescing/backoff) after user-local edits introduced lag/replay behavior, restoring known-good baseline values for A/B validation.
+
+- HA/AC Fan Flap Fix (`packages/dst_tuya_ac.yaml`): prevent forced off→fan retry loops when Tuya reports `hvac_action: unknown` by only retrying fan re-apply when mode is not `fan_only` or action is explicitly `idle/off`; this removes false recovery cycles that could briefly stop/restart fan output.
+
+- HA/AC Controller Architecture Refactor (`packages/dst_tuya_ac.yaml`): replace overlapping fan/cool/off automations with a policy-first control model (`sensor.ac_target_mode` + `binary_sensor.ac_schedule_cool_request`) and a single reconciler automation (`automation.dst_mode_reconciler`) that applies mode transitions deterministically (`off`/`cool`/`fan_only`/`dry`) to eliminate race-driven state flapping.
+
+- HA/AC Fan Reliability Hardening (`packages/dst_tuya_ac.yaml`): strengthen `dst_apply_fan_only_low` with an explicit Tuya fan-only apply + verification + fallback off→fan_only retry path when `hvac_action` remains idle, and add `sensor.ac_tuya_hvac_action` for direct visibility into real device runtime action vs optimistic mode state.
+
+- HA/AC Trend Diagnostics UX (`packages/dst_tuya_ac.yaml`): enrich rising-trend visibility by preserving numeric 1-hour delta state handling (`sensor.dst_room_temp_change_1h` with unknown-aware output) and adding explicit trend-rate/summary sensors (`sensor.dst_room_temp_rate_1h`, `sensor.dst_room_temp_trend_1h_summary`) so operators can see meaningful metrics instead of binary-only `on/off` trend status.
+
+- HA/AC Policy Tuning (`packages/dst_tuya_ac.yaml`): lower warm+rising fan-policy activation temperature threshold from `>70°F` to `>68°F` while retaining the existing 1-hour rising requirement.
+
+- HA/AC Trend Signal Stabilization (`packages/dst_tuya_ac.yaml`): replace `binary_sensor.dst_room_temp_rising_1h` trend-platform dependency with a statistics-based 1-hour temperature-change sensor (`sensor.dst_room_temp_change_1h`) and template rising binary logic, eliminating frequent `unknown` state behavior and making fan-policy threshold evaluation deterministic.
+
+- HA/AC Sensor Source Cleanup (`packages/dst_tuya_ac.yaml`): remove `sensor.ac_internal_temperature` and `sensor.ac_internal_humidity` template sensors sourced from broken Tuya attributes (including invalid `-40` readings), standardizing frontend/environment monitoring on the external room sensor path.
+
+- HA/AC Diagnostics (`packages/dst_tuya_ac.yaml`): add `sensor.ac_control_reason` to expose active AC control-path reasoning (`away_lock`, `paused`, `manual_override`, `fan_override_manual`, `fan_policy_warm_rising`, `schedule_cool`, `fan_only_active`, `dry_active`, `off`, `idle`) for frontend visibility and troubleshooting.
+
+- HA/AC Architecture Refactor (`packages/dst_tuya_ac.yaml`): consolidate manual/schedule policy into centralized template binary sensors (`ac_pause_active`, `ac_manual_override_active`, `ac_warm_rising_policy_active`, `ac_fan_policy_active`), add reusable control scripts (`dst_set_manual_override_24h`, `dst_clear_manual_override`, `dst_apply_fan_only_low`), and replace fragmented/race-prone fan/manual automations with a unified manual-first flow (thermostat fan bridges + explicit manual hold gates + simplified cool/off schedule conditions).
+
+- HA/AC DST Fan Command Reliability (`packages/dst_tuya_ac.yaml`): add event-level bridge on `climate.set_fan_mode` calls targeting `climate.room_dst` to force direct Tuya fan-only activation and low preset, ensuring thermostat-card fan actions execute even when DST state remains `idle`.
+
+- HA/AC Thermostat Fan-Control Bridge (`packages/dst_tuya_ac.yaml`): add explicit automation that converts fan requests made from `climate.room_dst` fan controls into persistent `fan_only` HVAC mode + low fan preset and sets manual override hold, so thermostat-card fan actions behave like manual mode overrides instead of being ignored.
+
+- HA/AC Manual Mode Persistence (`packages/dst_tuya_ac.yaml`): manual mode interventions (`cool`/`fan_only`/`dry`) now assert a manual override hold so schedule automations do not immediately revert user-selected modes; auto-off now only applies while DST is actively cooling (not fan-only/dry), and manual `off` clears the hold.
+
+- HA/AC Scheduling Enhancement (`packages/dst_tuya_ac.yaml`): add an all-day fan-only control path that activates when room temperature is above 70°F and rising over the past hour (compressor off, fan low), plus a frontend `Fan Override` toggle to force fan-only behavior and block compressor auto-cool while active.
 
 - ESPHome/Menu Navigation Direction Contract: Add shared top-level menu navigation helper (`components/sls_menu_nav.h`) and route menu-encoder delta handling through a global direction mapping (`menu_encoder_nav_sign`) in `spectra-ls-ui.yaml`, so clockwise/counterclockwise behavior is configured once and applied consistently across all menu levels/prompt lists.
 

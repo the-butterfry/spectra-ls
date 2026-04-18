@@ -1,6 +1,6 @@
 # Description: Template entities for ma_control_hub runtime routing, metadata, and now-playing state surfaces.
-# Version: 2026.04.17.26
-# Last updated: 2026-04-17
+# Version: 2026.04.18.27
+# Last updated: 2026-04-18
 # HUB MUST-READ: Contract parser methodology.
 # - For complex attributes (`rooms`, `candidates_json`, etc.), prefer native sequence/mapping values first.
 # - Only parse string JSON when trimmed payload starts with `[` or `{` and is not unknown/unavailable/none/''.
@@ -1255,6 +1255,7 @@
         {% endif %}
     - name: MA Control Targets
       state: >-
+        {% set excluded_targets = (label_entities('no-spectra') + label_entities('no_spectra')) | unique | list %}
         {% set rooms_raw = state_attr('sensor.spectra_ls_rooms_json','rooms_json') | default([], true) %}
         {% set rooms = rooms_raw %}
         {% if rooms is string %}
@@ -1279,14 +1280,14 @@
         {% endif %}
         {% set ns = namespace(entities=[]) %}
         {% for r in rooms %}
-          {% if r is not none and r.entity is defined and r.entity not in ['','none','unknown','unavailable'] %}
+          {% if r is not none and r.entity is defined and r.entity not in ['','none','unknown','unavailable'] and r.entity not in excluded_targets %}
             {% set ns.entities = ns.entities + [r.entity] %}
           {% endif %}
         {% endfor %}
         {% if ns.entities | length == 0 %}
           {% set opts = state_attr('input_select.ma_active_target','options') or [] %}
           {% for o in opts %}
-            {% if o not in ['','none','unknown','unavailable'] and states[o] is not none %}
+            {% if o not in ['','none','unknown','unavailable'] and states[o] is not none and o not in excluded_targets %}
               {% set ns.entities = ns.entities + [o] %}
             {% endif %}
           {% endfor %}
@@ -1294,6 +1295,7 @@
         {{ ns.entities | length }}
       attributes:
         entities: >-
+          {% set excluded_targets = (label_entities('no-spectra') + label_entities('no_spectra')) | unique | list %}
           {% set rooms_raw = state_attr('sensor.spectra_ls_rooms_json','rooms_json') | default([], true) %}
           {% set rooms = rooms_raw %}
           {% if rooms is string %}
@@ -1318,20 +1320,21 @@
           {% endif %}
           {% set ns = namespace(entities=[]) %}
           {% for r in rooms %}
-            {% if r is not none and r.entity is defined and r.entity not in ['','none','unknown','unavailable'] %}
+            {% if r is not none and r.entity is defined and r.entity not in ['','none','unknown','unavailable'] and r.entity not in excluded_targets %}
               {% set ns.entities = ns.entities + [r.entity] %}
             {% endif %}
           {% endfor %}
           {% if ns.entities | length == 0 %}
             {% set opts = state_attr('input_select.ma_active_target','options') or [] %}
             {% for o in opts %}
-              {% if o not in ['','none','unknown','unavailable'] and states[o] is not none %}
+              {% if o not in ['','none','unknown','unavailable'] and states[o] is not none and o not in excluded_targets %}
                 {% set ns.entities = ns.entities + [o] %}
               {% endif %}
             {% endfor %}
           {% endif %}
           {{ ns.entities | tojson }}
         labels: >-
+          {% set excluded_targets = (label_entities('no-spectra') + label_entities('no_spectra')) | unique | list %}
           {% set rooms_raw = state_attr('sensor.spectra_ls_rooms_json','rooms_json') | default([], true) %}
           {% set rooms = rooms_raw %}
           {% if rooms is string %}
@@ -1357,38 +1360,41 @@
           {% set ns = namespace(labels=[]) %}
           {% for r in rooms %}
             {% set label = '' %}
-            {% if r is not none and r.label is defined and r.label not in ['','none','unknown','unavailable'] %}
-              {% set label = r.label %}
-            {% endif %}
-            {% if label == '' and r is not none and r.entity is defined and r.entity not in ['','none','unknown','unavailable'] %}
-              {% set friendly = state_attr(r.entity, 'friendly_name') %}
-              {% if friendly not in ['','None', none] %}
-                {% set label = friendly %}
+            {% set ent = (r.entity if r is not none and r.entity is defined else '') %}
+            {% if ent not in excluded_targets %}
+              {% if r is not none and r.label is defined and r.label not in ['','none','unknown','unavailable'] %}
+                {% set label = r.label %}
+              {% endif %}
+              {% if label == '' and r is not none and r.entity is defined and r.entity not in ['','none','unknown','unavailable'] %}
+                {% set friendly = state_attr(r.entity, 'friendly_name') %}
+                {% if friendly not in ['','None', none] %}
+                  {% set label = friendly %}
+                {% else %}
+                  {% set label = r.entity %}
+                {% endif %}
+              {% endif %}
+              {% if label == '' %}{% set label = 'Target' %}{% endif %}
+              {% set host_raw = (r.tcp_host if r is not none and r.tcp_host is defined else '') %}
+              {% set host = (host_raw | string | trim) %}
+              {% set host_no_port = host.split(':')[0] if ':' in host else host %}
+              {% set ip_suffix = host_no_port %}
+              {% if '.' in host_no_port %}
+                {% set parts = host_no_port.split('.') %}
+                {% if parts | length >= 2 %}
+                  {% set ip_suffix = parts[-2] ~ '.' ~ parts[-1] %}
+                {% endif %}
+              {% endif %}
+              {% if ip_suffix not in ['','none','unknown','unavailable'] %}
+                {% set ns.labels = ns.labels + [label ~ ' ' ~ ip_suffix] %}
               {% else %}
-                {% set label = r.entity %}
+                {% set ns.labels = ns.labels + [label] %}
               {% endif %}
-            {% endif %}
-            {% if label == '' %}{% set label = 'Target' %}{% endif %}
-            {% set host_raw = (r.tcp_host if r is not none and r.tcp_host is defined else '') %}
-            {% set host = (host_raw | string | trim) %}
-            {% set host_no_port = host.split(':')[0] if ':' in host else host %}
-            {% set ip_suffix = host_no_port %}
-            {% if '.' in host_no_port %}
-              {% set parts = host_no_port.split('.') %}
-              {% if parts | length >= 2 %}
-                {% set ip_suffix = parts[-2] ~ '.' ~ parts[-1] %}
-              {% endif %}
-            {% endif %}
-            {% if ip_suffix not in ['','none','unknown','unavailable'] %}
-              {% set ns.labels = ns.labels + [label ~ ' ' ~ ip_suffix] %}
-            {% else %}
-              {% set ns.labels = ns.labels + [label] %}
             {% endif %}
           {% endfor %}
           {% if ns.labels | length == 0 %}
             {% set opts = state_attr('input_select.ma_active_target','options') or [] %}
             {% for o in opts %}
-              {% if o not in ['','none','unknown','unavailable'] and states[o] is not none %}
+              {% if o not in ['','none','unknown','unavailable'] and states[o] is not none and o not in excluded_targets %}
                 {% set friendly = state_attr(o, 'friendly_name') %}
                 {% if friendly not in ['','None', none] %}
                   {% set ns.labels = ns.labels + [friendly] %}

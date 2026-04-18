@@ -1,5 +1,5 @@
 <!-- Description: Copy/paste Home Assistant Dev Tools template diagnostics for Spectra LS System. -->
-<!-- Version: 2026.04.17.6 -->
+<!-- Version: 2026.04.17.7 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Spectra LS System — Dev Tools Template Validation
@@ -749,11 +749,17 @@ Unavailable core entities:
 {% set target_opts = state_attr('input_select.control_board_target','options') or [] %}
 {% set room_sel_ok = room in room_opts if (room_opts | length) > 0 else false %}
 {% set target_sel_ok = target in target_opts if (target_opts | length) > 0 else false %}
+{% set room_opts_meaningful = (room_opts | reject('in', ['No Rooms','Unknown','none','unknown','unavailable','']) | list | length) > 0 %}
+{% set target_opts_meaningful = (target_opts | reject('in', ['All','none','unknown','unavailable','']) | list | length) > 0 %}
 
 {% set verdict = 'PASS' %}
 {% if (ns.missing | length) > 0 %}
   {% set verdict = 'FAIL' %}
+{% elif not room_opts_meaningful %}
+  {% set verdict = 'FAIL' %}
 {% elif (ns.unavailable | length) > 0 or not room_sel_ok or not target_sel_ok %}
+  {% set verdict = 'WARN' %}
+{% elif not target_opts_meaningful %}
   {% set verdict = 'WARN' %}
 {% endif %}
 
@@ -768,6 +774,8 @@ Unavailable core entities:
 ### Selector sanity
 - `input_select.control_board_room`: **{{ room }}** (options={{ room_opts | length }}, selected_in_options={{ room_sel_ok }})
 - `input_select.control_board_target`: **{{ target }}** (options={{ target_opts | length }}, selected_in_options={{ target_sel_ok }})
+- Room options meaningful (not placeholders): **{{ room_opts_meaningful }}**
+- Target options meaningful (beyond `All`): **{{ target_opts_meaningful }}**
 - `sensor.ma_control_host`: **{{ states('sensor.ma_control_host') }}**
 - `input_select.ma_active_target`: **{{ states('input_select.ma_active_target') }}**
 
@@ -801,6 +809,8 @@ Unavailable core entities:
 - Lighting rename step validated. Proceed to next rename slice.
 {% elif (ns.missing | length) > 0 %}
 - Missing helper/entity contracts detected. Fix package/helper load before next rename.
+{% elif not room_opts_meaningful %}
+- Room options are placeholder-only (`No Rooms`/`Unknown`). This is a real data-path failure, not a PASS. Fix room population source before continuing.
 {% else %}
 - Resolve unavailable/select-option mismatch first, then rerun this template.
 {% endif %}

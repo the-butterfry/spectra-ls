@@ -1,5 +1,5 @@
 # Description: Spectra LS lighting hub (rooms/targets from HA Areas).
-# Version: 2026.04.17.16
+# Version: 2026.04.17.17
 # Last updated: 2026-04-17
 # Update version/date whenever you change this file.
 #
@@ -96,14 +96,14 @@ template:
         state: >
           {% set room = states('input_select.control_board_room') %}
           {% set ns = namespace(targets=['All']) %}
-          {% set area_id_selected = '' %}
+          {% set selected = namespace(area_id='') %}
           {% for aid in areas() %}
-            {% if area_name(aid) == room and area_id_selected == '' %}
-              {% set area_id_selected = aid %}
+            {% if area_name(aid) == room and selected.area_id == '' %}
+              {% set selected.area_id = aid %}
             {% endif %}
           {% endfor %}
-          {% if area_id_selected != '' %}
-            {% set lights = area_entities(area_id_selected) | select('match','^light\.') | list %}
+          {% if selected.area_id != '' %}
+            {% set lights = area_entities(selected.area_id) | select('match','^light\.') | list %}
             {% for ent in lights %}
               {% set ent_low = ent | lower %}
               {% set label = state_attr(ent, 'friendly_name') or ent.split('.')[-1] %}
@@ -118,14 +118,14 @@ template:
           count: >
             {% set room = states('input_select.control_board_room') %}
             {% set ns = namespace(targets=['All']) %}
-            {% set area_id_selected = '' %}
+            {% set selected = namespace(area_id='') %}
             {% for aid in areas() %}
-              {% if area_name(aid) == room and area_id_selected == '' %}
-                {% set area_id_selected = aid %}
+              {% if area_name(aid) == room and selected.area_id == '' %}
+                {% set selected.area_id = aid %}
               {% endif %}
             {% endfor %}
-            {% if area_id_selected != '' %}
-              {% set lights = area_entities(area_id_selected) | select('match','^light\.') | list %}
+            {% if selected.area_id != '' %}
+              {% set lights = area_entities(selected.area_id) | select('match','^light\.') | list %}
               {% for ent in lights %}
                 {% set ent_low = ent | lower %}
                 {% set label = state_attr(ent, 'friendly_name') or ent.split('.')[-1] %}
@@ -158,14 +158,14 @@ template:
           {% set target_norm = target | lower | regex_replace('[^a-z0-9]+','') %}
           {% set ns = namespace(entity='') %}
           {% if target != 'All' %}
-            {% set area_id_selected = '' %}
+            {% set selected = namespace(area_id='') %}
             {% for aid in areas() %}
-              {% if area_name(aid) == room and area_id_selected == '' %}
-                {% set area_id_selected = aid %}
+              {% if area_name(aid) == room and selected.area_id == '' %}
+                {% set selected.area_id = aid %}
               {% endif %}
             {% endfor %}
-            {% if area_id_selected != '' %}
-              {% set lights = area_entities(area_id_selected) | select('match','^light\.') | list %}
+            {% if selected.area_id != '' %}
+              {% set lights = area_entities(selected.area_id) | select('match','^light\.') | list %}
               {% for ent in lights %}
                 {% set ent_low = ent | lower %}
                 {% set label = state_attr(ent, 'friendly_name') or ent.split('.')[-1] %}
@@ -188,14 +188,14 @@ template:
         state: >
           {% set room = states('input_select.control_board_room') %}
           {% set ns = namespace(hs='') %}
-          {% set area_id_selected = '' %}
+          {% set selected = namespace(area_id='') %}
           {% for aid in areas() %}
-            {% if area_name(aid) == room and area_id_selected == '' %}
-              {% set area_id_selected = aid %}
+            {% if area_name(aid) == room and selected.area_id == '' %}
+              {% set selected.area_id = aid %}
             {% endif %}
           {% endfor %}
-          {% if area_id_selected != '' %}
-            {% set lights = area_entities(area_id_selected) | select('match','^light\.') | list %}
+          {% if selected.area_id != '' %}
+            {% set lights = area_entities(selected.area_id) | select('match','^light\.') | list %}
             {% for ent in lights %}
               {% set hs = state_attr(ent, 'hs_color') %}
               {% if hs is not none and ns.hs == '' %}
@@ -224,14 +224,14 @@ template:
         state: >
           {% set room = states('input_select.control_board_room') %}
           {% set ns = namespace(on=false) %}
-          {% set area_id_selected = '' %}
+          {% set selected = namespace(area_id='') %}
           {% for aid in areas() %}
-            {% if area_name(aid) == room and area_id_selected == '' %}
-              {% set area_id_selected = aid %}
+            {% if area_name(aid) == room and selected.area_id == '' %}
+              {% set selected.area_id = aid %}
             {% endif %}
           {% endfor %}
-          {% if area_id_selected != '' %}
-            {% set lights = area_entities(area_id_selected) | select('match','^light\.') | list %}
+          {% if selected.area_id != '' %}
+            {% set lights = area_entities(selected.area_id) | select('match','^light\.') | list %}
             {% for ent in lights %}
               {% if is_state(ent, 'on') %}
                 {% set ns.on = true %}

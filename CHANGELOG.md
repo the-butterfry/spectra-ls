@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.97 -->
+<!-- Version: 2026.04.17.98 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
+
+- HA/Lighting Area-Selection Scope Fix: Correct Jinja loop-scope behavior in `packages/spectra_ls_lighting_hub.yaml` by replacing plain `area_id_selected` loop assignments with `namespace(area_id=...)` in room-dependent target/HS/on templates. This restores per-room light discovery so populated rooms no longer show `All`-only targets.
 
 - HA/Lighting Template Runtime Fix: Correct malformed Jinja block closures in `packages/spectra_ls_lighting_hub.yaml` (`Control Board Target Options` and `Control Board Target Entity ID`) where `endif` incorrectly closed `for ent in lights` loops; this was driving `sensor.control_board_room_options`/`target_options` contract dependents into `unavailable` and collapsing room UI back to static fallback labels.
 

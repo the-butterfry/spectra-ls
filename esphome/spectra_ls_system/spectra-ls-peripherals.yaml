@@ -1,5 +1,5 @@
 # Description: Spectra LS OLED-only peripherals package (no LED rings) for Control Board v2.
-# Version: 2026.04.18.5
+# Version: 2026.04.18.6
 # Last updated: 2026-04-18
 # Update version/date whenever you change this file.
 esphome:
@@ -845,6 +845,76 @@ display:
         if (!token.empty() && !is_placeholder_option(token)) out.push_back(token);
         return out;
       };
+      auto wrap_two_lines = [&](const std::string &raw, int max_chars) -> std::vector<std::string> {
+        std::vector<std::string> lines;
+        if (max_chars < 4) max_chars = 4;
+        std::string text = raw;
+        trim_ascii(text);
+        if (text.empty()) return lines;
+        if ((int) text.size() <= max_chars) {
+          lines.push_back(text);
+          return lines;
+        }
+
+        int split = -1;
+        const int anchor = max_chars;
+        if (anchor < (int) text.size()) {
+          for (int i = anchor; i > 0; i--) {
+            if (text[i] == ' ') {
+              split = i;
+              break;
+            }
+          }
+          if (split < 0) {
+            const int forward_limit = anchor + 8;
+            for (int i = anchor + 1; i < (int) text.size() && i <= forward_limit; i++) {
+              if (text[i] == ' ') {
+                split = i;
+                break;
+              }
+            }
+          }
+        }
+        if (split <= 0 || split >= (int) text.size()) split = max_chars;
+
+        std::string line1 = text.substr(0, split);
+        std::string line2 = text.substr(split);
+        trim_ascii(line1);
+        trim_ascii(line2);
+
+        if (!line2.empty() && (int) line2.size() > max_chars) {
+          int split2 = -1;
+          for (int i = max_chars; i > 0; i--) {
+            if (line2[i] == ' ') {
+              split2 = i;
+              break;
+            }
+          }
+          if (split2 <= 0) split2 = max_chars;
+          line2 = line2.substr(0, split2);
+          trim_ascii(line2);
+        }
+
+        if (!line1.empty()) lines.push_back(line1);
+        if (!line2.empty()) lines.push_back(line2);
+        if (lines.empty()) lines.push_back(text.substr(0, max_chars));
+        return lines;
+      };
+      auto draw_center_wrapped = [&](esphome::font::Font *font, int line_h, int y, int row_h,
+                                     const std::string &raw, Color color, int max_chars) {
+        std::vector<std::string> lines = wrap_two_lines(raw, max_chars);
+        if (lines.empty()) return;
+        if (lines.size() == 1) {
+          int y0 = y + ((row_h - line_h) / 2);
+          it.printf(w / 2, y0, font, color, TextAlign::TOP_CENTER, "%s", lines[0].c_str());
+          return;
+        }
+        const int line_gap = 1;
+        const int total_h = (line_h * 2) + line_gap;
+        int y0 = y + ((row_h - total_h) / 2);
+        it.printf(w / 2, y0, font, color, TextAlign::TOP_CENTER, "%s", lines[0].c_str());
+        it.printf(w / 2, y0 + line_h + line_gap, font, color, TextAlign::TOP_CENTER, "%s", lines[1].c_str());
+      };
       if (id(splash_until_ms) == 0) {
         id(splash_until_ms) = now + ${splash_duration_ms};
       }
@@ -1020,13 +1090,24 @@ display:
           const int list_h = ${menu_line_height_list};
           const int highlight_extra = 3;
           const int highlight_top_pad = 2;
-          const int list_step = list_h + highlight_extra;
+          int max_chars = w / 6;
+          if (max_chars < 8) max_chars = 8;
+          bool needs_wrap = false;
+          for (auto &opt : items) {
+            std::vector<std::string> wrapped = wrap_two_lines(opt, max_chars);
+            if (wrapped.size() > 1) {
+              needs_wrap = true;
+              break;
+            }
+          }
+          const int row_h = needs_wrap ? ((list_h * 2) + highlight_extra) : (list_h + highlight_extra);
+          const int list_step = row_h;
           const int list_pad = list_h;
           const int count = (int) items.size();
           int idx = id(control_target_prompt_index);
           if (idx < 0) idx = 0;
           if (count > 0 && idx >= count) idx = count - 1;
-          int max_visible = (h - list_pad - (list_h + highlight_extra)) / list_step + 1;
+          int max_visible = (h - list_pad - row_h) / list_step + 1;
           if (max_visible < 1) max_visible = 1;
           int start = 0;
           if (count > max_visible) {
@@ -1039,26 +1120,16 @@ display:
             const int label_y = list_pad;
             it.printf(w / 2, label_y, id(font_small), COLOR_ON, TextAlign::TOP_CENTER, "%s", label.c_str());
           } else {
-            int max_chars = w / 6;
-            if (max_chars < 8) max_chars = 8;
             int row = 0;
             for (int i = start; i < count && row < max_visible; i++, row++) {
               const int y = list_pad + (row * list_step);
               std::string line_text = items[i];
-              if ((int) line_text.size() > max_chars) {
-                int keep = max_chars - 3;
-                if (keep < 1) keep = max_chars;
-                if (keep < (int) line_text.size()) {
-                  line_text = line_text.substr(0, keep) + "...";
-                }
-              }
-              const char *line_label = line_text.c_str();
               if (i == idx) {
-                const int highlight_h = list_h + highlight_extra - highlight_top_pad;
+                const int highlight_h = row_h - highlight_top_pad;
                 it.filled_rectangle(0, y + highlight_top_pad, w, highlight_h, COLOR_ON);
-                it.printf(w / 2, y + 1, id(font_small), COLOR_OFF, TextAlign::TOP_CENTER, "%s", line_label);
+                draw_center_wrapped(id(font_small), list_h, y + 1, row_h - 1, line_text, COLOR_OFF, max_chars);
               } else {
-                it.printf(w / 2, y + 1, id(font_small), COLOR_ON, TextAlign::TOP_CENTER, "%s", line_label);
+                draw_center_wrapped(id(font_small), list_h, y + 1, row_h - 1, line_text, COLOR_ON, max_chars);
               }
             }
           }
@@ -1071,7 +1142,7 @@ display:
           const bool control_popup = id(control_target_popup_active) && now < id(meta_popup_until_ms);
           const char *header = control_popup ? "CONTROL TARGET" : "META";
           it.printf(w / 2, header_y, id(font_menu), COLOR_ON, TextAlign::TOP_CENTER, "%s", header);
-          it.printf(w / 2, label_y, id(font_small), COLOR_ON, TextAlign::TOP_CENTER, "%s", label.c_str());
+          draw_center_wrapped(id(font_small), ${menu_line_height_list}, label_y, line_h, label, COLOR_ON, w / 6);
         }
         log_loop_section("meta_popup", section_start_ms);
         return;
@@ -1100,7 +1171,7 @@ display:
         const int header_y = block_y;
         const int label_y = block_y + line_h;
         it.printf(w / 2, header_y, id(font_menu), COLOR_ON, TextAlign::TOP_CENTER, "INPUT");
-        it.printf(w / 2, label_y, id(font_small), COLOR_ON, TextAlign::TOP_CENTER, "%s", label.c_str());
+        draw_center_wrapped(id(font_small), ${menu_line_height_list}, label_y, line_h, label, COLOR_ON, w / 6);
         log_loop_section("source_popup", section_start_ms);
         return;
       }
@@ -1514,8 +1585,12 @@ display:
           const int list_h = ${menu_line_height_list};
           const int list_pad = ${menu_list_top_pad};
           const int highlight_extra = 3;
-          const int list_step = list_h + highlight_extra;
-          int max_visible = (h - list_pad - (list_h + highlight_extra)) / list_step + 1;
+          int max_chars = w / 6;
+          if (max_chars < 8) max_chars = 8;
+          bool needs_wrap = (hue_label.size() > (size_t) max_chars) || (sat_label.size() > (size_t) max_chars);
+          const int row_h = needs_wrap ? ((list_h * 2) + highlight_extra) : (list_h + highlight_extra);
+          const int list_step = row_h;
+          int max_visible = (h - list_pad - row_h) / list_step + 1;
           if (max_visible < 1) max_visible = 1;
           int start = 0;
           if (count_adjust > max_visible) {
@@ -1527,13 +1602,13 @@ display:
           int row = 0;
           for (int i = start; i < count_adjust && row < max_visible; i++, row++) {
             const int y = list_pad + (row * list_step);
-            const char *label = (i == 0) ? "Lighting Values" : (i == 1) ? hue_label.c_str() :
-                                (i == 2) ? sat_label.c_str() : "Back";
+            std::string label = (i == 0) ? "Lighting Values" : (i == 1) ? hue_label :
+                                (i == 2) ? sat_label : "Back";
             if (i == idx_adjust) {
-              it.filled_rectangle(0, y, w, list_h + highlight_extra, COLOR_ON);
-              it.printf(w / 2, y + 1, id(font_menu), COLOR_OFF, TextAlign::TOP_CENTER, "%s", label);
+              it.filled_rectangle(0, y, w, row_h, COLOR_ON);
+              draw_center_wrapped(id(font_menu), list_h, y + 1, row_h - 1, label, COLOR_OFF, max_chars);
             } else {
-              it.printf(w / 2, y + 1, id(font_menu), COLOR_ON, TextAlign::TOP_CENTER, "%s", label);
+              draw_center_wrapped(id(font_menu), list_h, y + 1, row_h - 1, label, COLOR_ON, max_chars);
             }
           }
           if (${menu_debug}) {
@@ -1564,8 +1639,12 @@ display:
           const int list_h = ${menu_line_height_list};
           const int list_pad = ${menu_list_top_pad};
           const int highlight_extra = 3;
-          const int list_step = list_h + highlight_extra;
-          int max_visible = (h - list_pad - (list_h + highlight_extra)) / list_step + 1;
+          int max_chars = w / 6;
+          if (max_chars < 8) max_chars = 8;
+          bool needs_wrap = (toggle_room.size() > (size_t) max_chars) || (toggle_target.size() > (size_t) max_chars);
+          const int row_h = needs_wrap ? ((list_h * 2) + highlight_extra) : (list_h + highlight_extra);
+          const int list_step = row_h;
+          int max_visible = (h - list_pad - row_h) / list_step + 1;
           if (max_visible < 1) max_visible = 1;
           int start = 0;
           if (count_toggle > max_visible) {
@@ -1577,12 +1656,12 @@ display:
           int row = 0;
           for (int i = start; i < count_toggle && row < max_visible; i++, row++) {
             const int y = list_pad + (row * list_step);
-            const char *label = (i == 0) ? toggle_room.c_str() : (i == 1 && target != 0) ? toggle_target.c_str() : "Back";
+            std::string label = (i == 0) ? toggle_room : (i == 1 && target != 0) ? toggle_target : "Back";
             if (i == idx_toggle) {
-              it.filled_rectangle(0, y, w, list_h + highlight_extra, COLOR_ON);
-              it.printf(w / 2, y + 1, id(font_menu), COLOR_OFF, TextAlign::TOP_CENTER, "%s", label);
+              it.filled_rectangle(0, y, w, row_h, COLOR_ON);
+              draw_center_wrapped(id(font_menu), list_h, y + 1, row_h - 1, label, COLOR_OFF, max_chars);
             } else {
-              it.printf(w / 2, y + 1, id(font_menu), COLOR_ON, TextAlign::TOP_CENTER, "%s", label);
+              draw_center_wrapped(id(font_menu), list_h, y + 1, row_h - 1, label, COLOR_ON, max_chars);
             }
           }
           if (${menu_debug}) {
@@ -1647,9 +1726,20 @@ display:
           it.printf(w / 2, 0, id(font_menu), COLOR_ON, TextAlign::TOP_CENTER, "Meta Player");
           const int list_h = ${menu_line_height_list};
           const int highlight_extra = 3;
-          const int list_step = list_h + highlight_extra;
+          int max_chars = w / 6;
+          if (max_chars < 8) max_chars = 8;
+          bool needs_wrap = false;
+          for (auto &item : dynamic_items) {
+            std::vector<std::string> wrapped = wrap_two_lines(item, max_chars);
+            if (wrapped.size() > 1) {
+              needs_wrap = true;
+              break;
+            }
+          }
+          const int row_h = needs_wrap ? ((list_h * 2) + highlight_extra) : (list_h + highlight_extra);
+          const int list_step = row_h;
           const int list_pad = ${menu_line_height};
-          int max_visible = (h - list_pad - (list_h + highlight_extra)) / list_step + 1;
+          int max_visible = (h - list_pad - row_h) / list_step + 1;
           if (max_visible < 1) max_visible = 1;
           int start = 0;
           if (count > max_visible) {
@@ -1661,12 +1751,12 @@ display:
           int row = 0;
           for (int i = start; i < count && row < max_visible; i++, row++) {
             const int y = list_pad + (row * list_step);
-            const char *label = dynamic_items[i].c_str();
+            std::string label = dynamic_items[i];
             if (i == idx) {
-              it.filled_rectangle(0, y, w, list_h + highlight_extra, COLOR_ON);
-              it.printf(w / 2, y + 1, id(font_menu), COLOR_OFF, TextAlign::TOP_CENTER, "%s", label);
+              it.filled_rectangle(0, y, w, row_h, COLOR_ON);
+              draw_center_wrapped(id(font_menu), list_h, y + 1, row_h - 1, label, COLOR_OFF, max_chars);
             } else {
-              it.printf(w / 2, y + 1, id(font_menu), COLOR_ON, TextAlign::TOP_CENTER, "%s", label);
+              draw_center_wrapped(id(font_menu), list_h, y + 1, row_h - 1, label, COLOR_ON, max_chars);
             }
           }
           if (${menu_debug}) {
@@ -1678,8 +1768,20 @@ display:
         const int list_h = ${menu_line_height_list};
         const int list_pad = ${menu_list_top_pad};
         const int highlight_extra = 3;
-        const int list_step = list_h + highlight_extra;
-        int max_visible = (h - list_pad - (list_h + highlight_extra)) / list_step + 1;
+        int max_chars = w / 6;
+        if (max_chars < 8) max_chars = 8;
+        bool needs_wrap = false;
+        for (int i = 0; i < count; i++) {
+          const std::string label = use_dynamic_list ? dynamic_items[i] : std::string(items[i]);
+          std::vector<std::string> wrapped = wrap_two_lines(label, max_chars);
+          if (wrapped.size() > 1) {
+            needs_wrap = true;
+            break;
+          }
+        }
+        const int row_h = needs_wrap ? ((list_h * 2) + highlight_extra) : (list_h + highlight_extra);
+        const int list_step = row_h;
+        int max_visible = (h - list_pad - row_h) / list_step + 1;
         if (max_visible < 1) max_visible = 1;
         int start = 0;
         if (count > max_visible) {
@@ -1691,12 +1793,12 @@ display:
         int row = 0;
         for (int i = start; i < count && row < max_visible; i++, row++) {
           const int y = list_pad + (row * list_step);
-          const char *label = use_dynamic_list ? dynamic_items[i].c_str() : items[i];
+          std::string label = use_dynamic_list ? dynamic_items[i] : std::string(items[i]);
           if (i == idx) {
-            it.filled_rectangle(0, y, w, list_h + highlight_extra, COLOR_ON);
-            it.printf(w / 2, y + 1, id(font_menu), COLOR_OFF, TextAlign::TOP_CENTER, "%s", label);
+            it.filled_rectangle(0, y, w, row_h, COLOR_ON);
+            draw_center_wrapped(id(font_menu), list_h, y + 1, row_h - 1, label, COLOR_OFF, max_chars);
           } else {
-            it.printf(w / 2, y + 1, id(font_menu), COLOR_ON, TextAlign::TOP_CENTER, "%s", label);
+            draw_center_wrapped(id(font_menu), list_h, y + 1, row_h - 1, label, COLOR_ON, max_chars);
           }
         }
         if (${menu_debug}) {
@@ -1715,9 +1817,9 @@ display:
         if (target_label.empty()) target_label = "Light";
         if (${lighting_slider_ui_brightness_only} && now < id(brightness_slider_only_until_ms)) {
           it.fill(COLOR_OFF);
-          it.printf(w / 2, 0, id(font_menu), TextAlign::TOP_CENTER, "%s", target_label.c_str());
+          draw_center_wrapped(id(font_menu), ${menu_line_height_list}, 0, ${menu_line_height_list} * 2, target_label, COLOR_ON, w / 6);
           if (room_label != target_label) {
-            it.printf(w / 2, ${menu_line_height_list}, id(font_small), TextAlign::TOP_CENTER, "%s", room_label.c_str());
+            draw_center_wrapped(id(font_small), ${menu_line_height_list}, ${menu_line_height_list} * 2, ${menu_line_height_list} * 2, room_label, COLOR_ON, w / 6);
           }
           const float pct = id(lighting_brightness);
           const int bar_w = w - 4;

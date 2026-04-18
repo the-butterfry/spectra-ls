@@ -1,10 +1,14 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.18.9 -->
+<!-- Version: 2026.04.18.11 -->
 <!-- Last updated: 2026-04-18 -->
 
 # Changelog
 
 ## 2026-04-18
+
+- ESPHome/OLED Text Fit Improvement: In `esphome/spectra_ls_system/spectra-ls-peripherals.yaml`, add centered two-line word-wrap rendering for long menu/prompt/lighting labels (instead of hard cutoff/ellipsis-only rendering) while keeping current font sizes unchanged; list row heights now expand only when wrapping is actually needed to preserve normal menu density for short labels.
+
+- ESPHome/NP Responsiveness + Noise Tuning: In `esphome/spectra_ls_system/substitutions.yaml`, speed metadata refresh cadence (`ha_audio_refresh_ms` `6000→2000`, `meta_refresh_ms` `5000→1500`, `meta_refresh_tick_ms` `500→250`) to reduce new-track/play-start detection lag; also reduce periodic heartbeat status logging (`heartbeat_interval_ms` `60000→300000`). In `esphome/spectra_ls_system/packages/spectra-ls-audio-tcp.yaml`, slow HA-facing control number republish cadence (`EQ Low/Mid/High`, `Arylic Volume Set` `60s→300s`). In `esphome/spectra_ls_system/packages/spectra-ls-diagnostics.yaml`, move passive diagnostics publishing from `60s→300s` (including CPU/heap/PSRAM/virtual diagnostics) to cut recurring `[S]` state spam.
 
 - ESPHome/Runtime Noise Reduction (quiet by default): In `esphome/spectra_ls_system.yaml`, disable `web_server` state logging (`log: false`) to stop high-churn `[S][...]` state-stream output; in `esphome/spectra_ls_system/packages/spectra-ls-diagnostics.yaml`, disable CPU debug logging by default and raise passive diagnostic refresh intervals to 60s; in `esphome/spectra_ls_system/packages/spectra-ls-audio-tcp.yaml`, raise HA-facing EQ/volume template number refresh intervals to 60s to reduce routine status chatter.
 

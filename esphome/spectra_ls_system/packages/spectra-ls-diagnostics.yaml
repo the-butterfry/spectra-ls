@@ -1,5 +1,5 @@
 # Description: Spectra LS diagnostics, OLED contrast controls, and test helpers.
-# Version: 2026.04.18.5
+# Version: 2026.04.18.6
 # Last updated: 2026-04-18
 # Update version/date whenever you change this file.
 #
@@ -16,7 +16,7 @@ sensor:
     internal: true
     unit_of_measurement: "%"
     accuracy_decimals: 1
-    update_interval: 60s
+    update_interval: 300s
     entity_category: diagnostic
     lambda: |-
       float v = id(oled_contrast_last_applied);
@@ -29,7 +29,7 @@ sensor:
     id: oled_contrast_raw_state
     internal: true
     accuracy_decimals: 0
-    update_interval: 60s
+    update_interval: 300s
     entity_category: diagnostic
     lambda: |-
       int v = id(oled_contrast_last_applied_raw);
@@ -40,22 +40,22 @@ sensor:
   - platform: cpu_usage
     name: "CPU Usage"
     id: cpu_usage_main
-    update_interval: 60s
+    update_interval: 300s
     unit_of_measurement: "%"
     accuracy_decimals: 1
     entity_category: diagnostic
     logging_enabled: false
-    log_interval: 60s
+    log_interval: 300s
     log_tasks_enabled: false
     log_tasks_top: 6
-    log_tasks_interval: 60s
+    log_tasks_interval: 300s
 
   - platform: template
     name: "Heap Free"
     id: heap_free_kb
     unit_of_measurement: "KB"
     accuracy_decimals: 0
-    update_interval: 60s
+    update_interval: 300s
     entity_category: diagnostic
     lambda: |-
       return heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024.0f;
@@ -65,7 +65,7 @@ sensor:
     id: heap_min_free_kb
     unit_of_measurement: "KB"
     accuracy_decimals: 0
-    update_interval: 60s
+    update_interval: 300s
     entity_category: diagnostic
     lambda: |-
       return heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL) / 1024.0f;
@@ -75,7 +75,7 @@ sensor:
     id: psram_total_mb
     unit_of_measurement: "MB"
     accuracy_decimals: 2
-    update_interval: 60s
+    update_interval: 300s
     entity_category: diagnostic
     lambda: |-
       return heap_caps_get_total_size(MALLOC_CAP_SPIRAM) / (1024.0f * 1024.0f);
@@ -85,7 +85,7 @@ sensor:
     id: psram_free_mb
     unit_of_measurement: "MB"
     accuracy_decimals: 2
-    update_interval: 60s
+    update_interval: 300s
     entity_category: diagnostic
     lambda: |-
       return heap_caps_get_free_size(MALLOC_CAP_SPIRAM) / (1024.0f * 1024.0f);
@@ -100,7 +100,7 @@ number:
     max_value: 1.0
     step: 0.05
     mode: slider
-    update_interval: 60s
+    update_interval: 300s
     lambda: |-
       float v = id(oled_contrast);
       if (v < 0.0f) v = 0.0f;
@@ -132,7 +132,7 @@ number:
     max_value: 4
     step: 1
     mode: box
-    update_interval: 60s
+    update_interval: 300s
     lambda: |-
       return (float) id(hardware_mode);
     set_action:
@@ -150,7 +150,7 @@ number:
     max_value: 2
     step: 1
     mode: box
-    update_interval: 60s
+    update_interval: 300s
     lambda: |-
       return (float) id(control_class);
     set_action:
@@ -164,7 +164,7 @@ text_sensor:
     name: "OLED Contrast Debug"
     id: oled_contrast_debug
     internal: true
-    update_interval: 60s
+    update_interval: 300s
     entity_category: diagnostic
     lambda: |-
       return str_sprintf("v=%.2f raw=%d count=%u ms=%u",
@@ -177,7 +177,7 @@ text_sensor:
     name: "Virtual Input Battery Status"
     id: virtual_input_battery_status
     internal: false
-    update_interval: 60s
+    update_interval: 300s
     entity_category: diagnostic
     lambda: |-
       return str_sprintf("pass=%d fail=%d", id(virtual_input_test_pass_count), id(virtual_input_test_fail_count));

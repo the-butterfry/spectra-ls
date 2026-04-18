@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.86 -->
+<!-- Version: 2026.04.17.87 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
+
+- Diagnostics/Template Fix: Correct `Source Truth Test` false-negative behavior in `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md` by replacing brittle core sentinel failure logic (`sensor.time`/`sun.sun`) with a core entity-count heuristic and by switching source probes to realistic exposed entities; prevents misleading "HA degraded" conclusions when control-hub contracts are the actual fault domain.
 
 - HA/Lighting Control-Hub Recovery: Broaden `sensor.control_board_eligible_light_catalog` eligibility in `packages/spectra_ls_lighting_hub.yaml` to include on/off and legacy light entities (while still excluding speaker-like pseudo-lights), preventing false-empty room/target catalogs that caused ESP menus to fall back to generic room labels.
 

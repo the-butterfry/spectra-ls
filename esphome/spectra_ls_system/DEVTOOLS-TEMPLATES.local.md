@@ -1,5 +1,5 @@
 <!-- Description: Copy/paste Home Assistant Dev Tools template diagnostics for Spectra LS System. -->
-<!-- Version: 2026.04.17.5 -->
+<!-- Version: 2026.04.17.6 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Spectra LS System — Dev Tools Template Validation
@@ -1496,7 +1496,7 @@ Unavailable core entities:
   Purpose: answer "is HA inaccessible?" vs "source/control-hub path is degraded"
   ========================= #}
 
-{% set core_ha = [
+{% set core_ha_optional = [
   'sensor.time',
   'sun.sun'
 ] %}
@@ -1518,11 +1518,10 @@ Unavailable core entities:
 ] %}
 
 {% set source_inputs = [
-  'media_player.control_board_v2_arylic',
-  'sensor.control_board_v2_ha_audio_app',
-  'sensor.control_board_v2_ha_audio_source',
-  'sensor.control_board_v2_arylic_source',
-  'sensor.control_board_v2_arylic_lr_source_state'
+  'sensor.now_playing_state',
+  'sensor.now_playing_title',
+  'sensor.ma_active_meta_entity',
+  'select.control_board_v2_arylic_source'
 ] %}
 
 {% set ns = namespace(
@@ -1532,7 +1531,7 @@ Unavailable core entities:
   src_ok=[]
 ) %}
 
-{% for eid in core_ha %}
+{% for eid in core_ha_optional %}
   {% if states[eid] is none %}
     {% set ns.core_missing = ns.core_missing + [eid] %}
   {% else %}
@@ -1567,26 +1566,33 @@ Unavailable core entities:
   {% endif %}
 {% endfor %}
 
+{% set ha_entity_count = states | count %}
 {% set room_opts = state_attr('input_select.control_board_room','options') or [] %}
 {% set target_opts = state_attr('input_select.control_board_target','options') or [] %}
 {% set active_target = states('input_select.ma_active_target') %}
 {% set control_host = states('sensor.ma_control_host') %}
 
-{% set ha_core_ok = (ns.core_missing | length == 0) and (ns.core_bad | length == 0) %}
+{% set core_optional_ok = (ns.core_missing | length + ns.core_bad | length) == 0 %}
+{% set ha_core_ok = ha_entity_count > 50 %}
 {% set hub_ok = (ns.hub_missing | length == 0) and (ns.hub_bad | length == 0) %}
 {% set src_ok_any = (ns.src_ok | length) > 0 %}
 {% set room_target_options_ok = (room_opts | length) > 0 and (target_opts | length) > 0 %}
+{% set target_selected_ok = active_target not in ['none','unknown','unavailable',''] %}
+{% set control_host_ok = control_host not in ['none','unknown','unavailable',''] %}
 
 {% set verdict = 'PASS' %}
 {% set conclusion = 'Hub/source path appears healthy.' %}
 
 {% if not ha_core_ok %}
   {% set verdict = 'FAIL' %}
-  {% set conclusion = 'Home Assistant core appears degraded or not fully ready.' %}
+  {% set conclusion = 'Home Assistant core appears degraded (very low entity registry count).' %}
 {% elif (ns.hub_missing | length) >= 5 %}
   {% set verdict = 'FAIL' %}
   {% set conclusion = 'Control-hub package contracts are missing (loader/init regression likely).' %}
-{% elif (not room_target_options_ok) or (not src_ok_any) or (control_host in ['unknown','unavailable','none','']) %}
+{% elif (not room_target_options_ok) and (not control_host_ok) and (not target_selected_ok) %}
+  {% set verdict = 'FAIL' %}
+  {% set conclusion = 'Control-hub routing surfaces are empty after restart (upstream package/data path failure).' %}
+{% elif (not src_ok_any) or (not control_host_ok) or (not target_selected_ok) %}
   {% set verdict = 'WARN' %}
   {% set conclusion = 'HA is reachable, but control-hub source/option pipeline is degraded.' %}
 {% endif %}
@@ -1597,7 +1603,9 @@ Unavailable core entities:
 - Conclusion: **{{ conclusion }}**
 
 ### Quick state snapshot
-- HA core healthy: **{{ ha_core_ok }}**
+- HA core healthy (entity-count heuristic): **{{ ha_core_ok }}**
+- HA entity count: **{{ ha_entity_count }}**
+- Optional core sentinels healthy (`sensor.time`, `sun.sun`): **{{ core_optional_ok }}**
 - Control-hub contract healthy: **{{ hub_ok }}**
 - Any usable source feed present: **{{ src_ok_any }}**
 - Room/Target option lists non-empty: **{{ room_target_options_ok }}**
@@ -1634,9 +1642,9 @@ Unavailable core entities:
 
 ### Action guidance
 {% if verdict == 'FAIL' and not ha_core_ok %}
-- HA is likely not fully healthy. Restart HA core and re-run this test.
+- HA core likely degraded (entity registry unexpectedly small). Verify HA startup health/logs, then rerun.
 {% elif verdict == 'FAIL' %}
-- Control-hub package likely failed to load. Run Template #12 (Package Loader Regression Check) and fix missing sentinels.
+- Control-hub package/data path likely failed. Run Template #12 and repair missing/bad hub contracts before ESP-side debugging.
 {% elif verdict == 'WARN' %}
 - HA is reachable; issue is source/contract flow. Check `sensor.control_board_room_options`, `sensor.control_board_target_options`, and active target/host mapping before blaming HA uptime.
 {% else %}

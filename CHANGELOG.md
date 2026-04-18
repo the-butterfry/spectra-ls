@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.114 -->
+<!-- Version: 2026.04.17.115 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
+
+- HA/Now-Playing Source Stability (ma_control_hub): Harden `packages/ma_control_hub/template.inc` source resolvers (`Now Playing Source`, `MA Active Source`) to select the first valid non-placeholder, non-queue candidate in deterministic order (with media_player entity-id friendly-name resolution and final friendly-name fallback), preventing intermittent blank `src` output while target/host/meta are otherwise healthy.
 
 - ESPHome/Runtime Cleanup (Code-Side): Remove unreferenced high-frequency internal template sensors from `esphome/spectra_ls_system/packages/spectra-ls-lighting.yaml` (`lighting_hue_state`, `lighting_sat_state`, `lighting_brightness_state`, `selected_room_state`, `selected_target_state`) to eliminate unnecessary 500ms polling work with no behavioral contract impact.
 

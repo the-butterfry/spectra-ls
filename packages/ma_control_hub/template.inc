@@ -1,5 +1,5 @@
 # Description: Template entities for ma_control_hub runtime routing, metadata, and now-playing state surfaces.
-# Version: 2026.04.17.10
+# Version: 2026.04.17.11
 # Last updated: 2026-04-17
 # HUB MUST-READ: Contract parser methodology.
 # - For complex attributes (`rooms`, `candidates_json`, etc.), prefer native sequence/mapping values first.
@@ -993,24 +993,27 @@
             {% endif %}
           {% endfor %}
           {% set ma_src = (ns.p.active_source if ns.p is not none else '') | default('', true) %}
-          {% set ma_src_l = ma_src | lower %}
-          {% set ma_src_queue = ma_src_l in ['music assistant queue','media assistant queue'] %}
-          {% if ma_src and ma_src not in ['None', none] and not ma_src_queue %}
-            {{ ma_src }}
-          {% else %}
-            {% set ha_src = (state_attr(t,'source') or '') | default('', true) %}
-            {% set ha_src_l = ha_src | lower %}
-            {% set ha_src_queue = ha_src_l in ['music assistant queue','media assistant queue'] %}
-            {% if ha_src and not ha_src_queue %}
-              {% if ha_src.startswith('media_player.') and states[ha_src] is not none %}
-                {{ state_attr(ha_src,'friendly_name') or ha_src.split('.')[-1] }}
-              {% else %}
-                {{ ha_src }}
+          {% set ha_src = (state_attr(t,'source') or '') | default('', true) %}
+          {% set app_name = (state_attr(t,'app_name') or '') | default('', true) %}
+          {% set friendly = (state_attr(t,'friendly_name') or '') | default('', true) %}
+          {% set candidates = [ma_src, ha_src, app_name, friendly] %}
+          {% set out = namespace(val='') %}
+          {% for c in candidates %}
+            {% if out.val == '' %}
+              {% set raw = (c | string | trim) %}
+              {% set raw_l = raw | lower %}
+              {% set is_placeholder = raw_l in ['','none','unknown','unavailable'] %}
+              {% set is_queue = raw_l in ['music assistant queue','media assistant queue'] %}
+              {% if not is_placeholder and not is_queue %}
+                {% if raw.startswith('media_player.') and states[raw] is not none %}
+                  {% set out.val = (state_attr(raw,'friendly_name') or raw.split('.')[-1]) %}
+                {% else %}
+                  {% set out.val = raw %}
+                {% endif %}
               {% endif %}
-            {% else %}
-              {{ (state_attr(t,'app_name') or '') | default('', true) }}
             {% endif %}
-          {% endif %}
+          {% endfor %}
+          {{ out.val }}
         {% endif %}
     - name: Now Playing State
       state: >-
@@ -1660,9 +1663,27 @@
           {% set ma_src = (ns.p.active_source if ns.p is not none else '') | default('', true) %}
           {% set ha_primary_src = (state_attr(spectra_entity, 'source') if spectra_entity != '' and t == spectra_entity else '') | default('', true) %}
           {% set ha_src = (state_attr(t, 'source') or state_attr(meta, 'source') or '') | default('', true) %}
-          {% set src = (ha_src or ha_primary_src or ap_src or ma_src or '') | default('', true) %}
-          {% set src_l = src | lower %}
-          {{ '' if src_l in ['media assistant queue','music assistant queue'] else src }}
+          {% set app_t = (state_attr(t, 'app_name') or '') | default('', true) %}
+          {% set app_m = (state_attr(meta, 'app_name') or '') | default('', true) %}
+          {% set friendly = (state_attr(t, 'friendly_name') or '') | default('', true) %}
+          {% set candidates = [ap_src, ma_src, ha_src, ha_primary_src, app_t, app_m, friendly] %}
+          {% set out = namespace(val='') %}
+          {% for c in candidates %}
+            {% if out.val == '' %}
+              {% set raw = (c | string | trim) %}
+              {% set raw_l = raw | lower %}
+              {% set is_placeholder = raw_l in ['','none','unknown','unavailable'] %}
+              {% set is_queue = raw_l in ['music assistant queue','media assistant queue'] %}
+              {% if not is_placeholder and not is_queue %}
+                {% if raw.startswith('media_player.') and states[raw] is not none %}
+                  {% set out.val = (state_attr(raw,'friendly_name') or raw.split('.')[-1]) %}
+                {% else %}
+                  {% set out.val = raw %}
+                {% endif %}
+              {% endif %}
+            {% endif %}
+          {% endfor %}
+          {{ out.val }}
         {% endif %}
     - name: MA Active Duration
       unit_of_measurement: s

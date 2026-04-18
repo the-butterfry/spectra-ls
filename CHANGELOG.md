@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.91 -->
+<!-- Version: 2026.04.17.92 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
+
+- Hotfix: Correct `packages/spectra_ls_lighting_hub.yaml` Jinja block terminator in `sensor.control_board_eligible_light_catalog` (`endif` vs accidental `endfor`) to restore template loading; this unblocks room/target option generation that had been failing at HA config parse time.
 
 - HA/Lighting Regression Correction: Restore `packages/spectra_ls_lighting_hub.yaml` eligible-light catalog to area-first discovery (`areas()` + `area_entities()`), with all-lights fallback only when area-derived results are empty; fixes unintended "Unassigned-only" room output introduced by prior all-lights-first refactor.
 

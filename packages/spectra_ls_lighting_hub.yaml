@@ -1,5 +1,5 @@
 # Description: Spectra LS lighting hub (rooms/targets from HA Areas).
-# Version: 2026.04.17.11
+# Version: 2026.04.17.12
 # Last updated: 2026-04-17
 # Update version/date whenever you change this file.
 #
@@ -87,7 +87,7 @@ template:
                 {% set ns.items = ns.items + [{'area_id': area if area else '', 'area_name': room_name, 'entity_id': ent, 'label': label}] %}
               {% endif %}
             {% endfor %}
-          {% endfor %}
+          {% endif %}
           {{ ns.items | tojson }}
         attributes:
           count: >

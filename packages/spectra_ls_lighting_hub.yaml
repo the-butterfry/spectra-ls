@@ -1,5 +1,5 @@
 # Description: Spectra LS lighting hub (rooms/targets from HA Areas).
-# Version: 2026.04.17.9
+# Version: 2026.04.17.10
 # Last updated: 2026-04-17
 # Update version/date whenever you change this file.
 #
@@ -77,7 +77,7 @@ template:
             {% endif %}
           {% endfor %}
           {% if ns.rooms | count == 0 %}
-            {{ ['Unknown'] | tojson }}
+            {{ ['Unassigned'] | tojson }}
           {% else %}
             {{ ns.rooms | tojson }}
           {% endif %}
@@ -255,15 +255,10 @@ automation:
             {% elif current_options | count > 0 %}
               {{ current_options }}
             {% else %}
-              {{ ['Unknown'] }}
+              {{ ['Unassigned'] }}
             {% endif %}
-          safe_options: >
-            {% if current not in room_options and current not in ['unknown','unavailable',''] %}
-              {{ (room_options + [current]) | unique | list }}
-            {% else %}
-              {{ room_options }}
-            {% endif %}
-          options_changed: "{{ current_options | join('||') != room_options | join('||') }}"
+          safe_options: "{{ room_options }}"
+          options_changed: "{{ current_options | join('||') != safe_options | join('||') }}"
           needs_reset: "{{ (room_parsed | count > 0) and (states('input_select.control_board_room') not in room_options) }}"
           should_update_options: "{{ options_changed and ((room_parsed | count > 0) or (current_options | count == 0)) }}"
       - choose:
@@ -317,7 +312,7 @@ automation:
               {{ ['All'] }}
             {% endif %}
           safe_options: "{{ target_options }}"
-          options_changed: "{{ current_options | join('||') != target_options | join('||') }}"
+          options_changed: "{{ current_options | join('||') != safe_options | join('||') }}"
           needs_reset: "{{ (target_parsed | count > 0) and (states('input_select.control_board_target') not in target_options) }}"
           should_update_options: "{{ options_changed and ((target_parsed | count > 0) or (current_options | count == 0)) }}"
       - choose:

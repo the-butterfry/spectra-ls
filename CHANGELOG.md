@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.87 -->
+<!-- Version: 2026.04.17.88 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
+
+- HA/Lighting Room Options Root-Cause Fix: Rework `sensor.control_board_eligible_light_catalog` in `packages/spectra_ls_lighting_hub.yaml` to derive candidates from all `light.*` entities (including unassigned-area lights) instead of area-only enumeration, preventing `['Unknown']` option collapse that forced ESP OLED room-menu fallback labels (`Room 1/2/3/4`).
 
 - Diagnostics/Template Fix: Correct `Source Truth Test` false-negative behavior in `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md` by replacing brittle core sentinel failure logic (`sensor.time`/`sun.sun`) with a core entity-count heuristic and by switching source probes to realistic exposed entities; prevents misleading "HA degraded" conclusions when control-hub contracts are the actual fault domain.
 

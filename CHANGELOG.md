@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.18.15 -->
+<!-- Version: 2026.04.18.16 -->
 <!-- Last updated: 2026-04-18 -->
 
 # Changelog
 
 ## 2026-04-18
+
+- ESPHome/OLED Universal Label Layout Reset: In `esphome/spectra_ls_system/spectra-ls-peripherals.yaml`, remove the incremental line/centering helper stack and replace it with a single universal pixel-width-based centered wrap/fit method (shared by menu and lighting paths) so all label rendering uses the same deterministic split/truncate rules and avoids right-edge clipping across fonts.
 
 - ESPHome/OLED Pixel-Width Header Wrap Fix: In `esphome/spectra_ls_system/spectra-ls-peripherals.yaml`, replace lighting-header-only character-count wrapping with font-pixel-width-aware split/fit logic and per-line width guards so long labels (including wider glyph endings) cannot clip at the right edge in centered two-line rendering.
 

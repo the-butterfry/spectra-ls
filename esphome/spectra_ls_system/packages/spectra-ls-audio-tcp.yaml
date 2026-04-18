@@ -1,5 +1,5 @@
 # Description: Audio controls package for Spectra LS System (TCP-only).
-# Version: 2026.04.18.1
+# Version: 2026.04.18.2
 # Last updated: 2026-04-18
 # Update version/date whenever you change this file.
 
@@ -403,8 +403,13 @@ sensor:
     accuracy_decimals: 1
     on_value:
       - lambda: |-
+          const float prev = id(ha_audio_pos_last_value);
           id(ha_audio_pos_last_value) = x;
-          id(ha_audio_pos_last_ms) = millis();
+          const float delta = x - prev;
+          const float abs_delta = delta < 0.0f ? -delta : delta;
+          if (abs_delta >= 0.05f) {
+            id(ha_audio_pos_last_ms) = millis();
+          }
   - platform: homeassistant
     id: ha_audio_duration
     entity_id: ${ha_ma_active_duration}

@@ -1,10 +1,14 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.18.6 -->
+<!-- Version: 2026.04.18.8 -->
 <!-- Last updated: 2026-04-18 -->
 
 # Changelog
 
 ## 2026-04-18
+
+- ESPHome/Diagnostics Cleanup: Remove one-cycle `disp_diag` transition logger from `esphome/spectra_ls_system/spectra-ls-peripherals.yaml` after root-cause playback predicate hardening, reducing log noise without changing display-state behavior.
+
+- ESPHome/HA Position Activity Debounce: In `esphome/spectra_ls_system/packages/spectra-ls-audio-tcp.yaml`, only refresh `ha_audio_pos_last_ms` when `ha_audio_position` actually moves (>=0.05s delta), preventing unchanged paused-position updates from being misread as active playback evidence.
 
 - ESPHome/Now-Playing Idle-Recency Clamp (follow-up): Refine `playing_effective` in `esphome/spectra_ls_system/spectra-ls-peripherals.yaml` so Arylic/LR recency and activity windows only contribute when corresponding sources are non-idle, and only refresh `last_playing_true_ms` under active-source conditions. This prevents idle metadata timestamp churn from holding `play=1`/NP state with empty content.
 

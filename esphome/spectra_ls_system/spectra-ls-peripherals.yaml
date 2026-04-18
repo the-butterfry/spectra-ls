@@ -1,5 +1,5 @@
 # Description: Spectra LS OLED-only peripherals package (no LED rings) for Control Board v2.
-# Version: 2026.04.18.4
+# Version: 2026.04.18.5
 # Last updated: 2026-04-18
 # Update version/date whenever you change this file.
 esphome:
@@ -684,43 +684,6 @@ script:
 
           id(display_state) = display_state_value;
           id(screensaver_active) = (display_state_value == STATE_SCREENSAVER);
-
-          {
-            static int prev_display_state = -1;
-            static int prev_screen_mode = -1;
-            static int prev_no_audio_activity = -1;
-            static int prev_menu_active = -1;
-            static int prev_lighting_active = -1;
-            static uint32_t last_diag_log_ms = 0;
-            const int now_no_audio_activity = no_audio_activity ? 1 : 0;
-            const int now_menu_active = menu_active_now ? 1 : 0;
-            const int now_lighting_active = lighting_active ? 1 : 0;
-            const int now_screen_mode = id(screen_mode);
-            const bool transitioned =
-              (display_state_value != prev_display_state) ||
-              (now_screen_mode != prev_screen_mode) ||
-              (now_no_audio_activity != prev_no_audio_activity) ||
-              (now_menu_active != prev_menu_active) ||
-              (now_lighting_active != prev_lighting_active);
-            if (transitioned && (now - last_diag_log_ms) > 250) {
-              last_diag_log_ms = now;
-              ESP_LOGI("disp_diag",
-                       "state=%d no_audio=%d menu=%d lighting=%d screen_mode=%d np_active=%d playing=%d idle_ms=%u",
-                       display_state_value,
-                       now_no_audio_activity,
-                       now_menu_active,
-                       now_lighting_active,
-                       now_screen_mode,
-                       now_playing_active ? 1 : 0,
-                       playing ? 1 : 0,
-                       (unsigned) idle_ms);
-            }
-            prev_display_state = display_state_value;
-            prev_screen_mode = now_screen_mode;
-            prev_no_audio_activity = now_no_audio_activity;
-            prev_menu_active = now_menu_active;
-            prev_lighting_active = now_lighting_active;
-          }
 
           if (${menu_debug}) {
             static int last_display_state_log = -1;

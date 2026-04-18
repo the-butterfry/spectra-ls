@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.89 -->
+<!-- Version: 2026.04.17.90 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
+
+- MA Control Targets Boot Fallback: Harden `packages/ma_control_hub/template.inc` so `sensor.ma_control_targets` falls back to `input_select.ma_active_target` options when `sensor.spectra_ls_rooms_raw` is not yet populated at boot/reload, preventing blank control-target prompt/options during startup race windows.
 
 - HA/Lighting Selectability Regression Fix: Update `packages/spectra_ls_lighting_hub.yaml` sync automations to stop preserving stale room/target option values in `input_select` options, and force-reset to valid parsed options when contracts repopulate; resolves "Select Control Target" lock state with no selectable targets.
 

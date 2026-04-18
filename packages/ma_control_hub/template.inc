@@ -1,5 +1,5 @@
 # Description: Template entities for ma_control_hub runtime routing, metadata, and now-playing state surfaces.
-# Version: 2026.04.17.4
+# Version: 2026.04.17.5
 # Last updated: 2026-04-17
 
 - sensor:
@@ -1070,8 +1070,36 @@
         {% endif %}
     - name: MA Control Targets
       state: >-
-        {% set rooms = state_attr('sensor.spectra_ls_rooms_raw','rooms') or [] %}
-        {{ rooms | length }}
+        {% set rooms_raw = state_attr('sensor.spectra_ls_rooms_raw','rooms') %}
+        {% set rooms = [] %}
+        {% if rooms_raw is string %}
+          {% set raw_l = rooms_raw | lower %}
+          {% set raw_trim = rooms_raw | trim %}
+          {% if raw_l in ['unknown','unavailable','none',''] %}
+            {% set rooms = [] %}
+          {% elif raw_trim.startswith('[') or raw_trim.startswith('{') %}
+            {% set rooms = rooms_raw | from_json %}
+          {% else %}
+            {% set rooms = [] %}
+          {% endif %}
+        {% else %}
+          {% set rooms = rooms_raw or [] %}
+        {% endif %}
+        {% set ns = namespace(entities=[]) %}
+        {% for r in rooms %}
+          {% if r is not none and r.entity is defined and r.entity not in ['','none','unknown','unavailable'] %}
+            {% set ns.entities = ns.entities + [r.entity] %}
+          {% endif %}
+        {% endfor %}
+        {% if ns.entities | length == 0 %}
+          {% set opts = state_attr('input_select.ma_active_target','options') or [] %}
+          {% for o in opts %}
+            {% if o not in ['','none','unknown','unavailable'] and states[o] is not none %}
+              {% set ns.entities = ns.entities + [o] %}
+            {% endif %}
+          {% endfor %}
+        {% endif %}
+        {{ ns.entities | length }}
       attributes:
         entities: >-
           {% set rooms_raw = state_attr('sensor.spectra_ls_rooms_raw','rooms') %}
@@ -1095,6 +1123,14 @@
               {% set ns.entities = ns.entities + [r.entity] %}
             {% endif %}
           {% endfor %}
+          {% if ns.entities | length == 0 %}
+            {% set opts = state_attr('input_select.ma_active_target','options') or [] %}
+            {% for o in opts %}
+              {% if o not in ['','none','unknown','unavailable'] and states[o] is not none %}
+                {% set ns.entities = ns.entities + [o] %}
+              {% endif %}
+            {% endfor %}
+          {% endif %}
           {{ ns.entities | tojson }}
         labels: >-
           {% set rooms_raw = state_attr('sensor.spectra_ls_rooms_raw','rooms') %}
@@ -1143,6 +1179,19 @@
               {% set ns.labels = ns.labels + [label] %}
             {% endif %}
           {% endfor %}
+          {% if ns.labels | length == 0 %}
+            {% set opts = state_attr('input_select.ma_active_target','options') or [] %}
+            {% for o in opts %}
+              {% if o not in ['','none','unknown','unavailable'] and states[o] is not none %}
+                {% set friendly = state_attr(o, 'friendly_name') %}
+                {% if friendly not in ['','None', none] %}
+                  {% set ns.labels = ns.labels + [friendly] %}
+                {% else %}
+                  {% set ns.labels = ns.labels + [o] %}
+                {% endif %}
+              {% endif %}
+            {% endfor %}
+          {% endif %}
           {{ ns.labels | tojson }}
     - name: MA Control Host
       state: >-

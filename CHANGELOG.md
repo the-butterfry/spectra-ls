@@ -1,10 +1,14 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.18.16 -->
+<!-- Version: 2026.04.18.18 -->
 <!-- Last updated: 2026-04-18 -->
 
 # Changelog
 
 ## 2026-04-18
+
+- HA/Command-Line Resilience Fix: In `packages/spectra_ls_hw_status.yaml`, harden the `Spectra LS HW Status` command to guard for missing script/input files and emit a valid fallback JSON payload when unavailable, preventing recurring `command_line` return-code errors while preserving dependent attribute contracts.
+
+- ESPHome/OLED Universal Title-Style Split Tuning: In `esphome/spectra_ls_system/components/sls_oled_text_layout.h`, refine two-line split scoring with capitalization-aware and connector-word penalties so labels avoid awkward breaks (for example ending line 1 with minor words like `of`, `the`, `in`, `to`) while preserving pixel-fit and center alignment across all OLED views.
 
 - ESPHome/OLED Universal Label Layout Reset: In `esphome/spectra_ls_system/spectra-ls-peripherals.yaml`, remove the incremental line/centering helper stack and replace it with a single universal pixel-width-based centered wrap/fit method (shared by menu and lighting paths) so all label rendering uses the same deterministic split/truncate rules and avoids right-edge clipping across fonts.
 

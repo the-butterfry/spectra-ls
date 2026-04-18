@@ -1,13 +1,17 @@
 # Description: Spectra LS hardware play-state polling via UART-over-TCP.
-# Version: 2026.04.10.2
-# Last updated: 2026-04-10
+# Version: 2026.04.18.3
+# Last updated: 2026-04-18
 # Update version/date whenever you change this file.
 
 command_line:
   - sensor:
       name: Spectra LS HW Status
       command: >-
-        python3 /config/bin/arylic_hw_status.py /config/spectra_ls_rooms.json
+        /bin/sh -c 'if [ -f /config/bin/arylic_hw_status.py ] && [ -f /config/spectra_ls_rooms.json ]; then
+        python3 /config/bin/arylic_hw_status.py /config/spectra_ls_rooms.json;
+        else
+        printf "{\"playing_host\":\"\",\"playing_entity\":\"\",\"playing_label\":\"\",\"rooms\":[]}";
+        fi'
       value_template: >-
         {{ value_json.playing_host if value_json is defined else '' }}
       json_attributes:

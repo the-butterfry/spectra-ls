@@ -1,5 +1,5 @@
 // Description: Shared OLED text layout helpers for pixel-accurate centered wrap/fit across Spectra LS display paths.
-// Version: 2026.04.18.2
+// Version: 2026.04.18.3
 // Last updated: 2026-04-18
 
 #pragma once
@@ -83,6 +83,30 @@ inline std::vector<std::string> split_words(const std::string &raw) {
   return words;
 }
 
+inline std::string lower_ascii(const std::string &in) {
+  std::string out;
+  out.reserve(in.size());
+  for (char ch : in) {
+    if (ch >= 'A' && ch <= 'Z') out.push_back(static_cast<char>(ch - 'A' + 'a'));
+    else out.push_back(ch);
+  }
+  return out;
+}
+
+inline bool starts_with_upper_ascii(const std::string &word) {
+  if (word.empty()) return false;
+  const unsigned char c = static_cast<unsigned char>(word[0]);
+  return c >= 'A' && c <= 'Z';
+}
+
+inline bool is_minor_connector_word(const std::string &word) {
+  const std::string low = lower_ascii(word);
+  return low == "a" || low == "an" || low == "and" || low == "as" || low == "at" ||
+         low == "but" || low == "by" || low == "for" || low == "from" || low == "in" ||
+         low == "nor" || low == "of" || low == "on" || low == "or" || low == "per" ||
+         low == "the" || low == "to" || low == "via" || low == "vs" || low == "with";
+}
+
 inline std::vector<std::string> wrap_two_lines(esphome::display::Display &it, esphome::font::Font *font,
                                                const std::string &raw, int max_width, bool add_ellipsis = true) {
   std::vector<std::string> lines;
@@ -98,8 +122,7 @@ inline std::vector<std::string> wrap_two_lines(esphome::display::Display &it, es
   const auto words = split_words(text);
   if (words.size() >= 2) {
     int best_split = -1;
-    int best_max_w = 1000000;
-    int best_balance = 1000000;
+    int best_score = 1000000;
 
     for (int split = 1; split < static_cast<int>(words.size()); split++) {
       std::string l1;
@@ -118,9 +141,26 @@ inline std::vector<std::string> wrap_two_lines(esphome::display::Display &it, es
       if (w1 <= max_width && w2 <= max_width) {
         const int max_w = (w1 > w2) ? w1 : w2;
         const int balance = (w1 > w2) ? (w1 - w2) : (w2 - w1);
-        if (max_w < best_max_w || (max_w == best_max_w && balance < best_balance)) {
-          best_max_w = max_w;
-          best_balance = balance;
+        int score = (max_w * 8) + balance;
+
+        // Prefer title-style boundaries: avoid ending line 1 with minor connector words.
+        if (split > 0 && split < static_cast<int>(words.size()) &&
+            is_minor_connector_word(words[split - 1])) {
+          score += 350;
+        }
+
+        // Prefer line-2 starts that look like a strong phrase boundary.
+        if (split < static_cast<int>(words.size())) {
+          if (!starts_with_upper_ascii(words[split])) {
+            score += 40;
+          }
+          if (is_minor_connector_word(words[split])) {
+            score += 140;
+          }
+        }
+
+        if (score < best_score) {
+          best_score = score;
           best_split = split;
         }
       }

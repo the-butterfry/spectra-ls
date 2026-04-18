@@ -1,5 +1,5 @@
 # Description: Spectra LS core state + globals + system intervals + shared scripts.
-# Version: 2026.04.17.4
+# Version: 2026.04.17.5
 # Last updated: 2026-04-17
 # Update version/date whenever you change this file.
 #
@@ -464,7 +464,7 @@ globals:
   - id: display_state
     type: int
     restore_value: no
-    initial_value: "0"
+    initial_value: "${display_state_blank}"
   - id: hardware_mode
     type: int
     restore_value: no

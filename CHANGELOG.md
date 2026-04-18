@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.134 -->
+<!-- Version: 2026.04.17.135 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
+
+- ESPHome/UI Idle-Blank Safety Fix: In `esphome/spectra_ls_system/spectra-ls-peripherals.yaml`, change the unknown display-state fallback renderer to fail closed (blank screen) instead of drawing `${friendly_name}`/status text; in `packages/spectra-ls-system.yaml`, initialize `display_state` to blank by default so post-flash startup/compute race windows cannot surface the stale top-line `SPECTRA LS` header when nothing is playing.
 
 - HA/MA Control-Hub Consolidation (template.inc, batch 11): Final 5+ dedupe sweep by adding shared scalar resolver attributes for now-playing (`resolved_position`, `resolved_duration`, `resolved_volume`, `resolved_friendly`) and MA-active (`resolved_duration`, `resolved_position`, `resolved_volume`) surfaces, then rewiring the corresponding sensors to consume shared attributes instead of repeating inline target/meta fallback blocks.
 

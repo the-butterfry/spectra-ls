@@ -1,5 +1,5 @@
 <!-- Description: Copy/paste Home Assistant Dev Tools template diagnostics for Spectra LS System. -->
-<!-- Version: 2026.04.17.15 -->
+<!-- Version: 2026.04.17.19 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Spectra LS System — Dev Tools Template Validation
@@ -187,6 +187,322 @@
 - Keep templates copy-paste ready (no extra markdown inside code blocks).
 - Update version metadata in this file each time you add/change templates.
 
+## 1A) Iteration Workbench — Combined Checks (1→4 in One Paste)
+
+```jinja
+{# =========================
+  Spectra LS Iteration Workbench (Combined 1→4)
+  Purpose: single paste for iterative check/code/check cycles
+  Includes: Health + Path + Readiness + Effect
+  ========================= #}
+
+{# Optional probe inputs for effect section #}
+{% set probe_entity = 'number.control_board_v2_arylic_volume_set' %}
+{% set probe_action_value = none %}
+
+{# Common sentinels #}
+{% set invalid = ['','none','unknown','unavailable'] %}
+
+{# -------------------------
+   A) Core health subset
+   ------------------------- #}
+{% set health_entities = [
+  'input_select.ma_active_target',
+  'sensor.spectra_ls_rooms_raw',
+  'sensor.ma_control_host',
+  'sensor.ma_control_hosts',
+  'sensor.ma_active_target_by_host',
+  'sensor.ma_active_meta_entity',
+  'sensor.now_playing_entity',
+  'sensor.now_playing_state',
+  'sensor.now_playing_title',
+  'sensor.ma_api_url',
+  'script.ma_update_target_options',
+  'script.ma_auto_select',
+  'script.ma_set_volume',
+  'script.ma_set_balance'
+] %}
+
+{% set h = namespace(missing=[], unavailable=[]) %}
+{% for eid in health_entities %}
+  {% if states[eid] is none %}
+    {% set h.missing = h.missing + [eid] %}
+  {% else %}
+    {% set st = states(eid) %}
+    {% if st in ['unknown','unavailable'] %}
+      {% set h.unavailable = h.unavailable + [eid] %}
+    {% endif %}
+  {% endif %}
+{% endfor %}
+{% set health_ok = (h.missing | length) == 0 and (h.unavailable | length) == 0 %}
+
+{# -------------------------
+   B) Path probe subset
+   ------------------------- #}
+{% set target = states('input_select.ma_active_target') %}
+{% set target_options = state_attr('input_select.ma_active_target','options') or [] %}
+{% set target_ok = target not in invalid and target in target_options and states[target] is not none %}
+
+{% set host = states('sensor.ma_control_host') %}
+{% set host_ok = host not in invalid %}
+
+{% set by_host = states('sensor.ma_active_target_by_host') %}
+{% set by_host_ok = by_host not in invalid and states[by_host] is not none %}
+
+{% set meta = states('sensor.ma_active_meta_entity') %}
+{% set meta_ok = meta not in invalid and states[meta] is not none %}
+{% set meta_state = states(meta) if meta_ok else 'missing' %}
+{% set meta_title = (state_attr(meta,'media_title') if meta_ok else '') | default('', true) %}
+{% set meta_artist = (state_attr(meta,'media_artist') if meta_ok else '') | default('', true) %}
+{% set meta_source = (state_attr(meta,'source') if meta_ok else '') | default('', true) %}
+
+{% set np = states('sensor.now_playing_entity') %}
+{% set np_ok = np not in invalid and states[np] is not none %}
+{% set np_state = states('sensor.now_playing_state') %}
+{% set np_title = states('sensor.now_playing_title') %}
+
+{% set room_attr = state_attr('sensor.spectra_ls_rooms_json','rooms_json') %}
+{% set rooms = [] %}
+{% if room_attr is sequence and room_attr is not string and room_attr is not mapping %}
+  {% set rooms = room_attr %}
+{% elif room_attr is mapping %}
+  {% set mapped = (room_attr.rooms if room_attr.rooms is defined else (room_attr.result if room_attr.result is defined else [])) %}
+  {% if mapped is sequence and mapped is not string and mapped is not mapping %}
+    {% set rooms = mapped %}
+  {% endif %}
+{% elif room_attr is string %}
+  {% set raw_trim = room_attr | trim %}
+  {% set raw_trim_l = raw_trim | lower %}
+  {% if raw_trim_l not in invalid and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
+    {% set parsed = raw_trim | from_json %}
+    {% if parsed is sequence and parsed is not string and parsed is not mapping %}
+      {% set rooms = parsed %}
+    {% elif parsed is mapping %}
+      {% set mapped = (parsed.rooms if parsed.rooms is defined else (parsed.result if parsed.result is defined else [])) %}
+      {% if mapped is sequence and mapped is not string and mapped is not mapping %}
+        {% set rooms = mapped %}
+      {% endif %}
+    {% endif %}
+  {% endif %}
+{% endif %}
+
+{% set p = namespace(room_match=false, host_match=false, mapped_host='', mapped_meta='') %}
+{% for r in rooms %}
+  {% set ent = (r.entity if r is not none and r.entity is defined else '') %}
+  {% if ent == target %}
+    {% set p.room_match = true %}
+    {% set p.mapped_host = (r.tcp_host if r is not none and r.tcp_host is defined else '') %}
+    {% set p.mapped_meta = (r.meta if r is not none and r.meta is defined else '') %}
+    {% if p.mapped_host == host and host not in invalid %}
+      {% set p.host_match = true %}
+    {% endif %}
+  {% endif %}
+{% endfor %}
+
+{% set path_score = 0 %}
+{% if target_ok %}{% set path_score = path_score + 1 %}{% endif %}
+{% if host_ok %}{% set path_score = path_score + 1 %}{% endif %}
+{% if by_host_ok %}{% set path_score = path_score + 1 %}{% endif %}
+{% if meta_ok %}{% set path_score = path_score + 1 %}{% endif %}
+{% if np_ok %}{% set path_score = path_score + 1 %}{% endif %}
+{% if p.room_match %}{% set path_score = path_score + 1 %}{% endif %}
+{% if p.host_match %}{% set path_score = path_score + 1 %}{% endif %}
+
+{% set path_result = 'PASS' %}
+{% if path_score < 5 %}
+  {% set path_result = 'FAIL' %}
+{% elif path_score < 7 %}
+  {% set path_result = 'WARN' %}
+{% endif %}
+
+{# -------------------------
+   C) Command readiness
+   ------------------------- #}
+{% set api_url = states('sensor.ma_api_url') %}
+{% set api_ok = api_url not in invalid and '/api' in api_url %}
+{% set control_ambiguous = is_state('binary_sensor.ma_control_ambiguous','on') %}
+{% set override_on = is_state('input_boolean.ma_override_active','on') %}
+{% set readiness_number_candidates = [
+  'number.control_board_v2_arylic_volume_set',
+  'number.control_board_v2_eq_low',
+  'number.control_board_v2_eq_mid',
+  'number.control_board_v2_eq_high',
+  'number.control_board_audio_volume'
+] %}
+
+{% set c = namespace(writable=[], available=[], unavailable=[], eq=[], eq_ready=[], volume=[], volume_ready=[]) %}
+{% for eid in readiness_number_candidates %}
+  {% if states[eid] is not none %}
+  {% set name_l = (state_attr(eid,'friendly_name') or eid) | lower %}
+  {% set writable = state_attr(eid,'readonly') != true %}
+  {% set st = states(eid) %}
+  {% set audioish = (
+      ('arylic' in eid) or ('eq' in eid) or ('volume' in eid) or
+      ('arylic' in name_l) or ('equalizer' in name_l) or ('eq' in name_l) or ('volume' in name_l)
+    ) %}
+  {% if writable and audioish %}
+    {% set c.writable = c.writable + [eid] %}
+    {% if st in ['unknown','unavailable'] %}
+      {% set c.unavailable = c.unavailable + [eid] %}
+    {% else %}
+      {% set c.available = c.available + [eid] %}
+    {% endif %}
+    {% if 'eq' in eid or 'equalizer' in name_l %}
+      {% set c.eq = c.eq + [eid] %}
+      {% if st not in ['unknown','unavailable'] %}
+        {% set c.eq_ready = c.eq_ready + [eid] %}
+      {% endif %}
+    {% endif %}
+    {% if 'volume' in eid or 'volume' in name_l %}
+      {% set c.volume = c.volume + [eid] %}
+      {% if st not in ['unknown','unavailable'] %}
+        {% set c.volume_ready = c.volume_ready + [eid] %}
+      {% endif %}
+    {% endif %}
+  {% endif %}
+  {% endif %}
+{% endfor %}
+
+{% set readiness_score = 0 %}
+{% if host_ok %}{% set readiness_score = readiness_score + 1 %}{% endif %}
+{% if api_ok %}{% set readiness_score = readiness_score + 1 %}{% endif %}
+{% if target_ok %}{% set readiness_score = readiness_score + 1 %}{% endif %}
+{% if (c.available | length) > 0 %}{% set readiness_score = readiness_score + 1 %}{% endif %}
+{% if (c.volume_ready | length) > 0 or (c.eq_ready | length) > 0 %}{% set readiness_score = readiness_score + 1 %}{% endif %}
+
+{% set readiness_result = 'PASS' %}
+{% if readiness_score < 3 %}
+  {% set readiness_result = 'FAIL' %}
+{% elif readiness_score < 5 %}
+  {% set readiness_result = 'WARN' %}
+{% endif %}
+
+{% set vol_probe = (c.volume_ready[0] if (c.volume_ready | length) > 0 else (c.volume[0] if (c.volume | length) > 0 else (c.available[0] if (c.available | length) > 0 else (c.writable[0] if (c.writable | length) > 0 else '')))) %}
+{% set eq_probe = (c.eq_ready[0] if (c.eq_ready | length) > 0 else (c.eq[0] if (c.eq | length) > 0 else '')) %}
+
+{# -------------------------
+   D) Effect snapshot
+   ------------------------- #}
+{% set probe_exists = states[probe_entity] is not none %}
+{% set probe_state = states(probe_entity) if probe_exists else 'missing' %}
+{% set probe_numeric = (probe_state | float(none)) if probe_state not in ['missing','unknown','unavailable','none',''] else none %}
+{% set p_min = state_attr(probe_entity,'min') if probe_exists else none %}
+{% set p_max = state_attr(probe_entity,'max') if probe_exists else none %}
+{% set p_step = state_attr(probe_entity,'step') if probe_exists else none %}
+{% set suggested_action_value = (p_min | float(0)) if p_min is not none else (probe_numeric if probe_numeric is not none else 0) %}
+{% set expected_effect_value = (probe_action_value | float(suggested_action_value)) if probe_action_value is not none else suggested_action_value %}
+
+{% set expected_in_range = true %}
+{% if p_min is not none and expected_effect_value < (p_min | float(expected_effect_value)) %}
+  {% set expected_in_range = false %}
+{% endif %}
+{% if p_max is not none and expected_effect_value > (p_max | float(expected_effect_value)) %}
+  {% set expected_in_range = false %}
+{% endif %}
+
+{% set d = ((probe_numeric - expected_effect_value) | abs) if probe_numeric is not none else none %}
+{% set tol = (p_step | float(0.5)) if p_step is not none else 0.5 %}
+{% set effect_ok = probe_exists and probe_state not in ['unknown','unavailable'] and expected_in_range and (d is not none and d <= tol) %}
+
+{% set effect_result = 'PASS' %}
+{% if not probe_exists or probe_state in ['unknown','unavailable'] %}
+  {% set effect_result = 'FAIL' %}
+{% elif not expected_in_range or not effect_ok %}
+  {% set effect_result = 'WARN' %}
+{% endif %}
+
+{# -------------------------
+   Overall
+   ------------------------- #}
+{% set pass_count = (1 if health_ok else 0) + (1 if path_result == 'PASS' else 0) + (1 if readiness_result == 'PASS' else 0) + (1 if effect_result == 'PASS' else 0) %}
+{% set overall = 'PASS' if pass_count == 4 else ('WARN' if pass_count >= 3 else 'FAIL') %}
+
+### Spectra LS Iteration Workbench (1→4)
+- Overall: **{{ overall }}**
+- Timestamp: **{{ now() }}**
+- PASS blocks: **{{ pass_count }}/4**
+
+| Block | Status | Key metric |
+|---|---|---|
+| 1) Health | **{{ 'PASS' if health_ok else 'FAIL' }}** | missing={{ h.missing | length }}, unavailable={{ h.unavailable | length }} |
+| 2) Path | **{{ path_result }}** | path_score={{ path_score }}/7 |
+| 3) Readiness | **{{ readiness_result }}** | readiness_score={{ readiness_score }}/5 |
+| 4) Effect | **{{ effect_result }}** | delta={{ (d | round(4)) if d is not none else 'n/a' }}, tol={{ tol }} |
+
+### 1) Health details
+- Missing count: **{{ h.missing | length }}**
+- Unavailable count: **{{ h.unavailable | length }}**
+{% if (h.missing | length) > 0 %}
+Missing entities:
+{% for eid in h.missing %}
+- `{{ eid }}`
+{% endfor %}
+{% endif %}
+{% if (h.unavailable | length) > 0 %}
+Unavailable entities:
+{% for eid in h.unavailable %}
+- `{{ eid }}`
+{% endfor %}
+{% endif %}
+
+### 2) Path details
+- Target: **{{ target }}** (ok={{ target_ok }})
+- Host: **{{ host }}** (ok={{ host_ok }})
+- By-host: **{{ by_host }}** (ok={{ by_host_ok }})
+- Meta: **{{ meta }}** (ok={{ meta_ok }})
+- Now playing entity: **{{ np }}** (ok={{ np_ok }})
+- Room map match: **{{ p.room_match }}**
+- Host map match: **{{ p.host_match }}**
+- Mapped host/meta: **{{ p.mapped_host if p.mapped_host not in ['',none] else 'n/a' }}** / **{{ p.mapped_meta if p.mapped_meta not in ['',none] else 'n/a' }}**
+- Meta state/title/artist/source: **{{ meta_state }}** / **{{ meta_title }}** / **{{ meta_artist }}** / **{{ meta_source }}**
+- NP state/title: **{{ np_state }}** / **{{ np_title }}**
+
+### 3) Readiness details
+- `sensor.ma_api_url`: **{{ api_url }}** (ok={{ api_ok }})
+- `binary_sensor.ma_control_ambiguous`: **{{ control_ambiguous }}**
+- `input_boolean.ma_override_active`: **{{ override_on }}**
+- Writable audio entities: **{{ c.writable | length }}**
+- Available writable entities: **{{ c.available | length }}**
+- Volume-ready / EQ-ready: **{{ c.volume_ready | length }}** / **{{ c.eq_ready | length }}**
+
+{% if vol_probe != '' %}
+- Volume probe candidate:
+  - Service: `number.set_value`
+  - Data: `{"entity_id":"{{ vol_probe }}","value":{{ state_attr(vol_probe,'min') if state_attr(vol_probe,'min') is not none else 0 }}}`
+{% else %}
+- Volume probe candidate: **none found**
+{% endif %}
+
+{% if eq_probe != '' %}
+- EQ probe candidate:
+  - Service: `number.set_value`
+  - Data: `{"entity_id":"{{ eq_probe }}","value":{{ state_attr(eq_probe,'min') if state_attr(eq_probe,'min') is not none else -10 }}}`
+{% else %}
+- EQ probe candidate: **none found**
+{% endif %}
+
+### 4) Effect details
+- Probe: **{{ probe_entity }}** (exists={{ probe_exists }})
+- Probe state/value: **{{ probe_state }}** / **{{ probe_numeric if probe_numeric is not none else 'n/a' }}**
+- Probe min/max/step: **{{ p_min }} / {{ p_max }} / {{ p_step }}**
+- Action value used for expectation: **{{ expected_effect_value }}**
+- Expected in range: **{{ expected_in_range }}**
+- Match expected (±step): **{{ effect_ok }}**
+
+### Next action guidance
+{% if overall == 'PASS' %}
+- All core iteration checks are healthy. Proceed with next code slice.
+{% elif not health_ok %}
+- Fix health contract breaks first (missing/unavailable entities).
+{% elif path_result != 'PASS' %}
+- Resolve routing path mismatch before command tuning.
+{% elif readiness_result != 'PASS' %}
+- Restore writable command surfaces and host/API readiness.
+{% else %}
+- Re-run command effect with fresh before/after action and aligned `probe_action_value`.
+{% endif %}
+```
+
 ## 2) Audio Control Path Probe (Target → Host → Meta → Now Playing)
 
 ```jinja
@@ -218,7 +534,7 @@
 {% set np_state = states('sensor.now_playing_state') %}
 {% set np_title = states('sensor.now_playing_title') %}
 
-{% set room_attr = state_attr('sensor.spectra_ls_rooms_raw','rooms') %}
+{% set room_attr = state_attr('sensor.spectra_ls_rooms_json','rooms_json') %}
 {% set rooms = [] %}
 {% if room_attr is sequence and room_attr is not string and room_attr is not mapping %}
   {% set rooms = room_attr %}
@@ -231,7 +547,7 @@
   {% set raw_trim = room_attr | trim %}
   {% set raw_trim_l = raw_trim | lower %}
   {% if raw_trim_l not in ['','none','unknown','unavailable'] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
-    {% set parsed = room_attr | from_json %}
+    {% set parsed = raw_trim | from_json %}
     {% if parsed is sequence and parsed is not string and parsed is not mapping %}
       {% set rooms = parsed %}
     {% elif parsed is mapping %}
@@ -346,11 +662,19 @@
 {% set control_ambiguous = is_state('binary_sensor.ma_control_ambiguous','on') %}
 {% set override_on = is_state('input_boolean.ma_override_active','on') %}
 
+{% set readiness_number_candidates = [
+  'number.control_board_v2_arylic_volume_set',
+  'number.control_board_v2_eq_low',
+  'number.control_board_v2_eq_mid',
+  'number.control_board_v2_eq_high',
+  'number.control_board_audio_volume'
+] %}
+
 {% set ns = namespace(writable=[], available=[], unavailable=[], eq=[], eq_ready=[], volume=[], volume_ready=[], diagnostics=[]) %}
 
 {# Find writable number entities likely tied to audio control #}
-{% for n in states.number %}
-  {% set eid = n.entity_id %}
+{% for eid in readiness_number_candidates %}
+  {% if states[eid] is not none %}
   {% set name_l = (state_attr(eid,'friendly_name') or eid) | lower %}
   {% set writable = state_attr(eid,'readonly') != true %}
   {% set st = states(eid) %}
@@ -377,6 +701,7 @@
         {% set ns.volume_ready = ns.volume_ready + [eid] %}
       {% endif %}
     {% endif %}
+  {% endif %}
   {% endif %}
 {% endfor %}
 
@@ -480,7 +805,7 @@ Unavailable (informational):
 
 {# Optional: change these two lines per test #}
 {% set probe_entity = 'number.control_board_v2_arylic_volume_set' %}
-{% set expected_value = 3.0 %}
+{% set probe_action_value = none %}
 
 {% set target = states('input_select.ma_active_target') %}
 {% set host = states('sensor.ma_control_host') %}
@@ -497,16 +822,18 @@ Unavailable (informational):
 {% set probe_lu = as_timestamp(states[probe_entity].last_updated) if probe_exists else none %}
 {% set now_ts = as_timestamp(now()) %}
 {% set probe_age_s = (now_ts - probe_lu) if probe_lu is not none else none %}
+{% set suggested_action_value = (probe_min | float(0)) if probe_min is not none else (probe_numeric if probe_numeric is not none else 0) %}
+{% set expected_effect_value = (probe_action_value | float(suggested_action_value)) if probe_action_value is not none else suggested_action_value %}
 
 {% set expected_in_range = true %}
-{% if probe_min is not none and expected_value < (probe_min | float(expected_value)) %}
+{% if probe_min is not none and expected_effect_value < (probe_min | float(expected_effect_value)) %}
   {% set expected_in_range = false %}
 {% endif %}
-{% if probe_max is not none and expected_value > (probe_max | float(expected_value)) %}
+{% if probe_max is not none and expected_effect_value > (probe_max | float(expected_effect_value)) %}
   {% set expected_in_range = false %}
 {% endif %}
 
-{% set delta = (probe_numeric - expected_value) | abs if probe_has_numeric else none %}
+{% set delta = (probe_numeric - expected_effect_value) | abs if probe_has_numeric else none %}
 {% set step_tol = (probe_step | float(0.5)) if probe_step is not none else 0.5 %}
 {% set matches_expected = (delta is not none and delta <= step_tol) %}
 
@@ -544,7 +871,7 @@ Unavailable (informational):
 - Probe update age (s): **{{ (probe_age_s | round(2)) if probe_age_s is not none else 'n/a' }}**
 
 ### Expectation check
-- Expected value: **{{ expected_value }}**
+- Action value used for expectation: **{{ expected_effect_value }}**
 - Expected in allowed range: **{{ expected_in_range }}**
 - Absolute delta from expected: **{{ (delta | round(4)) if delta is not none else 'n/a' }}**
 - Match expected (±step): **{{ matches_expected }}**
@@ -589,7 +916,7 @@ Unavailable (informational):
 
 {# Optional probe inputs for effect layer #}
 {% set probe_entity = 'number.control_board_v2_arylic_volume_set' %}
-{% set expected_value = 3.0 %}
+{% set probe_action_value = none %}
 
 {# Layer A: Core config/runtime integrity #}
 {% set core_entities = [
@@ -633,9 +960,16 @@ Unavailable (informational):
 {% set layer_b_ok = target_ok and host_ok and by_host_ok and meta_ok and np_ok %}
 
 {# Layer C: Command readiness (writable surface available) #}
+{% set readiness_number_candidates = [
+  'number.control_board_v2_arylic_volume_set',
+  'number.control_board_v2_eq_low',
+  'number.control_board_v2_eq_mid',
+  'number.control_board_v2_eq_high',
+  'number.control_board_audio_volume'
+] %}
 {% set c = namespace(writable=[], available=[]) %}
-{% for n in states.number %}
-  {% set eid = n.entity_id %}
+{% for eid in readiness_number_candidates %}
+  {% if states[eid] is not none %}
   {% set name_l = (state_attr(eid,'friendly_name') or eid) | lower %}
   {% set writable = state_attr(eid,'readonly') != true %}
   {% set st = states(eid) %}
@@ -645,6 +979,7 @@ Unavailable (informational):
     {% if st not in ['unknown','unavailable'] %}
       {% set c.available = c.available + [eid] %}
     {% endif %}
+  {% endif %}
   {% endif %}
 {% endfor %}
 {% set layer_c_ok = host_ok and (c.available | length) > 0 %}
@@ -656,10 +991,12 @@ Unavailable (informational):
 {% set p_min = state_attr(probe_entity,'min') if probe_exists else none %}
 {% set p_max = state_attr(probe_entity,'max') if probe_exists else none %}
 {% set p_step = state_attr(probe_entity,'step') if probe_exists else none %}
+{% set suggested_action_value = (p_min | float(0)) if p_min is not none else (probe_numeric if probe_numeric is not none else 0) %}
+{% set expected_effect_value = (probe_action_value | float(suggested_action_value)) if probe_action_value is not none else suggested_action_value %}
 {% set in_range = true %}
-{% if p_min is not none and expected_value < (p_min | float(expected_value)) %}{% set in_range = false %}{% endif %}
-{% if p_max is not none and expected_value > (p_max | float(expected_value)) %}{% set in_range = false %}{% endif %}
-{% set d = ((probe_numeric - expected_value) | abs) if probe_numeric is not none else none %}
+{% if p_min is not none and expected_effect_value < (p_min | float(expected_effect_value)) %}{% set in_range = false %}{% endif %}
+{% if p_max is not none and expected_effect_value > (p_max | float(expected_effect_value)) %}{% set in_range = false %}{% endif %}
+{% set d = ((probe_numeric - expected_effect_value) | abs) if probe_numeric is not none else none %}
 {% set tol = (p_step | float(0.5)) if p_step is not none else 0.5 %}
 {% set effect_ok = probe_exists and probe_state not in ['unknown','unavailable'] and in_range and (d is not none and d <= tol) %}
 {% set layer_d_ok = effect_ok %}
@@ -678,7 +1015,7 @@ Unavailable (informational):
 | A | Core config/runtime integrity | **{{ 'PASS' if layer_a_ok else 'FAIL' }}** |
 | B | Routing path (target→host→meta→now-playing) | **{{ 'PASS' if layer_b_ok else 'FAIL' }}** |
 | C | Command readiness (writable control surface) | **{{ 'PASS' if layer_c_ok else 'FAIL' }}** |
-| D | Command effect snapshot (`{{ probe_entity }}`≈`{{ expected_value }}`) | **{{ 'PASS' if layer_d_ok else 'WARN' }}** |
+| D | Command effect snapshot (`{{ probe_entity }}`≈`{{ expected_effect_value }}`) | **{{ 'PASS' if layer_d_ok else 'WARN' }}** |
 
 ### Key signals
 - Target: **{{ target }}** (valid={{ target_ok }})

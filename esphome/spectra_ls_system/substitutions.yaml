@@ -1,5 +1,5 @@
 # Description: Spectra LS System substitutions for ESPHome main config and packages.
-# Version: 2026.04.18.20
+# Version: 2026.04.18.21
 # Last updated: 2026-04-18
 # Spectra LS substitutions scoped to spectra_ls_system.
 # Use absolute paths for assets so this file can move with spectra_ls_system.
@@ -212,6 +212,10 @@ menu_count_meta_base: "2"
 menu_room_fallback_count: "4"
 menu_target_fallback_room0_count: "4"
 menu_target_fallback_other_count: "2"
+# Shared encoder navigation direction for all menu-index movement.
+# -1 = invert RP2040 delta (clockwise advances down/right in menus)
+#  1 = raw RP2040 delta (legacy behavior)
+menu_encoder_nav_sign: "-1"
 # Shared display-state constants.
 display_state_splash: "0"
 display_state_boot_menu: "1"

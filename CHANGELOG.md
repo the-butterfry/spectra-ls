@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.101 -->
+<!-- Version: 2026.04.17.102 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
+
+- HA/Lighting JSON Parse Hardening: Make `packages/spectra_ls_lighting_hub.yaml` catalog/options JSON parsing whitespace-tolerant (`| trim` before `[` checks and parse) across template sensors and sync automations, preventing valid JSON payloads with leading newline/space from being treated as empty and collapsing selectors to `No Rooms` / `All`.
 
 - HA/Lighting Catalog Fallback Hardening: Add area-registry (`areas()` + `area_entities()`) fallback population path inside `sensor.control_board_eligible_light_catalog` so room/target helper surfaces recover even when primary `states.light`/`area_id(...)` pass yields empty results. This prevents persistent `No Rooms`/`All` selector collapse after reload when catalog bootstrap is unexpectedly empty.
 

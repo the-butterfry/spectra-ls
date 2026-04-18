@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.17.15 -->
+<!-- Version: 2026.04.17.16 -->
 <!-- Last updated: 2026-04-17 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -14,6 +14,7 @@
   - Build eligible lights from `states.light` + `area_id(...)`.
   - Resolve room options, target options, target entity mapping, and room state helpers from that shared catalog.
 - Catalog payload storage is attribute-backed (`items_json`) with attribute-first readers, so large room/light inventories do not overflow 255-char sensor state limits and collapse into placeholder-only options.
+- Eligible catalog population now includes a guarded area-registry fallback (`areas()` + `area_entities()`) when primary `states.light` + `area_id(...)` discovery yields empty, preventing persistent `No Rooms` / `All` bootstrap collapse.
 - Intent: eliminate drift and intermittent `All`-only target regressions caused by duplicated direct `area_entities(...)` scan logic across multiple templates.
 
 ## Naming Strategy + Deferred Full Cleanup (Entity/Helper IDs)

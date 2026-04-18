@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.100 -->
+<!-- Version: 2026.04.17.101 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
+
+- HA/Lighting Catalog Fallback Hardening: Add area-registry (`areas()` + `area_entities()`) fallback population path inside `sensor.control_board_eligible_light_catalog` so room/target helper surfaces recover even when primary `states.light`/`area_id(...)` pass yields empty results. This prevents persistent `No Rooms`/`All` selector collapse after reload when catalog bootstrap is unexpectedly empty.
 
 - HA/Lighting Catalog Payload Overflow Fix: Move `sensor.control_board_eligible_light_catalog` payload from sensor state into attribute-backed JSON (`items_json`) and switch dependent templates to read attribute-first with state fallback. This prevents long JSON truncation/parse collapse that manifested as `control_board_room_options = ["No Rooms"]` and `control_board_target_options = ["All"]` despite healthy entities.
 

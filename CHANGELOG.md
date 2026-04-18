@@ -1,8 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.135 -->
-<!-- Last updated: 2026-04-17 -->
+<!-- Version: 2026.04.18.1 -->
+<!-- Last updated: 2026-04-18 -->
 
 # Changelog
+
+## 2026-04-18
+
+- ESPHome/UI Idle Blanking Root-Cause Fix: In `esphome/spectra_ls_system/packages/spectra-ls-audio-tcp.yaml`, stop treating passive volume-pot polling as synthetic user activity by only updating `last_input_ms` when the mapped pot target actually changes; this prevents idle timers from being continuously reset by analog polling noise and allows proper blanking when nothing is playing.
 
 ## 2026-04-17
 

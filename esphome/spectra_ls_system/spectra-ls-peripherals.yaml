@@ -1,5 +1,5 @@
 # Description: Spectra LS OLED-only peripherals package (no LED rings) for Control Board v2.
-# Version: 2026.04.18.1
+# Version: 2026.04.18.2
 # Last updated: 2026-04-18
 # Update version/date whenever you change this file.
 esphome:
@@ -116,16 +116,17 @@ interval:
           };
           bool playing = playing_raw;
           if (!playing && id(last_playing_state)) {
-            if (meta_recent(id(arylic_last_meta_ms)) ||
-                meta_recent(id(arylic_lr_last_meta_ms)) ||
-                meta_recent(id(ha_audio1_last_meta_ms))) {
+            if (meta_recent(id(ha_audio1_last_meta_ms))) {
               playing = true;
             }
           }
           const bool arylic_recent = id(arylic_last_meta_ms) > 0 && (now - id(arylic_last_meta_ms)) < meta_stale_ms;
           const bool lr_recent = id(arylic_lr_last_meta_ms) > 0 && (now - id(arylic_lr_last_meta_ms)) < meta_stale_ms;
           const bool ha_recent_playing = id(ha_audio1_last_playing_ms) > 0 && (now - id(ha_audio1_last_playing_ms)) < meta_stale_ms;
-          if (!playing && id(last_playing_state) && (arylic_recent || lr_recent)) {
+          const std::string lr_src_low = to_lower_ascii(id(arylic_lr_source_state));
+          const bool lr_source_active_state = !id(arylic_lr_source_state).empty() && lr_src_low != "idle";
+          if (!playing && id(last_playing_state) &&
+              ((arylic_recent && arylic_source_active) || (lr_recent && lr_source_active_state))) {
             playing = true;
           }
           auto activity_recent = [&](uint32_t meta_ms, uint32_t pos_ms) {
@@ -140,7 +141,7 @@ interval:
           if (!playing && ha_recent_playing) {
             playing = true;
           }
-          if (playing && !arylic_source_active && !arylic_recent && !lr_recent && !any_activity_recent && !ha_state_playing && !ha_recent_playing) {
+          if (playing && !arylic_source_active && !lr_source_active_state && !any_activity_recent && !ha_state_playing && !ha_recent_playing) {
             playing = false;
           }
           if (playing_raw || arylic_recent || lr_recent || state_playing1) {

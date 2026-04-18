@@ -3,7 +3,7 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 ---
 
 <!-- Description: Workspace Copilot operating instructions for Home Assistant + ESPHome. -->
-<!-- Version: 2026.04.18.2 -->
+<!-- Version: 2026.04.18.3 -->
 <!-- Last updated: 2026-04-18 -->
 
 # GitHub Copilot Instructions — Home Assistant + ESPHome
@@ -19,6 +19,33 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 - For `esphome/control-py/**`, read `esphome/control-py/NOTES-control-board-2.md` before changes.
 - For any functional change, update `CHANGELOG.md` **before** code edits.
 - Keep `README.md` aligned to current `main` direction in `v-next-NOTES.md`.
+- For ESPHome/runtime changes, enforce this sequence with no shortcuts: **edit → build/compile verify → fix failures → commit → push → OTA upload (when requested or implied) → post-upload verification evidence**.
+
+## Verification Gates (Required, No Exceptions)
+
+### Pre-Commit Build Gate (ESPHome)
+- Never commit or push ESPHome/runtime YAML/C++ changes before a successful compile/build.
+- Use local build automation when available (for Spectra: `bin/esphome_spectra_build_local.sh`).
+- If build fails, treat as blocked for commit/push: fix root cause first, then rebuild.
+
+### Pre-Push Evidence Gate
+- Before `git push`, confirm and report:
+  1) build status is success,
+  2) critical diagnostics checked (if applicable),
+  3) no known compile/runtime blockers remain.
+- Do not present “ready/pushed” status while build is unverified or failing.
+
+### Deployment Gate (OTA/Flash)
+- When user asks to “build/upload to ESP/device” (or request implies deployment), OTA/flash is required to complete the task.
+- For Spectra OTA flows, use upload helper with explicit device target (for example `--device <ip>`) and require `OTA successful` confirmation.
+- If upload prerequisites are missing (device IP, connectivity, auth), surface the exact blocker and the next command needed.
+
+### Post-Action Proof Requirement
+- Report concrete proof lines, not assumptions:
+  - Build: success/failure summary from tool output.
+  - Upload: explicit `OTA successful` (or exact error).
+  - Git sync: `HEAD` and `origin/main` short SHAs (must match when claiming synced).
+- If any proof is missing, explicitly state the task is not complete.
 
 ## Scope + Branch Model
 - Active repo scope:
@@ -91,6 +118,7 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 - Avoid excessive flash writes (`restore_value: yes` only when needed).
 - Rate-limit noisy control actions (encoders/sliders).
 - Avoid breaking changes to helper/entity contracts without explicit warning.
+- Never treat “commit pushed” as equivalent to “firmware deployed”; these are separate required checks.
 
 ## Code Audit Mode (when requested)
 - Quick: top risks only.

@@ -1,5 +1,5 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.18.52 -->
+<!-- Version: 2026.04.18.53 -->
 <!-- Last updated: 2026-04-18 -->
 
 # Changelog
@@ -7,6 +7,8 @@
 ## 2026-04-18
 
 - Repo Scope Separation (`.gitignore`, `packages/dst_tuya_ac.yaml`): de-track `packages/dst_tuya_ac.yaml` from the Spectra repository and add an explicit ignore rule so this local AC-specific package is kept outside Spectra versioned scope while preserving the file locally.
+
+- Repo Ignore Precedence Fix (`.gitignore`): enforce `packages/dst_tuya_ac.yaml` ignore after broad package re-include rules so the file remains untracked persistently.
 
 - HA/AC Control-Path Simplification (`packages/dst_tuya_ac.yaml`): remove external policy reconciler intervention (`automation.dst_mode_reconciler`) and stop fan helper scripts from writing thermostat mode directly (`climate.room_dst`). DST is now the sole mode decision authority while helper scripts only execute direct Tuya device actions, reducing off/on thrash and command-beep chatter caused by layered controller feedback loops.
 

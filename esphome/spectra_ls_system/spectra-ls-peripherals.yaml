@@ -1,5 +1,5 @@
 # Description: Spectra LS OLED-only peripherals package (no LED rings) for Control Board v2.
-# Version: 2026.04.17.14
+# Version: 2026.04.17.15
 # Last updated: 2026-04-17
 # Update version/date whenever you change this file.
 esphome:
@@ -1776,10 +1776,8 @@ display:
 
       const uint32_t section_start_ms = millis();
       it.fill(COLOR_OFF);
-      it.printf(0, 0, id(font_menu), "${friendly_name}");
-      it.printf(0, line2, id(font_menu), "Src: %s", src.c_str());
-      it.printf(0, line3, id(font_menu), "%s", playing ? "Playing" : "Idle");
       if (${menu_debug}) {
+        ESP_LOGW("display_state", "fallback blank render (state=%d)", display_state_value);
         it.printf(0, h - menu_h, id(font_menu), "${menu_debug_label}");
       }
       log_loop_section("fallback", section_start_ms);

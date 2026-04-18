@@ -1,6 +1,6 @@
 # Description: Lighting controls package for Spectra LS System.
-# Version: 2026.04.17.11
-# Last updated: 2026-04-17
+# Version: 2026.04.18.1
+# Last updated: 2026-04-18
 # Update version/date whenever you change this file.
 
 binary_sensor:
@@ -113,6 +113,11 @@ sensor:
       - lambda: |-
           const bool room_target_menu_active = id(menu_active) &&
                                                (id(menu_level) == ${menu_level_lighting_rooms} || id(menu_level) == ${menu_level_lighting_targets});
+          const bool lighting_menu_active = id(menu_active) &&
+                                            (id(menu_level) == ${menu_level_lighting_rooms} ||
+                                             id(menu_level) == ${menu_level_lighting_targets} ||
+                                             id(menu_level) == ${menu_level_lighting_adjust} ||
+                                             id(menu_level) == ${menu_level_lighting_toggle});
           if (room_target_menu_active) {
             id(note_menu_input).execute();
           } else {
@@ -177,12 +182,13 @@ sensor:
           if (${lighting_slider_force_brightness_mode}) {
             id(lighting_adjust_mode) = 3;
           }
-          if (!id(menu_active)) {
+          if (lighting_menu_active) {
+            id(lighting_brightness_pending) = false;
+            id(apply_lighting_brightness).execute();
+          } else {
             id(lighting_return_to_audio_ms) = now + ${lighting_hold_ms};
             id(lighting_brightness_pending) = true;
             id(lighting_brightness_pending_until_ms) = now + ${brightness_send_interval_ms};
-          } else {
-            id(lighting_brightness_pending) = false;
           }
 interval:
   - interval: 250ms

@@ -1,5 +1,5 @@
 # Description: Spectra LS OLED-only peripherals package (no LED rings) for Control Board v2.
-# Version: 2026.04.18.13
+# Version: 2026.04.18.14
 # Last updated: 2026-04-18
 # Update version/date whenever you change this file.
 esphome:
@@ -1446,6 +1446,20 @@ display:
       const int line3 = menu_h * 2;
       const int line4 = menu_h * 3;
 
+      auto lighting_target_friendly_label = [&](int room, int target) -> std::string {
+        std::string room_label = pick_room_label(room, "${room_label_living}");
+        std::string target_label = (target == 0) ? room_label : pick_target_label(target, "Light");
+        if (target_label.empty()) target_label = "Light";
+        return target_label;
+      };
+
+      auto lighting_adjust_caption = [&](const char *prefix, int room, int target) -> std::string {
+        std::string label = prefix;
+        label += " ";
+        label += lighting_target_friendly_label(room, target);
+        return label;
+      };
+
 
       const bool menu_draw_active = (display_state_value == STATE_MENU || display_state_value == STATE_BOOT_MENU);
 
@@ -1505,8 +1519,6 @@ display:
         gear_dynamic.push_back("Meta Select");
         gear_dynamic.push_back("Control Select");
         gear_dynamic.push_back("Back");
-
-        const char *menu_adjust[] = {"Lighting Values", "Hue", "Saturation", "Back"};
         const char **items = menu_main;
         int count = ${menu_count_root};
         bool use_dynamic_list = false;
@@ -1537,17 +1549,15 @@ display:
           if (idx_adjust < 0 || idx_adjust >= count_adjust) idx_adjust = 0;
           const int room = id(selected_room);
           const int target = id(selected_target);
-          std::string room_label = pick_room_label(room, "${room_label_living}");
-          std::string target_label = (target == 0) ? room_label : pick_target_label(target, "Light");
-          if (target_label.empty()) target_label = "Light";
-          std::string hue_label = "Hue ";
-          hue_label += target_label;
-          std::string sat_label = "Sat ";
-          sat_label += target_label;
+          std::string brightness_label = lighting_adjust_caption("Brightness", room, target);
+          std::string hue_label = lighting_adjust_caption("Hue", room, target);
+          std::string sat_label = lighting_adjust_caption("Sat", room, target);
           const int list_h = ${menu_line_height_list};
           const int list_pad = ${menu_list_top_pad};
           const int highlight_extra = 3;
-          bool needs_wrap = needs_wrap_two_lines(id(font_menu), hue_label, 0) || needs_wrap_two_lines(id(font_menu), sat_label, 0);
+          bool needs_wrap = needs_wrap_two_lines(id(font_menu), brightness_label, 0) ||
+                            needs_wrap_two_lines(id(font_menu), hue_label, 0) ||
+                            needs_wrap_two_lines(id(font_menu), sat_label, 0);
           const int row_h = needs_wrap ? ((list_h * 2) + highlight_extra) : (list_h + highlight_extra);
           const int list_step = row_h;
           int max_visible = (h - list_pad - row_h) / list_step + 1;
@@ -1562,7 +1572,7 @@ display:
           int row = 0;
           for (int i = start; i < count_adjust && row < max_visible; i++, row++) {
             const int y = list_pad + (row * list_step);
-            std::string label = (i == 0) ? "Lighting Values" : (i == 1) ? hue_label :
+            std::string label = (i == 0) ? brightness_label : (i == 1) ? hue_label :
                                 (i == 2) ? sat_label : "Back";
             if (i == idx_adjust) {
               it.filled_rectangle(0, y, w, row_h, COLOR_ON);
@@ -1765,8 +1775,10 @@ display:
         const int room = id(selected_room);
         const int target = id(selected_target);
         const std::string room_label = pick_room_label(room, "${room_label_living}");
-        std::string target_label = (target == 0) ? room_label : pick_target_label(target, "Light");
-        if (target_label.empty()) target_label = "Light";
+        const std::string target_label = lighting_target_friendly_label(room, target);
+        const std::string brightness_label = lighting_adjust_caption("Brightness", room, target);
+        const std::string hue_label = lighting_adjust_caption("Hue", room, target);
+        const std::string sat_label = lighting_adjust_caption("Sat", room, target);
         if (${lighting_slider_ui_brightness_only} && now < id(brightness_slider_only_until_ms)) {
           it.fill(COLOR_OFF);
           draw_center_wrapped(id(font_menu), ${menu_line_height_list}, 0, ${menu_line_height_list} * 2, target_label, COLOR_ON, 0);
@@ -1795,10 +1807,10 @@ display:
         }
         it.fill(COLOR_OFF);
         const int adjust_mode = id(lighting_adjust_mode);
-        const char *mode_label = (adjust_mode == 3) ? "Brightness" : (id(lighting_mode_hue) ? "Hue" : "Saturation");
+        const std::string mode_label = (adjust_mode == 3) ? brightness_label : (id(lighting_mode_hue) ? hue_label : sat_label);
         const int target_row_h = line3;
         draw_center_wrapped(id(font_menu), ${menu_line_height_list}, 0, target_row_h, target_label, COLOR_ON, 0);
-        it.printf(w / 2, line3, id(font_menu), TextAlign::TOP_CENTER, "%s", mode_label);
+        it.printf(w / 2, line3, id(font_menu), TextAlign::TOP_CENTER, "%s", mode_label.c_str());
 
         if (now < id(brightness_active_until_ms)) {
           const float pct = id(lighting_brightness);

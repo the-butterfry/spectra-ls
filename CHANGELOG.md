@@ -1,10 +1,16 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.94 -->
+<!-- Version: 2026.04.17.97 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
+
+- HA/Lighting Template Runtime Fix: Correct malformed Jinja block closures in `packages/spectra_ls_lighting_hub.yaml` (`Control Board Target Options` and `Control Board Target Entity ID`) where `endif` incorrectly closed `for ent in lights` loops; this was driving `sensor.control_board_room_options`/`target_options` contract dependents into `unavailable` and collapsing room UI back to static fallback labels.
+
+- Diagnostics Hardening: Update `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md` Template #6 (Lighting Rename Validation) to treat placeholder-only room options (`No Rooms`/`Unknown`) as **FAIL** and `All`-only target options as degraded (**WARN**), preventing false PASS reports when room population is actually broken.
+
+- HA/Lighting Room Source-of-Truth Fix: Switch `packages/spectra_ls_lighting_hub.yaml` room/target derivation to HA area registry as primary contract (`areas()` + `area_entities()`), including `room_options`, `room_area_id`, `target_options`, `target_entity_id`, `room_hs`, and `room_on`, decoupling visible room population from eligible-light catalog filtering.
 
 - HA/Lighting Fallback Policy Correction: Remove `Unassigned` all-lights fallback from `sensor.control_board_eligible_light_catalog` and switch empty room fallback to `No Rooms`; add placeholder-only guard in room sync to preserve existing concrete room options. This prevents repeated `Unassigned + Back` loops from masking real area contract issues.
 

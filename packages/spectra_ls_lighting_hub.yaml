@@ -1,5 +1,5 @@
 # Description: Spectra LS lighting hub (rooms/targets from HA Areas).
-# Version: 2026.04.17.17
+# Version: 2026.04.17.18
 # Last updated: 2026-04-17
 # Update version/date whenever you change this file.
 #
@@ -27,10 +27,11 @@ template:
         icon: mdi:lightbulb-multiple-outline
         state: >
           {% set ns = namespace(items=[]) %}
-          {% for area_id in areas() %}
-            {% set room_name = area_name(area_id) %}
-            {% set lights = area_entities(area_id) | select('match','^light\.') | list %}
-            {% for ent in lights %}
+          {% for s in states.light %}
+            {% set ent = s.entity_id %}
+            {% set aid = area_id(ent) %}
+            {% set room_name = area_name(aid) if aid else '' %}
+            {% if aid and room_name not in ['', none] %}
               {% set label = state_attr(ent, 'friendly_name') or ent.split('.')[-1] %}
               {% set ent_low = ent | lower %}
               {% set label_low = label | lower %}
@@ -52,9 +53,9 @@ template:
                 (state_attr(ent, 'brightness') is not none)
               %}
               {% if (supports_dimming_or_color or supports_onoff_or_legacy) and ('speaker' not in ent_low) and ('speaker' not in label_low) %}
-                {% set ns.items = ns.items + [{'area_id': area_id, 'area_name': room_name, 'entity_id': ent, 'label': label}] %}
+                {% set ns.items = ns.items + [{'area_id': aid, 'area_name': room_name, 'entity_id': ent, 'label': label}] %}
               {% endif %}
-            {% endfor %}
+            {% endif %}
           {% endfor %}
           {{ ns.items | tojson }}
         attributes:
@@ -67,23 +68,27 @@ template:
         unique_id: control_board_room_options
         icon: mdi:floor-plan
         state: >
+          {% set raw = states('sensor.control_board_eligible_light_catalog') %}
+          {% set parsed = raw | from_json(default=[]) if (raw is string and raw[0:1] == '[') else [] %}
           {% set ns = namespace(rooms=[]) %}
-          {% for aid in areas() %}
-            {% set room_name = area_name(aid) %}
+          {% for item in parsed %}
+            {% set room_name = item.area_name if item is mapping and item.area_name is defined else '' %}
             {% if room_name not in ns.rooms and room_name not in ['', none] %}
               {% set ns.rooms = ns.rooms + [room_name] %}
             {% endif %}
           {% endfor %}
-          {% if ns.rooms | count == 0 %}
+          {% if (ns.rooms | count) == 0 %}
             {{ ['No Rooms'] | tojson }}
           {% else %}
             {{ ns.rooms | tojson }}
           {% endif %}
         attributes:
           count: >
+            {% set raw = states('sensor.control_board_eligible_light_catalog') %}
+            {% set parsed = raw | from_json(default=[]) if (raw is string and raw[0:1] == '[') else [] %}
             {% set ns = namespace(rooms=[]) %}
-            {% for aid in areas() %}
-              {% set room_name = area_name(aid) %}
+            {% for item in parsed %}
+              {% set room_name = item.area_name if item is mapping and item.area_name is defined else '' %}
               {% if room_name not in ns.rooms and room_name not in ['', none] %}
                 {% set ns.rooms = ns.rooms + [room_name] %}
               {% endif %}
@@ -96,45 +101,29 @@ template:
         state: >
           {% set room = states('input_select.control_board_room') %}
           {% set ns = namespace(targets=['All']) %}
-          {% set selected = namespace(area_id='') %}
-          {% for aid in areas() %}
-            {% if area_name(aid) == room and selected.area_id == '' %}
-              {% set selected.area_id = aid %}
+          {% set raw = states('sensor.control_board_eligible_light_catalog') %}
+          {% set parsed = raw | from_json(default=[]) if (raw is string and raw[0:1] == '[') else [] %}
+          {% for item in parsed %}
+            {% set area_name_item = item.area_name if item is mapping and item.area_name is defined else '' %}
+            {% set label = item.label if item is mapping and item.label is defined else '' %}
+            {% if area_name_item == room and label not in ['', none] %}
+              {% set ns.targets = ns.targets + [label] %}
             {% endif %}
           {% endfor %}
-          {% if selected.area_id != '' %}
-            {% set lights = area_entities(selected.area_id) | select('match','^light\.') | list %}
-            {% for ent in lights %}
-              {% set ent_low = ent | lower %}
-              {% set label = state_attr(ent, 'friendly_name') or ent.split('.')[-1] %}
-              {% set label_low = label | lower %}
-              {% if ('speaker' not in ent_low) and ('speaker' not in label_low) %}
-                {% set ns.targets = ns.targets + [label] %}
-              {% endif %}
-            {% endfor %}
-          {% endif %}
           {{ ns.targets | tojson }}
         attributes:
           count: >
             {% set room = states('input_select.control_board_room') %}
             {% set ns = namespace(targets=['All']) %}
-            {% set selected = namespace(area_id='') %}
-            {% for aid in areas() %}
-              {% if area_name(aid) == room and selected.area_id == '' %}
-                {% set selected.area_id = aid %}
+            {% set raw = states('sensor.control_board_eligible_light_catalog') %}
+            {% set parsed = raw | from_json(default=[]) if (raw is string and raw[0:1] == '[') else [] %}
+            {% for item in parsed %}
+              {% set area_name_item = item.area_name if item is mapping and item.area_name is defined else '' %}
+              {% set ent = item.entity_id if item is mapping and item.entity_id is defined else '' %}
+              {% if area_name_item == room and ent not in ['', none] %}
+                {% set ns.targets = ns.targets + [ent] %}
               {% endif %}
             {% endfor %}
-            {% if selected.area_id != '' %}
-              {% set lights = area_entities(selected.area_id) | select('match','^light\.') | list %}
-              {% for ent in lights %}
-                {% set ent_low = ent | lower %}
-                {% set label = state_attr(ent, 'friendly_name') or ent.split('.')[-1] %}
-                {% set label_low = label | lower %}
-                {% if ('speaker' not in ent_low) and ('speaker' not in label_low) %}
-                  {% set ns.targets = ns.targets + [ent] %}
-                {% endif %}
-              {% endfor %}
-            {% endif %}
             {{ ns.targets | count }}
       - name: Control Board Room Area ID
         unique_id: control_board_room_area_id
@@ -142,8 +131,12 @@ template:
         state: >
           {% set room = states('input_select.control_board_room') %}
           {% set ns = namespace(area_id='') %}
-          {% for aid in areas() %}
-            {% if area_name(aid) == room and ns.area_id == '' %}
+          {% set raw = states('sensor.control_board_eligible_light_catalog') %}
+          {% set parsed = raw | from_json(default=[]) if (raw is string and raw[0:1] == '[') else [] %}
+          {% for item in parsed %}
+            {% set area_name_item = item.area_name if item is mapping and item.area_name is defined else '' %}
+            {% set aid = item.area_id if item is mapping and item.area_id is defined else '' %}
+            {% if area_name_item == room and ns.area_id == '' %}
               {% set ns.area_id = aid %}
             {% endif %}
           {% endfor %}
@@ -158,27 +151,20 @@ template:
           {% set target_norm = target | lower | regex_replace('[^a-z0-9]+','') %}
           {% set ns = namespace(entity='') %}
           {% if target != 'All' %}
-            {% set selected = namespace(area_id='') %}
-            {% for aid in areas() %}
-              {% if area_name(aid) == room and selected.area_id == '' %}
-                {% set selected.area_id = aid %}
+            {% set raw = states('sensor.control_board_eligible_light_catalog') %}
+            {% set parsed = raw | from_json(default=[]) if (raw is string and raw[0:1] == '[') else [] %}
+            {% for item in parsed %}
+              {% set area_name_item = item.area_name if item is mapping and item.area_name is defined else '' %}
+              {% set ent = item.entity_id if item is mapping and item.entity_id is defined else '' %}
+              {% set label = item.label if item is mapping and item.label is defined else '' %}
+              {% if area_name_item == room and ent not in ['', none] %}
+                {% set label_norm = label | lower | regex_replace('[^a-z0-9]+','') %}
+                {% set ent_norm = ent.split('.')[-1] | lower | regex_replace('[^a-z0-9]+','') %}
+                {% if ns.entity == '' and (label == target or label_norm == target_norm or ent_norm == target_norm) %}
+                  {% set ns.entity = ent %}
+                {% endif %}
               {% endif %}
             {% endfor %}
-            {% if selected.area_id != '' %}
-              {% set lights = area_entities(selected.area_id) | select('match','^light\.') | list %}
-              {% for ent in lights %}
-                {% set ent_low = ent | lower %}
-                {% set label = state_attr(ent, 'friendly_name') or ent.split('.')[-1] %}
-                {% set label_low = label | lower %}
-                {% if ('speaker' not in ent_low) and ('speaker' not in label_low) %}
-                  {% set label_norm = label | lower | regex_replace('[^a-z0-9]+','') %}
-                  {% set ent_norm = ent.split('.')[-1] | lower | regex_replace('[^a-z0-9]+','') %}
-                  {% if ns.entity == '' and (label == target or label_norm == target_norm or ent_norm == target_norm) %}
-                    {% set ns.entity = ent %}
-                  {% endif %}
-                {% endif %}
-              {% endfor %}
-            {% endif %}
           {% endif %}
           {{ ns.entity }}
 
@@ -188,21 +174,18 @@ template:
         state: >
           {% set room = states('input_select.control_board_room') %}
           {% set ns = namespace(hs='') %}
-          {% set selected = namespace(area_id='') %}
-          {% for aid in areas() %}
-            {% if area_name(aid) == room and selected.area_id == '' %}
-              {% set selected.area_id = aid %}
-            {% endif %}
-          {% endfor %}
-          {% if selected.area_id != '' %}
-            {% set lights = area_entities(selected.area_id) | select('match','^light\.') | list %}
-            {% for ent in lights %}
+          {% set raw = states('sensor.control_board_eligible_light_catalog') %}
+          {% set parsed = raw | from_json(default=[]) if (raw is string and raw[0:1] == '[') else [] %}
+          {% for item in parsed %}
+            {% set area_name_item = item.area_name if item is mapping and item.area_name is defined else '' %}
+            {% set ent = item.entity_id if item is mapping and item.entity_id is defined else '' %}
+            {% if area_name_item == room and ent not in ['', none] %}
               {% set hs = state_attr(ent, 'hs_color') %}
               {% if hs is not none and ns.hs == '' %}
                 {% set ns.hs = hs | tojson %}
               {% endif %}
-            {% endfor %}
-          {% endif %}
+            {% endif %}
+          {% endfor %}
           {{ ns.hs }}
 
       - name: Control Board Target HS
@@ -224,20 +207,15 @@ template:
         state: >
           {% set room = states('input_select.control_board_room') %}
           {% set ns = namespace(on=false) %}
-          {% set selected = namespace(area_id='') %}
-          {% for aid in areas() %}
-            {% if area_name(aid) == room and selected.area_id == '' %}
-              {% set selected.area_id = aid %}
+          {% set raw = states('sensor.control_board_eligible_light_catalog') %}
+          {% set parsed = raw | from_json(default=[]) if (raw is string and raw[0:1] == '[') else [] %}
+          {% for item in parsed %}
+            {% set area_name_item = item.area_name if item is mapping and item.area_name is defined else '' %}
+            {% set ent = item.entity_id if item is mapping and item.entity_id is defined else '' %}
+            {% if area_name_item == room and ent not in ['', none] and is_state(ent, 'on') %}
+              {% set ns.on = true %}
             {% endif %}
           {% endfor %}
-          {% if selected.area_id != '' %}
-            {% set lights = area_entities(selected.area_id) | select('match','^light\.') | list %}
-            {% for ent in lights %}
-              {% if is_state(ent, 'on') %}
-                {% set ns.on = true %}
-              {% endif %}
-            {% endfor %}
-          {% endif %}
           {{ ns.on }}
 
       - name: Control Board Target On

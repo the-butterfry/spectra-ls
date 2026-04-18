@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.98 -->
+<!-- Version: 2026.04.17.99 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
+
+- HA/Lighting Catalog-First Target Resolution Fix: Refactor `packages/spectra_ls_lighting_hub.yaml` room/target contract surfaces to resolve from a shared eligible-light catalog built from `states.light` + `area_id(...)`, then drive `room_options`, `target_options`, `room_area_id`, `target_entity_id`, `room_hs`, and `room_on` from that catalog. This removes dependence on direct per-template `area_entities(...)` scans and restores per-room target population where selectors previously degraded to `All`-only.
 
 - HA/Lighting Area-Selection Scope Fix: Correct Jinja loop-scope behavior in `packages/spectra_ls_lighting_hub.yaml` by replacing plain `area_id_selected` loop assignments with `namespace(area_id=...)` in room-dependent target/HS/on templates. This restores per-room light discovery so populated rooms no longer show `All`-only targets.
 

@@ -1,5 +1,5 @@
 # Description: Spectra LS OLED-only peripherals package (no LED rings) for Control Board v2.
-# Version: 2026.04.18.6
+# Version: 2026.04.18.7
 # Last updated: 2026-04-18
 # Update version/date whenever you change this file.
 esphome:
@@ -1844,17 +1844,19 @@ display:
         it.fill(COLOR_OFF);
         const int adjust_mode = id(lighting_adjust_mode);
         const char *mode_label = (adjust_mode == 3) ? "Brightness" : (id(lighting_mode_hue) ? "Hue" : "Saturation");
-        it.printf(w / 2, 0, id(font_menu), TextAlign::TOP_CENTER, "%s", target_label.c_str());
-        it.printf(w / 2, line2, id(font_menu), TextAlign::TOP_CENTER, "%s", mode_label);
+        const int target_row_h = line3;
+        draw_center_wrapped(id(font_menu), ${menu_line_height_list}, 0, target_row_h, target_label, COLOR_ON, w / 6);
+        it.printf(w / 2, line3, id(font_menu), TextAlign::TOP_CENTER, "%s", mode_label);
 
         if (now < id(brightness_active_until_ms)) {
           const float pct = id(lighting_brightness);
           const int bar_w = w - 4;
           const int bar_h = 8;
           const int filled = (int) ((pct / 100.0f) * bar_w);
-          it.rectangle(2, line3, bar_w, bar_h, COLOR_ON);
-          it.filled_rectangle(2, line3, filled, bar_h, COLOR_ON);
-          it.printf(0, line4, id(font_menu), "Bri: %d%%", (int) pct);
+          const int bar_y = line4;
+          it.rectangle(2, bar_y, bar_w, bar_h, COLOR_ON);
+          it.filled_rectangle(2, bar_y, filled, bar_h, COLOR_ON);
+          it.printf(0, bar_y + bar_h + 1, id(font_menu), "Bri: %d%%", (int) pct);
         }
         if (now < id(audio_ring_active_until_ms)) {
           int max_vol = (int) ${audio_max_volume_pct};

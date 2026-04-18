@@ -1,10 +1,14 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.18.3 -->
+<!-- Version: 2026.04.18.5 -->
 <!-- Last updated: 2026-04-18 -->
 
 # Changelog
 
 ## 2026-04-18
+
+- ESPHome/Now-Playing Evidence Gate Fix (diagnostic-driven): Use one-cycle `disp_diag` findings to harden `playing_effective` in `esphome/spectra_ls_system/spectra-ls-peripherals.yaml` so HA `state=playing` only refreshes playback-hold timestamps when recent HA playback evidence exists (recent meta or position updates). This prevents stale upstream `playing` flags from pinning the idle display on Now Playing with empty content.
+
+- ESPHome/Display Diagnostics (One-Cycle Instrumentation): Add always-on, rate-limited transition logging in `esphome/spectra_ls_system/spectra-ls-peripherals.yaml` (`compute_display_state`) for `display_state`, `no_audio_activity`, `menu_active`, `lighting_active`, and `screen_mode` so stuck-idle branch selection can be traced from a single reboot cycle.
 
 - ESPHome/Now-Playing Predicate Hardening: In `esphome/spectra_ls_system/spectra-ls-peripherals.yaml`, tighten `playing_effective` recovery so Arylic/LR recency no longer revives playback when source is idle, and make the clear-down condition depend on active-source/activity signals rather than raw recency timestamps. This prevents idle no-content systems from being pinned on the Now Playing screen.
 

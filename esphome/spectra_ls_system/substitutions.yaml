@@ -1,5 +1,5 @@
 # Description: Spectra LS System substitutions for ESPHome main config and packages.
-# Version: 2026.04.18.19
+# Version: 2026.04.18.20
 # Last updated: 2026-04-18
 # Spectra LS substitutions scoped to spectra_ls_system.
 # Use absolute paths for assets so this file can move with spectra_ls_system.
@@ -150,7 +150,7 @@ target_label_polaroid_clock: "Target 5"
 # Gain: central control of background update frequency and idle behavior.
 # Risk: very low intervals increase CPU/useful work contention.
 audio_poll_interval_ms: "5000"
-heartbeat_interval_ms: "60000"
+heartbeat_interval_ms: "300000"
 screensaver_idle_ms: "30000"
 screensaver_update_ms: "2000"
 boot_fade_ms: "2000"
@@ -239,7 +239,7 @@ menu_tile_icon_play_font_size: "26"
 # === Audio UX + Metadata Windows ===
 # Purpose: now-playing/overlay windows and audio-facing UI ranges.
 # Gain: smoother perceived audio UX without changing transport internals.
-ha_audio_refresh_ms: "6000"
+ha_audio_refresh_ms: "2000"
 audio_max_volume_pct: "90"
 audio_ui_min: "1"
 audio_ui_max: "11"
@@ -250,8 +250,8 @@ meta_pos_stall_ms: "15000"
 meta_stale_ms: "45000"
 meta_end_tolerance_s: "2"
 meta_playing_grace_ms: "15000"
-meta_refresh_ms: "5000"
-meta_refresh_tick_ms: "500"
+meta_refresh_ms: "1500"
+meta_refresh_tick_ms: "250"
 meta_pause_timeout_ms: "60000"
 meta_override_reset_ms: "120000"
 meta_popup_ms: "3500"

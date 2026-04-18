@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.17.13 -->
+<!-- Version: 2026.04.17.14 -->
 <!-- Last updated: 2026-04-17 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -7,6 +7,13 @@
 > Scope: Hardware-driven UX redesign for Spectra LS Control Board v2.
 > Audience: Implementation agent working across RP2040 CircuitPython + ESPHome packages + HA helpers.
 > Status: Draft plan. Update as decisions solidify.
+
+## Latest Contract Update (Lighting)
+
+- Lighting room/target helper surfaces now follow a **catalog-first** contract in HA package logic:
+  - Build eligible lights from `states.light` + `area_id(...)`.
+  - Resolve room options, target options, target entity mapping, and room state helpers from that shared catalog.
+- Intent: eliminate drift and intermittent `All`-only target regressions caused by duplicated direct `area_entities(...)` scan logic across multiple templates.
 
 ## Naming Strategy + Deferred Full Cleanup (Entity/Helper IDs)
 

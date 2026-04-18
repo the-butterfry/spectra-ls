@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.18.8 -->
+<!-- Version: 2026.04.18.9 -->
 <!-- Last updated: 2026-04-18 -->
 
 # Changelog
 
 ## 2026-04-18
+
+- ESPHome/Runtime Noise Reduction (quiet by default): In `esphome/spectra_ls_system.yaml`, disable `web_server` state logging (`log: false`) to stop high-churn `[S][...]` state-stream output; in `esphome/spectra_ls_system/packages/spectra-ls-diagnostics.yaml`, disable CPU debug logging by default and raise passive diagnostic refresh intervals to 60s; in `esphome/spectra_ls_system/packages/spectra-ls-audio-tcp.yaml`, raise HA-facing EQ/volume template number refresh intervals to 60s to reduce routine status chatter.
 
 - ESPHome/Diagnostics Cleanup: Remove one-cycle `disp_diag` transition logger from `esphome/spectra_ls_system/spectra-ls-peripherals.yaml` after root-cause playback predicate hardening, reducing log noise without changing display-state behavior.
 

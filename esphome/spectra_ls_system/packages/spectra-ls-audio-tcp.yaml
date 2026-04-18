@@ -1,5 +1,5 @@
 # Description: Audio controls package for Spectra LS System (TCP-only).
-# Version: 2026.04.18.2
+# Version: 2026.04.18.3
 # Last updated: 2026-04-18
 # Update version/date whenever you change this file.
 
@@ -433,7 +433,7 @@ number:
     min_value: ${eq_min}
     max_value: ${eq_max}
     step: 1
-    update_interval: 30s
+    update_interval: 60s
     lambda: |-
       return (float) id(arylic_eq_low_cached);
     set_action:
@@ -447,7 +447,7 @@ number:
     min_value: ${eq_min}
     max_value: ${eq_max}
     step: 1
-    update_interval: 30s
+    update_interval: 60s
     lambda: |-
       return (float) id(arylic_eq_mid_cached);
     set_action:
@@ -461,7 +461,7 @@ number:
     min_value: ${eq_min}
     max_value: ${eq_max}
     step: 1
-    update_interval: 30s
+    update_interval: 60s
     lambda: |-
       return (float) id(arylic_eq_high_cached);
     set_action:
@@ -475,7 +475,7 @@ number:
     min_value: ${audio_ui_min}
     max_value: ${audio_ui_max}
     step: 1
-    update_interval: 30s
+    update_interval: 60s
     lambda: |-
       int actual = id(arylic_volume).has_state() ? (int) id(arylic_volume).state : (int) id(arylic_volume_cached);
       if (actual < 0) actual = 0;

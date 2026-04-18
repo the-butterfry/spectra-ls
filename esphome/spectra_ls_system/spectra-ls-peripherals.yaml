@@ -1,5 +1,5 @@
 # Description: Spectra LS OLED-only peripherals package (no LED rings) for Control Board v2.
-# Version: 2026.04.18.3
+# Version: 2026.04.18.4
 # Last updated: 2026-04-18
 # Update version/date whenever you change this file.
 esphome:
@@ -138,9 +138,10 @@ interval:
             if (last == 0) return false;
             return (now - last) < meta_stale_ms;
           };
-          const bool any_activity_recent = activity_recent(id(ha_audio1_last_meta_ms), id(ha_audio_pos_last_ms)) ||
-                                           activity_recent(id(arylic_last_meta_ms), id(arylic_last_meta_ms)) ||
-                                           activity_recent(id(arylic_lr_last_meta_ms), id(arylic_lr_last_meta_ms));
+          const bool ha_activity_recent = activity_recent(id(ha_audio1_last_meta_ms), id(ha_audio_pos_last_ms));
+          const bool arylic_activity_recent = arylic_source_active && activity_recent(id(arylic_last_meta_ms), id(arylic_last_meta_ms));
+          const bool lr_activity_recent = lr_source_active_state && activity_recent(id(arylic_lr_last_meta_ms), id(arylic_lr_last_meta_ms));
+          const bool any_activity_recent = ha_activity_recent || arylic_activity_recent || lr_activity_recent;
           if (!playing && ha_recent_playing) {
             playing = true;
           }
@@ -148,7 +149,7 @@ interval:
           if (playing && !arylic_source_active && !lr_source_active_state && !any_activity_recent && !ha_state_playing_effective && !ha_recent_playing) {
             playing = false;
           }
-          if (playing_raw || arylic_recent || lr_recent || ha_state_playing_effective) {
+          if (playing_raw || (arylic_recent && arylic_source_active) || (lr_recent && lr_source_active_state) || ha_state_playing_effective) {
             id(last_playing_true_ms) = now;
           }
           const uint32_t playing_grace_ms = (uint32_t) ${meta_playing_grace_ms};

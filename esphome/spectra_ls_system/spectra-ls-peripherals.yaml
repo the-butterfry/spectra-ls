@@ -1,5 +1,5 @@
 # Description: Spectra LS OLED-only peripherals package (no LED rings) for Control Board v2.
-# Version: 2026.04.18.7
+# Version: 2026.04.18.8
 # Last updated: 2026-04-18
 # Update version/date whenever you change this file.
 esphome:
@@ -1516,19 +1516,11 @@ display:
         if (!target_opts.empty()) {
           targets_dynamic = target_opts;
         } else {
-          const int room = id(menu_light_room);
+          // Universal fallback: avoid room/site-specific assumptions when HA options are unavailable.
           targets_dynamic.push_back(pick_target_label(0, "${target_label_all}"));
-          if (room == 0) {
-            targets_dynamic.push_back(pick_target_label(1, "${target_label_star}"));
-            targets_dynamic.push_back(pick_target_label(2, "${target_label_tube}"));
-            targets_dynamic.push_back(pick_target_label(3, "${target_label_reading}"));
-          } else if (room == 1) {
-            targets_dynamic.push_back(pick_target_label(1, "${target_label_chandelier}"));
-          } else if (room == 2) {
-            targets_dynamic.push_back(pick_target_label(1, "${target_label_polaroid_clock}"));
-          } else if (room == 3) {
-            targets_dynamic.push_back(pick_target_label(1, "${target_label_reading}"));
-          }
+          targets_dynamic.push_back(pick_target_label(1, "${target_label_star}"));
+          targets_dynamic.push_back(pick_target_label(2, "${target_label_tube}"));
+          targets_dynamic.push_back(pick_target_label(3, "${target_label_reading}"));
         }
         targets_dynamic.push_back("Back");
 

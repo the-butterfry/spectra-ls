@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.18.49 -->
+<!-- Version: 2026.04.18.50 -->
 <!-- Last updated: 2026-04-18 -->
 
 # Changelog
 
 ## 2026-04-18
+
+- HA/AC DST Ownership + Anti-Thrash Rollback (`packages/dst_tuya_ac.yaml`): reduce command-chatter/beep behavior by disabling DST keep-alive (`keep_alive: 0`), removing periodic 1-minute mode reconciler forcing, and deleting aggressive fan fallback off→on retry path that could cause brief compressor dropouts. Control flow now favors DST-native cycle logic over external re-assertion loops.
 
 - Workflow/Git Push Cadence Policy (`.github/copilot-instructions.md`): add mandatory active-session checkpoint push cadence (at least every 10 minutes or on each completed logical slice, whichever comes first) so rollback points remain recent during iterative work.
 

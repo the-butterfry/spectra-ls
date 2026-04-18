@@ -1,5 +1,5 @@
 # Description: DST + Tuya AC package with Fahrenheit controls, schedule automations, and fan-only safeguard rules.
-# Version: 2026.04.18.16
+# Version: 2026.04.18.17
 # Last updated: 2026-04-18
 # config/packages/dst_tuya_ac.yaml
 # DST + Tuya AC package (all temperatures in Fahrenheit)
@@ -268,32 +268,6 @@ script:
           entity_id: fan.ac_fan
         data:
           preset_mode: "low"
-      - delay: "00:00:03"
-      - choose:
-          - conditions:
-              - condition: template
-                value_template: >-
-                  {% set mode = states('climate.snail_conditioner_tuya') | default('', true) | lower %}
-                  {% set action = state_attr('climate.snail_conditioner_tuya','hvac_action') | default('', true) | lower %}
-                  {{ mode != 'fan_only' or action in ['idle', 'off'] }}
-            sequence:
-              - service: climate.set_hvac_mode
-                target:
-                  entity_id: climate.snail_conditioner_tuya
-                data:
-                  hvac_mode: "off"
-              - delay: "00:00:02"
-              - service: climate.set_hvac_mode
-                target:
-                  entity_id: climate.snail_conditioner_tuya
-                data:
-                  hvac_mode: "fan_only"
-              - delay: "00:00:02"
-              - service: fan.set_preset_mode
-                target:
-                  entity_id: fan.ac_fan
-                data:
-                  preset_mode: "low"
       - service: climate.set_hvac_mode
         target:
           entity_id: climate.room_dst
@@ -387,6 +361,7 @@ climate:
     hot_tolerance: 1
     min_cycle_duration:
       seconds: 120
+    keep_alive: 0
     initial_hvac_mode: "off"
     precision: 1
     target_temp_step: 1
@@ -492,20 +467,11 @@ automation:
           - binary_sensor.ac_pause_active
           - binary_sensor.ac_fan_policy_active
           - binary_sensor.ac_schedule_cool_request
-      - platform: time_pattern
-        minutes: "/1"
     action:
       - variables:
           target_mode: "{{ states('sensor.ac_target_mode') | lower }}"
           current_mode: "{{ states('climate.room_dst') | lower }}"
           tuya_mode: "{{ states('climate.snail_conditioner_tuya') | lower }}"
-          dst_target_temp: "{{ state_attr('climate.room_dst','temperature') | float(71) }}"
-          tuya_target_temp: "{{ state_attr('climate.snail_conditioner_tuya','temperature') | float(999) }}"
-          tuya_min: "{{ state_attr('climate.snail_conditioner_tuya','min_temp') | float(60) }}"
-          tuya_max: "{{ state_attr('climate.snail_conditioner_tuya','max_temp') | float(86) }}"
-          tuya_expected_cool_temp: >-
-            {% set base = dst_target_temp - 4 %}
-            {{ [tuya_max, [tuya_min, base] | max] | min }}
       - choose:
           - conditions:
               - condition: template
@@ -527,8 +493,7 @@ automation:
                 value_template: >-
                   {{ target_mode == 'cool' and (
                     current_mode != 'cool' or
-                    tuya_mode != 'cool' or
-                    (tuya_target_temp - tuya_expected_cool_temp) | abs > 0.2
+                    tuya_mode != 'cool'
                   ) }}
             sequence:
               - service: script.turn_on

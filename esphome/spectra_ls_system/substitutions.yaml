@@ -1,6 +1,6 @@
 # Description: Spectra LS System substitutions for ESPHome main config and packages.
-# Version: 2026.04.17.17
-# Last updated: 2026-04-17
+# Version: 2026.04.18.19
+# Last updated: 2026-04-18
 # Spectra LS substitutions scoped to spectra_ls_system.
 # Use absolute paths for assets so this file can move with spectra_ls_system.
 
@@ -308,3 +308,4 @@ lighting_slider_force_brightness_mode: "true"
 loop_section_debug: "false"
 loop_section_log_interval_ms: "5000"
 loop_section_log_min_ms: "10"
+

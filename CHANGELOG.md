@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.90 -->
+<!-- Version: 2026.04.17.91 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
+
+- HA/Lighting Regression Correction: Restore `packages/spectra_ls_lighting_hub.yaml` eligible-light catalog to area-first discovery (`areas()` + `area_entities()`), with all-lights fallback only when area-derived results are empty; fixes unintended "Unassigned-only" room output introduced by prior all-lights-first refactor.
 
 - MA Control Targets Boot Fallback: Harden `packages/ma_control_hub/template.inc` so `sensor.ma_control_targets` falls back to `input_select.ma_active_target` options when `sensor.spectra_ls_rooms_raw` is not yet populated at boot/reload, preventing blank control-target prompt/options during startup race windows.
 

@@ -1,5 +1,5 @@
 # Description: Spectra LS OLED-only peripherals package (no LED rings) for Control Board v2.
-# Version: 2026.04.18.8
+# Version: 2026.04.18.9
 # Last updated: 2026-04-18
 # Update version/date whenever you change this file.
 esphome:
@@ -1807,11 +1807,13 @@ display:
         const std::string room_label = pick_room_label(room, "${room_label_living}");
         std::string target_label = (target == 0) ? room_label : pick_target_label(target, "Light");
         if (target_label.empty()) target_label = "Light";
+        int header_wrap_chars = (w - 8) / 8;
+        if (header_wrap_chars < 8) header_wrap_chars = 8;
         if (${lighting_slider_ui_brightness_only} && now < id(brightness_slider_only_until_ms)) {
           it.fill(COLOR_OFF);
-          draw_center_wrapped(id(font_menu), ${menu_line_height_list}, 0, ${menu_line_height_list} * 2, target_label, COLOR_ON, w / 6);
+          draw_center_wrapped(id(font_menu), ${menu_line_height_list}, 0, ${menu_line_height_list} * 2, target_label, COLOR_ON, header_wrap_chars);
           if (room_label != target_label) {
-            draw_center_wrapped(id(font_small), ${menu_line_height_list}, ${menu_line_height_list} * 2, ${menu_line_height_list} * 2, room_label, COLOR_ON, w / 6);
+            draw_center_wrapped(id(font_small), ${menu_line_height_list}, ${menu_line_height_list} * 2, ${menu_line_height_list} * 2, room_label, COLOR_ON, header_wrap_chars);
           }
           const float pct = id(lighting_brightness);
           const int bar_w = w - 4;
@@ -1837,7 +1839,7 @@ display:
         const int adjust_mode = id(lighting_adjust_mode);
         const char *mode_label = (adjust_mode == 3) ? "Brightness" : (id(lighting_mode_hue) ? "Hue" : "Saturation");
         const int target_row_h = line3;
-        draw_center_wrapped(id(font_menu), ${menu_line_height_list}, 0, target_row_h, target_label, COLOR_ON, w / 6);
+        draw_center_wrapped(id(font_menu), ${menu_line_height_list}, 0, target_row_h, target_label, COLOR_ON, header_wrap_chars);
         it.printf(w / 2, line3, id(font_menu), TextAlign::TOP_CENTER, "%s", mode_label);
 
         if (now < id(brightness_active_until_ms)) {

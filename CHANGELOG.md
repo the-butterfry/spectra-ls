@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.99 -->
+<!-- Version: 2026.04.17.100 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
+
+- HA/Lighting Catalog Payload Overflow Fix: Move `sensor.control_board_eligible_light_catalog` payload from sensor state into attribute-backed JSON (`items_json`) and switch dependent templates to read attribute-first with state fallback. This prevents long JSON truncation/parse collapse that manifested as `control_board_room_options = ["No Rooms"]` and `control_board_target_options = ["All"]` despite healthy entities.
 
 - HA/Lighting Catalog-First Target Resolution Fix: Refactor `packages/spectra_ls_lighting_hub.yaml` room/target contract surfaces to resolve from a shared eligible-light catalog built from `states.light` + `area_id(...)`, then drive `room_options`, `target_options`, `room_area_id`, `target_entity_id`, `room_hs`, and `room_on` from that catalog. This removes dependence on direct per-template `area_entities(...)` scans and restores per-room target population where selectors previously degraded to `All`-only.
 

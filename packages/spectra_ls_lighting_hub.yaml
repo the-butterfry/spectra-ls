@@ -1,5 +1,5 @@
 # Description: Spectra LS lighting hub (rooms/targets from HA Areas).
-# Version: 2026.04.17.13
+# Version: 2026.04.17.14
 # Last updated: 2026-04-17
 # Update version/date whenever you change this file.
 #
@@ -56,36 +56,6 @@ template:
               {% endif %}
             {% endfor %}
           {% endfor %}
-          {% if ns.items | count == 0 %}
-            {% set lights = states.light | map(attribute='entity_id') | list %}
-            {% for ent in lights %}
-              {% set area = area_id(ent) %}
-              {% set room_name = area_name(area) if area else 'Unassigned' %}
-              {% set label = state_attr(ent, 'friendly_name') or ent.split('.')[-1] %}
-              {% set ent_low = ent | lower %}
-              {% set label_low = label | lower %}
-              {% set modes = state_attr(ent, 'supported_color_modes') %}
-              {% set modes_blob = (modes | tojson | lower) if modes is not none else '[]' %}
-              {% set supports_dimming_or_color =
-                ('brightness' in modes_blob) or
-                ('color_temp' in modes_blob) or
-                ('hs' in modes_blob) or
-                ('xy' in modes_blob) or
-                ('rgb' in modes_blob) or
-                ('rgbw' in modes_blob) or
-                ('rgbww' in modes_blob) or
-                ('white' in modes_blob)
-              %}
-              {% set supports_onoff_or_legacy =
-                ('onoff' in modes_blob) or
-                (modes is none) or
-                (state_attr(ent, 'brightness') is not none)
-              %}
-              {% if (supports_dimming_or_color or supports_onoff_or_legacy) and ('speaker' not in ent_low) and ('speaker' not in label_low) %}
-                {% set ns.items = ns.items + [{'area_id': area if area else '', 'area_name': room_name, 'entity_id': ent, 'label': label}] %}
-              {% endif %}
-            {% endfor %}
-          {% endif %}
           {{ ns.items | tojson }}
         attributes:
           count: >
@@ -107,7 +77,7 @@ template:
             {% endif %}
           {% endfor %}
           {% if ns.rooms | count == 0 %}
-            {{ ['Unassigned'] | tojson }}
+            {{ ['No Rooms'] | tojson }}
           {% else %}
             {{ ns.rooms | tojson }}
           {% endif %}
@@ -285,7 +255,7 @@ automation:
             {% elif current_options | count > 0 %}
               {{ current_options }}
             {% else %}
-              {{ ['Unassigned'] }}
+              {{ ['No Rooms'] }}
             {% endif %}
           current_concrete_rooms: >
             {% set ns = namespace(items=[]) %}
@@ -296,14 +266,15 @@ automation:
               {% endif %}
             {% endfor %}
             {{ ns.items }}
-          parsed_is_unassigned_only: >
+          parsed_is_placeholder_only: >
             {% if room_parsed | count == 1 %}
-              {{ (room_parsed[0] | string | lower) == 'unassigned' }}
+              {% set low = room_parsed[0] | string | lower %}
+              {{ low in ['unassigned','no rooms','unknown','none','unavailable','null',''] }}
             {% else %}
               {{ false }}
             {% endif %}
           room_options_effective: >
-            {% if parsed_is_unassigned_only and (current_concrete_rooms | count > 0) %}
+            {% if parsed_is_placeholder_only and (current_concrete_rooms | count > 0) %}
               {{ current_options }}
             {% else %}
               {{ room_options }}

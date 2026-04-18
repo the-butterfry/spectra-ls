@@ -1,10 +1,48 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.115 -->
+<!-- Version: 2026.04.17.134 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
+
+- HA/MA Control-Hub Consolidation (template.inc, batch 11): Final 5+ dedupe sweep by adding shared scalar resolver attributes for now-playing (`resolved_position`, `resolved_duration`, `resolved_volume`, `resolved_friendly`) and MA-active (`resolved_duration`, `resolved_position`, `resolved_volume`) surfaces, then rewiring the corresponding sensors to consume shared attributes instead of repeating inline target/meta fallback blocks.
+
+- HA/MA Control-Hub Consolidation (template.inc, batch 10): Execute a 5+ slice maintainability pass by (1) adding shared `resolved_app` on `sensor.ma_active_player_id_resolved` and rewiring `MA Active App`, and (2) normalizing remaining control-path `rooms_json` string parsing callsites to the dual-mode contract (trim+sentinel guard, `[`/`{` support, mapping extraction) across host/path/target/capability/ambiguity readers.
+
+- HA/MA Control-Hub Dedupe (template.inc, batch 9): Add shared `resolved_artist` and `resolved_album` attributes on `sensor.now_playing_entity` and `sensor.ma_active_player_id_resolved`, then rewire `Now Playing Artist/Album` and `MA Active Artist/Album` sensors to consume those shared attributes; preserves existing fallback precedence while removing duplicated inline artist/album resolution blocks.
+
+- HA/MA Control-Hub Dedupe (template.inc, batch 8): Add shared `resolved_title` attributes on `sensor.now_playing_entity` and `sensor.ma_active_player_id_resolved`, then rewire `Now Playing Title` and `MA Active Title` sensors to consume those shared attributes; preserves existing URL/queue suppression and fallback ordering while removing duplicated inline title-resolution blocks.
+
+- HA/MA Control-Hub Dedupe (template.inc, batch 7): Add shared resolved source attributes on `sensor.now_playing_entity` and `sensor.ma_active_player_id_resolved` (candidate filtering + queue/placeholder guards + media_player friendly-name normalization), then rewire `Now Playing Source` and `MA Active Source` to consume those shared resolved values instead of duplicating inline candidate-reduction loops.
+
+- HA/MA Control-Hub Dedupe (template.inc, batch 6): Add shared `player_json` + `player_fields_json` attributes on `sensor.now_playing_entity` and rewire `Now Playing Title/Artist/Album/Source/State` to consume the shared fields payload instead of repeating per-sensor MA player lookup loops; also align `packages/ma_control_hub/script.inc` string JSON guard to accept both `[` and `{` payload starts for mapping-compatible room parser behavior.
+
+- HA/MA Control-Hub Dedupe (template.inc, batch 5): Add shared `player_fields_json` projection on `sensor.ma_active_player_id_resolved` and rewire `MA Active Title/Artist/Album/App/Source` to consume that shared payload instead of repeating per-sensor `player_json` parse/field extraction blocks; also normalize `packages/ma_control_hub/script.inc` room JSON string parse branch to use trimmed payload + sentinel guard consistency.
+
+- DevTools + HA/MA Control-Hub Quality (batch 4): In `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md` Iteration Workbench 1A and command-effect templates, replace manual `expected_value` dependency with action-aligned effect expectation (`expected_effect_value`) derived from a single probe action value input (with safe default to entity `min`) to eliminate false WARN deltas from mismatched expected/probe payloads; in `packages/ma_control_hub/template.inc`, add shared `player_json` lookup payload on `sensor.ma_active_player_id_resolved` and reuse it across `MA Active Title/Artist/Album/App/Source` to dedupe repeated `lookup_id/short_id/players/ns.p` loops without behavior drift.
+
+- HA/MA Control-Hub Correctness + Quality (template.inc, batch 3): Fix high-risk self-reference in `sensor.spectra_ls_rooms_json` state parser to source room data from `sensor.spectra_ls_rooms_raw.rooms` (authoritative input) instead of self-reading `sensor.spectra_ls_rooms_json.rooms_json`; additionally normalize `MA Meta Resolver` guarded string parse to use `raw_trim | from_json`, switch `MA Detected Receiver Entity` to normalized `sensor.spectra_ls_rooms_json.rooms_json`, and remove dead locals (`_mp`, `appletv`) that were not consumed.
+
+- HA/MA Control-Hub Code Quality (template.inc, batch 2): Continue parser-contract cleanup in `packages/ma_control_hub/template.inc` by (1) routing additional room consumers (`MA Detected Receiver Entity`, `MA Active Meta Entity`) to normalized `sensor.spectra_ls_rooms_json.rooms_json` payloads instead of re-reading raw rooms attributes, and (2) standardizing guarded string JSON parsing in touched branches to parse `raw_trim` values.
+
+- HA/MA Control-Hub Code Quality (template.inc): Refactor `sensor.ma_meta_candidates` attribute derivation in `packages/ma_control_hub/template.inc` to use a shared parsed summary payload (`candidate_summary_json`) for entities/names/labels/scores/best-candidate outputs, reducing duplicated parser branches and improving maintainability; also normalize guarded JSON parse inputs to use trimmed payloads in touched parser branches.
+
+- Docs/DevTools Batched Refactor (3 slices): Update `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md` to (1) route Iteration Workbench 1A and Template #2 room-map parsing through normalized `sensor.spectra_ls_rooms_json.rooms_json` payloads instead of re-parsing `sensor.spectra_ls_rooms_raw` inline, and (2) replace broad `states.number` scans in Templates #3 and #5 with explicit Spectra audio control candidate lists to reduce listener noise and render churn.
+
+- HA/MA Meta Candidates Refactor: Consolidate repeated candidate scan loops in `packages/ma_control_hub/template.inc` by introducing a shared candidate-row payload attribute for `sensor.ma_meta_candidates` and deriving summary attributes from that shared structure, reducing drift and repeated high-cost template passes.
+
+- Docs/DevTools 1A Noise Reduction: Tune `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md` Iteration Workbench (Template 1A) command-readiness scan to use a targeted audio-control number candidate list instead of broad `states.number` domain enumeration, reducing irrelevant listener wakeups while keeping expected Spectra control-surface probes intact.
+
+- HA/MA Meta Candidates Dedupe: Reduce duplicated scoring loops in `packages/ma_control_hub/template.inc` by introducing a shared `best_candidate_json` attribute for `sensor.ma_meta_candidates` and routing `best_entity`/`best_score` through that shared payload.
+
+- HA/MA Script Parser Unification: Update `packages/ma_control_hub/script.inc` (`ma_update_target_options`) to consume normalized `sensor.spectra_ls_rooms_json` payload (`rooms_json`) for room-target option derivation, aligning script-side parsing with template-side helper refactors and reducing contract drift.
+
+- HA/MA Parser Helper Refactor: Reduce duplicated `rooms` parser blocks in `packages/ma_control_hub/template.inc` by routing key control-path sensors (`ma_control_hosts`, `ma_active_control_path`, `ma_control_targets` + attributes, `ma_active_target_by_host`, `ma_active_control_capable`, `ma_control_ambiguous`) through normalized `sensor.spectra_ls_rooms_json` payload ingestion.
+
+- HA/MA Refactor (Meta Resolver): Reduce parser drift in `packages/ma_control_hub/template.inc` by introducing a shared `best_candidate_json` attribute in `sensor.ma_meta_resolver` and routing both `best_entity` and `best_score` through it instead of maintaining duplicate `candidates_json` parse/scan blocks.
+
+- Docs/DevTools Iteration Workbench: Add a unified single-paste `1→4` diagnostics template (`1A`) to `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md` that consolidates health, routing path, command readiness, and command-effect checks into one iterative operator workflow with compact roll-up status and inline probe payload suggestions.
 
 - HA/Now-Playing Source Stability (ma_control_hub): Harden `packages/ma_control_hub/template.inc` source resolvers (`Now Playing Source`, `MA Active Source`) to select the first valid non-placeholder, non-queue candidate in deterministic order (with media_player entity-id friendly-name resolution and final friendly-name fallback), preventing intermittent blank `src` output while target/host/meta are otherwise healthy.
 

@@ -1,5 +1,5 @@
 # Description: Music Assistant control hub scripts (target options, auto-select, control helpers).
-# Version: 2026.04.17.8
+# Version: 2026.04.17.11
 # Last updated: 2026-04-17
 # Update version/date whenever you change this file.
 # HUB MUST-READ: Contract parser methodology.
@@ -13,7 +13,7 @@ ma_update_target_options:
   sequence:
     - variables:
         rooms: >-
-          {% set rooms_raw = state_attr('sensor.spectra_ls_rooms_raw','rooms') %}
+          {% set rooms_raw = state_attr('sensor.spectra_ls_rooms_json','rooms_json') | default([], true) %}
           {% if rooms_raw is sequence and rooms_raw is not string and rooms_raw is not mapping %}
             {{ rooms_raw }}
           {% elif rooms_raw is mapping %}
@@ -26,17 +26,10 @@ ma_update_target_options:
           {% elif rooms_raw is string %}
             {% set raw_trim = rooms_raw | trim %}
             {% set raw_trim_l = raw_trim | lower %}
-            {% if raw_trim_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
-              {% set parsed = rooms_raw | from_json %}
+              {% if raw_trim_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
+              {% set parsed = raw_trim | from_json %}
               {% if parsed is sequence and parsed is not string and parsed is not mapping %}
                 {{ parsed }}
-              {% elif parsed is mapping %}
-                {% set mapped = (parsed.rooms if parsed.rooms is defined else (parsed.result if parsed.result is defined else [])) %}
-                {% if mapped is sequence and mapped is not string and mapped is not mapping %}
-                  {{ mapped }}
-                {% else %}
-                  {{ [] }}
-                {% endif %}
               {% else %}
                 {{ [] }}
               {% endif %}

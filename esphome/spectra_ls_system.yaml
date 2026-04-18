@@ -1,5 +1,5 @@
 # Description: Main ESPHome config for Spectra LS System main ESPHome config (ESP32-S3 + RP2040 UART + Arylic TCP).
-# Version: 2026.04.18.9
+# Version: 2026.04.18.10
 # Last updated: 2026-04-18
 # Update version/date whenever you change this file.
 #
@@ -50,6 +50,7 @@ esphome:
       - -DSLS_ARYLIC_TCP_LOG_INTERVAL_MS=${arylic_tcp_log_interval_ms}
   includes:
     - /config/esphome/spectra_ls_system/components/arylic_tcp.h
+    - /config/esphome/spectra_ls_system/components/sls_oled_text_layout.h
 
   on_boot:
     then:

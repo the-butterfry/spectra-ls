@@ -1,6 +1,6 @@
 # Description: Spectra LS OLED-only peripherals package (no LED rings) for Control Board v2.
-# Version: 2026.04.17.15
-# Last updated: 2026-04-17
+# Version: 2026.04.18.1
+# Last updated: 2026-04-18
 # Update version/date whenever you change this file.
 esphome:
   name: ${device_name}
@@ -666,9 +666,9 @@ script:
           int display_state_value = STATE_BLANK;
           if (boot_menu_active && menu_active_now) display_state_value = STATE_BOOT_MENU;
           else if (eq_recent_screen) display_state_value = STATE_EQ;
-          else if (no_audio_activity && idle_ms > (uint32_t) ${menu_blank_idle_ms}) display_state_value = STATE_BLANK;
           else if (menu_active_now) display_state_value = STATE_MENU;
           else if (lighting_active) display_state_value = STATE_LIGHTING;
+          else if (no_audio_activity) display_state_value = STATE_BLANK;
           else if (audio_now_playing) display_state_value = STATE_NOW_PLAYING;
           else if (lighting_idle_now_playing) display_state_value = STATE_NOW_PLAYING;
           else if (idle_ms > ${screensaver_idle_ms}) display_state_value = STATE_BLANK;

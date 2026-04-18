@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.18.1 -->
+<!-- Version: 2026.04.18.2 -->
 <!-- Last updated: 2026-04-18 -->
 
 # Changelog
 
 ## 2026-04-18
+
+- ESPHome/UI Display-State Routing Fix: In `esphome/spectra_ls_system/spectra-ls-peripherals.yaml`, update `compute_display_state` decision ordering so `no_audio_activity` resolves directly to `STATE_BLANK` when menu and lighting-activity windows are not active, preventing idle home/target text screens from persisting when nothing is playing.
 
 - ESPHome/UI Idle Blanking Root-Cause Fix: In `esphome/spectra_ls_system/packages/spectra-ls-audio-tcp.yaml`, stop treating passive volume-pot polling as synthetic user activity by only updating `last_input_ms` when the mapped pot target actually changes; this prevents idle timers from being continuously reset by analog polling noise and allows proper blanking when nothing is playing.
 

@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.18.11 -->
+<!-- Version: 2026.04.18.12 -->
 <!-- Last updated: 2026-04-18 -->
 
 # Changelog
 
 ## 2026-04-18
+
+- ESPHome/OLED Lighting Header Wrap Fix: In `esphome/spectra_ls_system/spectra-ls-peripherals.yaml`, update the active non-slider lighting header path to use centered two-line wrapping for long target labels (for example `Dining Room > "Polaroud Chandelier"`) and shift mode/brightness HUD elements down to avoid overlap.
 
 - ESPHome/OLED Text Fit Improvement: In `esphome/spectra_ls_system/spectra-ls-peripherals.yaml`, add centered two-line word-wrap rendering for long menu/prompt/lighting labels (instead of hard cutoff/ellipsis-only rendering) while keeping current font sizes unchanged; list row heights now expand only when wrapping is actually needed to preserve normal menu density for short labels.
 

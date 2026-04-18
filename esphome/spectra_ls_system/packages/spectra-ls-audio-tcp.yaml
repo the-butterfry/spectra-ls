@@ -1,6 +1,6 @@
 # Description: Audio controls package for Spectra LS System (TCP-only).
-# Version: 2026.04.17.5
-# Last updated: 2026-04-17
+# Version: 2026.04.18.1
+# Last updated: 2026-04-18
 # Update version/date whenever you change this file.
 
 binary_sensor:
@@ -166,6 +166,7 @@ sensor:
                 if (target < 0) target = 0;
                 if (target > max_vol) target = max_vol;
                 const uint32_t now = millis();
+                const bool pot_changed = (target != id(pot_volume_target));
                 id(np_disp_vol) = target;
                 id(np_disp_vol_from_pot) = true;
                 id(pot_volume_pct_cached) = (int) (pct + 0.5f);
@@ -185,7 +186,7 @@ sensor:
                   playing = true;
                 }
                 if (playing) screen_awake = true;
-                if (screen_awake) {
+                if (screen_awake && pot_changed) {
                   id(last_input_ms) = now;
                 }
                 if (now - last_log > (uint32_t) ${input_raw_log_interval_ms}) {

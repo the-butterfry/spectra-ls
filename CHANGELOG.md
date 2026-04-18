@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.102 -->
+<!-- Version: 2026.04.17.103 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
+
+- HA/Lighting Native Payload Parse Fix: Update `packages/spectra_ls_lighting_hub.yaml` catalog consumers to accept both string JSON arrays and native sequence payloads from `items_json`, preventing false-empty parses when Home Assistant surfaces `state_attr(..., 'items_json')` as a non-string object.
 
 - HA/Lighting JSON Parse Hardening: Make `packages/spectra_ls_lighting_hub.yaml` catalog/options JSON parsing whitespace-tolerant (`| trim` before `[` checks and parse) across template sensors and sync automations, preventing valid JSON payloads with leading newline/space from being treated as empty and collapsing selectors to `No Rooms` / `All`.
 

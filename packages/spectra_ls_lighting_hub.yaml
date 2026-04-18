@@ -1,5 +1,5 @@
 # Description: Spectra LS lighting hub (rooms/targets from HA Areas).
-# Version: 2026.04.17.21
+# Version: 2026.04.17.22
 # Last updated: 2026-04-17
 # Update version/date whenever you change this file.
 #
@@ -160,7 +160,7 @@ template:
             {{ ns.items | tojson }}
           count: >
             {% set raw = state_attr('sensor.control_board_eligible_light_catalog', 'items_json') or states('sensor.control_board_eligible_light_catalog') %}
-            {% set parsed = raw | from_json(default=[]) if (raw is string and (raw | trim)[0:1] == '[') else [] %}
+            {% set parsed = (raw if (raw is sequence and raw is not string) else ((raw | trim | from_json(default=[])) if (raw is string and (raw | trim)[0:1] == '[') else [])) %}
             {{ parsed | count }}
 
       - name: Control Board Room Options
@@ -168,7 +168,7 @@ template:
         icon: mdi:floor-plan
         state: >
           {% set raw = state_attr('sensor.control_board_eligible_light_catalog', 'items_json') or states('sensor.control_board_eligible_light_catalog') %}
-          {% set parsed = raw | from_json(default=[]) if (raw is string and (raw | trim)[0:1] == '[') else [] %}
+          {% set parsed = (raw if (raw is sequence and raw is not string) else ((raw | trim | from_json(default=[])) if (raw is string and (raw | trim)[0:1] == '[') else [])) %}
           {% set ns = namespace(rooms=[]) %}
           {% for item in parsed %}
             {% set room_name = item.area_name if item is mapping and item.area_name is defined else '' %}
@@ -184,7 +184,7 @@ template:
         attributes:
           count: >
             {% set raw = state_attr('sensor.control_board_eligible_light_catalog', 'items_json') or states('sensor.control_board_eligible_light_catalog') %}
-            {% set parsed = raw | from_json(default=[]) if (raw is string and (raw | trim)[0:1] == '[') else [] %}
+            {% set parsed = (raw if (raw is sequence and raw is not string) else ((raw | trim | from_json(default=[])) if (raw is string and (raw | trim)[0:1] == '[') else [])) %}
             {% set ns = namespace(rooms=[]) %}
             {% for item in parsed %}
               {% set room_name = item.area_name if item is mapping and item.area_name is defined else '' %}
@@ -201,7 +201,7 @@ template:
           {% set room = states('input_select.control_board_room') %}
           {% set ns = namespace(targets=['All']) %}
           {% set raw = state_attr('sensor.control_board_eligible_light_catalog', 'items_json') or states('sensor.control_board_eligible_light_catalog') %}
-          {% set parsed = raw | from_json(default=[]) if (raw is string and (raw | trim)[0:1] == '[') else [] %}
+          {% set parsed = (raw if (raw is sequence and raw is not string) else ((raw | trim | from_json(default=[])) if (raw is string and (raw | trim)[0:1] == '[') else [])) %}
           {% for item in parsed %}
             {% set area_name_item = item.area_name if item is mapping and item.area_name is defined else '' %}
             {% set label = item.label if item is mapping and item.label is defined else '' %}
@@ -215,7 +215,7 @@ template:
             {% set room = states('input_select.control_board_room') %}
             {% set ns = namespace(targets=['All']) %}
             {% set raw = state_attr('sensor.control_board_eligible_light_catalog', 'items_json') or states('sensor.control_board_eligible_light_catalog') %}
-            {% set parsed = raw | from_json(default=[]) if (raw is string and (raw | trim)[0:1] == '[') else [] %}
+            {% set parsed = (raw if (raw is sequence and raw is not string) else ((raw | trim | from_json(default=[])) if (raw is string and (raw | trim)[0:1] == '[') else [])) %}
             {% for item in parsed %}
               {% set area_name_item = item.area_name if item is mapping and item.area_name is defined else '' %}
               {% set ent = item.entity_id if item is mapping and item.entity_id is defined else '' %}
@@ -231,7 +231,7 @@ template:
           {% set room = states('input_select.control_board_room') %}
           {% set ns = namespace(area_id='') %}
           {% set raw = state_attr('sensor.control_board_eligible_light_catalog', 'items_json') or states('sensor.control_board_eligible_light_catalog') %}
-          {% set parsed = raw | from_json(default=[]) if (raw is string and (raw | trim)[0:1] == '[') else [] %}
+          {% set parsed = (raw if (raw is sequence and raw is not string) else ((raw | trim | from_json(default=[])) if (raw is string and (raw | trim)[0:1] == '[') else [])) %}
           {% for item in parsed %}
             {% set area_name_item = item.area_name if item is mapping and item.area_name is defined else '' %}
             {% set aid = item.area_id if item is mapping and item.area_id is defined else '' %}
@@ -251,7 +251,7 @@ template:
           {% set ns = namespace(entity='') %}
           {% if target != 'All' %}
             {% set raw = state_attr('sensor.control_board_eligible_light_catalog', 'items_json') or states('sensor.control_board_eligible_light_catalog') %}
-            {% set parsed = raw | from_json(default=[]) if (raw is string and (raw | trim)[0:1] == '[') else [] %}
+            {% set parsed = (raw if (raw is sequence and raw is not string) else ((raw | trim | from_json(default=[])) if (raw is string and (raw | trim)[0:1] == '[') else [])) %}
             {% for item in parsed %}
               {% set area_name_item = item.area_name if item is mapping and item.area_name is defined else '' %}
               {% set ent = item.entity_id if item is mapping and item.entity_id is defined else '' %}
@@ -274,7 +274,7 @@ template:
           {% set room = states('input_select.control_board_room') %}
           {% set ns = namespace(hs='') %}
           {% set raw = state_attr('sensor.control_board_eligible_light_catalog', 'items_json') or states('sensor.control_board_eligible_light_catalog') %}
-          {% set parsed = raw | from_json(default=[]) if (raw is string and (raw | trim)[0:1] == '[') else [] %}
+          {% set parsed = (raw if (raw is sequence and raw is not string) else ((raw | trim | from_json(default=[])) if (raw is string and (raw | trim)[0:1] == '[') else [])) %}
           {% for item in parsed %}
             {% set area_name_item = item.area_name if item is mapping and item.area_name is defined else '' %}
             {% set ent = item.entity_id if item is mapping and item.entity_id is defined else '' %}
@@ -307,7 +307,7 @@ template:
           {% set room = states('input_select.control_board_room') %}
           {% set ns = namespace(on=false) %}
           {% set raw = state_attr('sensor.control_board_eligible_light_catalog', 'items_json') or states('sensor.control_board_eligible_light_catalog') %}
-          {% set parsed = raw | from_json(default=[]) if (raw is string and (raw | trim)[0:1] == '[') else [] %}
+          {% set parsed = (raw if (raw is sequence and raw is not string) else ((raw | trim | from_json(default=[])) if (raw is string and (raw | trim)[0:1] == '[') else [])) %}
           {% for item in parsed %}
             {% set area_name_item = item.area_name if item is mapping and item.area_name is defined else '' %}
             {% set ent = item.entity_id if item is mapping and item.entity_id is defined else '' %}

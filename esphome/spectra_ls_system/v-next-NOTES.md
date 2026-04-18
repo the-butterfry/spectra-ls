@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.17.18 -->
+<!-- Version: 2026.04.17.19 -->
 <!-- Last updated: 2026-04-17 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -18,6 +18,74 @@
 - Catalog/options JSON consumers now trim leading whitespace before JSON-array detection/parsing, preventing newline/space-prefixed valid JSON from being misclassified as non-JSON and collapsing room/target selectors to placeholders.
 - Catalog consumers now accept both string JSON arrays and native sequence payloads from `items_json`, preventing parse-path collapse when Home Assistant exposes the attribute as a non-string object at runtime.
 - Intent: eliminate drift and intermittent `All`-only target regressions caused by duplicated direct `area_entities(...)` scan logic across multiple templates.
+
+## HA Complex-Object Harvesting Contract (TIGHT + Reusable)
+
+This lighting incident defines a reusable harvesting pattern for all complex HA object flows (audio targets, meta candidates, scenes, devices, future action catalogs).
+
+### Required contract shape
+
+- **State is summary, attribute is payload**
+
+  Sensor `state`: compact count/health marker.
+  Attribute payload: structured object/list (authoritative dataset).
+
+- **Dual-type reader compatibility (mandatory)**
+
+  Readers must accept both native sequence/mapping payloads and string JSON payloads (trim + guarded parse).
+  Never assume `state_attr(...)` is always a string.
+
+- **Single source catalog, many projections**
+
+  Build one authoritative catalog sensor.
+  Derive all helper projections (options, target resolution, status flags) from that single catalog.
+
+- **Bootstrap fallback path**
+
+  Provide a deterministic fallback discovery branch when primary discovery is empty.
+  Fallback must preserve schema compatibility.
+
+- **Placeholder policy is explicit**
+
+  Placeholder output (`No Rooms`, `All`, etc.) must be treated as degraded state in diagnostics, not healthy success.
+
+### Apply this to audio harvesting
+
+- `ma_control_targets` / host-route maps / meta candidate lists should follow identical rules:
+  - summary in state,
+  - authoritative payload in attributes,
+  - dual-type readers,
+  - single catalog + derived selectors.
+
+### Apply this to other entity domains
+
+- Safe targets: `light`, `media_player`, `scene`, `switch`, `lock`, and future grouped action catalogs.
+- Reuse the same parser and projection semantics to avoid per-domain drift.
+
+## Programmable Switch Action Pattern (Toggle + Select Confirm)
+
+For user-programmable actions such as **unlock door**, use a guarded two-step action contract:
+
+- **Arm via toggle/selector**
+
+  Hardware toggle selects an action profile (for example `unlock_door`).
+  System enters `armed_action` state with explicit label on OLED.
+
+- **Confirm via Select button**
+
+  Select button executes only when `armed_action` is valid and unexpired.
+  Use a short confirmation window (TTL), then auto-disarm.
+
+- **Safety gates (required)**
+
+  Per-action capability flag (`confirm_required`, `sensitive=true`).
+  Rate limit/cooldown and idempotence guards.
+  Optional long-press requirement for sensitive actions.
+  Audit signal emitted to HA (`last_action`, timestamp, actor/source).
+
+- **Harvesting tie-in**
+
+  Programmable actions should be harvested as a typed action catalog (same complex-object contract above), not hardcoded one-off branches.
 
 ## Naming Strategy + Deferred Full Cleanup (Entity/Helper IDs)
 

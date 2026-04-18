@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.92 -->
+<!-- Version: 2026.04.17.93 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
+
+- HA/Lighting Startup Stabilization: Remove transient availability gating from `sensor.control_board_eligible_light_catalog` and add anti-downgrade guard in room sync so `input_select.control_board_room` is not overwritten by `['Unassigned']` when concrete room options already exist; addresses recurring `Unassigned + Back` regressions after reload/boot churn.
 
 - Hotfix: Correct `packages/spectra_ls_lighting_hub.yaml` Jinja block terminator in `sensor.control_board_eligible_light_catalog` (`endif` vs accidental `endfor`) to restore template loading; this unblocks room/target option generation that had been failing at HA config parse time.
 

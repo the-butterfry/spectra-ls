@@ -1,5 +1,5 @@
 # Description: Spectra LS lighting hub (rooms/targets from HA Areas).
-# Version: 2026.04.17.12
+# Version: 2026.04.17.13
 # Last updated: 2026-04-17
 # Update version/date whenever you change this file.
 #
@@ -51,8 +51,7 @@ template:
                 (modes is none) or
                 (state_attr(ent, 'brightness') is not none)
               %}
-              {% set is_availableish = states(ent) | lower not in ['unavailable', 'unknown', 'none'] %}
-              {% if (supports_dimming_or_color or supports_onoff_or_legacy) and is_availableish and ('speaker' not in ent_low) and ('speaker' not in label_low) %}
+              {% if (supports_dimming_or_color or supports_onoff_or_legacy) and ('speaker' not in ent_low) and ('speaker' not in label_low) %}
                 {% set ns.items = ns.items + [{'area_id': area_id, 'area_name': room_name, 'entity_id': ent, 'label': label}] %}
               {% endif %}
             {% endfor %}
@@ -82,8 +81,7 @@ template:
                 (modes is none) or
                 (state_attr(ent, 'brightness') is not none)
               %}
-              {% set is_availableish = states(ent) | lower not in ['unavailable', 'unknown', 'none'] %}
-              {% if (supports_dimming_or_color or supports_onoff_or_legacy) and is_availableish and ('speaker' not in ent_low) and ('speaker' not in label_low) %}
+              {% if (supports_dimming_or_color or supports_onoff_or_legacy) and ('speaker' not in ent_low) and ('speaker' not in label_low) %}
                 {% set ns.items = ns.items + [{'area_id': area if area else '', 'area_name': room_name, 'entity_id': ent, 'label': label}] %}
               {% endif %}
             {% endfor %}
@@ -289,9 +287,30 @@ automation:
             {% else %}
               {{ ['Unassigned'] }}
             {% endif %}
-          safe_options: "{{ room_options }}"
+          current_concrete_rooms: >
+            {% set ns = namespace(items=[]) %}
+            {% for o in current_options %}
+              {% set low = (o | string | lower) %}
+              {% if low not in ['unknown','unavailable','none','null','', 'unassigned'] %}
+                {% set ns.items = ns.items + [o] %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.items }}
+          parsed_is_unassigned_only: >
+            {% if room_parsed | count == 1 %}
+              {{ (room_parsed[0] | string | lower) == 'unassigned' }}
+            {% else %}
+              {{ false }}
+            {% endif %}
+          room_options_effective: >
+            {% if parsed_is_unassigned_only and (current_concrete_rooms | count > 0) %}
+              {{ current_options }}
+            {% else %}
+              {{ room_options }}
+            {% endif %}
+          safe_options: "{{ room_options_effective }}"
           options_changed: "{{ current_options | join('||') != safe_options | join('||') }}"
-          needs_reset: "{{ (room_parsed | count > 0) and (states('input_select.control_board_room') not in room_options) }}"
+          needs_reset: "{{ (room_parsed | count > 0) and (states('input_select.control_board_room') not in room_options_effective) }}"
           should_update_options: "{{ options_changed and ((room_parsed | count > 0) or (current_options | count == 0)) }}"
       - choose:
           - conditions: "{{ should_update_options }}"
@@ -306,7 +325,7 @@ automation:
               - service: input_select.select_option
                 data:
                   entity_id: input_select.control_board_room
-                  option: "{{ room_options[0] if room_options | count > 0 else 'Unknown' }}"
+                  option: "{{ room_options_effective[0] if room_options_effective | count > 0 else 'Unknown' }}"
 
   - id: control_board_sync_target_options
     alias: Control Board - Sync Target Options

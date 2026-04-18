@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.18.50 -->
+<!-- Version: 2026.04.18.51 -->
 <!-- Last updated: 2026-04-18 -->
 
 # Changelog
 
 ## 2026-04-18
+
+- HA/AC Control-Path Simplification (`packages/dst_tuya_ac.yaml`): remove external policy reconciler intervention (`automation.dst_mode_reconciler`) and stop fan helper scripts from writing thermostat mode directly (`climate.room_dst`). DST is now the sole mode decision authority while helper scripts only execute direct Tuya device actions, reducing off/on thrash and command-beep chatter caused by layered controller feedback loops.
 
 - HA/AC DST Ownership + Anti-Thrash Rollback (`packages/dst_tuya_ac.yaml`): reduce command-chatter/beep behavior by disabling DST keep-alive (`keep_alive: 0`), removing periodic 1-minute mode reconciler forcing, and deleting aggressive fan fallback off→on retry path that could cause brief compressor dropouts. Control flow now favors DST-native cycle logic over external re-assertion loops.
 

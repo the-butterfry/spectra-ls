@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.93 -->
+<!-- Version: 2026.04.17.94 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
+
+- HA/Lighting Fallback Policy Correction: Remove `Unassigned` all-lights fallback from `sensor.control_board_eligible_light_catalog` and switch empty room fallback to `No Rooms`; add placeholder-only guard in room sync to preserve existing concrete room options. This prevents repeated `Unassigned + Back` loops from masking real area contract issues.
 
 - HA/Lighting Startup Stabilization: Remove transient availability gating from `sensor.control_board_eligible_light_catalog` and add anti-downgrade guard in room sync so `input_select.control_board_room` is not overwritten by `['Unassigned']` when concrete room options already exist; addresses recurring `Unassigned + Back` regressions after reload/boot churn.
 

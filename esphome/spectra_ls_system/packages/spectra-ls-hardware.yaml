@@ -1,6 +1,6 @@
 # Description: Spectra LS hardware UART wiring + RP2040/Arylic hubs + raw ADC taps.
-# Version: 2026.04.17.4
-# Last updated: 2026-04-17
+# Version: 2026.04.18.5
+# Last updated: 2026-04-18
 # Update version/date whenever you change this file.
 #
 # Sections:
@@ -127,9 +127,7 @@ script:
             return;
           }
           if (count <= 0) return;
-          int idx = id(menu_index) + 1;
-          while (idx >= count) idx -= count;
-          id(menu_index) = idx;
+          id(menu_index) = sls_menu_nav::step_index(id(menu_index), 1, count);
 
   - id: sls_mode_nav_prev_item
     mode: restart
@@ -162,9 +160,7 @@ script:
             return;
           }
           if (count <= 0) return;
-          int idx = id(menu_index) - 1;
-          while (idx < 0) idx += count;
-          id(menu_index) = idx;
+          id(menu_index) = sls_menu_nav::step_index(id(menu_index), -1, count);
 
   - id: sls_mode_nav_confirm
     mode: restart

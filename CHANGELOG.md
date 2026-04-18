@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.18.18 -->
+<!-- Version: 2026.04.18.19 -->
 <!-- Last updated: 2026-04-18 -->
 
 # Changelog
 
 ## 2026-04-18
+
+- ESPHome/Menu Navigation Direction Contract: Add shared top-level menu navigation helper (`components/sls_menu_nav.h`) and route menu-encoder delta handling through a global direction mapping (`menu_encoder_nav_sign`) in `spectra-ls-ui.yaml`, so clockwise/counterclockwise behavior is configured once and applied consistently across all menu levels/prompt lists.
 
 - HA/Command-Line Resilience Fix: In `packages/spectra_ls_hw_status.yaml`, harden the `Spectra LS HW Status` command to guard for missing script/input files and emit a valid fallback JSON payload when unavailable, preventing recurring `command_line` return-code errors while preserving dependent attribute contracts.
 

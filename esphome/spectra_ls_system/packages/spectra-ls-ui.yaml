@@ -1,6 +1,6 @@
 # Description: Spectra LS UI/menu input handling + UI fonts + now-playing helper sensors.
-# Version: 2026.04.17.9
-# Last updated: 2026-04-17
+# Version: 2026.04.18.10
+# Last updated: 2026-04-18
 # Update version/date whenever you change this file.
 #
 # Sections:
@@ -645,9 +645,12 @@ sensor:
           const int LV_LIGHT_ADJUST = ${menu_level_lighting_adjust};
           const int LV_LIGHT_TOGGLE = ${menu_level_lighting_toggle};
           const int LV_META = ${menu_level_meta_select};
-          const int delta = (int) x;
+          // Menu authoring contract: always map raw encoder deltas through shared
+          // top-level direction policy (`sls_menu_nav` + `${menu_encoder_nav_sign}`).
+          const int raw_delta = (int) x;
+          const int delta = sls_menu_nav::normalize_encoder_delta(raw_delta, ${menu_encoder_nav_sign});
           if (delta == 0) return;
-          ESP_LOGI("input", "Encoder Menu delta=%d", delta);
+          ESP_LOGI("input", "Encoder Menu delta raw=%d mapped=%d", raw_delta, delta);
           if (id(control_target_prompt_active)) {
             auto trim_ascii = [](std::string &value) {
               size_t start = value.find_first_not_of(" \t\n\r");
@@ -692,10 +695,7 @@ sensor:
             }
             const int count = (int) items.size();
             if (count <= 0) return;
-            int idx = id(control_target_prompt_index) + delta;
-            while (idx < 0) idx += count;
-            while (idx >= count) idx -= count;
-            id(control_target_prompt_index) = idx;
+            id(control_target_prompt_index) = sls_menu_nav::step_index(id(control_target_prompt_index), delta, count);
             return;
           }
           int room_count = id(menu_room_count);
@@ -723,10 +723,7 @@ sensor:
           else if (id(menu_level) == LV_LIGHT_TOGGLE) count = (id(selected_target) == 0) ? ${menu_count_lighting_toggle_all} : ${menu_count_lighting_toggle_target};
           else if (id(menu_level) == LV_META) count = menu_level9_count;
           if (count <= 0) return;
-          int idx = id(menu_index) + delta;
-          while (idx < 0) idx += count;
-          while (idx >= count) idx -= count;
-          id(menu_index) = idx;
+          id(menu_index) = sls_menu_nav::step_index(id(menu_index), delta, count);
 
 interval:
   - interval: 250ms

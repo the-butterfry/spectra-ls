@@ -1,6 +1,6 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.17.23 -->
-<!-- Last updated: 2026-04-17 -->
+<!-- Version: 2026.04.18.24 -->
+<!-- Last updated: 2026-04-18 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
 
@@ -614,6 +614,13 @@ Expected WARN/PASS interpretation:
 - Menu encoder remains fallback; hardware selector reasserts state.
 - Expansion via ADS7830/PCF8575 is allowed.
 - Ensure selector states map cleanly to HA target lists across multi-room installs.
+
+### Menu Authoring Contract (Required for new menus)
+
+- **Navigation direction must be centralized**: new menu index movement must use shared helper `components/sls_menu_nav.h` (`normalize_encoder_delta` + `step_index`) and never apply raw encoder deltas directly.
+- **Direction is top-level configurable** via substitution `menu_encoder_nav_sign` (default `-1` for intuitive clockwise/right/down progression).
+- **Text fitting must be centralized**: new menu labels/headings must use shared helper `components/sls_oled_text_layout.h` (`draw_center_wrapped`, `wrap_two_lines`, `needs_wrap_two_lines`) instead of local wrap/center logic.
+- **No per-menu custom direction/wrap forks**: if behavior needs tuning, change shared helpers once so all menu layers inherit consistent UX.
 
 ### Future Cleanup / Tuning Backlog — Host Inventory + Overrides (Productization)
 

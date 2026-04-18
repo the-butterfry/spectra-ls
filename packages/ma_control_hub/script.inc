@@ -1,5 +1,5 @@
 # Description: Music Assistant control hub scripts (target options, auto-select, control helpers).
-# Version: 2026.04.17.4
+# Version: 2026.04.17.5
 # Last updated: 2026-04-17
 # Update version/date whenever you change this file.
 
@@ -9,18 +9,23 @@ ma_update_target_options:
     - variables:
         rooms: >-
           {% set rooms_raw = state_attr('sensor.spectra_ls_rooms_raw','rooms') %}
-          {% if rooms_raw is string %}
+          {% if rooms_raw is sequence and rooms_raw is not string and rooms_raw is not mapping %}
+            {{ rooms_raw }}
+          {% elif rooms_raw is string %}
             {% set raw_l = rooms_raw | lower %}
             {% set raw_trim = rooms_raw | trim %}
-            {% if raw_l in ['unknown','unavailable','none',''] %}
-              {{ [] }}
-            {% elif raw_trim.startswith('[') or raw_trim.startswith('{') %}
-              {{ rooms_raw | from_json }}
+            {% if raw_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
+              {% set parsed = rooms_raw | from_json %}
+              {% if parsed is sequence and parsed is not string and parsed is not mapping %}
+                {{ parsed }}
+              {% else %}
+                {{ [] }}
+              {% endif %}
             {% else %}
               {{ [] }}
             {% endif %}
           {% else %}
-            {{ rooms_raw or [] }}
+            {{ [] }}
           {% endif %}
         known_targets: >-
           {% set ns = namespace(list=[]) %}

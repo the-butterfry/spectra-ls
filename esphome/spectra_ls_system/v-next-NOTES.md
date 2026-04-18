@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.17.19 -->
+<!-- Version: 2026.04.17.20 -->
 <!-- Last updated: 2026-04-17 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -56,6 +56,7 @@ This lighting incident defines a reusable harvesting pattern for all complex HA 
   - authoritative payload in attributes,
   - dual-type readers,
   - single catalog + derived selectors.
+- Implementation status: applied to `packages/ma_control_hub/template.inc` and `packages/ma_control_hub/script.inc` room/candidate parse paths so MA host/target/meta routing remains stable across native object and string JSON attribute payload forms.
 
 ### Apply this to other entity domains
 

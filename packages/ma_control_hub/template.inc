@@ -1,5 +1,5 @@
 # Description: Template entities for ma_control_hub runtime routing, metadata, and now-playing state surfaces.
-# Version: 2026.04.17.5
+# Version: 2026.04.17.6
 # Last updated: 2026-04-17
 
 - sensor:
@@ -465,8 +465,20 @@
         best_entity: >-
           {% set best = '' %}
           {% set score = 0 %}
-          {% set raw = state_attr('sensor.ma_meta_resolver','candidates_json') | default('[]', true) %}
-          {% set parsed = raw | from_json %}
+          {% set raw = state_attr('sensor.ma_meta_resolver','candidates_json') | default([], true) %}
+          {% set parsed = [] %}
+          {% if raw is sequence and raw is not string and raw is not mapping %}
+            {% set parsed = raw %}
+          {% elif raw is string %}
+            {% set raw_l = raw | lower %}
+            {% set raw_trim = raw | trim %}
+            {% if raw_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
+              {% set candidate = raw | from_json %}
+              {% if candidate is sequence and candidate is not string and candidate is not mapping %}
+                {% set parsed = candidate %}
+              {% endif %}
+            {% endif %}
+          {% endif %}
           {% for c in parsed %}
             {% if c.score is defined and c.score > score %}
               {% set score = c.score %}
@@ -476,8 +488,20 @@
           {{ best }}
         best_score: >-
           {% set score = 0 %}
-          {% set raw = state_attr('sensor.ma_meta_resolver','candidates_json') | default('[]', true) %}
-          {% set parsed = raw | from_json %}
+          {% set raw = state_attr('sensor.ma_meta_resolver','candidates_json') | default([], true) %}
+          {% set parsed = [] %}
+          {% if raw is sequence and raw is not string and raw is not mapping %}
+            {% set parsed = raw %}
+          {% elif raw is string %}
+            {% set raw_l = raw | lower %}
+            {% set raw_trim = raw | trim %}
+            {% if raw_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
+              {% set candidate = raw | from_json %}
+              {% if candidate is sequence and candidate is not string and candidate is not mapping %}
+                {% set parsed = candidate %}
+              {% endif %}
+            {% endif %}
+          {% endif %}
           {% for c in parsed %}
             {% if c.score is defined and c.score > score %}
               {% set score = c.score %}
@@ -564,18 +588,17 @@
         {% else %}
         {% set rooms_raw = state_attr('sensor.spectra_ls_rooms_raw','rooms') %}
         {% set rooms = [] %}
-        {% if rooms_raw is string %}
+        {% if rooms_raw is sequence and rooms_raw is not string and rooms_raw is not mapping %}
+          {% set rooms = rooms_raw %}
+        {% elif rooms_raw is string %}
           {% set raw_l = rooms_raw | lower %}
           {% set raw_trim = rooms_raw | trim %}
-          {% if raw_l in ['unknown','unavailable','none',''] %}
-            {% set rooms = [] %}
-          {% elif raw_trim.startswith('[') or raw_trim.startswith('{') %}
-            {% set rooms = rooms_raw | from_json %}
-          {% else %}
-            {% set rooms = [] %}
+          {% if raw_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
+            {% set parsed = rooms_raw | from_json %}
+            {% if parsed is sequence and parsed is not string and parsed is not mapping %}
+              {% set rooms = parsed %}
+            {% endif %}
           {% endif %}
-        {% else %}
-          {% set rooms = rooms_raw or [] %}
         {% endif %}
         {% set ns_playing = namespace(ent='') %}
         {% for r in rooms %}
@@ -636,18 +659,17 @@
         {% else %}
           {% set rooms_raw = state_attr('sensor.spectra_ls_rooms_raw','rooms') %}
           {% set rooms = [] %}
-          {% if rooms_raw is string %}
+          {% if rooms_raw is sequence and rooms_raw is not string and rooms_raw is not mapping %}
+            {% set rooms = rooms_raw %}
+          {% elif rooms_raw is string %}
             {% set raw_l = rooms_raw | lower %}
             {% set raw_trim = rooms_raw | trim %}
-            {% if raw_l in ['unknown','unavailable','none',''] %}
-              {% set rooms = [] %}
-            {% elif raw_trim.startswith('[') or raw_trim.startswith('{') %}
-              {% set rooms = rooms_raw | from_json %}
-            {% else %}
-              {% set rooms = [] %}
+            {% if raw_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
+              {% set parsed = rooms_raw | from_json %}
+              {% if parsed is sequence and parsed is not string and parsed is not mapping %}
+                {% set rooms = parsed %}
+              {% endif %}
             {% endif %}
-          {% else %}
-            {% set rooms = rooms_raw or [] %}
           {% endif %}
           {% set entries = rooms | selectattr('entity','equalto', t) | list %}
           {% set entry = entries[0] if (entries | length) > 0 else none %}
@@ -968,18 +990,17 @@
         {% set control_capable = is_state('binary_sensor.ma_active_control_capable','on') %}
         {% set rooms_raw = state_attr('sensor.spectra_ls_rooms_raw','rooms') %}
         {% set rooms = [] %}
-        {% if rooms_raw is string %}
+        {% if rooms_raw is sequence and rooms_raw is not string and rooms_raw is not mapping %}
+          {% set rooms = rooms_raw %}
+        {% elif rooms_raw is string %}
           {% set raw_l = rooms_raw | lower %}
           {% set raw_trim = rooms_raw | trim %}
-          {% if raw_l in ['unknown','unavailable','none',''] %}
-            {% set rooms = [] %}
-          {% elif raw_trim.startswith('[') or raw_trim.startswith('{') %}
-            {% set rooms = rooms_raw | from_json %}
-          {% else %}
-            {% set rooms = [] %}
+          {% if raw_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
+            {% set parsed = rooms_raw | from_json %}
+            {% if parsed is sequence and parsed is not string and parsed is not mapping %}
+              {% set rooms = parsed %}
+            {% endif %}
           {% endif %}
-        {% else %}
-          {% set rooms = rooms_raw or [] %}
         {% endif %}
         {% set members = state_attr(target,'group_members') or state_attr(target,'members') or [] %}
         {% set target_host = '' %}
@@ -1051,7 +1072,19 @@
           {{ 'none' }}
         {% else %}
           {% set rooms_raw = state_attr('sensor.spectra_ls_rooms_raw','rooms') %}
-          {% set rooms = (rooms_raw | from_json) if rooms_raw is string else (rooms_raw or []) %}
+          {% set rooms = [] %}
+          {% if rooms_raw is sequence and rooms_raw is not string and rooms_raw is not mapping %}
+            {% set rooms = rooms_raw %}
+          {% elif rooms_raw is string %}
+            {% set raw_l = rooms_raw | lower %}
+            {% set raw_trim = rooms_raw | trim %}
+            {% if raw_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
+              {% set parsed = rooms_raw | from_json %}
+              {% if parsed is sequence and parsed is not string and parsed is not mapping %}
+                {% set rooms = parsed %}
+              {% endif %}
+            {% endif %}
+          {% endif %}
           {% set entry = (rooms | selectattr('entity','equalto', target) | list | first) %}
           {% set hardware_family = (entry.hardware_family if entry is not none and entry.hardware_family is defined else '') | lower %}
           {% set path_hint = (entry.control_path if entry is not none and entry.control_path is defined else '') | lower %}
@@ -1072,18 +1105,17 @@
       state: >-
         {% set rooms_raw = state_attr('sensor.spectra_ls_rooms_raw','rooms') %}
         {% set rooms = [] %}
-        {% if rooms_raw is string %}
+        {% if rooms_raw is sequence and rooms_raw is not string and rooms_raw is not mapping %}
+          {% set rooms = rooms_raw %}
+        {% elif rooms_raw is string %}
           {% set raw_l = rooms_raw | lower %}
           {% set raw_trim = rooms_raw | trim %}
-          {% if raw_l in ['unknown','unavailable','none',''] %}
-            {% set rooms = [] %}
-          {% elif raw_trim.startswith('[') or raw_trim.startswith('{') %}
-            {% set rooms = rooms_raw | from_json %}
-          {% else %}
-            {% set rooms = [] %}
+          {% if raw_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
+            {% set parsed = rooms_raw | from_json %}
+            {% if parsed is sequence and parsed is not string and parsed is not mapping %}
+              {% set rooms = parsed %}
+            {% endif %}
           {% endif %}
-        {% else %}
-          {% set rooms = rooms_raw or [] %}
         {% endif %}
         {% set ns = namespace(entities=[]) %}
         {% for r in rooms %}
@@ -1104,18 +1136,17 @@
         entities: >-
           {% set rooms_raw = state_attr('sensor.spectra_ls_rooms_raw','rooms') %}
           {% set rooms = [] %}
-          {% if rooms_raw is string %}
+          {% if rooms_raw is sequence and rooms_raw is not string and rooms_raw is not mapping %}
+            {% set rooms = rooms_raw %}
+          {% elif rooms_raw is string %}
             {% set raw_l = rooms_raw | lower %}
             {% set raw_trim = rooms_raw | trim %}
-            {% if raw_l in ['unknown','unavailable','none',''] %}
-              {% set rooms = [] %}
-            {% elif raw_trim.startswith('[') or raw_trim.startswith('{') %}
-              {% set rooms = rooms_raw | from_json %}
-            {% else %}
-              {% set rooms = [] %}
+            {% if raw_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
+              {% set parsed = rooms_raw | from_json %}
+              {% if parsed is sequence and parsed is not string and parsed is not mapping %}
+                {% set rooms = parsed %}
+              {% endif %}
             {% endif %}
-          {% else %}
-            {% set rooms = rooms_raw or [] %}
           {% endif %}
           {% set ns = namespace(entities=[]) %}
           {% for r in rooms %}
@@ -1135,18 +1166,17 @@
         labels: >-
           {% set rooms_raw = state_attr('sensor.spectra_ls_rooms_raw','rooms') %}
           {% set rooms = [] %}
-          {% if rooms_raw is string %}
+          {% if rooms_raw is sequence and rooms_raw is not string and rooms_raw is not mapping %}
+            {% set rooms = rooms_raw %}
+          {% elif rooms_raw is string %}
             {% set raw_l = rooms_raw | lower %}
             {% set raw_trim = rooms_raw | trim %}
-            {% if raw_l in ['unknown','unavailable','none',''] %}
-              {% set rooms = [] %}
-            {% elif raw_trim.startswith('[') or raw_trim.startswith('{') %}
-              {% set rooms = rooms_raw | from_json %}
-            {% else %}
-              {% set rooms = [] %}
+            {% if raw_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
+              {% set parsed = rooms_raw | from_json %}
+              {% if parsed is sequence and parsed is not string and parsed is not mapping %}
+                {% set rooms = parsed %}
+              {% endif %}
             {% endif %}
-          {% else %}
-            {% set rooms = rooms_raw or [] %}
           {% endif %}
           {% set ns = namespace(labels=[]) %}
           {% for r in rooms %}
@@ -1209,18 +1239,17 @@
         {% else %}
           {% set rooms_raw = state_attr('sensor.spectra_ls_rooms_raw','rooms') %}
           {% set rooms = [] %}
-          {% if rooms_raw is string %}
+          {% if rooms_raw is sequence and rooms_raw is not string and rooms_raw is not mapping %}
+            {% set rooms = rooms_raw %}
+          {% elif rooms_raw is string %}
             {% set raw_l = rooms_raw | lower %}
             {% set raw_trim = rooms_raw | trim %}
-            {% if raw_l in ['unknown','unavailable','none',''] %}
-              {% set rooms = [] %}
-            {% elif raw_trim.startswith('[') or raw_trim.startswith('{') %}
-              {% set rooms = rooms_raw | from_json %}
-            {% else %}
-              {% set rooms = [] %}
+            {% if raw_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
+              {% set parsed = rooms_raw | from_json %}
+              {% if parsed is sequence and parsed is not string and parsed is not mapping %}
+                {% set rooms = parsed %}
+              {% endif %}
             {% endif %}
-          {% else %}
-            {% set rooms = rooms_raw or [] %}
           {% endif %}
           {% set ns = namespace(ent='') %}
           {% for r in rooms %}
@@ -1567,7 +1596,19 @@
           {{ false }}
         {% else %}
           {% set rooms_raw = state_attr('sensor.spectra_ls_rooms_raw','rooms') %}
-          {% set rooms = (rooms_raw | from_json) if rooms_raw is string else (rooms_raw or []) %}
+          {% set rooms = [] %}
+          {% if rooms_raw is sequence and rooms_raw is not string and rooms_raw is not mapping %}
+            {% set rooms = rooms_raw %}
+          {% elif rooms_raw is string %}
+            {% set raw_l = rooms_raw | lower %}
+            {% set raw_trim = rooms_raw | trim %}
+            {% if raw_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
+              {% set parsed = rooms_raw | from_json %}
+              {% if parsed is sequence and parsed is not string and parsed is not mapping %}
+                {% set rooms = parsed %}
+              {% endif %}
+            {% endif %}
+          {% endif %}
           {% set entry = (rooms | selectattr('entity','equalto', target) | list | first) %}
           {% set cap_hint = (entry.control_capable if entry is not none and entry.control_capable is defined else '') %}
           {% set cap_l = (cap_hint | string | lower) %}
@@ -1601,7 +1642,19 @@
         {% set hw = states('sensor.spectra_ls_hw_playing_entity') %}
         {% set hw_ok = hw not in ['none','unknown','unavailable',''] and states[hw] is not none %}
         {% set rooms_raw = state_attr('sensor.spectra_ls_rooms_raw','rooms') %}
-        {% set rooms = (rooms_raw | from_json) if rooms_raw is string else (rooms_raw or []) %}
+        {% set rooms = [] %}
+        {% if rooms_raw is sequence and rooms_raw is not string and rooms_raw is not mapping %}
+          {% set rooms = rooms_raw %}
+        {% elif rooms_raw is string %}
+          {% set raw_l = rooms_raw | lower %}
+          {% set raw_trim = rooms_raw | trim %}
+          {% if raw_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
+            {% set parsed = rooms_raw | from_json %}
+            {% if parsed is sequence and parsed is not string and parsed is not mapping %}
+              {% set rooms = parsed %}
+            {% endif %}
+          {% endif %}
+        {% endif %}
         {% set ns = namespace(room_playing=false) %}
         {% for r in rooms %}
           {% if r.entity is defined and r.entity not in ['','none','unknown','unavailable'] and states[r.entity] is not none %}

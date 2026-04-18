@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.103 -->
+<!-- Version: 2026.04.17.104 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
+
+- HA/MA Contract Hardening: Update `packages/ma_control_hub/template.inc` and `packages/ma_control_hub/script.inc` rooms/candidate readers to a dual-mode parser contract (native sequence payloads accepted directly; string JSON payloads parsed only after trim+guard checks), preventing audio routing/meta/control surfaces from collapsing when Home Assistant exposes attribute payloads as non-string objects.
 
 - HA/Lighting Native Payload Parse Fix: Update `packages/spectra_ls_lighting_hub.yaml` catalog consumers to accept both string JSON arrays and native sequence payloads from `items_json`, preventing false-empty parses when Home Assistant surfaces `state_attr(..., 'items_json')` as a non-string object.
 

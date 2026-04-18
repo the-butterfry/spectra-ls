@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.18.55 -->
+<!-- Version: 2026.04.18.56 -->
 <!-- Last updated: 2026-04-18 -->
 
 # Changelog
 
 ## 2026-04-18
+
+- Workflow/Quality Gate Hardening (`.github/copilot-instructions.md`): add mandatory verification gates for ESPHome changes — compile/build must succeed **before** commit/push, OTA upload must complete before closing deployment tasks, and responses must include explicit evidence (`build result`, `OTA successful`, `HEAD==origin`) rather than assumptions.
 
 - ESPHome/Lighting Compile Hotfix (`esphome/spectra_ls_system/packages/spectra-ls-lighting.yaml`): fix slider lambda scope error by recomputing `lighting_menu_active` within the value-processing lambda (where deferred-vs-immediate brightness apply is decided), restoring successful firmware compilation for the room-menu brightness UX refactor.
 

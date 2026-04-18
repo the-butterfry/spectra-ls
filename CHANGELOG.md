@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.18.13 -->
+<!-- Version: 2026.04.18.14 -->
 <!-- Last updated: 2026-04-18 -->
 
 # Changelog
 
 ## 2026-04-18
+
+- ESPHome/OLED Edge-Clipping Fix: In `esphome/spectra_ls_system/spectra-ls-peripherals.yaml`, tighten lighting-header wrap thresholds using display-width-based character limits to prevent right-edge clipping of long labels in both active and slider-only lighting screens.
 
 - ESPHome/OLED Lighting Header Wrap Fix: In `esphome/spectra_ls_system/spectra-ls-peripherals.yaml`, update the active non-slider lighting header path to use centered two-line wrapping for long target labels and shift mode/brightness HUD elements down to avoid overlap.
 

@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.17.88 -->
+<!-- Version: 2026.04.17.89 -->
 <!-- Last updated: 2026-04-17 -->
 
 # Changelog
 
 ## 2026-04-17
+
+- HA/Lighting Selectability Regression Fix: Update `packages/spectra_ls_lighting_hub.yaml` sync automations to stop preserving stale room/target option values in `input_select` options, and force-reset to valid parsed options when contracts repopulate; resolves "Select Control Target" lock state with no selectable targets.
 
 - HA/Lighting Room Options Root-Cause Fix: Rework `sensor.control_board_eligible_light_catalog` in `packages/spectra_ls_lighting_hub.yaml` to derive candidates from all `light.*` entities (including unassigned-area lights) instead of area-only enumeration, preventing `['Unknown']` option collapse that forced ESP OLED room-menu fallback labels (`Room 1/2/3/4`).
 

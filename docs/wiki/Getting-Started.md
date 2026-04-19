@@ -1,5 +1,5 @@
 <!-- Description: Quick onboarding and first-contribution flow for Spectra L/S operators and contributors. -->
-<!-- Version: 2026.04.19.1 -->
+<!-- Version: 2026.04.19.2 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Getting Started
@@ -11,10 +11,10 @@ Spectra L/S is an analog tactile control surface for Home Assistant with flagshi
 ## First 30 minutes
 
 1. Read `README.md` for product-level orientation.
-2. Read `docs/developer/DEVELOPER-INSTRUCTIONS.md` for implementation workflow.
-3. Read `docs/roadmap/v-next-NOTES.md` for active direction.
-4. Read `docs/program/PARALLEL-PROGRAM-PLAYBOOK.md` for runtime vs custom-component execution rules.
-5. Review `CONTRIBUTING.md` + `.github/pull_request_template.md` before opening PRs.
+2. Read `docs/wiki/Welcome-README-and-Bug-Workflow.md` for support and bug workflow routing.
+3. Read `docs/wiki/User-Setup-Deploy-and-HA-Integration.md` for installation and integration steps.
+4. Read `docs/wiki/Custom-Component-Setup-Roadmap-Stub.md` for phased setup evolution.
+5. If contributing code/docs, then read `CONTRIBUTING.md` and `docs/developer/DEVELOPER-INSTRUCTIONS.md`.
 
 ## Core docs map
 

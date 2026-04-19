@@ -1,5 +1,5 @@
 <!-- Description: Documentation index for Spectra L/S technical, onboarding, roadmap, and operations artifacts. -->
-<!-- Version: 2026.04.19.4 -->
+<!-- Version: 2026.04.19.5 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Spectra L/S Documentation Index
@@ -48,6 +48,10 @@ Use this folder as the single location for project documentation and notes.
 - Auto-sync workflow: `.github/workflows/wiki-sync.yml`
 - Auto-sync script (fallback): `bin/sync_docs_to_wiki.sh`
 - Wiki setup runbook: `docs/wiki/README.md`
+- Welcome + bug workflow: `docs/wiki/Welcome-README-and-Bug-Workflow.md`
+- User setup/deploy/integration guide (stub): `docs/wiki/User-Setup-Deploy-and-HA-Integration.md`
+- Wiki content policy: `docs/wiki/Wiki-Content-Scope-Policy.md`
+- Custom component setup roadmap stub: `docs/wiki/Custom-Component-Setup-Roadmap-Stub.md`
 
 ## Setup and feature references
 

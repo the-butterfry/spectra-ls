@@ -1,5 +1,5 @@
 # Description: Structured bug report form for reproducible Spectra defects.
-# Version: 2026.04.19.1
+# Version: 2026.04.19.2
 # Last updated: 2026-04-19
 
 name: "Bug report"
@@ -7,6 +7,7 @@ description: "Report a reproducible defect in Spectra runtime, control-hub, docs
 title: "bug: "
 labels:
   - bug
+  - needs-triage
 body:
   - type: checkboxes
     attributes:
@@ -14,6 +15,21 @@ body:
       options:
         - label: "I searched existing issues and this is not a duplicate"
           required: true
+        - label: "I redacted secrets/host-specific private values from logs and config snippets"
+          required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing a bug. For fastest triage, include concrete repro + exact logs.
+        
+        Workflow:
+        1. Submit this issue with deterministic repro and impact.
+        2. Maintainer triages labels/priority/area.
+        3. Issue is routed to project board and worked through PR checklist.
+        4. Fix closes issue only after verification evidence is posted.
+
+        For a full walkthrough, see wiki page: `Welcome-README-and-Bug-Workflow`.
 
   - type: textarea
     id: summary
@@ -56,6 +72,14 @@ body:
       label: "Branch"
       placeholder: "main or menu-only"
 
+  - type: input
+    id: versions
+    attributes:
+      label: "Version/context"
+      placeholder: "Commit SHA, HA version, ESPHome version, component version (if applicable)"
+    validations:
+      required: true
+
   - type: textarea
     id: config
     attributes:
@@ -68,9 +92,13 @@ body:
     attributes:
       label: "Relevant logs/output"
       render: shell
+    validations:
+      required: true
 
   - type: textarea
     id: impact
     attributes:
       label: "Impact"
       description: "Who/what is affected, severity, and any known workaround."
+    validations:
+      required: true

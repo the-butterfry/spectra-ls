@@ -1,5 +1,5 @@
 <!-- Description: Wiki home page for Spectra L/S operations, architecture, contribution flow, and runbooks. -->
-<!-- Version: 2026.04.19.2 -->
+<!-- Version: 2026.04.19.3 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Spectra L/S Wiki
@@ -10,12 +10,16 @@ This wiki mirrors curated content from `docs/wiki/` in the main repository and i
 
 ## Start here
 
+- [Welcome, README, and Bug Workflow](Welcome-README-and-Bug-Workflow)
 - [Getting Started](Getting-Started)
+- [User Setup, Deploy, and HA Integration](User-Setup-Deploy-and-HA-Integration)
 - [System Architecture](System-Architecture)
 - [Control Contracts and Scope Paths](Control-Contracts-and-Scope-Paths)
 - [Operations Runbooks](Operations-Runbooks)
 - [Discussions and Projects Workflow](Discussions-and-Projects-Workflow)
 - [Release and Changelog Process](Release-and-Changelog-Process)
+- [Wiki Content Scope Policy](Wiki-Content-Scope-Policy)
+- [Custom Component Setup Roadmap Stub](Custom-Component-Setup-Roadmap-Stub)
 
 ## Source of truth
 

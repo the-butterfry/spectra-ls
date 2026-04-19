@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.19.25 -->
+<!-- Version: 2026.04.19.26 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Changelog
 
 ## 2026-04-19
+
+- Custom Component/Icon + Install Flow Clarification (`custom_components/spectra_ls/sensor.py`, `custom_components/spectra_ls/binary_sensor.py`, `docs/wiki/Install-on-Your-Own-HA.md`): add placeholder icon (`mdi:audio-video`) for Spectra LS shadow parity entities and document required Home Assistant reboot before adding the new custom integration so discovery reflects freshly deployed `custom_components` files.
 
 - Custom Component/Phase 1 Slice-01 Shadow Parity (`custom_components/spectra_ls/*`, `.gitignore`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`, `docs/roadmap/v-next-NOTES.md`): scaffold `spectra_ls` integration baseline, unignore the dedicated tracked component path, and add read-only routing parity surfaces for `ma_active_target`, `ma_active_control_path`, `ma_active_control_capable`, and `ma_control_hosts` with diagnostics-first mismatch visibility and no control write-path side effects. README parity: no material repo-state change.
 

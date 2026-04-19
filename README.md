@@ -37,7 +37,7 @@ In short: hardware first, then ESPHome + Home Assistant software stack.
 - Shared spaces become more inclusive: anyone can walk up and use dedicated controls without training.
 - It restores “eyes-up, hands-on” control for moments where touchscreens are friction.
 
-Inspired by modern physical-control craftsmanship from [Condesa Electronics — Carmen SE](https://condesaelectronics.com/) and [Varia Instruments — RDM series](https://www.varia-instruments.com/), Spectra L/S adapts that tactile design ethos for everyday Home Assistant control.
+Inspired by modern physical-control craftsmanship from [Condesa Electronics — Carmen SE](https://condesaelectronics.com/) and [Varia Instruments — RDM series](https://www.varia-instruments.com/), Spectra L/S is a minimal home DJ-mixer style control surface coupled with lighting, automation, and human-centric interaction for everyday Home Assistant control.
 
 ## Analog Surface for the Whole Home
 

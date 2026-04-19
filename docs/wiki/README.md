@@ -1,5 +1,5 @@
 <!-- Description: Wiki source and synchronization instructions for Spectra documentation pages. -->
-<!-- Version: 2026.04.19.5 -->
+<!-- Version: 2026.04.19.6 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Wiki Source + Sync
@@ -29,10 +29,11 @@ Use `Wiki-Content-Scope-Policy.md` to decide what belongs in wiki versus deep do
 ## One-time enablement checklist
 
 1. In the GitHub repository, enable **Settings → General → Features → Wikis**.
-2. Create a fine-grained PAT with wiki push capability.
-3. Add the token as repository secret: `WIKI_FINE_GRAINED_PAT`.
-4. Commit wiki pages in `docs/wiki/` to `main`.
-5. Confirm workflow run `Wiki Sync` succeeds.
+2. Open the repo **Wiki** tab and create/save the first `Home` page (initializes `<repo>.wiki.git`).
+3. Create a fine-grained PAT with wiki push capability.
+4. Add the token as repository secret: `WIKI_FINE_GRAINED_PAT`.
+5. Commit wiki pages in `docs/wiki/` to `main`.
+6. Confirm workflow run `Wiki Sync` succeeds.
 
 ## How to create the fine-grained PAT
 

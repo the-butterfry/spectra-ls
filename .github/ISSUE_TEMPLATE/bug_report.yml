@@ -1,0 +1,76 @@
+# Description: Structured bug report form for reproducible Spectra defects.
+# Version: 2026.04.19.1
+# Last updated: 2026-04-19
+
+name: "Bug report"
+description: "Report a reproducible defect in Spectra runtime, control-hub, docs, or tooling"
+title: "bug: "
+labels:
+  - bug
+body:
+  - type: checkboxes
+    attributes:
+      label: "Pre-check"
+      options:
+        - label: "I searched existing issues and this is not a duplicate"
+          required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: "What happened?"
+      description: "Describe expected behavior vs actual behavior."
+      placeholder: "Expected..., but observed..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: "Reproduction steps"
+      description: "Provide deterministic steps to reproduce."
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: "Affected area"
+      options:
+        - esphome/spectra_ls_system
+        - packages/ma_control_hub
+        - RP2040 (CIRCUITPY + mirror)
+        - docs/governance/process
+        - tooling/scripts
+        - other
+    validations:
+      required: true
+
+  - type: input
+    id: branch
+    attributes:
+      label: "Branch"
+      placeholder: "main or menu-only"
+
+  - type: textarea
+    id: config
+    attributes:
+      label: "Relevant config/context (redacted)"
+      description: "Include relevant YAML/helpers/versions without secrets."
+      render: yaml
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: "Relevant logs/output"
+      render: shell
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: "Impact"
+      description: "Who/what is affected, severity, and any known workaround."

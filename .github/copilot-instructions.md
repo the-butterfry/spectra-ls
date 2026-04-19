@@ -3,7 +3,7 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 ---
 
 <!-- Description: Workspace Copilot operating instructions for Home Assistant + ESPHome. -->
-<!-- Version: 2026.04.19.8 -->
+<!-- Version: 2026.04.19.9 -->
 <!-- Last updated: 2026-04-19 -->
 
 # GitHub Copilot Instructions — Home Assistant + ESPHome
@@ -52,6 +52,19 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
   - `docs/circuitpy/RP-LEGEND.md` (summary + routing links).
 - When updating legend/protocol docs, include direct links to fine-detail component/runtime sources where relevant.
 - Optional wiki sync source is `docs/wiki/`; if wiki automation is enabled, keep wiki source pages synchronized with docs changes.
+
+## GitHub Governance Parity (Required)
+- Keep repository governance artifacts current and synchronized with process expectations:
+  - `CONTRIBUTING.md`
+  - `CODEOWNERS`
+  - `CODE_OF_CONDUCT.md`
+  - `SECURITY.md`
+  - `.github/ISSUE_TEMPLATE/*`
+  - `.github/pull_request_template.md`
+  - `docs/governance/GITHUB-MASTERWORK-BLUEPRINT.md`
+- When contribution/triage/release workflow changes, update governance docs/templates in the same change set as the process change.
+- Prefer structured issue forms and PR checklists over free-form intake for reproducibility and triage quality.
+- Keep README end-user focused; contributor workflow detail belongs in governance docs and templates.
 
 ## GitHub Structure Strategy (Current + Future)
 - Current required strategy: **structured monorepo** rooted at `/mnt/homeassistant` with clear domain boundaries.
@@ -186,6 +199,7 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 - `docs/control-py/NOTES-control-board-2.md`
 - `docs/hardware/WIRING-LAYOUT-PROTOCOL.md`
 - `docs/circuitpy/RP-LEGEND.md`
+- `docs/governance/GITHUB-MASTERWORK-BLUEPRINT.md`
 - `docs/CHANGELOG.md`
 - `esphome/spectra_ls_system.yaml`
 - `esphome/control-board-esp32-tcp.yaml`

@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.19.10 -->
+<!-- Version: 2026.04.19.11 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Changelog
 
 ## 2026-04-19
+
+- Governance/GitHub Maturity Baseline (`CONTRIBUTING.md`, `CODEOWNERS`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, `.github/ISSUE_TEMPLATE/*`, `.github/pull_request_template.md`, `docs/governance/GITHUB-MASTERWORK-BLUEPRINT.md`, `docs/governance/LABEL-TAXONOMY.md`, `docs/README.md`, `.github/copilot-instructions.md`): establish a mature, Immich-inspired repository governance foundation with structured issue intake, PR quality gates, ownership mapping, security reporting policy, contribution standards, and a documented rollout blueprint for “masterwork” GitHub implementation quality.
 
 - Docs/Legend + Wiring Protocol Upgrade (`docs/circuitpy/RP-LEGEND.md`, `docs/hardware/WIRING-LAYOUT-PROTOCOL.md`, `docs/README.md`, `README.md`, `.github/copilot-instructions.md`, optional wiki sync scaffolding): expand the docs legend into a directive wiring/layout protocol reference with deep links to component-level details, add a docs index entry for the new protocol document, enforce docs/README parity directives in workspace instructions, and simplify frontpage README to user-focused overview with basic documentation links.
 

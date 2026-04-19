@@ -1,5 +1,5 @@
 <!-- Description: Documentation index for Spectra L/S technical, onboarding, roadmap, and operations artifacts. -->
-<!-- Version: 2026.04.19.2 -->
+<!-- Version: 2026.04.19.3 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Spectra L/S Documentation Index
@@ -10,6 +10,7 @@ Use this folder as the single location for project documentation and notes.
 
 - Developer onboarding: `docs/developer/DEVELOPER-INSTRUCTIONS.md`
 - Changelog: `docs/CHANGELOG.md`
+- GitHub governance blueprint: `docs/governance/GITHUB-MASTERWORK-BLUEPRINT.md`
 
 ## Roadmap and program governance
 
@@ -50,3 +51,13 @@ Use this folder as the single location for project documentation and notes.
 
 - Setup placeholders: `docs/setup/SPECTRA-HA-CONFIG-PLACEHOLDERS.md`
 - Feature notes: `docs/features/dst_tuya_ac.FEATURES.md`
+
+## Repository governance
+
+- Contribution guide: `CONTRIBUTING.md`
+- Code of conduct: `CODE_OF_CONDUCT.md`
+- Security policy: `SECURITY.md`
+- Ownership map: `CODEOWNERS`
+- Issue templates: `.github/ISSUE_TEMPLATE/`
+- PR template: `.github/pull_request_template.md`
+- Label taxonomy: `docs/governance/LABEL-TAXONOMY.md`

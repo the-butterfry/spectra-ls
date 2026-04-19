@@ -1,0 +1,59 @@
+# Description: Structured feature request form for scoped, reviewable enhancement proposals.
+# Version: 2026.04.19.1
+# Last updated: 2026-04-19
+
+name: "Feature request"
+description: "Propose a new capability or improvement with scope and acceptance criteria"
+title: "feature: "
+labels:
+  - enhancement
+body:
+  - type: checkboxes
+    attributes:
+      label: "Pre-check"
+      options:
+        - label: "I searched existing requests/discussions and this is not a duplicate"
+          required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: "Problem to solve"
+      description: "What user/operator problem does this solve?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: "Proposed behavior"
+      description: "Describe desired behavior, UX, and contracts."
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: "Acceptance criteria"
+      value: |
+        - [ ]
+        - [ ]
+    validations:
+      required: true
+
+  - type: dropdown
+    id: migration
+    attributes:
+      label: "Contract impact"
+      options:
+        - No contract change
+        - Compatibility shim required
+        - Contract migration required
+    validations:
+      required: true
+
+  - type: textarea
+    id: docs
+    attributes:
+      label: "Docs parity impact"
+      description: "Which docs must change (roadmap, v-next, architecture, changelog, README)?"

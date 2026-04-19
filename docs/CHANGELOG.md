@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.19.17 -->
+<!-- Version: 2026.04.19.18 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Changelog
 
 ## 2026-04-19
+
+- Docs/Wiki PAT Navigation Fix (`docs/wiki/README.md`): correct fine-grained PAT instructions to a valid profile-settings route and add direct URL fallback so users can reliably reach token creation UI.
 
 - Docs/README Inspiration Line Expansion (`README.md`): update front-page inspiration sentence to describe Spectra L/S as a minimal home DJ-mixer style control surface coupled with lighting, automation, and human-centric interaction.
 

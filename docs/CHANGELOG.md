@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.19.14 -->
+<!-- Version: 2026.04.19.15 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Changelog
 
 ## 2026-04-19
+
+- Docs/README Front-Pitch Cleanup + Install Checklist Stub (`README.md`, `docs/wiki/Install-on-Your-Own-HA.md`, `docs/wiki/Home.md`, `docs/wiki/_Sidebar.md`, `docs/wiki/Welcome-README-and-Bug-Workflow.md`): simplify front-page elevator pitch to be strongly user-focused (minimal hardware/repo-detail emphasis), and add a strict copy/paste style “Install on your own HA” checklist with runtime-first steps plus placeholder track for upcoming custom-component setup flow.
 
 - Docs/Wiki User-Onboarding + Bug Workflow + README Positioning (`README.md`, `.github/copilot-instructions.md`, `docs/wiki/*`, `.github/ISSUE_TEMPLATE/bug_report.yml`): add first-pass Welcome/README-and-bug-submission wiki workflow, add user-focused setup/deploy/integration stub with explicit manual prerequisites (tokens/API/manual setup), add wiki content policy for what should/should-not live in wiki, add custom-component setup roadmap stub tied to current roadmap phases, enforce mandatory wiki-parity update step in workspace instructions, and update README positioning section to “Why this is missing from Home Assistant” with physical-first framing and inspiration links.
 

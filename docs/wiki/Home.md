@@ -1,5 +1,5 @@
 <!-- Description: Wiki home page for Spectra L/S operations, architecture, contribution flow, and runbooks. -->
-<!-- Version: 2026.04.19.3 -->
+<!-- Version: 2026.04.19.4 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Spectra L/S Wiki
@@ -11,6 +11,7 @@ This wiki mirrors curated content from `docs/wiki/` in the main repository and i
 ## Start here
 
 - [Welcome, README, and Bug Workflow](Welcome-README-and-Bug-Workflow)
+- [Install on Your Own Home Assistant](Install-on-Your-Own-HA)
 - [Getting Started](Getting-Started)
 - [User Setup, Deploy, and HA Integration](User-Setup-Deploy-and-HA-Integration)
 - [System Architecture](System-Architecture)

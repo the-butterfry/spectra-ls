@@ -1,5 +1,5 @@
 <!-- Description: Wiki source and synchronization instructions for Spectra documentation pages. -->
-<!-- Version: 2026.04.19.7 -->
+<!-- Version: 2026.04.19.8 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Wiki Source + Sync
@@ -23,6 +23,7 @@ This folder stores the source pages for GitHub Wiki publishing.
 - `Release-and-Changelog-Process.md`
 - `Contributing-Workflow.md`
 - `System-Architecture.md`
+- `Control-Surface-Inputs-and-Expanders.md`
 - `Control-Contracts-and-Scope-Paths.md`
 - `Wiki-Content-Scope-Policy.md`
 - `Custom-Component-Setup-Roadmap-Stub.md`

@@ -1,5 +1,5 @@
 <!-- Description: Sidebar navigation for Spectra L/S GitHub Wiki pages published from docs/wiki sources. -->
-<!-- Version: 2026.04.19.3 -->
+<!-- Version: 2026.04.19.4 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Spectra L/S Wiki
@@ -10,6 +10,7 @@
 - [Getting Started](Getting-Started)
 - [User Setup, Deploy, and HA Integration](User-Setup-Deploy-and-HA-Integration)
 - [System Architecture](System-Architecture)
+- [Control Surface Inputs and Expanders](Control-Surface-Inputs-and-Expanders)
 - [Custom Component Setup Roadmap Stub](Custom-Component-Setup-Roadmap-Stub)
 - [Control Contracts and Scope Paths](Control-Contracts-and-Scope-Paths)
 - [Operations Runbooks](Operations-Runbooks)

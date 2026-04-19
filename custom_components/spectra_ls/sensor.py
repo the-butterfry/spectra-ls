@@ -1,5 +1,5 @@
-# Description: Sensor entities for Spectra LS read-only shadow parity routing surfaces.
-# Version: 2026.04.19.2
+# Description: Sensor entities for Spectra LS read-only shadow parity routing surfaces with Phase 2 diagnostics attributes.
+# Version: 2026.04.19.3
 # Last updated: 2026-04-19
 
 from __future__ import annotations
@@ -33,11 +33,15 @@ class SpectraLsShadowSensor(CoordinatorEntity, SensorEntity):
 
     @property
     def extra_state_attributes(self):
+        data = self.coordinator.data
         return {
-            "legacy_value": self.coordinator.data["legacy"].get(self._key),
-            "unresolved_sources": self.coordinator.data.get("unresolved_sources", []),
-            "mismatches": self.coordinator.data.get("mismatches", []),
-            "captured_at": self.coordinator.data.get("captured_at"),
+            "legacy_value": data["legacy"].get(self._key),
+            "unresolved_sources": data.get("unresolved_sources", []),
+            "mismatches": data.get("mismatches", []),
+            "captured_at": data.get("captured_at"),
+            "registry": data.get("registry", {}),
+            "route_trace": data.get("route_trace", {}),
+            "contract_validation": data.get("contract_validation", {}),
         }
 
 

@@ -1,10 +1,24 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.19.27 -->
+<!-- Version: 2026.04.19.35 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Changelog
 
 ## 2026-04-19
+
+- Custom Component/Phase 2 Closure Hardening (`custom_components/spectra_ls/sensor.py`, `custom_components/spectra_ls/binary_sensor.py`, `docs/testing/raw/p2_registry_router_verification.jinja`, `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md`, `docs/testing/raw/p2_negative_case_regression.jinja`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`, `docs/roadmap/v-next-NOTES.md`): expose registry/route-trace/contract-validation diagnostics on shadow entities, add snapshot freshness gating to P2 verification, and add an explicit negative-case regression template for alarm-path validation before Phase 3 planning. README parity: no material repo-state change.
+
+- Docs/DevTools Copy-Paste UX (`esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md`, `docs/testing/raw/p2_registry_router_verification.jinja`): add raw no-fence Jinja template path for Phase 2 verification so operators can copy/paste directly into Home Assistant Template editor without markdown code-fence cleanup. README parity: no material repo-state change.
+
+- Docs/Validation Template Robustness — Shadow Entity ID Auto-Detection (`esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md`): fix Phase 2 validation false-fail after reboot by supporting both HA entity-id styles (`sensor.shadow_*` from has-entity-name registry behavior and legacy `sensor.spectra_ls_shadow_*` assumptions), and add explicit legacy upstream readiness context so startup `unknown` states are diagnosed as settling vs. true parity failure. README parity: no material repo-state change.
+
+- Custom Component/Phase 2 Slice-02 Deterministic Validation Hardening (`custom_components/spectra_ls/registry.py`, `custom_components/spectra_ls/router.py`, `custom_components/spectra_ls/coordinator.py`, `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`, `docs/roadmap/v-next-NOTES.md`): strengthen read-only registry/router determinism with dual-shape rooms/targets payload parsing and resolved-path route tracing, and add a dedicated P2 verification DevTools workbench for contract validation + route-trace checks. README parity: no material repo-state change.
+
+- Custom Component/Official HA Brand Folder Compliance (`custom_components/spectra_ls/brand/icon.png`, `custom_components/spectra_ls/brand/logo.png`, `.github/copilot-instructions.md`, `custom_components/spectra_ls/manifest.json`): align integration icon process to Home Assistant 2026.3+ documented behavior by shipping local brand assets under `brand/` (supported by the Brands Proxy API), add explicit docs-first branding workflow rules to workspace instructions, and bump integration version to force metadata refresh on reload. README parity: no material repo-state change.
+
+- Custom Component/Phase 2 Slice-01 Registry + Router Scaffold (`custom_components/spectra_ls/__init__.py`, `custom_components/spectra_ls/coordinator.py`, `custom_components/spectra_ls/diagnostics.py`, `custom_components/spectra_ls/const.py`, `custom_components/spectra_ls/registry.py`, `custom_components/spectra_ls/router.py`, `custom_components/spectra_ls/services.yaml`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`, `docs/roadmap/v-next-NOTES.md`): start Phase 2 with discovery-first normalized target registry and read-only route-trace foundation (`linkplay_tcp` classification only), plus maintenance services (`rebuild_registry`, `validate_contracts`, `dump_route_trace`) for deterministic diagnostics without introducing control write-path behavior. README parity: no material repo-state change.
+
+- Custom Component/Icon Availability Fix (`custom_components/spectra_ls/manifest.json`): add explicit manifest icon fallback (`mdi:audio-video`) and bump integration version so Home Assistant refreshes integration metadata and stops showing “icon not available” when brand assets are not resolved.
 
 - Custom Component/Validation UX Polish (`custom_components/spectra_ls/icon.png`, `custom_components/spectra_ls/logo.png`, `docs/testing/DEVTOOLS-TEMPLATES.local.md`): add placeholder integration image assets for Devices & Services branding and add a persistent P1-S01 shadow-parity Developer Tools template block for repeatable validation/triage across load/parity/attributes/icon checks.
 

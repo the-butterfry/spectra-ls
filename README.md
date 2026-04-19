@@ -1,6 +1,6 @@
 <!-- Description: Human-readable overview and deployment guide for the Spectra L/S Home Assistant + ESPHome system. -->
-<!-- Version: 2026.04.17.28 -->
-<!-- Last updated: 2026-04-17 -->
+<!-- Version: 2026.04.19.4 -->
+<!-- Last updated: 2026-04-19 -->
 
 # Spectra L/S
 
@@ -13,6 +13,36 @@ Spectra L/S is built to feel immediate. Tap Play/Pause, jump Next/Back, tune bri
 It is also built to feel connected. If Home Assistant already knows a light or sound target, Spectra L/S can discover it and interact automatically, so your existing rooms and devices become instantly controllable from one physical surface.
 
 On `main`, direction follows `esphome/spectra_ls_system/v-next-NOTES.md`: hardware-first UX, menu as fallback, deterministic controls, and scalable room/target handling.
+
+## Parallel Development Program (Runtime + Custom Component)
+
+Spectra is currently developed as two synchronized tracks inside one monorepo:
+
+1. Runtime track: `packages/` + `esphome/`
+2. Custom-component track: `custom_components/spectra_ls/`
+
+This is intentionally strict and flexible:
+
+- **Strict**: no big-bang replacement, no silent contract drift, no untracked migration steps.
+- **Flexible**: small reversible slices, explicit Plan Delta updates when findings change direction.
+
+Program playbook: `esphome/spectra_ls_system/PARALLEL-PROGRAM-PLAYBOOK.md`
+
+Authoritative planning docs (must stay in parity):
+
+- `esphome/spectra_ls_system/CUSTOM-COMPONENT-ROADMAP.md`
+- `esphome/spectra_ls_system/v-next-NOTES.md`
+- `CHANGELOG.md`
+
+README updates are included whenever repo-state contracts, architecture, setup, or operator workflow materially changes.
+
+### Runtime documentation baseline (retroactive)
+
+To keep implementation and cleanup work grounded in current behavior, use these architecture baselines:
+
+- `esphome/spectra_ls_system/CODEBASE-RUNTIME-ARCHITECTURE.md`
+- `packages/ma_control_hub/CONTROL-HUB-ARCHITECTURE.md`
+- `esphome/spectra_ls_system/DEAD-PATHS-CLEANUP.md`
 
 ## Hardware Reference (Current + Recommended)
 

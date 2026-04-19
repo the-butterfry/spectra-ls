@@ -1,12 +1,85 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.18.36 -->
-<!-- Last updated: 2026-04-18 -->
+<!-- Version: 2026.04.19.4 -->
+<!-- Last updated: 2026-04-19 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
 
 > Scope: Hardware-driven UX redesign for Spectra LS Control Board v2.
 > Audience: Implementation agent working across RP2040 CircuitPython + ESPHome packages + HA helpers.
 > Status: Draft plan. Update as decisions solidify.
+
+## Custom-Component Parallel Program (Required)
+
+`custom_components/spectra_ls` must be developed in parallel with the current runtime stack (`packages/` + `esphome/`) and cannot be treated as a big-bang replacement.
+
+Execution system reference: `esphome/spectra_ls_system/PARALLEL-PROGRAM-PLAYBOOK.md`.
+
+### Required migration sequence
+
+1. Shadow mode (read-only parity surfaces)
+2. Parity validation (legacy vs component)
+3. Dual-write (guarded and reversible)
+4. Domain cutover (small slices)
+5. Legacy retirement (after sustained parity)
+
+### Feature-slice completion contract
+
+Each feature slice is only complete when both tracks are dispositioned:
+
+- **Track A (current runtime):** implemented / compatibility-shimmed / deferred (with rationale)
+- **Track B (custom component):** implemented / compatibility-shimmed / deferred (with rationale)
+
+### Phase map + status ledger
+
+| Phase | Scope | Runtime Track (`packages`/`esphome`) | Component Track (`custom_components/spectra_ls`) | Status |
+| --- | --- | --- | --- | --- |
+| 0 | Charter + contract freeze | Documented in v-next + changelog | Documented in roadmap/spec | In Progress |
+| 1 | Skeleton + shadow parity | Keep existing contracts stable | Scaffold integration + read-only parity outputs | Planned |
+| 2 | Registry + route foundation | Keep helper contracts + diagnostics parity | Target registry + adapter router (`linkplay_tcp`) | Planned |
+| 3 | Guarded dual-write | Add shims and loop guards | Controlled write path with correlation/debounce guards | Planned |
+| 4 | Functional expansion | Preserve compatibility while exposing new capabilities | Profiles/actions/capability matrix/crossfade-balance services | Planned |
+| 5 | Domain cutover + retirement | Domain-by-domain template retirement | Primary control plane ownership + migration tooling | Planned |
+
+Reference specification: `esphome/spectra_ls_system/CUSTOM-COMPONENT-ROADMAP.md`.
+
+### Documentation parity gate (required)
+
+For architecture/process/contract shifts, keep these synchronized in one change set:
+
+1. `CUSTOM-COMPONENT-ROADMAP.md`
+2. `v-next-NOTES.md`
+3. `CHANGELOG.md`
+4. `README.md` (or explicit no-material-change note)
+
+If any is missing, the slice remains open.
+
+### Retroactive codebase baseline docs (active)
+
+- Runtime architecture/features: `esphome/spectra_ls_system/CODEBASE-RUNTIME-ARCHITECTURE.md`
+- Control-hub architecture/features: `packages/ma_control_hub/CONTROL-HUB-ARCHITECTURE.md`
+- Dead-path cleanup matrix: `esphome/spectra_ls_system/DEAD-PATHS-CLEANUP.md`
+
+### Plan Delta rule (required)
+
+When execution reality diverges from plan:
+
+- pause slice expansion,
+- record a Plan Delta note,
+- sync roadmap + v-next statuses,
+- resume with revised acceptance criteria.
+
+### Phase 1 Slice-01 (Draft) — First executable scope
+
+- **Goal:** ship read-only shadow parity for routing core surfaces with zero write-path side effects.
+- **Legacy surfaces mirrored:**
+  - `sensor.ma_active_target`
+  - `sensor.ma_active_control_path`
+  - `binary_sensor.ma_active_control_capable`
+  - `sensor.ma_control_hosts`
+- **Track disposition for this slice:**
+  - Track A (runtime): implemented/source-of-truth retained
+  - Track B (component): read-only shadow parity implementation
+- **Close conditions:** parity report captured, mismatch list (if any) documented, and explicit README parity decision recorded in the change set.
 
 ## Latest Contract Update (Lighting)
 

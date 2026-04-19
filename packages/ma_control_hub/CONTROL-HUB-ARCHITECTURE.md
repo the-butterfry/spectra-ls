@@ -1,0 +1,121 @@
+<!-- Description: Retroactive architecture and feature documentation for the MA control hub package split. -->
+<!-- Version: 2026.04.19.1 -->
+<!-- Last updated: 2026-04-19 -->
+
+# MA Control Hub Architecture (Retroactive Baseline)
+
+## Purpose
+
+Document the active behavior and contracts of `packages/ma_control_hub.yaml` and split fragments under `packages/ma_control_hub/`.
+
+Aggregate package entrypoint: `packages/ma_control_hub.yaml`
+
+## Active include graph
+
+- `input_select.inc`
+- `input_boolean.inc`
+- `input_number.inc`
+- `input_text.inc`
+- `rest.inc`
+- `rest_command.inc`
+- `script.inc`
+- `automation.inc`
+- `template.inc`
+
+Guardrail script: `.github/validate-ma-control-hub-layout.sh`
+
+## Domain breakdown
+
+### 1) Helper contract domain
+
+Defined by `input_*.inc` fragments:
+
+- target selector (`input_select.ma_active_target`)
+- manual/override/fallback booleans
+- confidence/staleness/timing numeric tunables
+- install-local endpoint and mapping text helpers
+
+### 2) MA API ingestion domain
+
+Defined by `rest.inc` + `rest_command.inc`:
+
+- `players/all` polling surface (`sensor.ma_players`)
+- active player request surface (`sensor.ma_active_player`)
+- generic MA API POST wrapper (`rest_command.ma_api_command`)
+
+### 3) Orchestration script domain
+
+Defined by `script.inc`:
+
+- target option synthesis (`ma_update_target_options`)
+- target cycling (`ma_cycle_target`)
+- auto-selection policy (`ma_auto_select`)
+- explicit read-only lock for write helpers:
+  - `ma_set_volume` -> disabled
+  - `ma_set_balance` -> disabled
+
+### 4) Automation lifecycle domain
+
+Defined by `automation.inc`:
+
+- startup option refresh and auto-select
+- continuous auto-select loop (with guard conditions)
+- last-valid target persistence
+- ambiguity lock + stale-unlock handling
+- startup restore of last-valid target
+
+### 5) Template computation domain
+
+Defined by `template.inc`:
+
+- room payload normalization (`sensor.spectra_ls_rooms_json`)
+- MA/HA candidate scoring and selection (`ma_meta_candidates`, `ma_meta_resolver`)
+- now-playing entity and resolved fields
+- active control path/capability/host derivation
+- ambiguity/staleness/confidence binary surfaces
+- friendly labels and helper projection sensors
+
+## Parser contract (critical)
+
+`ma_control_hub` uses a dual-mode parser contract for complex attributes:
+
+1. accept native sequence payloads,
+2. accept native mapping payloads with `rooms`/`result` extraction,
+3. parse string JSON only when trimmed payload starts with `[` or `{` and is not `unknown/unavailable/none/''`.
+
+This contract is required across readers of:
+
+- room maps,
+- candidate JSON payloads,
+- derived summary payloads.
+
+## External dependencies consumed
+
+- `sensor.spectra_ls_rooms_raw` (`rooms` attribute)
+- media_player entity attributes/state
+- labels (`no-spectra`, `no_spectra`)
+- optional Plex allowlist helpers (`input_text.plex_allowed_users`, `input_text.plex_allowed_players`)
+- MA token + URL helpers
+
+## Feature responsibilities
+
+- choose active control target from known + discovered + valid candidates
+- classify active target route (`linkplay_tcp` vs `other`) and control capability
+- resolve now-playing title/artist/album/source/state with fallback ordering
+- expose host(s)/port contracts for ESPHome TCP control
+- surface ambiguity/confidence/staleness for prompt gating
+
+## Known constraints
+
+- `ma_set_volume` and `ma_set_balance` are intentionally disabled (read-only write path policy).
+- Route support is currently practical for `linkplay_tcp`; other routes are classified but not direct-routed by runtime.
+- Legacy helper names are still part of active runtime contract.
+
+## Change discipline for future slices
+
+When editing `ma_control_hub` behavior, update this document with:
+
+1. changed domain(s) above,
+2. parser contract impact (if any),
+3. new/removed exported helper/sensor contracts,
+4. compatibility note for ESPHome runtime consumers.

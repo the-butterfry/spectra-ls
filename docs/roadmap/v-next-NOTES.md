@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.19.5 -->
+<!-- Version: 2026.04.19.6 -->
 <!-- Last updated: 2026-04-19 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -245,6 +245,14 @@ For user-programmable actions such as **unlock door**, use a guarded two-step ac
 3. **Generalizable**: works for installs with 1–N rooms and multiple audio targets.
 4. **Deterministic**: hardware switch positions always map to clear actions, no ambiguous prompts.
 5. **Crossfade/Balance slider mode (v-next)**: one slider surface with mode-aware behavior — room-to-room balance in multi-room mode, and left/right speaker balance in single-room mode.
+6. **Analog-surface breadth**: beyond audio/lighting depth, the input model supports mappable Home Assistant actions across broader home domains (scenes, scripts, climate flows, safety routines, and other HA-controllable behaviors).
+
+## Product positioning contract (README + roadmap parity)
+
+- Spectra L/S is the analog tactile control surface for Home Assistant.
+- Audio and lighting remain the deepest, first-class domains.
+- Physical input primitives (buttons/switches/sliders/encoders) are mappable control surfaces for broader HA automation/action execution.
+- Documentation parity rule: if this positioning contract changes, update `README.md`, this file, and `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md` in the same change set.
 
 ## v-next Feature Requirement — Crossfade / Balance Slider
 

@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.19.4 -->
+<!-- Version: 2026.04.19.5 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -17,6 +17,7 @@ Execution playbook reference: `docs/program/PARALLEL-PROGRAM-PLAYBOOK.md`.
 - Capability-mapped routing and behavior gating.
 - Minimal hardcoded install-specific entity IDs.
 - Backward-compatible migration before replacement.
+- Audio and lighting are first-class depth domains, while input primitives remain mappable for broader Home Assistant control domains.
 
 ## Scope
 
@@ -99,6 +100,13 @@ Execution playbook reference: `docs/program/PARALLEL-PROGRAM-PLAYBOOK.md`.
   - multi-room: room-to-room weighted balance
   - single-room: L/R balance
 - Guided setup and onboarding UX in component flows.
+- Generalized analog-control mappings for broader HA actions (scenes, scripts, climate routines, safety toggles, and domain-specific automations).
+
+## Product positioning contract (README + v-next parity)
+
+- Spectra L/S is the analog tactile control surface for Home Assistant.
+- Audio + lighting retain primary depth and optimization focus.
+- Physical controls are mappable primitives for broader Home Assistant actions beyond those two flagship domains.
 
 ## Phased implementation roadmap
 

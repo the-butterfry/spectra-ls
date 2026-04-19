@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.19.11 -->
+<!-- Version: 2026.04.19.12 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Changelog
 
 ## 2026-04-19
+
+- Docs/Product Positioning Expansion (`README.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): position Spectra L/S as the analog, tactile control surface for Home Assistant beyond audio/lighting (while keeping heavy focus on those domains), with explicit mappable input philosophy for broader home control actions.
 
 - Governance/GitHub Maturity Baseline (`CONTRIBUTING.md`, `CODEOWNERS`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, `.github/ISSUE_TEMPLATE/*`, `.github/pull_request_template.md`, `docs/governance/GITHUB-MASTERWORK-BLUEPRINT.md`, `docs/governance/LABEL-TAXONOMY.md`, `docs/README.md`, `.github/copilot-instructions.md`): establish a mature, Immich-inspired repository governance foundation with structured issue intake, PR quality gates, ownership mapping, security reporting policy, contribution standards, and a documented rollout blueprint for “masterwork” GitHub implementation quality.
 

@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.19.13 -->
+<!-- Version: 2026.04.19.14 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Changelog
 
 ## 2026-04-19
+
+- Docs/Wiki User-Onboarding + Bug Workflow + README Positioning (`README.md`, `.github/copilot-instructions.md`, `docs/wiki/*`, `.github/ISSUE_TEMPLATE/bug_report.yml`): add first-pass Welcome/README-and-bug-submission wiki workflow, add user-focused setup/deploy/integration stub with explicit manual prerequisites (tokens/API/manual setup), add wiki content policy for what should/should-not live in wiki, add custom-component setup roadmap stub tied to current roadmap phases, enforce mandatory wiki-parity update step in workspace instructions, and update README positioning section to “Why this is missing from Home Assistant” with physical-first framing and inspiration links.
 
 - Governance/Wiki Automation + PM Operating Model (`.github/workflows/wiki-sync.yml`, `docs/wiki/*`, `docs/governance/GITHUB-MASTERWORK-BLUEPRINT.md`, `docs/governance/LABEL-TAXONOMY.md`, `CONTRIBUTING.md`, `docs/README.md`): add production-ready GitHub Wiki sync workflow from `docs/wiki/`, expand wiki information architecture using mature OSS patterns (home/sidebar/runbooks/architecture/triage/release flow), document fine-grained PAT setup for wiki publishing, and define Discussions + Projects operating model mapped to all repository scope paths for triage and delivery governance.
 

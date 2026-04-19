@@ -1,5 +1,5 @@
 <!-- Description: End-user overview for the Spectra L/S Home Assistant + ESPHome system. -->
-<!-- Version: 2026.04.19.7 -->
+<!-- Version: 2026.04.19.8 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Spectra L/S
@@ -21,12 +21,14 @@ Most importantly, Spectra L/S is designed as a **general analog surface for Home
 - **Always-clear feedback**: the OLED keeps navigation and active actions visible, so you always know what you’re controlling.
 - **Reliable day-to-day flow**: physical actions stay responsive even when the smart-home stack is busy in the background.
 
-## Why People Love This Form Factor
+## Why This Is Missing from Home Assistant
 
-- It turns whole-home control into a tactile experience you can use by feel.
-- It keeps “party mode” and “wind-down mode” one move away.
-- It reduces phone dependence for common actions like transport, room lighting, and tone shaping.
-- It makes shared spaces easier: anyone can walk up, understand it, and use it fast.
+- Most smart-home workflows are app-first; Spectra L/S brings control back to physical space.
+- No app gatekeeping for the actions that should be instantly accessible in your home.
+- Shared spaces become more inclusive: anyone can walk up and use dedicated controls without training.
+- It restores “eyes-up, hands-on” control for moments where touchscreens are friction.
+
+Inspired by modern physical-control craftsmanship from [Condesa Electronics — Carmen SE](https://condesaelectronics.com/) and [Varia Instruments — RDM series](https://www.varia-instruments.com/), Spectra L/S adapts that tactile design ethos to Home Assistant orchestration.
 
 ## Analog Surface for the Whole Home
 

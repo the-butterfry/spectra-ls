@@ -3,7 +3,7 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 ---
 
 <!-- Description: Workspace Copilot operating instructions for Home Assistant + ESPHome. -->
-<!-- Version: 2026.04.19.9 -->
+<!-- Version: 2026.04.19.10 -->
 <!-- Last updated: 2026-04-19 -->
 
 # GitHub Copilot Instructions — Home Assistant + ESPHome
@@ -21,6 +21,7 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 - For any functionality or feature change, update or create the corresponding architecture/feature documentation in the same change set (for example runtime docs, control-hub docs, and cleanup/deprecation notes when relevant).
 - Keep `README.md` aligned to current `main` direction in `docs/roadmap/v-next-NOTES.md`.
 - Add a required docs-parity step for repo-state changes: update `README.md` in the same change set whenever contracts, behavior, architecture, structure, setup, or operator workflow materially changes.
+- Add a required wiki-parity step for repo-state/operator-workflow changes: update `docs/wiki/` pages in the same change set when user-facing setup, deployment, integration, bug workflow, governance intake, or process routing changes.
 - For ESPHome/runtime changes, enforce this sequence with no shortcuts: **edit → update README parity (if repo-state changed) → build/compile verify → fix failures → commit → push → OTA upload (when requested or implied) → post-upload verification evidence**.
 
 ## Parallel Custom-Component Program (Required)
@@ -47,6 +48,9 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 ## Documentation System + Legend Parity (Required)
 - `README.md` is end-user facing; avoid embedding deep developer implementation detail there.
 - Place developer and technical detail under `docs/` with `docs/README.md` as the index.
+- Wiki content policy:
+  - `docs/wiki/` SHOULD contain user/operator friendly navigation, setup/deploy runbooks, HA integration steps, bug-submission workflow, and high-level project operations.
+  - `docs/wiki/` SHOULD NOT contain long low-level implementation internals, exhaustive architecture dumps, or branch-specific engineering notes better suited to `docs/architecture/`, `docs/roadmap/`, `docs/program/`, or `docs/notes/`.
 - Wiring/layout/event protocol detail must be maintained in:
   - `docs/hardware/WIRING-LAYOUT-PROTOCOL.md` (detailed), and
   - `docs/circuitpy/RP-LEGEND.md` (summary + routing links).

@@ -1,5 +1,5 @@
 <!-- Description: Wiki source and synchronization instructions for Spectra documentation pages. -->
-<!-- Version: 2026.04.19.2 -->
+<!-- Version: 2026.04.19.3 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Wiki Source + Sync
@@ -11,6 +11,19 @@ This folder stores the source pages for GitHub Wiki publishing.
 - Source of truth: `docs/wiki/*.md`
 - Publish target: `<owner>/<repo>.wiki.git`
 - Automation: `.github/workflows/wiki-sync.yml`
+
+## Core page inventory
+
+- `Home.md`
+- `Welcome-README-and-Bug-Workflow.md`
+- `User-Setup-Deploy-and-HA-Integration.md`
+- `Discussions-and-Projects-Workflow.md`
+- `Wiki-Content-Scope-Policy.md`
+- `Custom-Component-Setup-Roadmap-Stub.md`
+
+## Content scope policy
+
+Use `Wiki-Content-Scope-Policy.md` to decide what belongs in wiki versus deep docs under `docs/architecture`, `docs/roadmap`, and `docs/program`.
 
 ## One-time enablement checklist
 

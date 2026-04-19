@@ -1,0 +1,46 @@
+# Description: Binary sensor entities for Spectra LS read-only shadow parity routing surfaces.
+# Version: 2026.04.19.1
+# Last updated: 2026-04-19
+
+from __future__ import annotations
+
+from homeassistant.components.binary_sensor import BinarySensorEntity
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import EntityCategory
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+
+from .const import DOMAIN
+
+
+class SpectraLsShadowControlCapableBinarySensor(CoordinatorEntity, BinarySensorEntity):
+    """Read-only shadow parity for active control-capable flag."""
+
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_name = "Shadow Active Control Capable"
+    _attr_unique_id = "spectra_ls_shadow_active_control_capable"
+
+    @property
+    def is_on(self) -> bool:
+        return bool(self.coordinator.data["parity"].get("active_control_capable", False))
+
+    @property
+    def extra_state_attributes(self):
+        return {
+            "legacy_value": self.coordinator.data["legacy"].get("active_control_capable"),
+            "unresolved_sources": self.coordinator.data.get("unresolved_sources", []),
+            "mismatches": self.coordinator.data.get("mismatches", []),
+            "captured_at": self.coordinator.data.get("captured_at"),
+        }
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Set up Spectra LS shadow binary sensors."""
+    coordinator = hass.data[DOMAIN][entry.entry_id]
+    async_add_entities([SpectraLsShadowControlCapableBinarySensor(coordinator)])

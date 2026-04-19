@@ -1,5 +1,5 @@
 # Description: Top-level ignore rules for Home Assistant monorepo.
-# Version: 2026.04.19.1
+# Version: 2026.04.19.2
 # Last updated: 2026-04-19
 
 # Secrets / credentials
@@ -52,6 +52,12 @@ scripts.yaml
 scenes.yaml
 blueprints/
 custom_components/
+
+# Track Spectra custom component program path explicitly.
+!custom_components/
+custom_components/*
+!custom_components/spectra_ls/
+!custom_components/spectra_ls/**
 
 # Keep canonical sources tracked
 !.github/

@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.19.6 -->
+<!-- Version: 2026.04.19.7 -->
 <!-- Last updated: 2026-04-19 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -34,11 +34,17 @@ Each feature slice is only complete when both tracks are dispositioned:
 | Phase | Scope | Runtime Track (`packages`/`esphome`) | Component Track (`custom_components/spectra_ls`) | Status |
 | --- | --- | --- | --- | --- |
 | 0 | Charter + contract freeze | Documented in v-next + changelog | Documented in roadmap/spec | In Progress |
-| 1 | Skeleton + shadow parity | Keep existing contracts stable | Scaffold integration + read-only parity outputs | Planned |
+| 1 | Skeleton + shadow parity | Keep existing contracts stable | Scaffold integration + read-only parity outputs | In Progress |
 | 2 | Registry + route foundation | Keep helper contracts + diagnostics parity | Target registry + adapter router (`linkplay_tcp`) | Planned |
 | 3 | Guarded dual-write | Add shims and loop guards | Controlled write path with correlation/debounce guards | Planned |
 | 4 | Functional expansion | Preserve compatibility while exposing new capabilities | Profiles/actions/capability matrix/crossfade-balance services | Planned |
 | 5 | Domain cutover + retirement | Domain-by-domain template retirement | Primary control plane ownership + migration tooling | Planned |
+
+### Active slice ledger
+
+| Slice | Phase | Runtime Track | Component Track | Parity | Risk | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| P1-S01 | 1 | Implemented (legacy source-of-truth retained) | Active (read-only shadow parity implementation) | Pending | Low | Active |
 
 Reference specification: `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`.
 

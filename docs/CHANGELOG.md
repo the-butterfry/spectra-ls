@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.19.24 -->
+<!-- Version: 2026.04.19.25 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Changelog
 
 ## 2026-04-19
+
+- Custom Component/Phase 1 Slice-01 Shadow Parity (`custom_components/spectra_ls/*`, `.gitignore`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`, `docs/roadmap/v-next-NOTES.md`): scaffold `spectra_ls` integration baseline, unignore the dedicated tracked component path, and add read-only routing parity surfaces for `ma_active_target`, `ma_active_control_path`, `ma_active_control_capable`, and `ma_control_hosts` with diagnostics-first mismatch visibility and no control write-path side effects. README parity: no material repo-state change.
 
 - Docs/Wiki Control Surface Inventory (`docs/wiki/Control-Surface-Inputs-and-Expanders.md`, `docs/wiki/Home.md`, `docs/wiki/_Sidebar.md`, `docs/wiki/README.md`): add a dedicated operator-facing control reference for buttons, selectors, encoders, sliders/pots, expander bus addresses, and RP→ESP event-path mapping; wire the page into wiki navigation. README parity: no material repo-state change.
 

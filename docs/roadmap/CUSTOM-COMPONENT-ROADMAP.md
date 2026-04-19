@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.19.5 -->
+<!-- Version: 2026.04.19.6 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -109,6 +109,12 @@ Execution playbook reference: `docs/program/PARALLEL-PROGRAM-PLAYBOOK.md`.
 - Physical controls are mappable primitives for broader Home Assistant actions beyond those two flagship domains.
 
 ## Phased implementation roadmap
+
+## Program status ledger
+
+| Slice | Phase | Runtime Track | Component Track | Parity | Risk | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| P1-S01 | 1 | Implemented (legacy source-of-truth retained) | Active (read-only shadow parity) | Pending | Low | Active |
 
 ## Phase 0 — Charter + contract freeze
 

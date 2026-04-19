@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.19.19 -->
+<!-- Version: 2026.04.19.20 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Changelog
 
 ## 2026-04-19
+
+- Tooling/Wiki Sync Reliability + Node24 Readiness (`.github/workflows/wiki-sync.yml`, `docs/wiki/README.md`): upgrade checkout action to Node24-ready version, add explicit Node24 opt-in env, and add preflight diagnostics for wiki repository reachability/auth so `exit 128` failures report actionable causes (wiki disabled/uninitialized or PAT scope/permission mismatch).
 
 - Docs/Wiki Sync Smoke Test (`docs/wiki/Home.md`): add a small visible sync-marker line to confirm GitHub Actions wiki publishing is functioning after repository secret setup.
 

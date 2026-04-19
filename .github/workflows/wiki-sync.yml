@@ -1,5 +1,5 @@
 # Description: Publish docs/wiki markdown pages to the GitHub Wiki repository on push or manual dispatch.
-# Version: 2026.04.19.1
+# Version: 2026.04.19.2
 # Last updated: 2026-04-19
 
 name: Wiki Sync
@@ -23,12 +23,13 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     env:
-      WIKI_TOKEN: ${{ secrets['WIKI_FINE_GRAINED_PAT'] }}
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+      WIKI_TOKEN: ${{ secrets.WIKI_FINE_GRAINED_PAT }}
       BOT_NAME: spectra-wiki-bot
       BOT_EMAIL: spectra-wiki-bot@users.noreply.github.com
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Validate wiki token secret
         run: |
@@ -39,15 +40,38 @@ jobs:
             exit 1
           fi
 
+      - name: Preflight wiki repository access
+        env:
+          REPO_SLUG: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          export GIT_TERMINAL_PROMPT=0
+
+          WIKI_PUBLIC_URL="https://github.com/${REPO_SLUG}.wiki.git"
+          WIKI_AUTH_URL="https://x-access-token:${WIKI_TOKEN}@github.com/${REPO_SLUG}.wiki.git"
+
+          if ! git ls-remote "${WIKI_PUBLIC_URL}" >/dev/null 2>&1; then
+            echo "Wiki repository is not reachable."
+            echo "Check that repository Wikis are enabled and initialized."
+            exit 1
+          fi
+
+          if ! git ls-remote "${WIKI_AUTH_URL}" >/dev/null 2>&1; then
+            echo "Wiki repository is reachable, but authentication failed."
+            echo "Check secret WIKI_FINE_GRAINED_PAT and confirm token permissions: Contents=Read and write, repository selected correctly."
+            exit 1
+          fi
+
       - name: Sync docs/wiki to GitHub Wiki
         env:
           REPO_SLUG: ${{ github.repository }}
         run: |
           set -euo pipefail
+          export GIT_TERMINAL_PROMPT=0
           WIKI_URL="https://x-access-token:${WIKI_TOKEN}@github.com/${REPO_SLUG}.wiki.git"
           WORKDIR="$(mktemp -d)"
 
-          git clone "${WIKI_URL}" "${WORKDIR}/wiki"
+          git clone --depth 1 "${WIKI_URL}" "${WORKDIR}/wiki"
           rsync -av --delete --exclude '.git' "docs/wiki/" "${WORKDIR}/wiki/"
 
           pushd "${WORKDIR}/wiki" >/dev/null

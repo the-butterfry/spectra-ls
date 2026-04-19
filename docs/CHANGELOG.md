@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.19.21 -->
+<!-- Version: 2026.04.19.22 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Changelog
 
 ## 2026-04-19
+
+- Docs/Wiki Sync Retest Trigger (`docs/wiki/Home.md`): publish a tiny wiki-source update after manual wiki initialization to force a new `Wiki Sync` run and verify end-to-end automation.
 
 - Docs/Wiki Initialization Clarification (`docs/wiki/README.md`): add explicit requirement to initialize the wiki repository by creating/saving the first wiki Home page before automated git sync can clone `<repo>.wiki.git`.
 

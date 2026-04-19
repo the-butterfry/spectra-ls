@@ -1,5 +1,5 @@
 <!-- Description: Wiki home page for Spectra L/S operations, architecture, contribution flow, and runbooks. -->
-<!-- Version: 2026.04.19.5 -->
+<!-- Version: 2026.04.19.6 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Spectra L/S Wiki
@@ -34,4 +34,4 @@ This wiki mirrors curated content from `docs/wiki/` in the main repository and i
 - Publish pipeline: `.github/workflows/wiki-sync.yml`
 - Sync trigger: changes to `docs/wiki/**` on `main` (or manual workflow dispatch)
 
-_Wiki sync marker (2026-04-19): if you can see this line on the GitHub Wiki Home page, your PAT/Actions publish path is working._
+_Wiki sync marker (2026-04-19, post-init retest): if you can see this line on the GitHub Wiki Home page, your PAT/Actions publish path is working._

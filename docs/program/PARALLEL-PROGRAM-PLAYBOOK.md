@@ -1,5 +1,5 @@
 <!-- Description: Execution playbook for running Spectra runtime and custom component development tracks in strict-parity parallel. -->
-<!-- Version: 2026.04.19.1 -->
+<!-- Version: 2026.04.19.2 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Spectra Parallel Program Playbook
@@ -101,8 +101,8 @@ A slice is done only when all are true:
 1. Runtime and component dispositions are both recorded.
 2. Acceptance and parity checks pass (or explicit deferred mismatch is logged).
 3. No unexpected side effects remain.
-4. `CUSTOM-COMPONENT-ROADMAP.md` and `v-next-NOTES.md` are synchronized.
-5. `CHANGELOG.md` updated.
+4. `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md` and `docs/roadmap/v-next-NOTES.md` are synchronized.
+5. `docs/CHANGELOG.md` updated.
 6. README parity decision explicitly recorded (`required` or `no material change`).
 
 ## Parity synchronization protocol (strict)
@@ -110,9 +110,9 @@ A slice is done only when all are true:
 For architecture/contract/process changes:
 
 - Update all four docs in the same change set:
-  1. `esphome/spectra_ls_system/CUSTOM-COMPONENT-ROADMAP.md`
-  2. `esphome/spectra_ls_system/v-next-NOTES.md`
-  3. `CHANGELOG.md`
+  1. `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`
+  2. `docs/roadmap/v-next-NOTES.md`
+  3. `docs/CHANGELOG.md`
   4. `README.md` (or explicit no-change decision)
 
 If one cannot be updated immediately, mark task as incomplete.

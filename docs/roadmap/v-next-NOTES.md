@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.19.4 -->
+<!-- Version: 2026.04.19.5 -->
 <!-- Last updated: 2026-04-19 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -12,7 +12,7 @@
 
 `custom_components/spectra_ls` must be developed in parallel with the current runtime stack (`packages/` + `esphome/`) and cannot be treated as a big-bang replacement.
 
-Execution system reference: `esphome/spectra_ls_system/PARALLEL-PROGRAM-PLAYBOOK.md`.
+Execution system reference: `docs/program/PARALLEL-PROGRAM-PLAYBOOK.md`.
 
 ### Required migration sequence
 
@@ -40,7 +40,7 @@ Each feature slice is only complete when both tracks are dispositioned:
 | 4 | Functional expansion | Preserve compatibility while exposing new capabilities | Profiles/actions/capability matrix/crossfade-balance services | Planned |
 | 5 | Domain cutover + retirement | Domain-by-domain template retirement | Primary control plane ownership + migration tooling | Planned |
 
-Reference specification: `esphome/spectra_ls_system/CUSTOM-COMPONENT-ROADMAP.md`.
+Reference specification: `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`.
 
 ### Documentation parity gate (required)
 
@@ -48,16 +48,16 @@ For architecture/process/contract shifts, keep these synchronized in one change 
 
 1. `CUSTOM-COMPONENT-ROADMAP.md`
 2. `v-next-NOTES.md`
-3. `CHANGELOG.md`
+3. `docs/CHANGELOG.md`
 4. `README.md` (or explicit no-material-change note)
 
 If any is missing, the slice remains open.
 
 ### Retroactive codebase baseline docs (active)
 
-- Runtime architecture/features: `esphome/spectra_ls_system/CODEBASE-RUNTIME-ARCHITECTURE.md`
-- Control-hub architecture/features: `packages/ma_control_hub/CONTROL-HUB-ARCHITECTURE.md`
-- Dead-path cleanup matrix: `esphome/spectra_ls_system/DEAD-PATHS-CLEANUP.md`
+- Runtime architecture/features: `docs/architecture/CODEBASE-RUNTIME-ARCHITECTURE.md`
+- Control-hub architecture/features: `docs/architecture/CONTROL-HUB-ARCHITECTURE.md`
+- Dead-path cleanup matrix: `docs/cleanup/DEAD-PATHS-CLEANUP.md`
 
 ### Plan Delta rule (required)
 

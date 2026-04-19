@@ -1,0 +1,42 @@
+<!-- Description: Documentation index for Spectra L/S technical, onboarding, roadmap, and operations artifacts. -->
+<!-- Version: 2026.04.19.1 -->
+<!-- Last updated: 2026-04-19 -->
+
+# Spectra L/S Documentation Index
+
+Use this folder as the single location for project documentation and notes.
+
+## Start here
+
+- Developer onboarding: `docs/developer/DEVELOPER-INSTRUCTIONS.md`
+- Changelog: `docs/CHANGELOG.md`
+
+## Roadmap and program governance
+
+- `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`
+- `docs/roadmap/v-next-NOTES.md`
+- `docs/program/PARALLEL-PROGRAM-PLAYBOOK.md`
+
+## Architecture
+
+- Runtime architecture: `docs/architecture/CODEBASE-RUNTIME-ARCHITECTURE.md`
+- Control hub architecture: `docs/architecture/CONTROL-HUB-ARCHITECTURE.md`
+
+## Testing and diagnostics
+
+- Dev Tools templates: `docs/testing/DEVTOOLS-TEMPLATES.local.md`
+
+## Cleanup and maintenance
+
+- Dead-path cleanup matrix: `docs/cleanup/DEAD-PATHS-CLEANUP.md`
+
+## Notes
+
+- Spectra system notes: `docs/notes/NOTES-control-board-2.md`, `docs/notes/NOTES-wiim-api.md`
+- control-py notes: `docs/control-py/NOTES-control-board-2.md`, `docs/control-py/NOTES-wiim-api.md`, `docs/control-py/v-next-NOTES.md`
+- RP2040 notes: `docs/circuitpy/RP-LEGEND.md`
+
+## Setup and feature references
+
+- Setup placeholders: `docs/setup/SPECTRA-HA-CONFIG-PLACEHOLDERS.md`
+- Feature notes: `docs/features/dst_tuya_ac.FEATURES.md`

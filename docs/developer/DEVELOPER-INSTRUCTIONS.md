@@ -1,5 +1,5 @@
 <!-- Description: Contributor/developer workflow for Spectra L/S implementation, preflight, instrumentation, and documentation/code parity. -->
-<!-- Version: 2026.04.19.1 -->
+<!-- Version: 2026.04.19.2 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Spectra L/S Developer Instructions
@@ -18,18 +18,18 @@ Run this checklist before coding any feature slice:
 
 2. **Roadmap parity check**
    - Read current:
-     - `esphome/spectra_ls_system/CUSTOM-COMPONENT-ROADMAP.md`
-     - `esphome/spectra_ls_system/v-next-NOTES.md`
-     - `esphome/spectra_ls_system/PARALLEL-PROGRAM-PLAYBOOK.md`
+   - `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`
+   - `docs/roadmap/v-next-NOTES.md`
+   - `docs/program/PARALLEL-PROGRAM-PLAYBOOK.md`
    - Verify intended slice is mapped for both tracks:
      - runtime (`packages/` + `esphome/`), and
      - custom component (`custom_components/spectra_ls/`) implemented/shimmed/deferred.
 
 3. **Baseline architecture context**
    - Review:
-     - `esphome/spectra_ls_system/CODEBASE-RUNTIME-ARCHITECTURE.md`
-     - `packages/ma_control_hub/CONTROL-HUB-ARCHITECTURE.md`
-     - `esphome/spectra_ls_system/DEAD-PATHS-CLEANUP.md`
+   - `docs/architecture/CODEBASE-RUNTIME-ARCHITECTURE.md`
+   - `docs/architecture/CONTROL-HUB-ARCHITECTURE.md`
+   - `docs/cleanup/DEAD-PATHS-CLEANUP.md`
 
 4. **Contract freeze for target slice**
    - Identify and list helper/entity/script contracts that must not drift.
@@ -51,7 +51,7 @@ Run this checklist before coding any feature slice:
 
 For each slice:
 
-1. Update `CHANGELOG.md` first with planned slice summary.
+1. Update `docs/CHANGELOG.md` first with planned slice summary.
 2. Make small, reversible changes local to root cause.
 3. Keep comments current; remove stale nearby comments when behavior changes.
 4. Run targeted verification after each small increment.
@@ -63,7 +63,7 @@ Use instrumentation as the first verification layer, not a final afterthought.
 
 ### Home Assistant Dev Tools Templates
 
-Primary playbook: `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md`
+Primary playbook: `docs/testing/DEVTOOLS-TEMPLATES.local.md`
 
 Recommended routine after each meaningful change:
 
@@ -88,11 +88,11 @@ Recommended routine after each meaningful change:
 
 When behavior/contracts/architecture change, update in the same change set:
 
-1. `CHANGELOG.md`
+1. `docs/CHANGELOG.md`
 2. Relevant architecture/runtime docs (for the changed domain)
 3. `README.md` when operator-facing behavior/workflow changed
-4. `esphome/spectra_ls_system/CUSTOM-COMPONENT-ROADMAP.md`
-5. `esphome/spectra_ls_system/v-next-NOTES.md`
+4. `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`
+5. `docs/roadmap/v-next-NOTES.md`
 
 If README does not need a material update, note parity rationale explicitly in the slice notes/changelog context.
 

@@ -1,0 +1,11 @@
+# CODEOWNERS
+
+* @the-butterfry
+/.github/ @the-butterfry
+/docs/ @the-butterfry
+/esphome/ @the-butterfry
+/packages/ @the-butterfry
+/README.md @the-butterfry
+/CONTRIBUTING.md @the-butterfry
+/SECURITY.md @the-butterfry
+/CODE_OF_CONDUCT.md @the-butterfry

@@ -1,0 +1,12 @@
+# Description: GitHub issue form routing and contact policy for Spectra L/S.
+# Version: 2026.04.19.1
+# Last updated: 2026-04-19
+
+blank_issues_enabled: false
+contact_links:
+  - name: "❓ Questions / support"
+    url: https://github.com/the-butterfry/spectra-ls/discussions
+    about: Use Discussions for support/questions so Issues stay focused on reproducible defects and scoped feature work.
+  - name: "🌟 Feature ideation"
+    url: https://github.com/the-butterfry/spectra-ls/discussions/new?category=ideas
+    about: Propose and refine feature ideas before implementation planning.

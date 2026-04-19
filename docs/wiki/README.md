@@ -36,7 +36,8 @@ Use `Wiki-Content-Scope-Policy.md` to decide what belongs in wiki versus deep do
 
 ## How to create the fine-grained PAT
 
-1. Go to **GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens**.
+1. From your GitHub profile avatar (top-right), go to **Settings → Developer settings → Personal access tokens → Fine-grained tokens**.
+   - Direct URL fallback: `https://github.com/settings/personal-access-tokens/new`
 2. Click **Generate new token**.
 3. Token name: `spectra-wiki-sync` (or your preferred name).
 4. Resource owner: your user/org that owns this repository.

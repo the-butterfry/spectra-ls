@@ -1,6 +1,6 @@
 <!-- Description: Copy/paste Home Assistant Dev Tools template diagnostics for Spectra LS System. -->
-<!-- Version: 2026.04.17.19 -->
-<!-- Last updated: 2026-04-17 -->
+<!-- Version: 2026.04.19.20 -->
+<!-- Last updated: 2026-04-19 -->
 
 # Spectra LS System — Dev Tools Template Validation
 
@@ -2349,6 +2349,166 @@ Unavailable core entities:
 - Virtual entities exist, but no recent activity was detected on watched probes. Note: physical dials/encoders do not necessarily update virtual test entities; run `Run Virtual Input Battery` or change the virtual mode/class controls, then rerun.
 {% else %}
 - Cadence windows are outside expected bounds. Check diagnostics package update intervals and device connectivity.
+{% endif %}
+```
+
+## 16) Custom Component Phase 1 (P1-S01) — Shadow Parity Validation
+
+```jinja
+{# =========================
+  Spectra LS P1-S01 Validation
+  Scope: integration load + parity + attrs + icon sanity
+  ========================= #}
+
+{% set legacy = {
+  'active_target': 'sensor.ma_active_target',
+  'active_control_path': 'sensor.ma_active_control_path',
+  'control_hosts': 'sensor.ma_control_hosts',
+  'active_control_capable': 'binary_sensor.ma_active_control_capable'
+} %}
+
+{% set shadow_uid = {
+  'active_target': 'spectra_ls_shadow_active_target',
+  'active_control_path': 'spectra_ls_shadow_active_control_path',
+  'control_hosts': 'spectra_ls_shadow_control_hosts',
+  'active_control_capable': 'spectra_ls_shadow_active_control_capable'
+} %}
+
+{% set ns = namespace(
+  shadow={},
+  missing_shadow=[],
+  parity_fail=[],
+  attr_warn=[],
+  icon_fail=[],
+  rows=[]
+) %}
+
+{% for s in states.sensor %}
+  {% set uid = state_attr(s.entity_id, 'unique_id') %}
+  {% for k, v in shadow_uid.items() %}
+    {% if uid == v %}
+      {% set _ = ns.shadow.update({k: s.entity_id}) %}
+    {% endif %}
+  {% endfor %}
+{% endfor %}
+{% for b in states.binary_sensor %}
+  {% set uid = state_attr(b.entity_id, 'unique_id') %}
+  {% if uid == shadow_uid['active_control_capable'] %}
+    {% set _ = ns.shadow.update({'active_control_capable': b.entity_id}) %}
+  {% endif %}
+{% endfor %}
+
+{% for k, legacy_eid in legacy.items() %}
+  {% set shadow_eid = ns.shadow.get(k, '') %}
+  {% if shadow_eid == '' %}
+    {% set ns.missing_shadow = ns.missing_shadow + [k] %}
+  {% else %}
+    {% set legacy_state = states(legacy_eid) %}
+    {% set shadow_state = states(shadow_eid) %}
+
+    {% if k == 'active_control_capable' %}
+      {% set legacy_norm = 'on' if (legacy_state | lower) in ['on','true','1','yes'] else 'off' %}
+      {% set shadow_norm = 'on' if (shadow_state | lower) in ['on','true','1','yes'] else 'off' %}
+      {% if legacy_norm != shadow_norm %}
+        {% set ns.parity_fail = ns.parity_fail + [k ~ ': ' ~ legacy_norm ~ ' != ' ~ shadow_norm] %}
+      {% endif %}
+    {% else %}
+      {% if legacy_state != shadow_state %}
+        {% set ns.parity_fail = ns.parity_fail + [k ~ ': ' ~ legacy_state ~ ' != ' ~ shadow_state] %}
+      {% endif %}
+    {% endif %}
+
+    {% set unresolved = state_attr(shadow_eid, 'unresolved_sources') | default([], true) %}
+    {% set mismatches = state_attr(shadow_eid, 'mismatches') | default([], true) %}
+    {% if unresolved | length > 0 %}
+      {% set ns.attr_warn = ns.attr_warn + [k ~ ' unresolved=' ~ (unresolved | join(','))] %}
+    {% endif %}
+    {% if mismatches | length > 0 %}
+      {% set ns.attr_warn = ns.attr_warn + [k ~ ' mismatches=' ~ (mismatches | join(','))] %}
+    {% endif %}
+
+    {% set icon = state_attr(shadow_eid, 'icon') | default('', true) %}
+    {% if icon != 'mdi:audio-video' %}
+      {% set ns.icon_fail = ns.icon_fail + [k ~ ': icon=' ~ icon] %}
+    {% endif %}
+
+    {% set ns.rows = ns.rows + [{
+      'key': k,
+      'legacy': legacy_eid,
+      'legacy_state': legacy_state,
+      'shadow': shadow_eid,
+      'shadow_state': shadow_state
+    }] %}
+  {% endif %}
+{% endfor %}
+
+{% set verdict = 'PASS' %}
+{% if (ns.missing_shadow | length) > 0 or (ns.parity_fail | length) > 0 %}
+  {% set verdict = 'FAIL' %}
+{% elif (ns.attr_warn | length) > 0 or (ns.icon_fail | length) > 0 %}
+  {% set verdict = 'WARN' %}
+{% endif %}
+
+### Spectra LS P1-S01 Validation
+- Result: **{{ verdict }}**
+- Timestamp: **{{ now() }}**
+
+### 1) Integration load / entity discovery
+- Shadow entities found: **{{ ns.rows | length }}/4**
+{% if (ns.missing_shadow | length) == 0 %}
+- Missing shadow surfaces: none
+{% else %}
+- Missing shadow surfaces:
+{% for m in ns.missing_shadow %}
+  - {{ m }}
+{% endfor %}
+{% endif %}
+
+### 2) Parity check (legacy vs shadow)
+{% if (ns.rows | length) > 0 %}
+{% for r in ns.rows %}
+- {{ r.key }}:
+  - legacy: `{{ r.legacy }}` = **{{ r.legacy_state }}**
+  - shadow: `{{ r.shadow }}` = **{{ r.shadow_state }}**
+{% endfor %}
+{% endif %}
+
+{% if (ns.parity_fail | length) == 0 %}
+- Parity mismatches: none
+{% else %}
+- Parity mismatches:
+{% for p in ns.parity_fail %}
+  - {{ p }}
+{% endfor %}
+{% endif %}
+
+### 3) Shadow attribute diagnostics
+{% if (ns.attr_warn | length) == 0 %}
+- unresolved_sources/mismatches attrs: clean
+{% else %}
+- Warnings:
+{% for w in ns.attr_warn %}
+  - {{ w }}
+{% endfor %}
+{% endif %}
+
+### 4) Icon check (`mdi:audio-video`)
+{% if (ns.icon_fail | length) == 0 %}
+- Entity icon attr: OK
+{% else %}
+- Icon issues:
+{% for i in ns.icon_fail %}
+  - {{ i }}
+{% endfor %}
+{% endif %}
+
+### Action guidance
+{% if verdict == 'PASS' %}
+- P1-S01 validation is good. Proceed to closeout docs/parity report and start Phase 2 foundation.
+{% elif verdict == 'WARN' %}
+- Integration is loaded; investigate warnings (unresolved sources or icon attr) before Phase 2.
+{% else %}
+- Fix load/parity failures first (restart HA, verify entities exist, then rerun).
 {% endif %}
 ```
 

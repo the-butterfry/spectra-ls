@@ -1,5 +1,5 @@
 <!-- Description: Contributor guide for Spectra L/S development, scope, workflow, and quality expectations. -->
-<!-- Version: 2026.04.19.1 -->
+<!-- Version: 2026.04.19.2 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Contributing to Spectra L/S
@@ -44,6 +44,14 @@ Use `.github/pull_request_template.md` when opening a PR.
 
 - Use the issue forms in `.github/ISSUE_TEMPLATE/`.
 - Feature requests should include user impact and proposed behavior.
+- Use GitHub Discussions for ideation/Q&A before opening scoped implementation issues.
+
+## Discussions and Projects usage
+
+- Discussions are the front door for Q&A, ideation, and RFC-style architecture threads.
+- Issues/PRs are execution artifacts with testable scope.
+- Add scoped issues to the repository Project board and set Area/Track/Priority fields.
+- Scope-path mapping and governance details: `docs/governance/DISCUSSIONS-PROJECTS-OPERATING-MODEL.md`.
 
 ## Community expectations
 

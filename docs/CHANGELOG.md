@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.19.12 -->
+<!-- Version: 2026.04.19.13 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Changelog
 
 ## 2026-04-19
+
+- Governance/Wiki Automation + PM Operating Model (`.github/workflows/wiki-sync.yml`, `docs/wiki/*`, `docs/governance/GITHUB-MASTERWORK-BLUEPRINT.md`, `docs/governance/LABEL-TAXONOMY.md`, `CONTRIBUTING.md`, `docs/README.md`): add production-ready GitHub Wiki sync workflow from `docs/wiki/`, expand wiki information architecture using mature OSS patterns (home/sidebar/runbooks/architecture/triage/release flow), document fine-grained PAT setup for wiki publishing, and define Discussions + Projects operating model mapped to all repository scope paths for triage and delivery governance.
 
 - Docs/Product Positioning Expansion (`README.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): position Spectra L/S as the analog, tactile control surface for Home Assistant beyond audio/lighting (while keeping heavy focus on those domains), with explicit mappable input philosophy for broader home control actions.
 

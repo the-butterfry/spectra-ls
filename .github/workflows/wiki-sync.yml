@@ -1,0 +1,63 @@
+# Description: Publish docs/wiki markdown pages to the GitHub Wiki repository on push or manual dispatch.
+# Version: 2026.04.19.1
+# Last updated: 2026-04-19
+
+name: Wiki Sync
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "docs/wiki/**"
+      - ".github/workflows/wiki-sync.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: wiki-sync
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      WIKI_TOKEN: ${{ secrets['WIKI_FINE_GRAINED_PAT'] }}
+      BOT_NAME: spectra-wiki-bot
+      BOT_EMAIL: spectra-wiki-bot@users.noreply.github.com
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate wiki token secret
+        run: |
+          set -euo pipefail
+          if [[ -z "${WIKI_TOKEN:-}" ]]; then
+            echo "Missing secret: WIKI_FINE_GRAINED_PAT"
+            echo "Create a fine-grained PAT and store it as repository secret WIKI_FINE_GRAINED_PAT."
+            exit 1
+          fi
+
+      - name: Sync docs/wiki to GitHub Wiki
+        env:
+          REPO_SLUG: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          WIKI_URL="https://x-access-token:${WIKI_TOKEN}@github.com/${REPO_SLUG}.wiki.git"
+          WORKDIR="$(mktemp -d)"
+
+          git clone "${WIKI_URL}" "${WORKDIR}/wiki"
+          rsync -av --delete --exclude '.git' "docs/wiki/" "${WORKDIR}/wiki/"
+
+          pushd "${WORKDIR}/wiki" >/dev/null
+            git config user.name "${BOT_NAME}"
+            git config user.email "${BOT_EMAIL}"
+            git add .
+            if git diff --cached --quiet; then
+              echo "No wiki changes to publish"
+              exit 0
+            fi
+            git commit -m "docs(wiki): sync from docs/wiki"
+            git push
+          popd >/dev/null

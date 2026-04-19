@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.18.56 -->
+<!-- Version: 2026.04.18.57 -->
 <!-- Last updated: 2026-04-18 -->
 
 # Changelog
 
 ## 2026-04-18
+
+- HA/AC DST Rebuild Baseline (`packages/dst_tuya_ac.yaml`, `packages/dst_tuya_ac.FEATURES.md`): catalog the full legacy feature surface in a companion feature-inventory document, then reset the runtime package to a minimal Dual Smart Thermostat baseline (no policy overlays/manual-hold/schedule reconciler layers) as a clean foundation for phased re-introduction of features with explicit validation gates.
 
 - Workflow/Quality Gate Hardening (`.github/copilot-instructions.md`): add mandatory verification gates for ESPHome changes — compile/build must succeed **before** commit/push, OTA upload must complete before closing deployment tasks, and responses must include explicit evidence (`build result`, `OTA successful`, `HEAD==origin`) rather than assumptions.
 

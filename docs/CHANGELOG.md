@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.19.16 -->
+<!-- Version: 2026.04.19.17 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Changelog
 
 ## 2026-04-19
+
+- Docs/README Inspiration Line Expansion (`README.md`): update front-page inspiration sentence to describe Spectra L/S as a minimal home DJ-mixer style control surface coupled with lighting, automation, and human-centric interaction.
 
 - Docs/README Hardware-First Context (`README.md`): clarify on the front page that Spectra L/S is a hardware-first stack that requires the physical controller path first, then uses ESPHome + Home Assistant software orchestration; add explicit MCU role list (ESP32-S3 + RP2040) so new users understand installation context.
 

@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.19.20 -->
+<!-- Version: 2026.04.19.21 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Changelog
 
 ## 2026-04-19
+
+- Docs/Wiki Initialization Clarification (`docs/wiki/README.md`): add explicit requirement to initialize the wiki repository by creating/saving the first wiki Home page before automated git sync can clone `<repo>.wiki.git`.
 
 - Tooling/Wiki Sync Reliability + Node24 Readiness (`.github/workflows/wiki-sync.yml`, `docs/wiki/README.md`): upgrade checkout action to Node24-ready version, add explicit Node24 opt-in env, and add preflight diagnostics for wiki repository reachability/auth so `exit 128` failures report actionable causes (wiki disabled/uninitialized or PAT scope/permission mismatch).
 

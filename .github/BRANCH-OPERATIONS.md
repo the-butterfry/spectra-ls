@@ -1,5 +1,5 @@
 <!-- Description: Operational runbook for keeping main and menu-only branches healthy. -->
-<!-- Version: 2026.04.16.2 -->
+<!-- Version: 2026.04.19.1 -->
 <!-- Last updated: 2026-04-16 -->
 
 # Branch Operations Runbook
@@ -18,7 +18,7 @@ Keep `main` (spectra_ls_system active development) and `menu-only` (v2 stabiliza
 1. Make changes in the correct worktree for the target branch.
 2. For shared contracts (RP2040 protocol, control API, helper/entity contracts), do one:
    - paired update in both branches, or
-   - explicit divergence + migration note in `CHANGELOG.md`.
+   - explicit divergence + migration note in `docs/CHANGELOG.md`.
 3. Validate entrypoints before commit:
    - `main`: `esphome/spectra_ls_system.yaml`
    - `menu-only`: `control-board-esp32-tcp.yaml`
@@ -30,7 +30,7 @@ Before merging or pushing any shared-contract change, complete `.github/SHARED-C
 
 - **Go** only when every required item is checked and evidence is recorded.
 - **No-Go** if any shared-contract item is unchecked or evidence is missing.
-- If parity is intentionally skipped, add explicit divergence + migration note to `CHANGELOG.md` before push.
+- If parity is intentionally skipped, add explicit divergence + migration note to `docs/CHANGELOG.md` before push.
 
 ## Safety Rules
 

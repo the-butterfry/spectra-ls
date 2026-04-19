@@ -3,7 +3,7 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 ---
 
 <!-- Description: Workspace Copilot operating instructions for Home Assistant + ESPHome. -->
-<!-- Version: 2026.04.19.6 -->
+<!-- Version: 2026.04.19.7 -->
 <!-- Last updated: 2026-04-19 -->
 
 # GitHub Copilot Instructions — Home Assistant + ESPHome
@@ -15,11 +15,11 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 - If uncertain and blocked by ambiguity, ask one concise question.
 
 ## Mandatory Workflow
-- For `esphome/spectra_ls_system/**`, read `esphome/spectra_ls_system/v-next-NOTES.md` before changes.
-- For `esphome/control-py/**`, read `esphome/control-py/NOTES-control-board-2.md` before changes.
-- For any functional change, update `CHANGELOG.md` **before** code edits.
+- For `esphome/spectra_ls_system/**`, read `docs/roadmap/v-next-NOTES.md` before changes.
+- For `esphome/control-py/**`, read `docs/control-py/NOTES-control-board-2.md` before changes.
+- For any functional change, update `docs/CHANGELOG.md` **before** code edits.
 - For any functionality or feature change, update or create the corresponding architecture/feature documentation in the same change set (for example runtime docs, control-hub docs, and cleanup/deprecation notes when relevant).
-- Keep `README.md` aligned to current `main` direction in `v-next-NOTES.md`.
+- Keep `README.md` aligned to current `main` direction in `docs/roadmap/v-next-NOTES.md`.
 - Add a required docs-parity step for repo-state changes: update `README.md` in the same change set whenever contracts, behavior, architecture, structure, setup, or operator workflow materially changes.
 - For ESPHome/runtime changes, enforce this sequence with no shortcuts: **edit → update README parity (if repo-state changed) → build/compile verify → fix failures → commit → push → OTA upload (when requested or implied) → post-upload verification evidence**.
 
@@ -31,15 +31,15 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 - No feature is considered complete unless both tracks are mapped as: implemented, compatibility-shimmed, or explicitly deferred with rationale.
 - Keep migration compatibility first: **shadow mode → parity validation → dual-write → domain cutover → legacy retirement**.
 - Preserve existing helper/entity/script contracts during migration windows unless an approved migration step explicitly changes them.
-- For each roadmap phase, update `esphome/spectra_ls_system/v-next-NOTES.md` status and contract deltas in the same change set.
-- Follow `esphome/spectra_ls_system/PARALLEL-PROGRAM-PLAYBOOK.md` as the execution system of record for slice templates, anti-detail-trap workflow, and parity controls.
+- For each roadmap phase, update `docs/roadmap/v-next-NOTES.md` status and contract deltas in the same change set.
+- Follow `docs/program/PARALLEL-PROGRAM-PLAYBOOK.md` as the execution system of record for slice templates, anti-detail-trap workflow, and parity controls.
 
 ## Roadmap + v-next + README Parity Discipline (Required)
 - Documentation parity is mandatory for architecture/process/contract changes.
 - In the same change set, keep these synchronized:
-  1) `esphome/spectra_ls_system/CUSTOM-COMPONENT-ROADMAP.md`
-  2) `esphome/spectra_ls_system/v-next-NOTES.md`
-  3) `CHANGELOG.md`
+  1) `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`
+  2) `docs/roadmap/v-next-NOTES.md`
+  3) `docs/CHANGELOG.md`
   4) `README.md` (or explicit `README parity: no material repo-state change` note)
 - If one of the required docs is not updated, the task is not complete.
 - If plan direction changes mid-slice, log a **Plan Delta** and update roadmap + v-next before continuing.
@@ -85,11 +85,11 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
   - `esphome/control-py/`, `esphome/control-board-esp32-tcp.yaml`
   - `esphome/circuitpy/`
   - `packages/`
-  - `SPECTRA-HA-CONFIG-PLACEHOLDERS.md`
+  - `docs/setup/SPECTRA-HA-CONFIG-PLACEHOLDERS.md`
 - Keep `main` and `menu-only` concurrently operable.
 - For shared contracts (RP events, control API, helper/entity contracts), require either:
   - paired update in both branches, or
-  - explicit divergence note in `CHANGELOG.md`.
+  - explicit divergence note in `docs/CHANGELOG.md`.
 - Complete `.github/SHARED-CONTRACT-CHECKLIST.md` before shared-contract merge.
 
 ## Path + Source-of-Truth Rules
@@ -123,7 +123,7 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 - Do not leave stale comments: when behavior changes, update or remove adjacent comments in the same change set.
 - Keep architecture/contract explanations in docs, not only in code comments; update corresponding docs whenever behavior/contracts change.
 - Minimum documentation sync for behavior/contract changes:
-  1) `CHANGELOG.md`
+  1) `docs/CHANGELOG.md`
   2) relevant architecture doc(s) (for example runtime/control-hub/cleanup docs)
   3) `README.md` when operator-facing behavior or workflow materially changes
 - When deprecating or freezing paths, mark them explicitly (`ARCHIVED`, `LEGACY`, or `DEPRECATED`) and provide the replacement/source-of-truth path.
@@ -131,10 +131,10 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 ## Move/Delete Safety Gate (No-Go if missing)
 - Before any move/delete, explicitly provide:
   1) backup path outside tracked repo,
-  2) planned `CHANGELOG.md` entry,
+  2) planned `docs/CHANGELOG.md` entry,
   3) restore command/path.
 - For deletes, perform backup + changelog + restore instructions in same change set.
-- For renames/moves, record source and destination in `CHANGELOG.md`.
+- For renames/moves, record source and destination in `docs/CHANGELOG.md`.
 
 ## Engineering Standards
 
@@ -173,9 +173,9 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 - Output: short summary + numbered findings with severity + recommended fixes.
 
 ## Key References
-- `esphome/spectra_ls_system/v-next-NOTES.md`
-- `esphome/control-py/NOTES-control-board-2.md`
-- `CHANGELOG.md`
+- `docs/roadmap/v-next-NOTES.md`
+- `docs/control-py/NOTES-control-board-2.md`
+- `docs/CHANGELOG.md`
 - `esphome/spectra_ls_system.yaml`
 - `esphome/control-board-esp32-tcp.yaml`
-- `esphome/control-py/NOTES-wiim-api.md`
+- `docs/notes/NOTES-wiim-api.md`

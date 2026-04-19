@@ -1,5 +1,5 @@
 <!-- Description: Human-readable overview and deployment guide for the Spectra L/S Home Assistant + ESPHome system. -->
-<!-- Version: 2026.04.19.4 -->
+<!-- Version: 2026.04.19.5 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Spectra L/S
@@ -12,37 +12,7 @@ Spectra L/S is built to feel immediate. Tap Play/Pause, jump Next/Back, tune bri
 
 It is also built to feel connected. If Home Assistant already knows a light or sound target, Spectra L/S can discover it and interact automatically, so your existing rooms and devices become instantly controllable from one physical surface.
 
-On `main`, direction follows `esphome/spectra_ls_system/v-next-NOTES.md`: hardware-first UX, menu as fallback, deterministic controls, and scalable room/target handling.
-
-## Parallel Development Program (Runtime + Custom Component)
-
-Spectra is currently developed as two synchronized tracks inside one monorepo:
-
-1. Runtime track: `packages/` + `esphome/`
-2. Custom-component track: `custom_components/spectra_ls/`
-
-This is intentionally strict and flexible:
-
-- **Strict**: no big-bang replacement, no silent contract drift, no untracked migration steps.
-- **Flexible**: small reversible slices, explicit Plan Delta updates when findings change direction.
-
-Program playbook: `esphome/spectra_ls_system/PARALLEL-PROGRAM-PLAYBOOK.md`
-
-Authoritative planning docs (must stay in parity):
-
-- `esphome/spectra_ls_system/CUSTOM-COMPONENT-ROADMAP.md`
-- `esphome/spectra_ls_system/v-next-NOTES.md`
-- `CHANGELOG.md`
-
-README updates are included whenever repo-state contracts, architecture, setup, or operator workflow materially changes.
-
-### Runtime documentation baseline (retroactive)
-
-To keep implementation and cleanup work grounded in current behavior, use these architecture baselines:
-
-- `esphome/spectra_ls_system/CODEBASE-RUNTIME-ARCHITECTURE.md`
-- `packages/ma_control_hub/CONTROL-HUB-ARCHITECTURE.md`
-- `esphome/spectra_ls_system/DEAD-PATHS-CLEANUP.md`
+Technical documentation, developer onboarding, architecture notes, and roadmap artifacts now live under `docs/`.
 
 ## Hardware Reference (Current + Recommended)
 
@@ -128,7 +98,7 @@ Spectra L/S also supports whole-home multi-speaker playback with tight room-to-r
 
 ## System Test Overview (Dev Tools Templates)
 
-Use `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md` as the standard system-test playbook in Home Assistant Developer Tools → Template. The templates are layered so you can move from broad health to precise command-effect verification quickly:
+Use `docs/testing/DEVTOOLS-TEMPLATES.local.md` as the standard system-test playbook in Home Assistant Developer Tools → Template. The templates are layered so you can move from broad health to precise command-effect verification quickly:
 
 - **Template 1 — Overall Health Check**: verifies package/helper/runtime integrity and sentinel entities.
 - **Template 2 — Audio Control Path Probe**: validates target → host → meta → now-playing routing consistency.
@@ -184,7 +154,7 @@ Recommended flow: run 1 → 2 → 3 after deploy, then use 4 for specific action
 
 ### 6) Reload Home Assistant and package state
 
-0. If you are integrating into an existing Home Assistant install, merge the placeholder lines from `SPECTRA-HA-CONFIG-PLACEHOLDERS.md` into your local `configuration.yaml`.
+0. If you are integrating into an existing Home Assistant install, merge the placeholder lines from `docs/setup/SPECTRA-HA-CONFIG-PLACEHOLDERS.md` into your local `configuration.yaml`.
 1. Reload YAML configuration or restart Home Assistant as needed.
 2. Reload affected template/automation helpers.
 3. Verify key entity availability (target selectors, now-playing, control host helpers).
@@ -202,4 +172,4 @@ Recommended flow: run 1 → 2 → 3 after deploy, then use 4 for specific action
 1. Keep previous known-good ESPHome binary/config reference per branch.
 2. If deployment regresses behavior, redeploy prior known-good branch/commit.
 3. Restore previous HA package set if helper contracts changed unexpectedly.
-4. Record rollback reason and follow-up action in `CHANGELOG.md`.
+4. Record rollback reason and follow-up action in `docs/CHANGELOG.md`.

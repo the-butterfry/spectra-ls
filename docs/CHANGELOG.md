@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.19.8 -->
+<!-- Version: 2026.04.19.9 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Changelog
 
 ## 2026-04-19
+
+- Docs/Repository Documentation Reorganization (`docs/**`, `README.md`, `.github/copilot-instructions.md`): move project documentation/notes into `docs/` (except top-level `README.md`), remap key workflow/reference paths, and keep frontpage README end-user-focused while relocating developer onboarding to docs.
 
 - Docs/Developer Instructions (`DEVELOPER-INSTRUCTIONS.md`, `README.md`): move contributor/developer hygiene guidance off frontpage README into a dedicated developer instruction document, and add a formal preflight checklist plus implementation workflow for instrumentation, documentation parity, and code-change verification.
 

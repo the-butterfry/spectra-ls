@@ -1,6 +1,6 @@
 # Description: Top-level ignore rules for Home Assistant monorepo.
-# Version: 2026.04.18.7
-# Last updated: 2026-04-18
+# Version: 2026.04.19.1
+# Last updated: 2026-04-19
 
 # Secrets / credentials
 secrets.yaml
@@ -56,8 +56,8 @@ custom_components/
 # Keep canonical sources tracked
 !.github/
 !.github/**
-!CHANGELOG.md
-!SPECTRA-HA-CONFIG-PLACEHOLDERS.md
+!docs/
+!docs/**
 !packages/
 !packages/**
 !esphome/

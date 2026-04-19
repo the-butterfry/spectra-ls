@@ -1,5 +1,5 @@
 <!-- Description: Mandatory go/no-go parity checklist for shared-contract changes across main and menu-only. -->
-<!-- Version: 2026.04.16.1 -->
+<!-- Version: 2026.04.19.1 -->
 <!-- Last updated: 2026-04-16 -->
 
 # Shared-Contract Checklist (Go / No-Go)
@@ -31,7 +31,7 @@ If the change is **not** shared-contract scope, mark `N/A` in Section 1 and proc
 
 If divergence path selected:
 
-- [ ] `CHANGELOG.md` includes explicit divergence + migration note.
+- [ ] `docs/CHANGELOG.md` includes explicit divergence + migration note.
 - [ ] Roll-forward plan and owner documented.
 
 ## 3) Implementation Evidence

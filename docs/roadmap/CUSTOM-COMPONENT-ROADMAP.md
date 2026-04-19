@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.19.3 -->
+<!-- Version: 2026.04.19.4 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -8,7 +8,7 @@
 
 Define a production-grade `custom_components/spectra_ls` program that runs **in parallel** with the existing HA package + ESPHome runtime, then incrementally migrates ownership without breaking deployed contracts.
 
-Execution playbook reference: `esphome/spectra_ls_system/PARALLEL-PROGRAM-PLAYBOOK.md`.
+Execution playbook reference: `docs/program/PARALLEL-PROGRAM-PLAYBOOK.md`.
 
 ## Product Principles (non-negotiable)
 
@@ -249,18 +249,18 @@ Every feature change must include:
 
 For architecture/process/contract changes, update in the same change set:
 
-1. `CUSTOM-COMPONENT-ROADMAP.md`
-2. `v-next-NOTES.md`
-3. `CHANGELOG.md`
+1. `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`
+2. `docs/roadmap/v-next-NOTES.md`
+3. `docs/CHANGELOG.md`
 4. `README.md` (or explicit no-material-change decision)
 
 Missing one item means the slice is not done.
 
 ## Retroactive baseline docs (active references)
 
-- Runtime architecture baseline: `esphome/spectra_ls_system/CODEBASE-RUNTIME-ARCHITECTURE.md`
-- Control-hub architecture baseline: `packages/ma_control_hub/CONTROL-HUB-ARCHITECTURE.md`
-- Dead-path cleanup matrix: `esphome/spectra_ls_system/DEAD-PATHS-CLEANUP.md`
+- Runtime architecture baseline: `docs/architecture/CODEBASE-RUNTIME-ARCHITECTURE.md`
+- Control-hub architecture baseline: `docs/architecture/CONTROL-HUB-ARCHITECTURE.md`
+- Dead-path cleanup matrix: `docs/cleanup/DEAD-PATHS-CLEANUP.md`
 
 ## Plan Delta protocol (required)
 
@@ -282,7 +282,7 @@ If new findings force strategy changes mid-slice:
 
 - Contract parity checks (legacy vs component entities/attributes).
 - Route determinism checks across ambiguous and non-ambiguous targets.
-- Diagnostics health checks from existing `DEVTOOLS-TEMPLATES.local.md` + component diagnostics.
+- Diagnostics health checks from existing `docs/testing/DEVTOOLS-TEMPLATES.local.md` + component diagnostics.
 - Startup/bootstrap race checks (target options and host resolution).
 - Dual-write stability checks (no repeated oscillation or stale override loops).
 

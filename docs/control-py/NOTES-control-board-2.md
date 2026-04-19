@@ -4,7 +4,7 @@ These notes are the **authoritative v2 design doc**. They supersede all prior v1
 
 ## Documentation gate (must close before done)
 
-- [ ] Update `CHANGELOG.md` for any functional change.
+- [ ] Update `docs/CHANGELOG.md` for any functional change.
 - [ ] Update this notes file if behavior or architecture changed.
 - [ ] Call out any deferred doc updates explicitly before ending a session.
 

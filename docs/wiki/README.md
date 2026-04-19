@@ -1,5 +1,5 @@
 <!-- Description: Wiki source and synchronization instructions for Spectra documentation pages. -->
-<!-- Version: 2026.04.19.4 -->
+<!-- Version: 2026.04.19.5 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Wiki Source + Sync
@@ -60,3 +60,18 @@ You can still run:
 - `WIKI_REPOSITORY=owner/repo WIKI_PUSH_TOKEN=*** bin/sync_docs_to_wiki.sh`
 
 This is useful for local dry-runs or emergency publishing when Actions is unavailable.
+
+## Troubleshooting failed `Wiki Sync` runs
+
+- `Node.js 20 actions are deprecated` is a warning, not the root failure by itself.
+- `Process completed with exit code 128` in sync steps usually means one of:
+   1. Wiki repo not reachable (Wikis disabled or not initialized)
+   2. PAT auth failure to `<owner>/<repo>.wiki.git`
+   3. PAT scope/repository selection mismatch
+
+Quick checks:
+
+1. Confirm wiki is enabled: **Repo Settings → General → Features → Wikis**
+2. Confirm secret exists: `WIKI_FINE_GRAINED_PAT`
+3. Confirm PAT has repository **Contents: Read and write** and includes this repo.
+4. Re-run `Wiki Sync` from Actions after saving any change under `docs/wiki/`.

@@ -1,5 +1,5 @@
 <!-- Description: Strict operator checklist for installing Spectra on a user-owned Home Assistant instance with runtime and custom-component tracks. -->
-<!-- Version: 2026.04.19.2 -->
+<!-- Version: 2026.04.19.3 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Install on Your Own Home Assistant
@@ -66,6 +66,11 @@ Failure indicators (stop and investigate):
 ## Track B (upcoming): Custom component install flow (stub)
 
 This will become the preferred install path as `custom_components/spectra_ls` matures.
+
+Current required discovery note (applies now):
+
+- [ ] After adding/updating files under `custom_components/spectra_ls/`, perform a full Home Assistant restart **before** using **Add Integration**.
+- [ ] After restart, go to **Settings → Devices & Services → Add Integration** and search for `Spectra LS`.
 
 Planned additions to this page:
 

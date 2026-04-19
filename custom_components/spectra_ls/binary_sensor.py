@@ -1,5 +1,5 @@
 # Description: Binary sensor entities for Spectra LS read-only shadow parity routing surfaces.
-# Version: 2026.04.19.1
+# Version: 2026.04.19.2
 # Last updated: 2026-04-19
 
 from __future__ import annotations
@@ -19,6 +19,7 @@ class SpectraLsShadowControlCapableBinarySensor(CoordinatorEntity, BinarySensorE
 
     _attr_has_entity_name = True
     _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:audio-video"
     _attr_name = "Shadow Active Control Capable"
     _attr_unique_id = "spectra_ls_shadow_active_control_capable"
 

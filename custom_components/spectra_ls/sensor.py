@@ -1,5 +1,5 @@
 # Description: Sensor entities for Spectra LS read-only shadow parity routing surfaces.
-# Version: 2026.04.19.1
+# Version: 2026.04.19.2
 # Last updated: 2026-04-19
 
 from __future__ import annotations
@@ -19,6 +19,7 @@ class SpectraLsShadowSensor(CoordinatorEntity, SensorEntity):
 
     _attr_has_entity_name = True
     _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:audio-video"
 
     def __init__(self, coordinator, key: str, name: str) -> None:
         super().__init__(coordinator)

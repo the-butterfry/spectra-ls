@@ -1,5 +1,5 @@
 <!-- Description: GitHub Discussions and Projects operating workflow mapped to Spectra L/S scope paths. -->
-<!-- Version: 2026.04.19.1 -->
+<!-- Version: 2026.04.19.2 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Discussions and Projects Workflow
@@ -51,3 +51,24 @@ Single org/repo project titled: **Spectra Program Board**
 3. Convert to Issue when implementation is scoped.
 4. Add Issue to Project with Area/Track/Priority/Risk.
 5. Execute via PR with checklist + verification evidence.
+
+## Definition of ready (Issue)
+
+- Problem statement is clear and user-impactful.
+- Repro or acceptance criteria are concrete.
+- Scope boundaries are explicit (what is in/out).
+- Area/priority labels are present.
+- Project fields are populated (`Status`, `Area`, `Track`, `Priority`).
+
+## Definition of done (Issue/PR)
+
+- Implementation is merged with verification evidence.
+- Changelog/docs/wiki parity is updated as required.
+- Any contract/routing implications are documented.
+- Project item moved to `Done`.
+
+## Practical board hygiene
+
+- Keep `In Progress` limited to active owner capacity.
+- Move stale items back to `Planned` or `Blocked` with reason.
+- Prefer one issue per logical slice to keep rollback clean.

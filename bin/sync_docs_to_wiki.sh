@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 # Description: Sync docs/wiki pages to GitHub wiki repository using a personal access token.
-# Version: 2026.04.19.1
+# Version: 2026.04.19.2
 # Last updated: 2026-04-19
 
 set -euo pipefail
 
-if [[ -z "${WIKI_PUSH_TOKEN:-}" ]]; then
-  echo "WIKI_PUSH_TOKEN is required"
+wiki_token="${WIKI_PUSH_TOKEN:-${WIKI_FINE_GRAINED_PAT:-}}"
+
+if [[ -z "${wiki_token}" ]]; then
+  echo "WIKI_PUSH_TOKEN or WIKI_FINE_GRAINED_PAT is required"
   exit 1
 fi
 
@@ -16,7 +18,7 @@ if [[ -z "${WIKI_REPOSITORY:-}" ]]; then
 fi
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-wiki_url="https://x-access-token:${WIKI_PUSH_TOKEN}@github.com/${WIKI_REPOSITORY}.wiki.git"
+wiki_url="https://x-access-token:${wiki_token}@github.com/${WIKI_REPOSITORY}.wiki.git"
 workdir="${repo_root}/.tmp/wiki-sync"
 
 rm -rf "${workdir}"

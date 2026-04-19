@@ -1,29 +1,30 @@
-<!-- Description: Wiki home page source generated from repository documentation index. -->
-<!-- Version: 2026.04.19.1 -->
+<!-- Description: Wiki home page for Spectra L/S operations, architecture, contribution flow, and runbooks. -->
+<!-- Version: 2026.04.19.2 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Spectra L/S Wiki
 
-This wiki is intended as a quick navigation surface over the repository docs.
+Spectra L/S is a tactile analog surface for Home Assistant, with deep audio/lighting workflows and broad mappable control capabilities across the home.
 
-## Start
+This wiki mirrors curated content from `docs/wiki/` in the main repository and is optimized for operators/contributors who prefer GitHub-native documentation navigation.
 
-- Developer onboarding: `docs/developer/DEVELOPER-INSTRUCTIONS.md`
-- Changelog: `docs/CHANGELOG.md`
-- Docs index: `docs/README.md`
+## Start here
 
-## Hardware and wiring
+- [Getting Started](Getting-Started)
+- [System Architecture](System-Architecture)
+- [Control Contracts and Scope Paths](Control-Contracts-and-Scope-Paths)
+- [Operations Runbooks](Operations-Runbooks)
+- [Discussions and Projects Workflow](Discussions-and-Projects-Workflow)
+- [Release and Changelog Process](Release-and-Changelog-Process)
 
-- Wiring/layout protocol: `docs/hardware/WIRING-LAYOUT-PROTOCOL.md`
-- RP2040 legend: `docs/circuitpy/RP-LEGEND.md`
+## Source of truth
 
-## Architecture and roadmap
+- Canonical docs index: `docs/README.md`
+- Canonical changelog: `docs/CHANGELOG.md`
+- Runtime roadmap notes: `docs/roadmap/v-next-NOTES.md`
 
-- Runtime architecture: `docs/architecture/CODEBASE-RUNTIME-ARCHITECTURE.md`
-- Control-hub architecture: `docs/architecture/CONTROL-HUB-ARCHITECTURE.md`
-- Roadmap: `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`
-- v-next notes: `docs/roadmap/v-next-NOTES.md`
+## How this wiki is published
 
-## Testing
-
-- Dev Tools templates: `docs/testing/DEVTOOLS-TEMPLATES.local.md`
+- Source pages live in: `docs/wiki/`
+- Publish pipeline: `.github/workflows/wiki-sync.yml`
+- Sync trigger: changes to `docs/wiki/**` on `main` (or manual workflow dispatch)

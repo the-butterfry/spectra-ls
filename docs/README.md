@@ -1,5 +1,5 @@
 <!-- Description: Documentation index for Spectra L/S technical, onboarding, roadmap, and operations artifacts. -->
-<!-- Version: 2026.04.19.3 -->
+<!-- Version: 2026.04.19.4 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Spectra L/S Documentation Index
@@ -45,7 +45,9 @@ Use this folder as the single location for project documentation and notes.
 ## Wiki-ready pages (optional automation)
 
 - Wiki source pages: `docs/wiki/`
-- Auto-sync script (optional): `bin/sync_docs_to_wiki.sh`
+- Auto-sync workflow: `.github/workflows/wiki-sync.yml`
+- Auto-sync script (fallback): `bin/sync_docs_to_wiki.sh`
+- Wiki setup runbook: `docs/wiki/README.md`
 
 ## Setup and feature references
 
@@ -61,3 +63,4 @@ Use this folder as the single location for project documentation and notes.
 - Issue templates: `.github/ISSUE_TEMPLATE/`
 - PR template: `.github/pull_request_template.md`
 - Label taxonomy: `docs/governance/LABEL-TAXONOMY.md`
+- Discussions + Projects model: `docs/governance/DISCUSSIONS-PROJECTS-OPERATING-MODEL.md`

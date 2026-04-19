@@ -1,12 +1,30 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.18.57 -->
-<!-- Last updated: 2026-04-18 -->
+<!-- Version: 2026.04.19.8 -->
+<!-- Last updated: 2026-04-19 -->
 
 # Changelog
 
+## 2026-04-19
+
+- Docs/Developer Instructions (`DEVELOPER-INSTRUCTIONS.md`, `README.md`): move contributor/developer hygiene guidance off frontpage README into a dedicated developer instruction document, and add a formal preflight checklist plus implementation workflow for instrumentation, documentation parity, and code-change verification.
+
+- Docs/README Workflow Pointer (`README.md`): add a contributor-visible development hygiene pointer to `.github/copilot-instructions.md` so code-hygiene and note-hygiene requirements are discoverable without opening workspace instruction internals first.
+
+- Workflow/Hygiene Policy (`.github/copilot-instructions.md`): add an explicit code-hygiene + note-hygiene standard so future edits keep concise in-code intent comments near non-obvious logic while maintaining synchronized architecture/contract documentation in repo docs.
+
+- Docs/Retroactive Runtime Audit (`esphome/spectra_ls_system/CODEBASE-RUNTIME-ARCHITECTURE.md`, `packages/ma_control_hub/CONTROL-HUB-ARCHITECTURE.md`, `esphome/spectra_ls_system/DEAD-PATHS-CLEANUP.md`, `.github/copilot-instructions.md`, `README.md`, `esphome/spectra_ls_system/CUSTOM-COMPONENT-ROADMAP.md`, `esphome/spectra_ls_system/v-next-NOTES.md`): add baseline architecture/feature documentation for active ESPHome runtime + MA control hub, publish dead-path/cleanup candidate matrix with risk tiers, and require ongoing functionality/feature documentation updates in future slices.
+
+- Docs/Parallel Program Operating System (`esphome/spectra_ls_system/PARALLEL-PROGRAM-PLAYBOOK.md`, `.github/copilot-instructions.md`, `esphome/spectra_ls_system/CUSTOM-COMPONENT-ROADMAP.md`, `esphome/spectra_ls_system/v-next-NOTES.md`, `README.md`): add strict-but-flexible guardrails for running runtime + custom-component tracks in parallel, including slice templates, parity checkpoints, anti-detail-trap workflow, and mandatory roadmap/v-next/README synchronization protocol.
+
+- Docs/Implementation Draft (`esphome/spectra_ls_system/CUSTOM-COMPONENT-ROADMAP.md`, `esphome/spectra_ls_system/v-next-NOTES.md`): add a concrete Phase-1 Slice-01 implementation draft (shadow-mode parity surfaces, acceptance criteria, file skeleton, and track-A/track-B disposition template) to make first-step execution deterministic.
+
+- Workflow/Docs Parity Gate (`.github/copilot-instructions.md`): add an explicit README update step to the mandatory workflow so repo-state changes include README parity checks/updates before completion.
+
+- Docs/Program Governance (`.github/copilot-instructions.md`, `esphome/spectra_ls_system/CUSTOM-COMPONENT-ROADMAP.md`, `esphome/spectra_ls_system/v-next-NOTES.md`): formalize a required parallel-development program for the new `custom_components/spectra_ls` track alongside the current HA package + ESPHome runtime, define phased migration/cutover gates, and add v-next alignment checkpoints so roadmap, contracts, and implementation status remain synchronized.
+
 ## 2026-04-18
 
-- HA/AC DST Rebuild Baseline (`packages/dst_tuya_ac.yaml`, `packages/dst_tuya_ac.FEATURES.md`): catalog the full legacy feature surface in a companion feature-inventory document, then reset the runtime package to a minimal Dual Smart Thermostat baseline (no policy overlays/manual-hold/schedule reconciler layers) as a clean foundation for phased re-introduction of features with explicit validation gates.
+- HA/AC Porch-Pattern Cool-Only Baseline (`packages/dst_tuya_ac.yaml`): rebuild window AC control to emulate the working Sun Porch DST integration model (template actuator switch + DST-owned cycle decisions + DST→Tuya setpoint sync automation), explicitly scoped to cool-only operation for stability-first behavior.
 
 - Workflow/Quality Gate Hardening (`.github/copilot-instructions.md`): add mandatory verification gates for ESPHome changes — compile/build must succeed **before** commit/push, OTA upload must complete before closing deployment tasks, and responses must include explicit evidence (`build result`, `OTA successful`, `HEAD==origin`) rather than assumptions.
 

@@ -3,8 +3,8 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 ---
 
 <!-- Description: Workspace Copilot operating instructions for Home Assistant + ESPHome. -->
-<!-- Version: 2026.04.18.3 -->
-<!-- Last updated: 2026-04-18 -->
+<!-- Version: 2026.04.19.6 -->
+<!-- Last updated: 2026-04-19 -->
 
 # GitHub Copilot Instructions — Home Assistant + ESPHome
 
@@ -18,8 +18,40 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 - For `esphome/spectra_ls_system/**`, read `esphome/spectra_ls_system/v-next-NOTES.md` before changes.
 - For `esphome/control-py/**`, read `esphome/control-py/NOTES-control-board-2.md` before changes.
 - For any functional change, update `CHANGELOG.md` **before** code edits.
+- For any functionality or feature change, update or create the corresponding architecture/feature documentation in the same change set (for example runtime docs, control-hub docs, and cleanup/deprecation notes when relevant).
 - Keep `README.md` aligned to current `main` direction in `v-next-NOTES.md`.
-- For ESPHome/runtime changes, enforce this sequence with no shortcuts: **edit → build/compile verify → fix failures → commit → push → OTA upload (when requested or implied) → post-upload verification evidence**.
+- Add a required docs-parity step for repo-state changes: update `README.md` in the same change set whenever contracts, behavior, architecture, structure, setup, or operator workflow materially changes.
+- For ESPHome/runtime changes, enforce this sequence with no shortcuts: **edit → update README parity (if repo-state changed) → build/compile verify → fix failures → commit → push → OTA upload (when requested or implied) → post-upload verification evidence**.
+
+## Parallel Custom-Component Program (Required)
+- Develop `custom_components/spectra_ls` in parallel with the current runtime stack (`packages/` + `esphome/`) rather than as a big-bang replacement.
+- Every feature slice must include a two-track disposition:
+  1) current runtime implementation/shim/defer note, and
+  2) custom-component implementation/shim/defer note.
+- No feature is considered complete unless both tracks are mapped as: implemented, compatibility-shimmed, or explicitly deferred with rationale.
+- Keep migration compatibility first: **shadow mode → parity validation → dual-write → domain cutover → legacy retirement**.
+- Preserve existing helper/entity/script contracts during migration windows unless an approved migration step explicitly changes them.
+- For each roadmap phase, update `esphome/spectra_ls_system/v-next-NOTES.md` status and contract deltas in the same change set.
+- Follow `esphome/spectra_ls_system/PARALLEL-PROGRAM-PLAYBOOK.md` as the execution system of record for slice templates, anti-detail-trap workflow, and parity controls.
+
+## Roadmap + v-next + README Parity Discipline (Required)
+- Documentation parity is mandatory for architecture/process/contract changes.
+- In the same change set, keep these synchronized:
+  1) `esphome/spectra_ls_system/CUSTOM-COMPONENT-ROADMAP.md`
+  2) `esphome/spectra_ls_system/v-next-NOTES.md`
+  3) `CHANGELOG.md`
+  4) `README.md` (or explicit `README parity: no material repo-state change` note)
+- If one of the required docs is not updated, the task is not complete.
+- If plan direction changes mid-slice, log a **Plan Delta** and update roadmap + v-next before continuing.
+
+## GitHub Structure Strategy (Current + Future)
+- Current required strategy: **structured monorepo** rooted at `/mnt/homeassistant` with clear domain boundaries.
+- Runtime sources remain in `packages/` + `esphome/`; parallel control-plane work lands in `custom_components/spectra_ls/`.
+- Future split to separate repos is optional and deferred until maturity gates pass:
+  1) stable component schema/API across releases,
+  2) tested migration tooling,
+  3) independent CI confidence per domain,
+  4) operator docs updated for separated lifecycle.
 
 ## Verification Gates (Required, No Exceptions)
 
@@ -69,6 +101,8 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 ## Git + Productization Rules
 - Never commit secrets or environment-local artifacts.
 - Do not track per-user host/IP files (for example `*_tcp_host.yaml`) or site-specific mappings.
+- Treat Spectra as an anonymized, user-portable product by default (no install-specific naming/contracts in tracked product logic).
+- Prefer discovery-first + capability-mapped adaptation to each user’s HA entity topology; avoid hardcoded entity IDs unless explicitly required.
 - Use `!secret` and ignored local files for deployment-specific values.
 - Push cadence (required during active work): create and push a rollback checkpoint at least every 10 minutes **or** at each completed logical slice, whichever comes first.
 - Checkpoint commits must be clearly labeled (for example `checkpoint:` / `wip:`), limited to relevant files, and never include secrets/local-only artifacts.
@@ -81,6 +115,18 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
   - `Last updated: YYYY-MM-DD`
 - Applies to repo-owned text files in active paths (`esphome/`, `packages/`, docs/notes/instructions).
 - Exclude binary/vendor/generated artifacts.
+
+## Code Hygiene + Note Hygiene (Required)
+- Keep code changes small, composable, and local to the root cause; avoid broad refactors unless explicitly requested.
+- Prefer clarity over cleverness: extract repeated logic, remove dead branches, and keep naming stable/descriptive.
+- For non-obvious logic, add concise in-code intent notes near the implementation (why/guardrail/contract), not long narrative blocks.
+- Do not leave stale comments: when behavior changes, update or remove adjacent comments in the same change set.
+- Keep architecture/contract explanations in docs, not only in code comments; update corresponding docs whenever behavior/contracts change.
+- Minimum documentation sync for behavior/contract changes:
+  1) `CHANGELOG.md`
+  2) relevant architecture doc(s) (for example runtime/control-hub/cleanup docs)
+  3) `README.md` when operator-facing behavior or workflow materially changes
+- When deprecating or freezing paths, mark them explicitly (`ARCHIVED`, `LEGACY`, or `DEPRECATED`) and provide the replacement/source-of-truth path.
 
 ## Move/Delete Safety Gate (No-Go if missing)
 - Before any move/delete, explicitly provide:

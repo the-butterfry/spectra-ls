@@ -1,5 +1,5 @@
 <!-- Description: End-user overview for the Spectra L/S Home Assistant + ESPHome system. -->
-<!-- Version: 2026.04.19.9 -->
+<!-- Version: 2026.04.19.10 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Spectra L/S
@@ -11,6 +11,17 @@ Spectra Level / Source (Spectra L/S) is the tactile control surface for Home Ass
 Instead of digging through apps and dashboards, you can touch real controls for transport, lighting, volume, tone, scenes, and automations. The goal is simple: make everyday home control feel immediate, shared, and human.
 
 Audio and lighting are the deepest focus areas today, but the model is broader: if Home Assistant can run it, Spectra L/S is designed to make it feel physical.
+
+## Hardware-First Context (Important)
+
+Spectra L/S is a **hardware-first control stack**. The physical control surface comes first; Home Assistant orchestration is what makes that hardware useful across your home.
+
+Core MCU/control path today:
+
+- **ESP32-S3** — main ESPHome runtime/controller (UI/menu/orchestration path)
+- **RP2040** — physical input capture firmware path (buttons/encoders/pots) feeding the controller runtime
+
+In short: hardware first, then ESPHome + Home Assistant software stack.
 
 ## What It Feels Like to Use Spectra L/S
 

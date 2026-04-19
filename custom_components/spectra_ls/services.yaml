@@ -1,0 +1,15 @@
+# Description: Service definitions for Spectra LS Phase 2 registry/router scaffold maintenance actions.
+# Version: 2026.04.19.1
+# Last updated: 2026-04-19
+
+rebuild_registry:
+  name: Rebuild registry
+  description: Refresh the Spectra LS normalized target registry snapshot.
+
+validate_contracts:
+  name: Validate contracts
+  description: Validate presence of required legacy contract entities and refresh diagnostics snapshot.
+
+dump_route_trace:
+  name: Dump route trace
+  description: Refresh and expose the latest read-only route-trace decision in diagnostics.

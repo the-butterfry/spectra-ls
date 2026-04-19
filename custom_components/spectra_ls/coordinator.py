@@ -1,5 +1,5 @@
-# Description: Data coordinator for Spectra LS read-only shadow parity surfaces.
-# Version: 2026.04.19.1
+# Description: Data coordinator for Spectra LS read-only shadow parity and Phase 2 deterministic registry/router validation scaffolding.
+# Version: 2026.04.19.3
 # Last updated: 2026-04-19
 
 from __future__ import annotations
@@ -15,8 +15,14 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .const import (
     DOMAIN,
+    LEGACY_CONTROL_HOST,
+    LEGACY_CONTROL_TARGETS,
+    LEGACY_ROOMS_JSON,
+    LEGACY_ROOMS_RAW,
     LEGACY_SURFACES,
 )
+from .registry import build_registry_snapshot
+from .router import build_route_trace
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -118,13 +124,60 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             if parity[key] != legacy[key]
         ]
 
+        registry = build_registry_snapshot(
+            hass=self.hass,
+            legacy_control_host_entity=LEGACY_CONTROL_HOST,
+            legacy_control_targets_entity=LEGACY_CONTROL_TARGETS,
+            legacy_rooms_json_entity=LEGACY_ROOMS_JSON,
+            legacy_rooms_raw_entity=LEGACY_ROOMS_RAW,
+        )
+
+        route_trace = build_route_trace(
+            active_target=str(parity.get("active_target", "") or ""),
+            active_control_path=str(parity.get("active_control_path", "") or ""),
+            registry=registry,
+        )
+
         return {
             "legacy": legacy,
             "parity": parity,
             "unresolved_sources": unresolved_sources,
             "mismatches": mismatches,
+            "registry": registry,
+            "route_trace": route_trace,
             "captured_at": datetime.now(UTC).isoformat(),
         }
+
+    async def async_rebuild_registry(self) -> None:
+        """Refresh parity data, including registry scaffold snapshot."""
+        self.async_set_updated_data(self._build_snapshot())
+
+    async def async_validate_contracts(self) -> None:
+        """Refresh parity data and emit contract validation visibility in snapshot."""
+        data = self._build_snapshot()
+        required_entities = {
+            "active_target": LEGACY_SURFACES["active_target"],
+            "active_control_path": LEGACY_SURFACES["active_control_path"],
+            "active_control_capable": LEGACY_SURFACES["active_control_capable"],
+            "control_hosts": LEGACY_SURFACES["control_hosts"],
+            "control_host": LEGACY_CONTROL_HOST,
+            "control_targets": LEGACY_CONTROL_TARGETS,
+            "rooms_json": LEGACY_ROOMS_JSON,
+            "rooms_raw": LEGACY_ROOMS_RAW,
+        }
+        missing_required = [
+            key for key, entity_id in required_entities.items() if self.hass.states.get(entity_id) is None
+        ]
+        data["contract_validation"] = {
+            "required_entities": required_entities,
+            "missing_required": missing_required,
+            "valid": len(missing_required) == 0,
+        }
+        self.async_set_updated_data(data)
+
+    async def async_dump_route_trace(self) -> None:
+        """Refresh parity data so latest route trace appears in diagnostics."""
+        self.async_set_updated_data(self._build_snapshot())
 
     @callback
     def _handle_state_change(self, _event) -> None:

@@ -1,0 +1,63 @@
+{# Description: Raw copy/paste Jinja template for Spectra LS Phase 2 negative-case regression validation. #}
+{# Version: 2026.04.19.1 #}
+{# Last updated: 2026-04-19 #}
+
+{# =========================
+  Phase 2 Negative-Case Regression (custom_components/spectra_ls)
+  Purpose: verify defer-path diagnostics are explicit when routing context is invalid.
+  Workflow:
+    1) Intentionally create one bad case (unknown target, unsupported path, or missing legacy source)
+    2) Run actions: spectra_ls.rebuild_registry + spectra_ls.validate_contracts + spectra_ls.dump_route_trace
+    3) Reload this template and confirm WARN/PASS behavior for expected defer reason
+  ========================= #}
+
+{% set s_target = 'sensor.shadow_active_target' if states['sensor.shadow_active_target'] is not none else 'sensor.spectra_ls_shadow_active_target' %}
+{% set s_path = 'sensor.shadow_active_control_path' if states['sensor.shadow_active_control_path'] is not none else 'sensor.spectra_ls_shadow_active_control_path' %}
+
+{% set active_target = states(s_target) %}
+{% set active_path = states(s_path) %}
+{% set parity_unresolved = state_attr(s_target,'unresolved_sources') or [] %}
+{% set parity_mismatches = state_attr(s_target,'mismatches') or [] %}
+{% set route_trace = state_attr(s_target,'route_trace') or {} %}
+{% set route_decision = route_trace.decision if route_trace is mapping and route_trace.decision is defined else '' %}
+{% set route_reason = route_trace.reason if route_trace is mapping and route_trace.reason is defined else '' %}
+{% set contract_validation = state_attr(s_target,'contract_validation') or {} %}
+{% set contract_valid = contract_validation.valid if contract_validation is mapping and contract_validation.valid is defined else false %}
+
+{% set expected_defer_decisions = ['defer_no_target', 'defer_unknown_target', 'defer_unsupported_path', 'defer_not_capable'] %}
+{% set observed_defer = route_decision in expected_defer_decisions %}
+{% set parity_signal_present = (parity_unresolved | length) > 0 or (parity_mismatches | length) > 0 %}
+{% set diagnostics_present = route_decision not in ['','none','unknown','unavailable'] and route_reason not in ['','none','unknown','unavailable'] %}
+
+{% set verdict = 'FAIL' %}
+{% if observed_defer and diagnostics_present %}
+  {% set verdict = 'PASS' %}
+{% elif diagnostics_present or parity_signal_present or not contract_valid %}
+  {% set verdict = 'WARN' %}
+{% endif %}
+
+### Phase 2 Negative-Case Regression (`spectra_ls`)
+- Result: **{{ verdict }}**
+- Timestamp: **{{ now() }}**
+
+### Inputs observed
+- Active target (`{{ s_target }}`): **{{ active_target }}**
+- Active path (`{{ s_path }}`): **{{ active_path }}**
+- Route decision: **{{ route_decision if route_decision != '' else 'n/a' }}**
+- Route reason: **{{ route_reason if route_reason != '' else 'n/a' }}**
+
+### Negative-case signals
+- Defer decision observed: **{{ observed_defer }}**
+- Diagnostics present: **{{ diagnostics_present }}**
+- Parity unresolved count: **{{ parity_unresolved | length }}**
+- Parity mismatch count: **{{ parity_mismatches | length }}**
+- Contract valid: **{{ contract_valid }}**
+
+### Interpretation
+{% if verdict == 'PASS' %}
+- Negative-case routing produced explicit defer diagnostics as expected.
+{% elif verdict == 'WARN' %}
+- Some warning signals are present, but expected defer diagnostics are incomplete. Confirm route decision/reason after rerunning services.
+{% else %}
+- No meaningful negative-case signal detected. Recreate a known-bad routing case and rerun the three services.
+{% endif %}

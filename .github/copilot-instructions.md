@@ -3,7 +3,7 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 ---
 
 <!-- Description: Workspace Copilot operating instructions for Home Assistant + ESPHome. -->
-<!-- Version: 2026.04.19.10 -->
+<!-- Version: 2026.04.19.11 -->
 <!-- Last updated: 2026-04-19 -->
 
 # GitHub Copilot Instructions — Home Assistant + ESPHome
@@ -178,6 +178,12 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 - Keep automations idempotent and guarded against missing entities.
 - Do not rename helpers/entity IDs without explicit approval + migration note.
 - During diagnosis, provide copy/paste Developer Tools templates instead of asking for manual checks.
+- For custom integration branding/icons, follow official docs-first flow (no assumptions):
+  - Verify current guidance from Home Assistant developer docs/blog and HACS docs before changing branding behavior.
+  - For HA 2026.3+ custom integrations, place branding assets in `custom_components/<domain>/brand/`.
+  - Supported filenames are: `icon.png`, `logo.png`, optional `dark_*` and `@2x` variants.
+  - Do not rely on `manifest.json` `icon` key as the primary integration-brand source.
+  - If branding assets change, note expected cache/restart effects in operator-facing docs/changelog.
 
 ### Routing/Control Policy
 - Discovery-first onboarding is default.

@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.19.6 -->
+<!-- Version: 2026.04.19.9 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -115,6 +115,8 @@ Execution playbook reference: `docs/program/PARALLEL-PROGRAM-PLAYBOOK.md`.
 | Slice | Phase | Runtime Track | Component Track | Parity | Risk | Status |
 | --- | --- | --- | --- | --- | --- | --- |
 | P1-S01 | 1 | Implemented (legacy source-of-truth retained) | Active (read-only shadow parity) | Pending | Low | Active |
+| P2-S01 | 2 | Implemented (legacy route contracts retained) | Implemented (registry/router scaffold; read-only) | Pending | Low | Implemented |
+| P2-S02 | 2 | Implemented (legacy route contracts retained) | Implemented (deterministic validation hardening + P2 diagnostics closure) | Implemented | Low | Implemented |
 
 ## Phase 0 — Charter + contract freeze
 

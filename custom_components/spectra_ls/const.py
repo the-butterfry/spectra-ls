@@ -1,5 +1,5 @@
-# Description: Constants for Spectra LS custom integration shadow parity surfaces.
-# Version: 2026.04.19.1
+# Description: Constants for Spectra LS custom integration shadow parity and Phase 2 registry/router scaffolding.
+# Version: 2026.04.19.2
 # Last updated: 2026-04-19
 
 from __future__ import annotations
@@ -7,6 +7,10 @@ from __future__ import annotations
 from homeassistant.const import Platform
 
 DOMAIN = "spectra_ls"
+
+SERVICE_REBUILD_REGISTRY = "rebuild_registry"
+SERVICE_VALIDATE_CONTRACTS = "validate_contracts"
+SERVICE_DUMP_ROUTE_TRACE = "dump_route_trace"
 
 PLATFORMS: tuple[Platform, ...] = (
     Platform.SENSOR,
@@ -20,6 +24,10 @@ LEGACY_ACTIVE_TARGET = "sensor.ma_active_target"
 LEGACY_ACTIVE_CONTROL_PATH = "sensor.ma_active_control_path"
 LEGACY_ACTIVE_CONTROL_CAPABLE = "binary_sensor.ma_active_control_capable"
 LEGACY_CONTROL_HOSTS = "sensor.ma_control_hosts"
+LEGACY_CONTROL_HOST = "sensor.ma_control_host"
+LEGACY_CONTROL_TARGETS = "sensor.ma_control_targets"
+LEGACY_ROOMS_JSON = "sensor.spectra_ls_rooms_json"
+LEGACY_ROOMS_RAW = "sensor.spectra_ls_rooms_raw"
 
 LEGACY_SURFACES: dict[str, str] = {
     "active_target": LEGACY_ACTIVE_TARGET,

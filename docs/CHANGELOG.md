@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.19.9 -->
+<!-- Version: 2026.04.19.10 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Changelog
 
 ## 2026-04-19
+
+- Docs/Legend + Wiring Protocol Upgrade (`docs/circuitpy/RP-LEGEND.md`, `docs/hardware/WIRING-LAYOUT-PROTOCOL.md`, `docs/README.md`, `README.md`, `.github/copilot-instructions.md`, optional wiki sync scaffolding): expand the docs legend into a directive wiring/layout protocol reference with deep links to component-level details, add a docs index entry for the new protocol document, enforce docs/README parity directives in workspace instructions, and simplify frontpage README to user-focused overview with basic documentation links.
 
 - Docs/Repository Documentation Reorganization (`docs/**`, `README.md`, `.github/copilot-instructions.md`): move project documentation/notes into `docs/` (except top-level `README.md`), remap key workflow/reference paths, and keep frontpage README end-user-focused while relocating developer onboarding to docs.
 

@@ -1,5 +1,5 @@
 <!-- Description: Documentation index for Spectra L/S technical, onboarding, roadmap, and operations artifacts. -->
-<!-- Version: 2026.04.19.1 -->
+<!-- Version: 2026.04.19.2 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Spectra L/S Documentation Index
@@ -35,6 +35,16 @@ Use this folder as the single location for project documentation and notes.
 - Spectra system notes: `docs/notes/NOTES-control-board-2.md`, `docs/notes/NOTES-wiim-api.md`
 - control-py notes: `docs/control-py/NOTES-control-board-2.md`, `docs/control-py/NOTES-wiim-api.md`, `docs/control-py/v-next-NOTES.md`
 - RP2040 notes: `docs/circuitpy/RP-LEGEND.md`
+
+## Hardware wiring and layout protocols
+
+- Wiring/layout protocol (detailed): `docs/hardware/WIRING-LAYOUT-PROTOCOL.md`
+- RP2040 legend (summary + component links): `docs/circuitpy/RP-LEGEND.md`
+
+## Wiki-ready pages (optional automation)
+
+- Wiki source pages: `docs/wiki/`
+- Auto-sync script (optional): `bin/sync_docs_to_wiki.sh`
 
 ## Setup and feature references
 

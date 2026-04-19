@@ -3,7 +3,7 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 ---
 
 <!-- Description: Workspace Copilot operating instructions for Home Assistant + ESPHome. -->
-<!-- Version: 2026.04.19.7 -->
+<!-- Version: 2026.04.19.8 -->
 <!-- Last updated: 2026-04-19 -->
 
 # GitHub Copilot Instructions — Home Assistant + ESPHome
@@ -43,6 +43,15 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
   4) `README.md` (or explicit `README parity: no material repo-state change` note)
 - If one of the required docs is not updated, the task is not complete.
 - If plan direction changes mid-slice, log a **Plan Delta** and update roadmap + v-next before continuing.
+
+## Documentation System + Legend Parity (Required)
+- `README.md` is end-user facing; avoid embedding deep developer implementation detail there.
+- Place developer and technical detail under `docs/` with `docs/README.md` as the index.
+- Wiring/layout/event protocol detail must be maintained in:
+  - `docs/hardware/WIRING-LAYOUT-PROTOCOL.md` (detailed), and
+  - `docs/circuitpy/RP-LEGEND.md` (summary + routing links).
+- When updating legend/protocol docs, include direct links to fine-detail component/runtime sources where relevant.
+- Optional wiki sync source is `docs/wiki/`; if wiki automation is enabled, keep wiki source pages synchronized with docs changes.
 
 ## GitHub Structure Strategy (Current + Future)
 - Current required strategy: **structured monorepo** rooted at `/mnt/homeassistant` with clear domain boundaries.
@@ -175,6 +184,8 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 ## Key References
 - `docs/roadmap/v-next-NOTES.md`
 - `docs/control-py/NOTES-control-board-2.md`
+- `docs/hardware/WIRING-LAYOUT-PROTOCOL.md`
+- `docs/circuitpy/RP-LEGEND.md`
 - `docs/CHANGELOG.md`
 - `esphome/spectra_ls_system.yaml`
 - `esphome/control-board-esp32-tcp.yaml`

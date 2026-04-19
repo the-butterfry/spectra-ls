@@ -1,5 +1,5 @@
 <!-- Description: Strict operator checklist for installing Spectra on a user-owned Home Assistant instance with runtime and custom-component tracks. -->
-<!-- Version: 2026.04.19.1 -->
+<!-- Version: 2026.04.19.2 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Install on Your Own Home Assistant
@@ -27,6 +27,10 @@ Use this as a strict checklist.
 - [ ] Apply ESPHome runtime configuration.
 - [ ] Ensure route/target helpers are present.
 
+Expected result:
+
+- [ ] Required entities/helpers appear in Home Assistant with valid states.
+
 ### 3) Validate + deploy
 
 - [ ] Validate Home Assistant config.
@@ -34,12 +38,24 @@ Use this as a strict checklist.
 - [ ] Upload OTA/flash if required for your target.
 - [ ] Confirm runtime entities and controls appear as expected.
 
+Evidence to keep (copy/paste into notes/issue if needed):
+
+- [ ] Build success output snippet.
+- [ ] OTA success output snippet (if applicable).
+- [ ] One screenshot or state dump showing control entities populated.
+
 ### 4) Integration verification
 
 - [ ] Audio controls work and reflect state.
 - [ ] Lighting controls work and reflect state.
 - [ ] Room/target selection is populated (not placeholders only).
 - [ ] Control target/routing behavior is stable across reload/restart.
+
+Failure indicators (stop and investigate):
+
+- [ ] Placeholder-only room/target lists remain after reload.
+- [ ] Controls issue commands but entity state never updates.
+- [ ] Route metadata (`control_path`, `control_capable`) is missing/invalid.
 
 ### 5) If something breaks
 
@@ -57,6 +73,7 @@ Planned additions to this page:
 - [ ] Config flow onboarding screens
 - [ ] Registry/routing diagnostics walkthrough
 - [ ] Migration checkpoints from runtime helpers to component surfaces
+- [ ] First-time setup wizard expectations and diagnostics capture
 
 Roadmap references:
 
@@ -69,3 +86,9 @@ This is **not** needed to run Spectra in your home.
 
 - Use `WIKI_FINE_GRAINED_PAT` only if you want GitHub Actions to publish `docs/wiki/*` to the GitHub Wiki.
 - Setup steps are in `docs/wiki/README.md`.
+
+## Rollback checklist (operator safety)
+
+- [ ] Keep known-good config backup before changing runtime files.
+- [ ] If deploy fails, restore prior known-good config snapshot.
+- [ ] Re-validate baseline controls before attempting incremental changes.

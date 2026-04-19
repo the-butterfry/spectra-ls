@@ -1,5 +1,5 @@
 <!-- Description: Wiki home page for Spectra L/S operations, architecture, contribution flow, and runbooks. -->
-<!-- Version: 2026.04.19.6 -->
+<!-- Version: 2026.04.19.7 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Spectra L/S Wiki
@@ -22,6 +22,13 @@ This wiki mirrors curated content from `docs/wiki/` in the main repository and i
 - [Wiki Content Scope Policy](Wiki-Content-Scope-Policy)
 - [Custom Component Setup Roadmap Stub](Custom-Component-Setup-Roadmap-Stub)
 
+## Operator quick paths
+
+- New install on your own HA: start with **Install on Your Own Home Assistant**
+- Existing install troubleshooting: go to **Operations Runbooks**
+- Bug submission and triage flow: use **Welcome, README, and Bug Workflow**
+- Process/governance routing: use **Discussions and Projects Workflow**
+
 ## Source of truth
 
 - Canonical docs index: `docs/README.md`
@@ -34,4 +41,10 @@ This wiki mirrors curated content from `docs/wiki/` in the main repository and i
 - Publish pipeline: `.github/workflows/wiki-sync.yml`
 - Sync trigger: changes to `docs/wiki/**` on `main` (or manual workflow dispatch)
 
-_Wiki sync marker (2026-04-19, post-init retest): if you can see this line on the GitHub Wiki Home page, your PAT/Actions publish path is working._
+## What this wiki is for
+
+- User/operator setup, deployment, integration, and bug workflow guidance.
+- High-level architecture and process routing.
+- Practical checklists that evolve with the custom-component migration.
+
+For deep internals, use `docs/architecture`, `docs/roadmap`, and `docs/program`.

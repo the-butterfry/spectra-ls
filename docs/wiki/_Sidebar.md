@@ -1,11 +1,12 @@
 <!-- Description: Sidebar navigation for Spectra L/S GitHub Wiki pages published from docs/wiki sources. -->
-<!-- Version: 2026.04.19.2 -->
+<!-- Version: 2026.04.19.3 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Spectra L/S Wiki
 
 - [Home](Home)
 - [Welcome, README, and Bug Workflow](Welcome-README-and-Bug-Workflow)
+- [Install on Your Own Home Assistant](Install-on-Your-Own-HA)
 - [Getting Started](Getting-Started)
 - [User Setup, Deploy, and HA Integration](User-Setup-Deploy-and-HA-Integration)
 - [System Architecture](System-Architecture)

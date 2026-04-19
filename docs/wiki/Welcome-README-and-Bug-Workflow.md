@@ -1,5 +1,5 @@
 <!-- Description: First-stop wiki page for new users covering orientation, support paths, and bug submission workflow. -->
-<!-- Version: 2026.04.19.1 -->
+<!-- Version: 2026.04.19.2 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Welcome, README, and Bug Workflow
@@ -9,8 +9,9 @@ If you are new to Spectra L/S, start here.
 ## Step 1 — Read this first
 
 1. `README.md` (what Spectra is and why it exists)
-2. `docs/wiki/User-Setup-Deploy-and-HA-Integration.md` (operator setup and deployment)
-3. `docs/wiki/Discussions-and-Projects-Workflow.md` (how work moves from idea to implementation)
+2. `docs/wiki/Install-on-Your-Own-HA.md` (strict install checklist)
+3. `docs/wiki/User-Setup-Deploy-and-HA-Integration.md` (operator setup and deployment)
+4. `docs/wiki/Discussions-and-Projects-Workflow.md` (how work moves from idea to implementation)
 
 ## Step 2 — Pick the right intake path
 

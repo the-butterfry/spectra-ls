@@ -1,18 +1,16 @@
 <!-- Description: End-user overview for the Spectra L/S Home Assistant + ESPHome system. -->
-<!-- Version: 2026.04.19.8 -->
+<!-- Version: 2026.04.19.9 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Spectra L/S
 
 **⚠️ State of project (published 2026-04-16): Active heavy development on `main`. Not currently recommended for fresh production installations unless you are comfortable with frequent updates and occasional migration adjustments.**
 
-[Home Assistant](https://www.home-assistant.io/) unifies and automates devices and routines across your digital home; Spectra Level / Source (Spectra L/S) is the tactile analog layer that puts control back in your hands. With physical controls for transport, lighting, volume, and tone, you can shape the atmosphere of your home in seconds from the coffee table.
+Spectra Level / Source (Spectra L/S) is the tactile control surface for Home Assistant: instant, physical control over the moments that matter in your home.
 
-Spectra L/S is built to feel immediate. Tap Play/Pause, jump Next/Back, tune brightness and color, and sculpt sound with Physical 3-Band EQ — all with clear OLED feedback that keeps every action obvious.
+Instead of digging through apps and dashboards, you can touch real controls for transport, lighting, volume, tone, scenes, and automations. The goal is simple: make everyday home control feel immediate, shared, and human.
 
-It is also built to feel connected. If Home Assistant already knows a light or sound target, Spectra L/S can discover it and interact automatically, so your existing rooms and devices become instantly controllable from one physical surface.
-
-Most importantly, Spectra L/S is designed as a **general analog surface for Home Assistant**: buttons, switches, sliders, knobs, and encoders are mappable inputs that can trigger or modulate far more than audio and lighting. Audio and lighting remain the heavy-focus flagship domains, but the control philosophy is broader: if Home Assistant can automate it, Spectra L/S can provide tactile control for it.
+Audio and lighting are the deepest focus areas today, but the model is broader: if Home Assistant can run it, Spectra L/S is designed to make it feel physical.
 
 ## What It Feels Like to Use Spectra L/S
 
@@ -28,7 +26,7 @@ Most importantly, Spectra L/S is designed as a **general analog surface for Home
 - Shared spaces become more inclusive: anyone can walk up and use dedicated controls without training.
 - It restores “eyes-up, hands-on” control for moments where touchscreens are friction.
 
-Inspired by modern physical-control craftsmanship from [Condesa Electronics — Carmen SE](https://condesaelectronics.com/) and [Varia Instruments — RDM series](https://www.varia-instruments.com/), Spectra L/S adapts that tactile design ethos to Home Assistant orchestration.
+Inspired by modern physical-control craftsmanship from [Condesa Electronics — Carmen SE](https://condesaelectronics.com/) and [Varia Instruments — RDM series](https://www.varia-instruments.com/), Spectra L/S adapts that tactile design ethos for everyday Home Assistant control.
 
 ## Analog Surface for the Whole Home
 

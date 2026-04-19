@@ -1,5 +1,5 @@
 <!-- Description: Wiki home page for Spectra L/S operations, architecture, contribution flow, and runbooks. -->
-<!-- Version: 2026.04.19.7 -->
+<!-- Version: 2026.04.19.8 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Spectra L/S Wiki
@@ -15,6 +15,7 @@ This wiki mirrors curated content from `docs/wiki/` in the main repository and i
 - [Getting Started](Getting-Started)
 - [User Setup, Deploy, and HA Integration](User-Setup-Deploy-and-HA-Integration)
 - [System Architecture](System-Architecture)
+- [Control Surface Inputs and Expanders](Control-Surface-Inputs-and-Expanders)
 - [Control Contracts and Scope Paths](Control-Contracts-and-Scope-Paths)
 - [Operations Runbooks](Operations-Runbooks)
 - [Discussions and Projects Workflow](Discussions-and-Projects-Workflow)

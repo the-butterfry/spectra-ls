@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.19.23 -->
+<!-- Version: 2026.04.19.24 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Changelog
 
 ## 2026-04-19
+
+- Docs/Wiki Control Surface Inventory (`docs/wiki/Control-Surface-Inputs-and-Expanders.md`, `docs/wiki/Home.md`, `docs/wiki/_Sidebar.md`, `docs/wiki/README.md`): add a dedicated operator-facing control reference for buttons, selectors, encoders, sliders/pots, expander bus addresses, and RP→ESP event-path mapping; wire the page into wiki navigation. README parity: no material repo-state change.
 
 - Docs/Wiki Content Expansion + Marker Cleanup (`docs/wiki/Home.md`, `docs/wiki/Getting-Started.md`, `docs/wiki/Install-on-Your-Own-HA.md`, `docs/wiki/User-Setup-Deploy-and-HA-Integration.md`, `docs/wiki/Operations-Runbooks.md`, `docs/wiki/Discussions-and-Projects-Workflow.md`, `docs/wiki/README.md`): remove temporary wiki sync marker and expand wiki stubs into fuller operator-facing runbooks, install guidance, workflow criteria, and troubleshooting references.
 

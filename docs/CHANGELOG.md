@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.19.26 -->
+<!-- Version: 2026.04.19.27 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Changelog
 
 ## 2026-04-19
+
+- Custom Component/Validation UX Polish (`custom_components/spectra_ls/icon.png`, `custom_components/spectra_ls/logo.png`, `docs/testing/DEVTOOLS-TEMPLATES.local.md`): add placeholder integration image assets for Devices & Services branding and add a persistent P1-S01 shadow-parity Developer Tools template block for repeatable validation/triage across load/parity/attributes/icon checks.
 
 - Custom Component/Icon + Install Flow Clarification (`custom_components/spectra_ls/sensor.py`, `custom_components/spectra_ls/binary_sensor.py`, `docs/wiki/Install-on-Your-Own-HA.md`): add placeholder icon (`mdi:audio-video`) for Spectra LS shadow parity entities and document required Home Assistant reboot before adding the new custom integration so discovery reflects freshly deployed `custom_components` files.
 

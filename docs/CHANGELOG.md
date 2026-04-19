@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.19.18 -->
+<!-- Version: 2026.04.19.19 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Changelog
 
 ## 2026-04-19
+
+- Docs/Wiki Sync Smoke Test (`docs/wiki/Home.md`): add a small visible sync-marker line to confirm GitHub Actions wiki publishing is functioning after repository secret setup.
 
 - Docs/Wiki PAT Navigation Fix (`docs/wiki/README.md`): correct fine-grained PAT instructions to a valid profile-settings route and add direct URL fallback so users can reliably reach token creation UI.
 

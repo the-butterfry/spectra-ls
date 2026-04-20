@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.20.37 -->
+<!-- Version: 2026.04.20.38 -->
 <!-- Last updated: 2026-04-20 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -284,6 +284,10 @@ Hardening pass-2 (2026-04-20):
 Hardening pass-3 (2026-04-20):
 
 - F4-S03 diagnostics now expose explicit dependency context (`active_target_resolved`, `route_decision`, `blocking_reasons`) and template guidance for dependency-only WARN captures (`f4_s02_not_ready` with `defer_no_target`) using deterministic rerun order (F4-S01/F4-S02/F4-S03 legacy mode).
+
+Hardening pass-4 (2026-04-20):
+
+- Fixed accidental F4 builder split regression where `_build_action_catalog_validation` could return `None` after F4-S03 insertion, which forced false `ready_for_f4_s02=false` dependency WARN outcomes in F4-S03 despite healthy route/target context.
 
 Still required before closing F4-S03:
 

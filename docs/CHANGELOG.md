@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.20.80 -->
+<!-- Version: 2026.04.20.81 -->
 <!-- Last updated: 2026-04-20 -->
 
 # Changelog
 
 ## 2026-04-20
+
+- Custom Component/F4-S02 Builder Regression Fix (`custom_components/spectra_ls/coordinator.py`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): fix accidental function-split regression where `_build_action_catalog_validation` returned `None` (due misplaced F4-S03 builder insertion), which forced persistent `ready_for_f4_s02=false` and blocked F4-S03 closeout dependency gate despite healthy route/target context. Restored complete F4-S02 payload builder flow and kept F4-S03 dependency guards intact. README parity: no material repo-state change.
 
 - Validation/F4-S03 Dependency-WARN Guidance Hardening (`custom_components/spectra_ls/coordinator.py`, `docs/testing/raw/f4_s03_crossfade_balance_validation.jinja`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): harden F4-S03 diagnostics for no-target/deferred-route captures by surfacing explicit dependency context (`active_target_resolved`, `route_decision`, `ready_for_f4_s02`) and adding deterministic rerun guidance (set/confirm active target, rerun F4-S01 → F4-S02 → F4-S03 in legacy mode) when the only failing gate is F4-S02 readiness. README parity: no material repo-state change.
 

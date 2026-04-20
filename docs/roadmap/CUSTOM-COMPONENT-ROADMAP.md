@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.20.32 -->
+<!-- Version: 2026.04.20.33 -->
 <!-- Last updated: 2026-04-20 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -440,6 +440,10 @@ Implemented in component:
 - sample dry-run mix-plan diagnostics (no-op/fallback visibility),
 - services: `spectra_ls.validate_crossfade_balance`, `spectra_ls.run_f4_s03_sequence`,
 - raw operator template: `docs/testing/raw/f4_s03_crossfade_balance_validation.jinja`.
+
+Hardening pass-2 (2026-04-20):
+
+- F4 one-shot sequence services (`run_f4_s01_sequence`, `run_f4_s02_sequence`, `run_f4_s03_sequence`) now report explicit stage-failure context when action execution errors occur, improving operator debugging and reducing opaque "Unknown error" outcomes.
 
 Open before F4-S03 closeout:
 

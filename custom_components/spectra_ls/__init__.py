@@ -1,14 +1,16 @@
 # Description: Spectra LS custom integration setup for shadow parity, Phase 3 guarded routing write-path services, and Phase 4 diagnostics scaffolding services (F4-S01/F4-S03).
-# Version: 2026.04.20.9
+# Version: 2026.04.20.10
 # Last updated: 2026-04-20
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.core import ServiceCall
+from homeassistant.exceptions import HomeAssistantError
 
 from .const import (
     DOMAIN,
@@ -30,6 +32,8 @@ from .const import (
     SERVICE_RUN_F4_S03_SEQUENCE,
 )
 from .coordinator import SpectraLsShadowCoordinator
+
+_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup(hass: HomeAssistant, _config: dict[str, Any]) -> bool:
@@ -113,13 +117,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         mode = str(call.data.get("mode", "legacy"))
         reason = str(call.data.get("reason", ""))
 
-        await coordinator.async_set_write_authority(mode=mode, reason=reason)
-        await coordinator.async_rebuild_registry()
-        await coordinator.async_validate_contracts()
-        await coordinator.async_dump_route_trace()
-        await coordinator.async_validate_selection_handoff()
-        await coordinator.async_validate_metadata_prep()
-        await coordinator.async_validate_capability_profile()
+        stages: list[tuple[str, Any, tuple[Any, ...], dict[str, Any]]] = [
+            ("set_write_authority", coordinator.async_set_write_authority, (), {"mode": mode, "reason": reason}),
+            ("rebuild_registry", coordinator.async_rebuild_registry, (), {}),
+            ("validate_contracts", coordinator.async_validate_contracts, (), {}),
+            ("dump_route_trace", coordinator.async_dump_route_trace, (), {}),
+            ("validate_selection_handoff", coordinator.async_validate_selection_handoff, (), {}),
+            ("validate_metadata_prep", coordinator.async_validate_metadata_prep, (), {}),
+            ("validate_capability_profile", coordinator.async_validate_capability_profile, (), {}),
+        ]
+
+        for stage, op, args, kwargs in stages:
+            try:
+                await op(*args, **kwargs)
+            except Exception as err:
+                _LOGGER.exception("F4-S01 sequence failed at stage '%s'", stage)
+                raise HomeAssistantError(f"F4-S01 sequence failed at stage '{stage}': {err}") from err
 
     async def _service_validate_action_catalog(_call: ServiceCall) -> None:
         await coordinator.async_validate_action_catalog()
@@ -128,14 +141,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         mode = str(call.data.get("mode", "legacy"))
         reason = str(call.data.get("reason", ""))
 
-        await coordinator.async_set_write_authority(mode=mode, reason=reason)
-        await coordinator.async_rebuild_registry()
-        await coordinator.async_validate_contracts()
-        await coordinator.async_dump_route_trace()
-        await coordinator.async_validate_selection_handoff()
-        await coordinator.async_validate_metadata_prep()
-        await coordinator.async_validate_capability_profile()
-        await coordinator.async_validate_action_catalog()
+        stages: list[tuple[str, Any, tuple[Any, ...], dict[str, Any]]] = [
+            ("set_write_authority", coordinator.async_set_write_authority, (), {"mode": mode, "reason": reason}),
+            ("rebuild_registry", coordinator.async_rebuild_registry, (), {}),
+            ("validate_contracts", coordinator.async_validate_contracts, (), {}),
+            ("dump_route_trace", coordinator.async_dump_route_trace, (), {}),
+            ("validate_selection_handoff", coordinator.async_validate_selection_handoff, (), {}),
+            ("validate_metadata_prep", coordinator.async_validate_metadata_prep, (), {}),
+            ("validate_capability_profile", coordinator.async_validate_capability_profile, (), {}),
+            ("validate_action_catalog", coordinator.async_validate_action_catalog, (), {}),
+        ]
+
+        for stage, op, args, kwargs in stages:
+            try:
+                await op(*args, **kwargs)
+            except Exception as err:
+                _LOGGER.exception("F4-S02 sequence failed at stage '%s'", stage)
+                raise HomeAssistantError(f"F4-S02 sequence failed at stage '{stage}': {err}") from err
 
     async def _service_validate_crossfade_balance(_call: ServiceCall) -> None:
         await coordinator.async_validate_crossfade_balance()
@@ -144,15 +166,24 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         mode = str(call.data.get("mode", "legacy"))
         reason = str(call.data.get("reason", ""))
 
-        await coordinator.async_set_write_authority(mode=mode, reason=reason)
-        await coordinator.async_rebuild_registry()
-        await coordinator.async_validate_contracts()
-        await coordinator.async_dump_route_trace()
-        await coordinator.async_validate_selection_handoff()
-        await coordinator.async_validate_metadata_prep()
-        await coordinator.async_validate_capability_profile()
-        await coordinator.async_validate_action_catalog()
-        await coordinator.async_validate_crossfade_balance()
+        stages: list[tuple[str, Any, tuple[Any, ...], dict[str, Any]]] = [
+            ("set_write_authority", coordinator.async_set_write_authority, (), {"mode": mode, "reason": reason}),
+            ("rebuild_registry", coordinator.async_rebuild_registry, (), {}),
+            ("validate_contracts", coordinator.async_validate_contracts, (), {}),
+            ("dump_route_trace", coordinator.async_dump_route_trace, (), {}),
+            ("validate_selection_handoff", coordinator.async_validate_selection_handoff, (), {}),
+            ("validate_metadata_prep", coordinator.async_validate_metadata_prep, (), {}),
+            ("validate_capability_profile", coordinator.async_validate_capability_profile, (), {}),
+            ("validate_action_catalog", coordinator.async_validate_action_catalog, (), {}),
+            ("validate_crossfade_balance", coordinator.async_validate_crossfade_balance, (), {}),
+        ]
+
+        for stage, op, args, kwargs in stages:
+            try:
+                await op(*args, **kwargs)
+            except Exception as err:
+                _LOGGER.exception("F4-S03 sequence failed at stage '%s'", stage)
+                raise HomeAssistantError(f"F4-S03 sequence failed at stage '{stage}': {err}") from err
 
     if not hass.services.has_service(DOMAIN, SERVICE_REBUILD_REGISTRY):
         hass.services.async_register(DOMAIN, SERVICE_REBUILD_REGISTRY, _service_rebuild_registry)

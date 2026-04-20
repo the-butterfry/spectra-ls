@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.20.34 -->
+<!-- Version: 2026.04.20.35 -->
 <!-- Last updated: 2026-04-20 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -275,6 +275,10 @@ Implemented in `custom_components/spectra_ls`:
 - sample dry-run mix-plan visibility with explicit no-op fallback posture,
 - services: `validate_crossfade_balance`, `run_f4_s03_sequence`,
 - raw validation template: `docs/testing/raw/f4_s03_crossfade_balance_validation.jinja`.
+
+Hardening pass-2 (2026-04-20):
+
+- F4 sequence services (`run_f4_s01_sequence`, `run_f4_s02_sequence`, `run_f4_s03_sequence`) now execute with explicit stage wrappers and surface failure-stage context in raised errors to eliminate opaque "Unknown error" behavior during action calls.
 
 Still required before closing F4-S03:
 

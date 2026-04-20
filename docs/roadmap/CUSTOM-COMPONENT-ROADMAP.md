@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.19.20 -->
+<!-- Version: 2026.04.19.21 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -119,7 +119,7 @@ Execution playbook reference: `docs/program/PARALLEL-PROGRAM-PLAYBOOK.md`.
 | P2-S02 | 2 | Implemented (legacy route contracts retained) | Implemented (deterministic validation hardening + P2 diagnostics closure) | Implemented | Low | Implemented |
 | P3-S01 | 3 | Validated (legacy write authority retained behind switch) | Validated (guard framework + manual routing write trial services) | Validated | Medium | Validated |
 | P3-S02 | 3 | Validated (selection scripts/automations compatibility shim validation) | Validated (one-shot validation sequence + selection handoff diagnostics) | Validated (single-capable waiver) | High | Validated |
-| P3-S03 | 3 | Planned (metadata ownership deferred/compatibility mode retained) | Implemented (metadata prep diagnostics + one-shot sequence; no full cutover) | Active (diagnostics-only) | Medium | Active |
+| P3-S03 | 3 | Validated (metadata ownership explicitly deferred to legacy compatibility mode) | Validated (metadata prep diagnostics + one-shot sequence + listener-safe validation template) | Validated (diagnostics-only) | Medium | Validated |
 
 ## P1/P2 validation snapshot (2026-04-19)
 
@@ -306,11 +306,27 @@ Implemented in component:
 - new services: `spectra_ls.validate_metadata_prep` and `spectra_ls.run_p3_s03_sequence`,
 - raw validation template for repeatable operator evidence: `docs/testing/raw/p3_s03_metadata_prep_validation.jinja`.
 
-Open before P3-S03 closeout:
+Closeout decision (2026-04-19):
 
-- capture runtime PASS/WARN/FAIL evidence for normal playback + target-switch scenarios,
-- maintain explicit compatibility-mode boundary (metadata ownership remains legacy until approved cutover slice),
-- record closeout decision in roadmap + v-next + changelog.
+- runtime S03 validation captured at `PASS` with full gate score (`7/7`) and `ready_for_metadata_handoff=true`,
+- metadata contract checks report zero missing required entities/keys,
+- explicit compatibility boundary retained: metadata ownership remains legacy/runtime (component remains diagnostics/validation lane),
+- runtime route/selection context outside the S03 target window can remain non-cutover (`defer_not_capable`, legacy authority, S02 FAIL) and is not a P3-S03 diagnostics blocker.
+
+Latest runtime proof artifact (2026-04-19):
+
+- Template verdict: `PASS` (`docs/testing/raw/p3_s03_metadata_prep_validation.jinja`).
+- Gate score: `7/7`.
+- Metadata-prep readiness: `true`.
+- Contract detail: `missing_required=0`, `missing_keys=[]`.
+
+### Phase 4 bounded slice plan (execution-ready)
+
+| Slice | Scope | Runtime Track | Component Track | Exit gate |
+| --- | --- | --- | --- | --- |
+| F4-S01 | Capability matrix + profile scaffolding | Preserve existing helper behavior/contracts; no ownership cutover | Add profile schema skeleton + capability-map diagnostics surfaces | Deterministic diagnostics output; parity clean |
+| F4-S02 | Programmable action catalog safety skeleton | Keep legacy action flows authoritative | Add arm/confirm/cooldown/audit schema + dry-run validation service | Safety-gate diagnostics pass |
+| F4-S03 | Crossfade/balance service contract (diagnostics-first) | Keep current runtime control lane | Add normalized slider-domain contract + no-op service validation path | Contract + diagnostics pass with no authority expansion |
 
 ### Phase 3 exit criteria
 

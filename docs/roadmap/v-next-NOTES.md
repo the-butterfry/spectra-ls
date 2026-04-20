@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.19.10 -->
+<!-- Version: 2026.04.19.15 -->
 <!-- Last updated: 2026-04-19 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -34,8 +34,8 @@ Each feature slice is only complete when both tracks are dispositioned:
 | Phase | Scope | Runtime Track (`packages`/`esphome`) | Component Track (`custom_components/spectra_ls`) | Status |
 | --- | --- | --- | --- | --- |
 | 0 | Charter + contract freeze | Documented in v-next + changelog | Documented in roadmap/spec | In Progress |
-| 1 | Skeleton + shadow parity | Keep existing contracts stable | Scaffold integration + read-only parity outputs | In Progress |
-| 2 | Registry + route foundation | Keep helper contracts + diagnostics parity | Target registry + adapter router (`linkplay_tcp`) | In Progress |
+| 1 | Skeleton + shadow parity | Keep existing contracts stable | Scaffold integration + read-only parity outputs | Implemented |
+| 2 | Registry + route foundation | Keep helper contracts + diagnostics parity | Target registry + adapter router (`linkplay_tcp`) | Implemented |
 | 3 | Guarded dual-write | Add shims and loop guards | Controlled write path with correlation/debounce guards | Planned |
 | 4 | Functional expansion | Preserve compatibility while exposing new capabilities | Profiles/actions/capability matrix/crossfade-balance services | Planned |
 | 5 | Domain cutover + retirement | Domain-by-domain template retirement | Primary control plane ownership + migration tooling | Planned |
@@ -44,9 +44,70 @@ Each feature slice is only complete when both tracks are dispositioned:
 
 | Slice | Phase | Runtime Track | Component Track | Parity | Risk | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| P1-S01 | 1 | Implemented (legacy source-of-truth retained) | Active (read-only shadow parity implementation) | Pending | Low | Active |
-| P2-S01 | 2 | Implemented (legacy route contracts retained) | Implemented (registry/router scaffold; read-only) | Pending | Low | Implemented |
+| P1-S01 | 1 | Implemented (legacy source-of-truth retained) | Implemented (read-only shadow parity) | Implemented | Low | Implemented |
+| P2-S01 | 2 | Implemented (legacy route contracts retained) | Implemented (registry/router scaffold; read-only) | Implemented | Low | Implemented |
 | P2-S02 | 2 | Implemented (legacy route contracts retained) | Implemented (deterministic validation hardening + P2 diagnostics closure) | Implemented | Low | Implemented |
+| P3-S01 | 3 | Active (legacy write authority retained behind switch) | Implemented (guard framework + manual routing write trial services) | Pending | Medium | Active |
+| P3-S02 | 3 | Active (selection compatibility shim validation) | Active (one-shot selection-handoff validation sequence + diagnostics) | Pending | High | Active |
+| P3-S03 | 3 | Planned (metadata ownership deferred/compatibility mode) | Planned (metadata prep + diagnostics-only expansion) | Planned | Medium | Planned |
+
+### P1/P2 validation snapshot (2026-04-19)
+
+- P2 raw verification template has PASS evidence with `8/8` scoring and deterministic route decision output.
+- Shadow diagnostics expose required closure attributes (`registry`, `route_trace`, `contract_validation`, `captured_at`) and freshness guard behavior.
+- P1 parity surfaces are stable and remain read-only; legacy runtime remains source-of-truth.
+
+Known evidence gap to keep explicit:
+
+- Live HA runtime timing/state can differ from static repo analysis; every P3 write-path trial requires fresh runtime evidence captures in the same slice.
+
+Latest runtime proof artifact (2026-04-19):
+
+- Template verdict: `PASS`, score `8/8`.
+- Route trace: `route_linkplay_tcp` with supported read-only scaffold mapping.
+- Contract validation: `ready=true`, `valid=true`, `missing_required=0`.
+- Parity diagnostics: `unresolved_sources=0`, `mismatches=0`.
+- Freshness: captured snapshot age within threshold.
+
+### P3 execution guardrails (required)
+
+- **Single-writer rule:** at any given moment, either legacy or component owns writes; never dual-authoritative.
+- **Loop-prevention rule:** correlation IDs + debounce + reentrancy guards are mandatory before enabling P3-S01.
+- **Fallback-discipline rule:** if fallback is off, component must not silently route through static fallback branches.
+- **Scope-discipline rule:** do not combine routing + selection + metadata ownership in one P3 slice.
+
+### P3-S01 implementation checkpoint (2026-04-19)
+
+Implemented in `custom_components/spectra_ls`:
+
+- write-authority service (`legacy`/`component`) with legacy-default rollback-safe behavior,
+- guarded routing write-trial service with correlation-id tracing,
+- debounce + reentrancy + route-decision eligibility gates,
+- write-control diagnostics (`write_controls`) in coordinator/shadow attributes.
+
+Still required before closing P3-S01:
+
+- runtime trial evidence under `component` authority showing no flapping and no parity regression.
+
+### P3-S02 validation checkpoint (2026-04-19)
+
+Implemented in `custom_components/spectra_ls`:
+
+- one-shot validation sequence service (`run_p3_s02_sequence`) with optional write-trial toggle,
+- structured selection-handoff readiness diagnostics in snapshot attributes (`selection_handoff_validation`),
+- compatibility checks for legacy helper/options and required selection scripts/automation IDs,
+- raw operator template for PASS/WARN/FAIL validation (`docs/testing/raw/p3_s02_selection_handoff_validation.jinja`).
+
+Still required before closing P3-S02:
+
+- sustained runtime evidence that selection handoff remains stable under single-writer guard without regressions.
+
+Latest runtime proof artifact (2026-04-19):
+
+- Template verdict: `PASS` (`p3_s02_selection_handoff_validation.jinja`).
+- Authority/route: `component` + `route_linkplay_tcp`.
+- Contract validation: `ready=true`, `valid=true`.
+- Handoff diagnostics: `payload_ready=true`, `verdict=PASS`, `helper_exists=true`, `target_in_options=true`, `missing_scripts=0`, `missing_automation_ids=0`.
 
 Reference specification: `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`.
 
@@ -395,6 +456,7 @@ Implementation guidance:
 ## Current Input Inventory (baseline)
 
 ### Digital (PCF8575 @ 0x20)
+
 - P0 `room` → event 31
 - P1 `source` → event 35
 - P2 `back` → event 36
@@ -407,10 +469,12 @@ Implementation guidance:
 - **Spare**: P9–P15 (7 inputs)
 
 ### Encoders (Seesaw)
+
 - Menu encoder: delta id 2, press id 21
 - Lighting encoder: delta id 1, press id 20
 
 ### Analog (ADS1015 + internal ADC)
+
 - ADS1015 ch0: eq_bass_pot → 104
 - ADS1015 ch1: lighting_slider → 101
 - ADS1015 ch2: volume_pot → 102
@@ -419,6 +483,7 @@ Implementation guidance:
 - **Spare**: RP2040 A1
 
 ### Expansion allowed
+
 - Add I2C expanders/ADCs as needed (PCF8575 @ 0x21, ADS7830 @ 0x49 recommended).
 
 ---
@@ -426,6 +491,7 @@ Implementation guidance:
 ## Proposed Hardware Model (Mode + Target + Action)
 
 ### 5-way selector = **Mode Selector**
+
 Suggested mapping (generalizable across installs):
 
 1. **Lighting Rooms**
@@ -449,11 +515,13 @@ Suggested mapping (generalizable across installs):
    - Encoder: meta select or diagnostic/utility
 
 ### 3-way switch = **Audio Control Class**
+
 - **Auto**: HA/MA logic chooses target
 - **Primary Hardware**: local Spectra LS (or primary device)
 - **Room Hardware**: optional room device
 
 ### Momentary buttons
+
 - **Primary momentary**: “Next” within mode
 - **Secondary momentary**: “Back/Reverse” or “Confirm”
 - Long-press on Back remains Home
@@ -742,11 +810,11 @@ Expected WARN/PASS interpretation:
 - [ ] Replace ad hoc host defaults with a single product-scoped host inventory model (canonical source), rather than split per-user root files.
 - [ ] Define canonical naming for inventory artifact(s): avoid user/site names; prefer product namespace (e.g., `spectra_ls_host_inventory`).
 - [ ] Design host inventory schema to include richer metadata, not just IP:
-   - stable device key / logical role (`primary`, `room`, etc.)
-   - transport capabilities (TCP/HTTP/UPnP)
-   - friendly label(s)
-   - optional MAC and firmware/version hints
-   - override precedence fields (auto-discovered vs user-pinned)
+  - stable device key / logical role (`primary`, `room`, etc.)
+  - transport capabilities (TCP/HTTP/UPnP)
+  - friendly label(s)
+  - optional MAC and firmware/version hints
+  - override precedence fields (auto-discovered vs user-pinned)
 - [ ] Add a generation path (auto-discovery + synthesis) that can produce/refresh inventory defaults without committing user-specific data.
 - [ ] Add a user override layer (manual corrections/augmentations) with explicit merge precedence over discovered values.
 - [ ] Ensure generated/override artifacts are local-only by default (ignored in git), while repository keeps only universal templates/examples.

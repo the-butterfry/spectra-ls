@@ -1,5 +1,5 @@
-# Description: Sensor entities for Spectra LS read-only shadow parity routing surfaces with Phase 2 diagnostics attributes.
-# Version: 2026.04.19.3
+# Description: Sensor entities for Spectra LS shadow parity routing surfaces with Phase 3 write-control diagnostics.
+# Version: 2026.04.19.5
 # Last updated: 2026-04-19
 
 from __future__ import annotations
@@ -42,6 +42,8 @@ class SpectraLsShadowSensor(CoordinatorEntity, SensorEntity):
             "registry": data.get("registry", {}),
             "route_trace": data.get("route_trace", {}),
             "contract_validation": data.get("contract_validation", {}),
+            "selection_handoff_validation": data.get("selection_handoff_validation", {}),
+            "write_controls": data.get("write_controls", {}),
         }
 
 

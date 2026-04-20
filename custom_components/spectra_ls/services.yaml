@@ -1,5 +1,5 @@
-# Description: Service definitions for Spectra LS Phase 2 registry/router scaffold maintenance actions.
-# Version: 2026.04.19.1
+# Description: Service definitions for Spectra LS Phase 2 diagnostics and Phase 3 guarded routing write-path controls.
+# Version: 2026.04.19.4
 # Last updated: 2026-04-19
 
 rebuild_registry:
@@ -13,3 +13,111 @@ validate_contracts:
 dump_route_trace:
   name: Dump route trace
   description: Refresh and expose the latest read-only route-trace decision in diagnostics.
+
+set_write_authority:
+  name: Set write authority
+  description: Set single-writer authority mode for guarded routing write trials (`legacy` or `component`).
+  fields:
+    mode:
+      name: Authority mode
+      description: Write authority mode (`legacy` blocks component writes, `component` enables guarded write trials).
+      required: true
+      selector:
+        select:
+          options:
+            - legacy
+            - component
+    reason:
+      name: Reason
+      description: Optional operator note for auditability in write-control diagnostics.
+      example: "Enable P3-S01 trial"
+      required: false
+      selector:
+        text:
+
+route_write_trial:
+  name: Route write trial
+  description: Execute one guarded P3-S01 routing write attempt using current route-trace output.
+  fields:
+    correlation_id:
+      name: Correlation ID
+      description: Optional correlation tag for tracing a specific trial attempt.
+      required: false
+      selector:
+        text:
+    force:
+      name: Force
+      description: If enabled, bypass debounce/reentrancy soft guards for an explicit operator-forced attempt.
+      required: false
+      selector:
+        boolean:
+
+run_p3_s01_sequence:
+  name: Run P3-S01 sequence
+  description: Run one-shot P3-S01 sequence (set authority, rebuild, validate contracts, refresh route trace, execute guarded write trial).
+  fields:
+    mode:
+      name: Authority mode
+      description: Authority mode to set before the sequence (`component` default for trial, `legacy` for baseline block behavior).
+      required: false
+      selector:
+        select:
+          options:
+            - component
+            - legacy
+    reason:
+      name: Reason
+      description: Optional note captured with authority-change diagnostics.
+      required: false
+      selector:
+        text:
+    correlation_id:
+      name: Correlation ID
+      description: Optional correlation tag for the final guarded write attempt.
+      required: false
+      selector:
+        text:
+    force:
+      name: Force
+      description: If enabled, bypass debounce/reentrancy soft guards on the final guarded write attempt.
+      required: false
+      selector:
+        boolean:
+
+run_p3_s02_sequence:
+  name: Run P3-S02 sequence
+  description: Run one-shot P3-S02 selection-handoff validation sequence (authority set, rebuild, validate contracts, refresh route trace, optional guarded write trial, emit selection-handoff verdict).
+  fields:
+    mode:
+      name: Authority mode
+      description: Optional authority mode set before validation sequence (`component` default, `legacy` for baseline compatibility checks).
+      required: false
+      selector:
+        select:
+          options:
+            - component
+            - legacy
+    reason:
+      name: Reason
+      description: Optional operator note captured with authority diagnostics.
+      required: false
+      selector:
+        text:
+    run_write_trial:
+      name: Run write trial
+      description: Optional; when enabled, execute one guarded `route_write_trial` before evaluating selection-handoff readiness.
+      required: false
+      selector:
+        boolean:
+    correlation_id:
+      name: Correlation ID
+      description: Optional correlation tag used only if write trial is enabled.
+      required: false
+      selector:
+        text:
+    force:
+      name: Force
+      description: Optional; bypass debounce/reentrancy soft guards only when write trial is enabled.
+      required: false
+      selector:
+        boolean:

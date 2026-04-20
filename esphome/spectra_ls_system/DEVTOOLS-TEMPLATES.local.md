@@ -1,5 +1,5 @@
 <!-- Description: Copy/paste Home Assistant Dev Tools template diagnostics for Spectra LS System. -->
-<!-- Version: 2026.04.19.23 -->
+<!-- Version: 2026.04.19.26 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Spectra LS System — Dev Tools Template Validation
@@ -14,6 +14,8 @@
 - Current raw templates:
   - `docs/testing/raw/p2_registry_router_verification.jinja`
   - `docs/testing/raw/p2_negative_case_regression.jinja`
+  - `docs/testing/raw/p3_s01_guarded_write_validation.jinja`
+  - `docs/testing/raw/p3_s02_selection_handoff_validation.jinja`
 
 ## 1) Overall Spectra LS Health Check (Comprehensive)
 
@@ -1866,6 +1868,18 @@ Unavailable core entities:
 
 - Raw copy/paste file (no markdown fences): `docs/testing/raw/p2_negative_case_regression.jinja`
 - Use this after forcing a known-bad input condition (unsupported/missing target or invalid route context) to verify defer-path diagnostics are emitted as expected.
+
+## 19) Phase 3-S01 Guarded Write Validation — Custom Component (`spectra_ls`)
+
+- Raw copy/paste file (no markdown fences): `docs/testing/raw/p3_s01_guarded_write_validation.jinja`
+- Use this to validate `set_write_authority` + `route_write_trial` outcomes and confirm guard-result semantics from `write_controls.last_attempt`.
+- One-shot shortcut is available: run `spectra_ls.run_p3_s01_sequence` to execute authority set + rebuild + validate + route-trace + write-trial in one action call.
+
+## 20) Phase 3-S02 Selection-Handoff Validation — Custom Component (`spectra_ls`)
+
+- Raw copy/paste file (no markdown fences): `docs/testing/raw/p3_s02_selection_handoff_validation.jinja`
+- Use this to validate selection-handoff readiness diagnostics (`selection_handoff_validation`) with helper/options + compatibility shim checks.
+- One-shot shortcut is available: run `spectra_ls.run_p3_s02_sequence` to execute authority set + rebuild + validate + route-trace + optional write-trial + handoff validation in one action call.
 
 <!-- EOF -->
 

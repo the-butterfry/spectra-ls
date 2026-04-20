@@ -1,5 +1,5 @@
 # Description: Service definitions for Spectra LS Phase 2 diagnostics and Phase 3 guarded routing write-path controls.
-# Version: 2026.04.19.4
+# Version: 2026.04.19.5
 # Last updated: 2026-04-19
 
 rebuild_registry:
@@ -121,3 +121,27 @@ run_p3_s02_sequence:
       required: false
       selector:
         boolean:
+
+validate_metadata_prep:
+  name: Validate metadata prep
+  description: Refresh and expose Phase 3 Slice-03 metadata-preparation diagnostics in shadow attributes.
+
+run_p3_s03_sequence:
+  name: Run P3-S03 sequence
+  description: Run one-shot P3-S03 diagnostics sequence (authority set, registry rebuild, contracts, route trace, handoff, metadata-prep validation).
+  fields:
+    mode:
+      name: Authority mode
+      description: Optional authority mode to capture in diagnostics (`legacy` default, `component` for explicit trial context).
+      required: false
+      selector:
+        select:
+          options:
+            - legacy
+            - component
+    reason:
+      name: Reason
+      description: Optional operator note captured with authority diagnostics.
+      required: false
+      selector:
+        text:

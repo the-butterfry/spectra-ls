@@ -1,5 +1,5 @@
 # Description: Constants for Spectra LS custom integration shadow parity and Phase 3 guarded routing write-path controls.
-# Version: 2026.04.19.5
+# Version: 2026.04.19.6
 # Last updated: 2026-04-19
 
 from __future__ import annotations
@@ -15,6 +15,8 @@ SERVICE_SET_WRITE_AUTHORITY = "set_write_authority"
 SERVICE_ROUTE_WRITE_TRIAL = "route_write_trial"
 SERVICE_RUN_P3_S01_SEQUENCE = "run_p3_s01_sequence"
 SERVICE_RUN_P3_S02_SEQUENCE = "run_p3_s02_sequence"
+SERVICE_VALIDATE_METADATA_PREP = "validate_metadata_prep"
+SERVICE_RUN_P3_S03_SEQUENCE = "run_p3_s03_sequence"
 
 PLATFORMS: tuple[Platform, ...] = (
     Platform.SENSOR,
@@ -36,6 +38,11 @@ LEGACY_ACTIVE_TARGET = "sensor.ma_active_target"
 LEGACY_ACTIVE_CONTROL_PATH = "sensor.ma_active_control_path"
 LEGACY_ACTIVE_CONTROL_CAPABLE = "binary_sensor.ma_active_control_capable"
 LEGACY_ACTIVE_TARGET_HELPER = "input_select.ma_active_target"
+LEGACY_ACTIVE_META_ENTITY = "sensor.ma_active_meta_entity"
+LEGACY_NOW_PLAYING_ENTITY = "sensor.now_playing_entity"
+LEGACY_NOW_PLAYING_STATE = "sensor.now_playing_state"
+LEGACY_NOW_PLAYING_TITLE = "sensor.now_playing_title"
+LEGACY_META_CANDIDATES = "sensor.ma_meta_candidates"
 LEGACY_CONTROL_HOSTS = "sensor.ma_control_hosts"
 LEGACY_CONTROL_HOST = "sensor.ma_control_host"
 LEGACY_CONTROL_TARGETS = "sensor.ma_control_targets"

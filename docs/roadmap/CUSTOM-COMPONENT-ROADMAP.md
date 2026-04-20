@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.19.19 -->
+<!-- Version: 2026.04.19.20 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -119,7 +119,7 @@ Execution playbook reference: `docs/program/PARALLEL-PROGRAM-PLAYBOOK.md`.
 | P2-S02 | 2 | Implemented (legacy route contracts retained) | Implemented (deterministic validation hardening + P2 diagnostics closure) | Implemented | Low | Implemented |
 | P3-S01 | 3 | Validated (legacy write authority retained behind switch) | Validated (guard framework + manual routing write trial services) | Validated | Medium | Validated |
 | P3-S02 | 3 | Validated (selection scripts/automations compatibility shim validation) | Validated (one-shot validation sequence + selection handoff diagnostics) | Validated (single-capable waiver) | High | Validated |
-| P3-S03 | 3 | Planned (metadata ownership deferred/compatibility mode) | Planned (metadata prep + observability, no full cutover) | Planned | Medium | Planned |
+| P3-S03 | 3 | Planned (metadata ownership deferred/compatibility mode retained) | Implemented (metadata prep diagnostics + one-shot sequence; no full cutover) | Active (diagnostics-only) | Medium | Active |
 
 ## P1/P2 validation snapshot (2026-04-19)
 
@@ -296,6 +296,21 @@ Latest soak runtime artifact (2026-04-19):
 - Readiness call:
   - **Ready for closure logging + gate decision** (baseline soak evidence captured via automated run).
   - **Not closure-ready for full P3-S02 sign-off** until distinct PASS-target gate is satisfied or explicitly waived.
+
+### P3-S03 implementation checkpoint (2026-04-19)
+
+Implemented in component:
+
+- coordinator metadata-prep diagnostics payload (`metadata_prep_validation`) with deterministic readiness verdict,
+- explicit metadata contract checks (`sensor.ma_active_meta_entity`, `sensor.now_playing_entity`, `sensor.now_playing_state`, `sensor.now_playing_title`, `sensor.ma_meta_candidates`),
+- new services: `spectra_ls.validate_metadata_prep` and `spectra_ls.run_p3_s03_sequence`,
+- raw validation template for repeatable operator evidence: `docs/testing/raw/p3_s03_metadata_prep_validation.jinja`.
+
+Open before P3-S03 closeout:
+
+- capture runtime PASS/WARN/FAIL evidence for normal playback + target-switch scenarios,
+- maintain explicit compatibility-mode boundary (metadata ownership remains legacy until approved cutover slice),
+- record closeout decision in roadmap + v-next + changelog.
 
 ### Phase 3 exit criteria
 

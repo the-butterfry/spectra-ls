@@ -1,5 +1,5 @@
 <!-- Description: Copy/paste Home Assistant Dev Tools template diagnostics for Spectra LS System. -->
-<!-- Version: 2026.04.19.29 -->
+<!-- Version: 2026.04.19.30 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Spectra LS System — Dev Tools Template Validation
@@ -18,6 +18,7 @@
   - `docs/testing/raw/p3_s02_selection_handoff_validation.jinja`
   - `docs/testing/raw/p3_s01_s02_soak_protocol.md`
   - `docs/testing/raw/p3_s01_s02_closure_gate_check.jinja`
+  - `docs/testing/raw/p3_s03_metadata_prep_validation.jinja`
 
 ## 1) Overall Spectra LS Health Check (Comprehensive)
 
@@ -1893,6 +1894,14 @@ Unavailable core entities:
 - Raw copy/paste file (no markdown fences): `docs/testing/raw/p3_s01_s02_closure_gate_check.jinja`
 - Use this after soak collection to produce one deterministic closure verdict covering route/contract/parity/S01/S02 gates plus the distinct-target (or explicit single-capable waiver) decision.
 - Recommended mode for closure: `evaluation_mode='soak_evidence'`; use `evaluation_mode='runtime'` only for strict live-state checks.
+
+## 23) Phase 3-S03 Metadata-Prep Validation — Custom Component (`spectra_ls`)
+
+- Raw copy/paste file (no markdown fences): `docs/testing/raw/p3_s03_metadata_prep_validation.jinja`
+- Use this after running `spectra_ls.run_p3_s03_sequence` to validate metadata-prep diagnostics (`metadata_prep_validation`) without enabling metadata ownership cutover.
+- Interpretation contract:
+  - `PASS`: metadata-prep diagnostics healthy, continue with Phase-4 planning while keeping metadata ownership in compatibility mode.
+  - `WARN`/`FAIL`: resolve metadata contract/readiness gaps first; do not advance metadata ownership.
 
 <!-- EOF -->
 

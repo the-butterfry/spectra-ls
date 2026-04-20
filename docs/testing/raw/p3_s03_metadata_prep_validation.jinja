@@ -1,0 +1,90 @@
+{# Description: Raw copy/paste Jinja template for Spectra LS Phase 3 S03 metadata-prep diagnostics validation. #}
+{# Version: 2026.04.19.1 #}
+{# Last updated: 2026-04-19 #}
+
+{# =========================
+  Phase 3 S03 Metadata-Prep Validation (custom_components/spectra_ls)
+  Purpose: deterministic diagnostics verdict for metadata handoff readiness without metadata ownership cutover.
+  Usage: run after `spectra_ls.run_p3_s03_sequence` (or `validate_metadata_prep`).
+  ========================= #}
+
+{% set s_target = 'sensor.shadow_active_target' if states['sensor.shadow_active_target'] is not none else 'sensor.spectra_ls_shadow_active_target' %}
+{% set s_path = 'sensor.shadow_active_control_path' if states['sensor.shadow_active_control_path'] is not none else 'sensor.spectra_ls_shadow_active_control_path' %}
+
+{% set metadata = state_attr(s_target, 'metadata_prep_validation') or {} %}
+{% set contract = state_attr(s_target, 'contract_validation') or {} %}
+{% set route_trace = state_attr(s_target, 'route_trace') or {} %}
+{% set selection = state_attr(s_target, 'selection_handoff_validation') or {} %}
+{% set write_controls = state_attr(s_target, 'write_controls') or {} %}
+
+{% set verdict = metadata.verdict if metadata is mapping and metadata.verdict is defined else 'missing' %}
+{% set ready = metadata.ready_for_metadata_handoff if metadata is mapping and metadata.ready_for_metadata_handoff is defined else false %}
+
+{% set missing_required = metadata.missing_required if metadata is mapping and metadata.missing_required is defined else [] %}
+{% set checks = metadata.checks if metadata is mapping and metadata.checks is defined and metadata.checks is mapping else {} %}
+{% set values = metadata.values if metadata is mapping and metadata.values is defined and metadata.values is mapping else {} %}
+
+{% set check_active_meta = checks.active_meta_entity_resolved if checks.active_meta_entity_resolved is defined else false %}
+{% set check_now_playing_entity = checks.now_playing_entity_resolved if checks.now_playing_entity_resolved is defined else false %}
+{% set check_now_playing_state = checks.now_playing_state_resolved if checks.now_playing_state_resolved is defined else false %}
+{% set check_now_playing_title = checks.now_playing_title_resolved if checks.now_playing_title_resolved is defined else false %}
+{% set check_candidates = checks.candidate_payload_ready if checks.candidate_payload_ready is defined else false %}
+{% set check_route_trace = checks.route_trace_present if checks.route_trace_present is defined else false %}
+
+{% set contract_valid = contract.valid if contract is mapping and contract.valid is defined else false %}
+{% set route_decision = route_trace.decision if route_trace is mapping and route_trace.decision is defined else '' %}
+{% set selection_verdict = selection.verdict if selection is mapping and selection.verdict is defined else 'missing' %}
+{% set authority_mode = write_controls.authority_mode if write_controls is mapping and write_controls.authority_mode is defined else 'missing' %}
+
+{% set gate_count = 0 %}
+{% if check_active_meta %}{% set gate_count = gate_count + 1 %}{% endif %}
+{% if check_now_playing_entity %}{% set gate_count = gate_count + 1 %}{% endif %}
+{% if check_now_playing_state %}{% set gate_count = gate_count + 1 %}{% endif %}
+{% if check_now_playing_title %}{% set gate_count = gate_count + 1 %}{% endif %}
+{% if check_candidates %}{% set gate_count = gate_count + 1 %}{% endif %}
+{% if check_route_trace %}{% set gate_count = gate_count + 1 %}{% endif %}
+{% if contract_valid %}{% set gate_count = gate_count + 1 %}{% endif %}
+
+### Phase 3 S03 Metadata-Prep Validation (`spectra_ls`)
+- Result: **{{ verdict }}**
+- Timestamp: **{{ now() }}**
+- Ready for metadata handoff: **{{ ready }}**
+- Gate score: **{{ gate_count }}/7**
+
+### Runtime context
+- Active target (`{{ s_target }}`): **{{ states(s_target) }}**
+- Active path (`{{ s_path }}`): **{{ states(s_path) }}**
+- Route decision: **{{ route_decision if route_decision != '' else 'n/a' }}**
+- Selection handoff verdict: **{{ selection_verdict }}**
+- Write authority mode: **{{ authority_mode }}**
+
+### Metadata value probes
+- Active meta entity: **{{ values.active_meta_entity if values.active_meta_entity is defined else 'missing' }}**
+- Now playing entity: **{{ values.now_playing_entity if values.now_playing_entity is defined else 'missing' }}**
+- Now playing state: **{{ values.now_playing_state if values.now_playing_state is defined else 'missing' }}**
+- Now playing title: **{{ values.now_playing_title if values.now_playing_title is defined else 'missing' }}**
+
+### Gate breakdown
+- Contract valid: **{{ contract_valid }}**
+- Active meta entity resolved: **{{ check_active_meta }}**
+- Now playing entity resolved: **{{ check_now_playing_entity }}**
+- Now playing state resolved: **{{ check_now_playing_state }}**
+- Now playing title resolved: **{{ check_now_playing_title }}**
+- Metadata candidates payload ready: **{{ check_candidates }}**
+- Route-trace present: **{{ check_route_trace }}**
+
+### Contract details
+- Missing required metadata entities: **{{ missing_required | length }}**
+- Missing keys: **{{ missing_required }}**
+
+### Recommendation
+{% if verdict == 'PASS' %}
+- Metadata-prep diagnostics are healthy.
+- Keep ownership in compatibility mode for now and proceed to Phase-4 planning slice.
+{% elif verdict == 'WARN' %}
+- Metadata-prep is partially healthy; stabilize WARN gates before any ownership discussions.
+- Do **not** cut over metadata ownership yet.
+{% else %}
+- Metadata-prep is not ready. Resolve FAIL gates and rerun this template.
+- Keep legacy runtime as metadata source-of-truth.
+{% endif %}

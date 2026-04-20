@@ -1,5 +1,5 @@
 <!-- Description: Copy/paste Home Assistant Dev Tools template diagnostics for Spectra LS System. -->
-<!-- Version: 2026.04.19.30 -->
+<!-- Version: 2026.04.19.31 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Spectra LS System — Dev Tools Template Validation
@@ -19,6 +19,7 @@
   - `docs/testing/raw/p3_s01_s02_soak_protocol.md`
   - `docs/testing/raw/p3_s01_s02_closure_gate_check.jinja`
   - `docs/testing/raw/p3_s03_metadata_prep_validation.jinja`
+  - `docs/testing/raw/f4_s01_capability_profile_validation.jinja`
 
 ## 1) Overall Spectra LS Health Check (Comprehensive)
 
@@ -1902,6 +1903,16 @@ Unavailable core entities:
 - Interpretation contract:
   - `PASS`: metadata-prep diagnostics healthy, continue with Phase-4 planning while keeping metadata ownership in compatibility mode.
   - `WARN`/`FAIL`: resolve metadata contract/readiness gaps first; do not advance metadata ownership.
+
+## 24) Phase 4-S01 Capability/Profile Validation — Custom Component (`spectra_ls`)
+
+- Raw copy/paste file (no markdown fences): `docs/testing/raw/f4_s01_capability_profile_validation.jinja`
+- Run after `spectra_ls.run_f4_s01_sequence` (or `spectra_ls.validate_capability_profile`) to validate Phase-4 Slice-01 diagnostics scaffolding.
+- Gate intent:
+  - capability matrix is populated from registry snapshot,
+  - profile schema skeleton is visible and deterministic,
+  - metadata-prep readiness from P3 remains true,
+  - no-authority-expansion guard remains true (`authority_mode=legacy`).
 
 <!-- EOF -->
 

@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.19.22 -->
+<!-- Version: 2026.04.19.23 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -120,6 +120,7 @@ Execution playbook reference: `docs/program/PARALLEL-PROGRAM-PLAYBOOK.md`.
 | P3-S01 | 3 | Validated (legacy write authority retained behind switch) | Validated (guard framework + manual routing write trial services) | Validated | Medium | Validated |
 | P3-S02 | 3 | Validated (selection scripts/automations compatibility shim validation) | Validated (one-shot validation sequence + selection handoff diagnostics) | Validated (single-capable waiver) | High | Validated |
 | P3-S03 | 3 | Validated (metadata ownership explicitly deferred to legacy compatibility mode) | Validated (metadata prep diagnostics + one-shot sequence + listener-safe validation template) | Validated (diagnostics-only) | Medium | Validated |
+| F4-S01 | 4 | Active (compatibility contracts retained; no ownership cutover) | Active (capability matrix + profile schema diagnostics scaffolding) | Active (diagnostics-only) | Medium | Active |
 
 ## P1/P2 validation snapshot (2026-04-19)
 
@@ -334,6 +335,23 @@ Final runtime proof snapshot (2026-04-19 22:51 local):
 | F4-S01 | Capability matrix + profile scaffolding | Preserve existing helper behavior/contracts; no ownership cutover | Add profile schema skeleton + capability-map diagnostics surfaces | Deterministic diagnostics output; parity clean |
 | F4-S02 | Programmable action catalog safety skeleton | Keep legacy action flows authoritative | Add arm/confirm/cooldown/audit schema + dry-run validation service | Safety-gate diagnostics pass |
 | F4-S03 | Crossfade/balance service contract (diagnostics-first) | Keep current runtime control lane | Add normalized slider-domain contract + no-op service validation path | Contract + diagnostics pass with no authority expansion |
+
+### F4-S01 implementation checkpoint (2026-04-19)
+
+Implemented in component:
+
+- coordinator diagnostics payload `capability_profile_validation`,
+- capability matrix summary from registry entries (paths/families/capabilities/control-capable counts),
+- deterministic profile-schema scaffolding surface for next-slice consumers,
+- no-authority-expansion check and visibility in diagnostics,
+- services: `spectra_ls.validate_capability_profile` and `spectra_ls.run_f4_s01_sequence`,
+- raw operator template: `docs/testing/raw/f4_s01_capability_profile_validation.jinja`.
+
+Open before F4-S01 closeout:
+
+- capture runtime PASS/WARN/FAIL evidence from F4-S01 template,
+- verify diagnostics lane remains legacy authority (no ownership cutover writes),
+- record closeout decision in roadmap + v-next + changelog.
 
 ### Phase 3 exit criteria
 

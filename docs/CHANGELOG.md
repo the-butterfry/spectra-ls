@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.19.60 -->
+<!-- Version: 2026.04.19.61 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Changelog
 
 ## 2026-04-19
+
+- Custom Component/F4-S01 Capability+Profile Diagnostics Slice (`custom_components/spectra_ls/const.py`, `custom_components/spectra_ls/__init__.py`, `custom_components/spectra_ls/coordinator.py`, `custom_components/spectra_ls/services.yaml`, `custom_components/spectra_ls/sensor.py`, `custom_components/spectra_ls/binary_sensor.py`, `docs/testing/raw/f4_s01_capability_profile_validation.jinja`, `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): implement Phase-4 Slice-01 diagnostics-only scaffolding with capability-matrix summary, profile-schema contract surface, no-authority-expansion guard visibility, one-shot validation sequence services, and deterministic operator template/checkpoint docs without introducing control ownership cutover writes. README parity: no material repo-state change.
 
 - Validation/P3-S03 Final Runtime Proof Snapshot (`docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): archive final operator evidence for metadata-prep closeout (`PASS`, `7/7`, `ready_for_metadata_handoff=true`) with resolved metadata probes (`active_meta_entity`, `now_playing_entity/state/title`) and zero missing metadata contracts; explicitly retain compatibility-mode boundary and note that non-cutover runtime route/selection context (`defer_not_capable`, legacy authority, S02 FAIL) is expected and non-blocking for diagnostics-only S03 closure. README parity: no material repo-state change.
 

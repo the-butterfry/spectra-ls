@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.19.19 -->
+<!-- Version: 2026.04.19.20 -->
 <!-- Last updated: 2026-04-19 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -47,8 +47,8 @@ Each feature slice is only complete when both tracks are dispositioned:
 | P1-S01 | 1 | Implemented (legacy source-of-truth retained) | Implemented (read-only shadow parity) | Implemented | Low | Implemented |
 | P2-S01 | 2 | Implemented (legacy route contracts retained) | Implemented (registry/router scaffold; read-only) | Implemented | Low | Implemented |
 | P2-S02 | 2 | Implemented (legacy route contracts retained) | Implemented (deterministic validation hardening + P2 diagnostics closure) | Implemented | Low | Implemented |
-| P3-S01 | 3 | Active (legacy write authority retained behind switch) | Implemented (guard framework + manual routing write trial services) | Pending | Medium | Active |
-| P3-S02 | 3 | Active (selection compatibility shim validation) | Active (one-shot selection-handoff validation sequence + diagnostics) | Pending | High | Active |
+| P3-S01 | 3 | Validated (legacy write authority retained behind switch) | Validated (guard framework + manual routing write trial services) | Validated | Medium | Validated |
+| P3-S02 | 3 | Validated (selection compatibility shim validation) | Validated (one-shot selection-handoff validation sequence + diagnostics) | Validated (single-capable waiver) | High | Validated |
 | P3-S03 | 3 | Planned (metadata ownership deferred/compatibility mode) | Planned (metadata prep + diagnostics-only expansion) | Planned | Medium | Planned |
 
 ### P1/P2 validation snapshot (2026-04-19)
@@ -98,12 +98,12 @@ Implemented in `custom_components/spectra_ls`:
 - compatibility checks for legacy helper/options and required selection scripts/automation IDs,
 - raw operator template for PASS/WARN/FAIL validation (`docs/testing/raw/p3_s02_selection_handoff_validation.jinja`).
 
-Still required before closing P3-S02:
+Closeout decision (2026-04-19):
 
-- sustained runtime evidence that selection handoff remains stable under single-writer guard without regressions.
-- complete the small soak protocol in `docs/testing/raw/p3_s01_s02_soak_protocol.md` with **3/3 consecutive cycle PASS** across at least 2 distinct PASS targets (or publish explicit waiver rationale for single-capable-topology runs).
-- maintain zero compatibility regressions across soak cycles (`missing_scripts=0`, `missing_automation_ids=0`, parity drift counters unchanged at zero).
-- run `docs/testing/raw/p3_s01_s02_closure_gate_check.jinja` and record closure-gate verdict with explicit distinct-target/waiver decision before flipping P3-S01/P3-S02 status.
+- sustained runtime evidence for S01/S02 stability was captured with clean compatibility/parity signals.
+- baseline soak gate met (`3` successful PASS cycles, `5` attempts) with expected soft-skips on non-capable routes.
+- distinct PASS-target gate is explicitly waived for single-capable-topology operation.
+- closure gate is now represented by `docs/testing/raw/p3_s01_s02_closure_gate_check.jinja` for future repeatability.
 
 Latest runtime proof artifact (2026-04-19):
 

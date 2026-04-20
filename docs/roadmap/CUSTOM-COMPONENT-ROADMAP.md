@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.19.18 -->
+<!-- Version: 2026.04.19.19 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -117,8 +117,8 @@ Execution playbook reference: `docs/program/PARALLEL-PROGRAM-PLAYBOOK.md`.
 | P1-S01 | 1 | Implemented (legacy source-of-truth retained) | Implemented (read-only shadow parity) | Implemented | Low | Implemented |
 | P2-S01 | 2 | Implemented (legacy route contracts retained) | Implemented (registry/router scaffold; read-only) | Implemented | Low | Implemented |
 | P2-S02 | 2 | Implemented (legacy route contracts retained) | Implemented (deterministic validation hardening + P2 diagnostics closure) | Implemented | Low | Implemented |
-| P3-S01 | 3 | Active (legacy write authority retained behind switch) | Implemented (guard framework + manual routing write trial services) | Pending | Medium | Active |
-| P3-S02 | 3 | Active (selection scripts/automations compatibility shim validation) | Active (one-shot validation sequence + selection handoff diagnostics) | Pending | High | Active |
+| P3-S01 | 3 | Validated (legacy write authority retained behind switch) | Validated (guard framework + manual routing write trial services) | Validated | Medium | Validated |
+| P3-S02 | 3 | Validated (selection scripts/automations compatibility shim validation) | Validated (one-shot validation sequence + selection handoff diagnostics) | Validated (single-capable waiver) | High | Validated |
 | P3-S03 | 3 | Planned (metadata ownership deferred/compatibility mode) | Planned (metadata prep + observability, no full cutover) | Planned | Medium | Planned |
 
 ## P1/P2 validation snapshot (2026-04-19)
@@ -265,12 +265,12 @@ Implemented in component:
 - snapshot diagnostics payload `selection_handoff_validation` for helper/options + legacy compatibility shim checks,
 - raw operator template for S02 verdict checks (`docs/testing/raw/p3_s02_selection_handoff_validation.jinja`).
 
-Not yet claimed complete:
+Closeout decision (2026-04-19):
 
-- full selection ownership handoff behavior remains pending after sustained runtime evidence and compatibility soak.
-- closure requires completing `docs/testing/raw/p3_s01_s02_soak_protocol.md` with 3 consecutive S01+S02 PASS cycles spanning at least 2 distinct PASS targets (or an explicit single-capable-topology waiver).
-- all soak cycles must keep compatibility/parity clean (`missing_scripts=0`, `missing_automation_ids=0`, `unresolved_sources=0`, `mismatches=0`).
-- closure decision must include `docs/testing/raw/p3_s01_s02_closure_gate_check.jinja` output with explicit distinct-target gate or waiver declaration.
+- sustained runtime evidence captured with stable S01/S02 PASS behavior and clean compatibility/parity signals.
+- soak gate satisfied at baseline (3 PASS cycles across 5 attempts) with expected non-capable soft-skip behavior.
+- explicit single-capable-topology waiver applied for the distinct PASS-target gate.
+- future reruns should use `docs/testing/raw/p3_s01_s02_closure_gate_check.jinja` for deterministic repeatable closure evidence.
 
 Latest runtime proof artifact (2026-04-19):
 

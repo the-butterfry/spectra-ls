@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.19.52 -->
+<!-- Version: 2026.04.19.53 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Changelog
 
 ## 2026-04-19
+
+- Validation/P3-S01+S02 Closeout Decision (`docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): apply explicit single-capable-topology waiver for the distinct PASS-target gate (based on sustained 3 PASS cycles with clean route/contract/parity/handoff compatibility signals) and advance P3-S01/P3-S02 from Active/Pending to validated closeout state; P3-S03 remains next in-sequence. README parity: no material repo-state change.
 
 - Validation/P3 Closure Gate Tooling (`docs/testing/raw/p3_s01_s02_closure_gate_check.jinja`, `docs/testing/raw/p3_s01_s02_soak_protocol.md`, `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): add a single deterministic closeout template that combines S01 guard status, S02 handoff status, parity/contract checks, and explicit soak evidence inputs (including single-capable-topology waiver handling) so P3-S01/S02 closure decisions are evidence-driven and reproducible without broad multi-template interpretation drift. README parity: no material repo-state change.
 

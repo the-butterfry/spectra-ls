@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.19.47 -->
+<!-- Version: 2026.04.19.48 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Changelog
 
 ## 2026-04-19
+
+- Validation/P3 Stage-Report Ownership Snapshot (`docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): add an explicit stage-report note clarifying current ownership boundaries (legacy `.inc` runtime remains source-of-truth for broad selection/control orchestration while `custom_components/spectra_ls` owns diagnostics/one-shot orchestration/guarded write-trial framework), with readiness callouts for next-step soak execution vs. closure readiness. README parity: no material repo-state change.
 
 - Validation/P3 Soak Protocol (`docs/testing/raw/p3_s01_s02_soak_protocol.md`, `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`, `docs/roadmap/v-next-NOTES.md`): add a no-cowboy small soak runbook for repeating P3-S01 + P3-S02 one-shot validation across multiple active-target switches, and codify evidence-based closure gates (consecutive PASS cycles, zero parity/missing-compat regressions) before graduating P3-S02 from Active/Pending. README parity: no material repo-state change.
 

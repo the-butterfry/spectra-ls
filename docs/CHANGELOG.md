@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.19.55 -->
+<!-- Version: 2026.04.19.56 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Changelog
 
 ## 2026-04-19
+
+- Validation/P3-S03 Template Event Tracking Fix (`docs/testing/raw/p3_s03_metadata_prep_validation.jinja`): add explicit static entity/attribute watchers for both `shadow_*` and `spectra_ls_shadow_*` sensor variants so Home Assistant template dependency tracking reliably subscribes to runtime updates instead of warning that the template has no event listeners. README parity: no material repo-state change.
 
 - Custom Component/P3-S03 Metadata Prep (Diagnostics-Only) (`custom_components/spectra_ls/*`, `docs/testing/raw/p3_s03_metadata_prep_validation.jinja`, `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): add metadata-preparation validation surfaces and one-shot sequence service for Phase 3 Slice-03 without enabling metadata ownership cutover, including explicit checks for legacy metadata contract entities and candidate payload readiness. README parity: no material repo-state change.
 

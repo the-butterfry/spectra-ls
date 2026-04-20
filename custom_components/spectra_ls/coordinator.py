@@ -1,5 +1,5 @@
 # Description: Data coordinator for Spectra LS parity diagnostics, Phase 3 guarded routing write-path controls, and Phase 4 diagnostics scaffolding (F4-S01/F4-S03).
-# Version: 2026.04.20.11
+# Version: 2026.04.20.12
 # Last updated: 2026-04-20
 
 from __future__ import annotations
@@ -504,11 +504,12 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         *,
         route_trace: dict[str, Any],
         contract_validation: dict[str, Any],
-        action_catalog_validation: dict[str, Any],
+        action_catalog_validation: dict[str, Any] | None,
     ) -> dict[str, Any]:
+        action_validation = action_catalog_validation if isinstance(action_catalog_validation, dict) else {}
         route_decision = str(route_trace.get("decision", "") or "")
         contract_valid = bool(contract_validation.get("valid", False))
-        f4_s02_ready = bool(action_catalog_validation.get("ready_for_f4_s02", False))
+        f4_s02_ready = bool(action_validation.get("ready_for_f4_s02", False))
 
         slider_domain_schema = {
             "schema_version": "f4_s03.v1",
@@ -589,8 +590,8 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "route_decision": route_decision,
             "dependency_reference": {
                 "ready_for_f4_s02": f4_s02_ready,
-                "schema_version": action_catalog_validation.get("action_schema", {}).get("schema_version", "missing")
-                if isinstance(action_catalog_validation.get("action_schema", {}), dict)
+                "schema_version": action_validation.get("action_schema", {}).get("schema_version", "missing")
+                if isinstance(action_validation.get("action_schema", {}), dict)
                 else "missing",
             },
             "slider_domain_schema": slider_domain_schema,
@@ -776,7 +777,7 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             registry=registry,
             contract_validation=contract_validation,
             capability_profile_validation=capability_profile_validation,
-        )
+        ) or {}
         crossfade_balance_validation = self._build_crossfade_balance_validation(
             route_trace=route_trace,
             contract_validation=contract_validation,
@@ -973,4 +974,7 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     @callback
     def _handle_state_change(self, _event) -> None:
-        self.async_set_updated_data(self._build_snapshot())
+        try:
+            self.async_set_updated_data(self._build_snapshot())
+        except Exception:  # pragma: no cover - defensive callback hardening
+            _LOGGER.exception("Failed to refresh Spectra LS snapshot on state-change event")

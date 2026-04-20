@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.20.35 -->
+<!-- Version: 2026.04.20.36 -->
 <!-- Last updated: 2026-04-20 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -279,6 +279,7 @@ Implemented in `custom_components/spectra_ls`:
 Hardening pass-2 (2026-04-20):
 
 - F4 sequence services (`run_f4_s01_sequence`, `run_f4_s02_sequence`, `run_f4_s03_sequence`) now execute with explicit stage wrappers and surface failure-stage context in raised errors to eliminate opaque "Unknown error" behavior during action calls.
+- F4-S03 snapshot guard now normalizes `action_catalog_validation` to mapping-safe defaults before dependency access and hardens state-change callback refresh to fail-safe logging, preventing callback storm exceptions from `NoneType.get` regressions.
 
 Still required before closing F4-S03:
 

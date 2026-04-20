@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.19.21 -->
+<!-- Version: 2026.04.19.22 -->
 <!-- Last updated: 2026-04-19 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -49,7 +49,7 @@ Each feature slice is only complete when both tracks are dispositioned:
 | P2-S02 | 2 | Implemented (legacy route contracts retained) | Implemented (deterministic validation hardening + P2 diagnostics closure) | Implemented | Low | Implemented |
 | P3-S01 | 3 | Validated (legacy write authority retained behind switch) | Validated (guard framework + manual routing write trial services) | Validated | Medium | Validated |
 | P3-S02 | 3 | Validated (selection compatibility shim validation) | Validated (one-shot selection-handoff validation sequence + diagnostics) | Validated (single-capable waiver) | High | Validated |
-| P3-S03 | 3 | Planned (metadata ownership deferred/compatibility mode retained) | Implemented (metadata prep diagnostics + one-shot sequence; no ownership cutover) | Active (diagnostics-only) | Medium | Active |
+| P3-S03 | 3 | Validated (metadata ownership explicitly deferred to legacy compatibility mode) | Validated (metadata prep diagnostics + one-shot sequence + listener-safe validation template) | Validated (diagnostics-only) | Medium | Validated |
 
 ### P1/P2 validation snapshot (2026-04-19)
 
@@ -140,11 +140,27 @@ Implemented in `custom_components/spectra_ls`:
 - one-shot service orchestration (`run_p3_s03_sequence`) and direct refresh service (`validate_metadata_prep`),
 - raw validation template for operator evidence capture (`docs/testing/raw/p3_s03_metadata_prep_validation.jinja`).
 
-Still required before closing P3-S03:
+Closeout decision (2026-04-19):
 
-- runtime evidence capture from the S03 template in normal playback + target-switch conditions,
-- explicit confirmation that metadata ownership remains compatibility/deferred (no cutover writes introduced),
-- roadmap/v-next closeout note after evidence is archived.
+- runtime S03 validation evidence captured with `PASS` (`7/7`) and `ready_for_metadata_handoff=true`,
+- metadata contract checks report `missing_required=0` with all S03 gates true,
+- explicit compatibility boundary retained: metadata ownership remains legacy/runtime (no component cutover writes),
+- route/selection runtime context may show non-cutover states (`defer_not_capable`, legacy authority, S02 FAIL) outside targeted validation windows and does not block P3-S03 diagnostics closeout.
+
+Latest runtime proof artifact (2026-04-19):
+
+- Template verdict: `PASS` (`p3_s03_metadata_prep_validation.jinja`).
+- Gate score: `7/7`.
+- Metadata-prep readiness: `ready_for_metadata_handoff=true`.
+- Contract details: `missing_required=0`, `missing_keys=[]`.
+
+### Phase 4 bounded slice plan (post-P3)
+
+| Slice | Scope | Runtime Track | Component Track | Exit gate |
+| --- | --- | --- | --- | --- |
+| F4-S01 | Capability matrix + profile scaffolding | Preserve existing helper behavior/contracts; no ownership cutover | Add profile schema skeleton + capability-map diagnostics surfaces | Deterministic diagnostics output; no parity regressions |
+| F4-S02 | Programmable action catalog safety skeleton | Keep legacy action flows authoritative | Add arm/confirm/cooldown/audit schema + dry-run validation service | Sensitive-action safety gates verified in diagnostics |
+| F4-S03 | Crossfade/balance service contract (diagnostics-first) | Keep current runtime control lane | Add normalized slider-domain contract + no-op service validation path | Contract + diagnostics PASS; no write-path authority expansion |
 
 Reference specification: `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`.
 

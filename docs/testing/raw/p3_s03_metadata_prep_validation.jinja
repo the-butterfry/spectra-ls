@@ -1,5 +1,5 @@
 {# Description: Raw copy/paste Jinja template for Spectra LS Phase 3 S03 metadata-prep diagnostics validation. #}
-{# Version: 2026.04.19.4 #}
+{# Version: 2026.04.19.5 #}
 {# Last updated: 2026-04-19 #}
 
 {# =========================
@@ -53,6 +53,11 @@
 {% set check_candidates = checks.candidate_payload_ready if checks.candidate_payload_ready is defined else false %}
 {% set check_route_trace = checks.route_trace_present if checks.route_trace_present is defined else false %}
 
+{% set probe_active_meta = values.active_meta_entity if values.active_meta_entity is defined and values.active_meta_entity != 'missing' else states('sensor.ma_active_meta_entity') %}
+{% set probe_now_playing_entity = values.now_playing_entity if values.now_playing_entity is defined and values.now_playing_entity != 'missing' else states('sensor.now_playing_entity') %}
+{% set probe_now_playing_state = values.now_playing_state if values.now_playing_state is defined and values.now_playing_state != 'missing' else states('sensor.now_playing_state') %}
+{% set probe_now_playing_title = values.now_playing_title if values.now_playing_title is defined and values.now_playing_title != 'missing' else states('sensor.now_playing_title') %}
+
 {% set contract_valid = contract.valid if contract is mapping and contract.valid is defined else false %}
 {% set route_decision = route_trace.decision if route_trace is mapping and route_trace.decision is defined else '' %}
 {% set selection_verdict = selection.verdict if selection is mapping and selection.verdict is defined else 'missing' %}
@@ -81,10 +86,10 @@
 - Write authority mode: **{{ authority_mode }}**
 
 ### Metadata value probes
-- Active meta entity: **{{ values.active_meta_entity if values.active_meta_entity is defined else 'missing' }}**
-- Now playing entity: **{{ values.now_playing_entity if values.now_playing_entity is defined else 'missing' }}**
-- Now playing state: **{{ values.now_playing_state if values.now_playing_state is defined else 'missing' }}**
-- Now playing title: **{{ values.now_playing_title if values.now_playing_title is defined else 'missing' }}**
+- Active meta entity: **{{ probe_active_meta if probe_active_meta is not none else 'missing' }}**
+- Now playing entity: **{{ probe_now_playing_entity if probe_now_playing_entity is not none else 'missing' }}**
+- Now playing state: **{{ probe_now_playing_state if probe_now_playing_state is not none else 'missing' }}**
+- Now playing title: **{{ probe_now_playing_title if probe_now_playing_title is not none else 'missing' }}**
 
 ### Gate breakdown
 - Contract valid: **{{ contract_valid }}**

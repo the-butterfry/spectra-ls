@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.19.58 -->
+<!-- Version: 2026.04.19.59 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Changelog
 
 ## 2026-04-19
+
+- Validation/P3-S03 Closeout + Phase-4 Planning (`docs/testing/raw/p3_s03_metadata_prep_validation.jinja`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): close P3-S03 diagnostics slice using runtime evidence (`PASS 7/7`, `ready_for_metadata_handoff=true`, missing-required=`0`) while keeping metadata ownership explicitly in legacy compatibility mode, and publish a bounded Phase-4 cutover slice plan (`F4-S01` capability matrix + profile scaffolding, `F4-S02` programmable action catalog safety skeleton, `F4-S03` crossfade/balance service contract + diagnostics-only probe). Also improve S03 template metadata value-probe rendering with live-entity fallback to avoid misleading `missing` display when checks are resolved true. README parity: no material repo-state change.
 
 - Validation/P3-S03 Template Listener Fallback (`docs/testing/raw/p3_s03_metadata_prep_validation.jinja`): add direct rendered listener-anchor lines using explicit `states('entity_id')` and `state_attr('entity_id', ...)` calls for both shadow sensor variants and metadata contract entities, ensuring Home Assistant Template UI registers concrete dependencies even when intermediate-variable anchors are ignored. README parity: no material repo-state change.
 

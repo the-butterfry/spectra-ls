@@ -1,5 +1,5 @@
 {# Description: Raw copy/paste Jinja template for Spectra LS Phase 3 S03 metadata-prep diagnostics validation. #}
-{# Version: 2026.04.19.3 #}
+{# Version: 2026.04.19.4 #}
 {# Last updated: 2026-04-19 #}
 
 {# =========================
@@ -99,6 +99,17 @@
 - Missing required metadata entities: **{{ missing_required | length }}**
 - Missing keys: **{{ missing_required }}**
 - Listener checksum (debug): **{{ watcher_checksum | length }} chars**
+
+### Listener anchors (debug)
+- `sensor.shadow_active_target`: **{{ states('sensor.shadow_active_target') }}** (captured_at={{ state_attr('sensor.shadow_active_target','captured_at') | default('missing', true) }})
+- `sensor.shadow_active_control_path`: **{{ states('sensor.shadow_active_control_path') }}** (captured_at={{ state_attr('sensor.shadow_active_control_path','captured_at') | default('missing', true) }})
+- `sensor.spectra_ls_shadow_active_target`: **{{ states('sensor.spectra_ls_shadow_active_target') }}** (captured_at={{ state_attr('sensor.spectra_ls_shadow_active_target','captured_at') | default('missing', true) }})
+- `sensor.spectra_ls_shadow_active_control_path`: **{{ states('sensor.spectra_ls_shadow_active_control_path') }}** (captured_at={{ state_attr('sensor.spectra_ls_shadow_active_control_path','captured_at') | default('missing', true) }})
+- `sensor.ma_active_meta_entity`: **{{ states('sensor.ma_active_meta_entity') }}**
+- `sensor.now_playing_entity`: **{{ states('sensor.now_playing_entity') }}**
+- `sensor.now_playing_state`: **{{ states('sensor.now_playing_state') }}**
+- `sensor.now_playing_title`: **{{ states('sensor.now_playing_title') }}**
+- `sensor.ma_meta_candidates` best candidate: **{{ state_attr('sensor.ma_meta_candidates','best_candidate_json') | default('missing', true) }}**
 
 ### Recommendation
 {% if verdict == 'PASS' %}

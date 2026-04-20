@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.19.23 -->
+<!-- Version: 2026.04.19.24 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -327,6 +327,21 @@ Final runtime proof snapshot (2026-04-19 22:51 local):
 - Metadata probes resolved in validation output (`active_meta_entity`, `now_playing_entity`, `now_playing_state`, `now_playing_title`).
 - All S03 gates true with `missing_required=0`.
 - Compatibility boundary retained by design: non-cutover route/selection context (`defer_not_capable`, legacy authority, S02 FAIL) does not block diagnostics-only S03 closeout.
+
+### P3-H1 second-pass hardening checkpoint (2026-04-19)
+
+Implemented reliability hardening with no authority expansion:
+
+- broader coordinator state-listener coverage for helper/metadata control surfaces,
+- stricter metadata-candidate readiness checks to reject empty/non-meaningful candidate payloads,
+- closure gate consistency guard for soak attempts versus pass cycles,
+- freshness gates added in P3 raw validation templates to avoid stale PASS interpretations.
+
+Track disposition:
+
+- Runtime track: implemented as compatibility-preserving hardening only.
+- Component track: implemented in diagnostics/validation lane.
+- Parity note: no contract rename/cutover; re-run P3 templates for refreshed runtime evidence on next validation cycle.
 
 ### Phase 4 bounded slice plan (execution-ready)
 

@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.19.61 -->
+<!-- Version: 2026.04.19.62 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Changelog
 
 ## 2026-04-19
+
+- Validation/P3-H1 Hardening Second Pass (`custom_components/spectra_ls/coordinator.py`, `docs/testing/raw/p3_s01_guarded_write_validation.jinja`, `docs/testing/raw/p3_s02_selection_handoff_validation.jinja`, `docs/testing/raw/p3_s03_metadata_prep_validation.jinja`, `docs/testing/raw/p3_s01_s02_closure_gate_check.jinja`, `docs/testing/raw/p3_s01_s02_soak_protocol.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): strengthen Phase-3 reliability with stricter metadata-candidate readiness semantics (reject empty best-candidate payloads), broader coordinator listener coverage for helper/metadata entities, closure-gate soak-attempt consistency checks, and snapshot-freshness guards across P3 validation templates to reduce stale/false-positive closeout outcomes. README parity: no material repo-state change.
 
 - Custom Component/F4-S01 Capability+Profile Diagnostics Slice (`custom_components/spectra_ls/const.py`, `custom_components/spectra_ls/__init__.py`, `custom_components/spectra_ls/coordinator.py`, `custom_components/spectra_ls/services.yaml`, `custom_components/spectra_ls/sensor.py`, `custom_components/spectra_ls/binary_sensor.py`, `docs/testing/raw/f4_s01_capability_profile_validation.jinja`, `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): implement Phase-4 Slice-01 diagnostics-only scaffolding with capability-matrix summary, profile-schema contract surface, no-authority-expansion guard visibility, one-shot validation sequence services, and deterministic operator template/checkpoint docs without introducing control ownership cutover writes. README parity: no material repo-state change.
 

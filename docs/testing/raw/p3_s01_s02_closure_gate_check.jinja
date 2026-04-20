@@ -1,5 +1,5 @@
 {# Description: Raw copy/paste Jinja template for Spectra LS Phase 3 S01/S02 closure gate decision. #}
-{# Version: 2026.04.19.2 #}
+{# Version: 2026.04.19.3 #}
 {# Last updated: 2026-04-19 #}
 
 {# =========================
@@ -32,9 +32,14 @@
 
 {% set s_target = 'sensor.shadow_active_target' if states['sensor.shadow_active_target'] is not none else 'sensor.spectra_ls_shadow_active_target' %}
 {% set s_path = 'sensor.shadow_active_control_path' if states['sensor.shadow_active_control_path'] is not none else 'sensor.spectra_ls_shadow_active_control_path' %}
+{% set freshness_required_s = 300 %}
 
 {% set active_target = states(s_target) %}
 {% set active_path = states(s_path) %}
+{% set captured_at = state_attr(s_target,'captured_at') | default('', true) %}
+{% set captured_ts = as_timestamp(captured_at) if captured_at not in ['', 'unknown', 'unavailable', 'none', none] else none %}
+{% set captured_age_s = (as_timestamp(now()) - captured_ts) if captured_ts is not none else none %}
+{% set gate_snapshot_fresh = captured_age_s is not none and captured_age_s <= freshness_required_s %}
 
 {% set route_trace = state_attr(s_target,'route_trace') or {} %}
 {% set route_decision = route_trace.decision if route_trace is mapping and route_trace.decision is defined else '' %}
@@ -69,6 +74,7 @@
 {% set gate_s01_ok_runtime = authority_mode == 'component' and last_status in pass_status_component %}
 {% set gate_s02_ok_runtime = handoff_verdict == 'PASS' and handoff_ready and (missing_scripts | length) == 0 and (missing_automation_ids | length) == 0 %}
 {% set gate_soak_cycles_ok = observed_soak_pass_cycles >= 3 %}
+{% set gate_soak_attempts_consistent = observed_soak_attempts >= observed_soak_pass_cycles and observed_soak_attempts > 0 %}
 {% set gate_distinct_targets_ok = observed_distinct_pass_targets >= 2 or single_capable_topology_waiver %}
 
 {% set use_soak_evidence = evaluation_mode == 'soak_evidence' %}
@@ -92,6 +98,12 @@
   {% set verdict = 'WARN' %}
 {% endif %}
 
+{% if not gate_soak_attempts_consistent %}
+  {% set verdict = 'FAIL' %}
+{% elif verdict == 'PASS' and not gate_snapshot_fresh %}
+  {% set verdict = 'WARN' %}
+{% endif %}
+
 ### Phase 3 S01/S02 Closure Gate Check (`spectra_ls`)
 - Result: **{{ verdict }}**
 - Timestamp: **{{ now() }}**
@@ -100,6 +112,7 @@
 ### Runtime context
 - Active target (`{{ s_target }}`): **{{ active_target }}**
 - Active path (`{{ s_path }}`): **{{ active_path }}**
+- Snapshot fresh (<= {{ freshness_required_s }}s): **{{ gate_snapshot_fresh }}** (age={{ (captured_age_s | round(1)) if captured_age_s is not none else 'n/a' }}s)
 - Route decision/reason: **{{ route_decision if route_decision != '' else 'n/a' }}** / **{{ route_reason if route_reason != '' else 'n/a' }}**
 - Authority mode: **{{ authority_mode if authority_mode != '' else 'n/a' }}**
 - Last write attempt: **{{ last_status }}** (reason={{ last_reason if last_reason != '' else 'n/a' }})
@@ -122,6 +135,7 @@
 - S01 guarded-write status healthy: **{{ gate_s01_ok }}** (runtime_now={{ gate_s01_ok_runtime }})
 - S02 handoff compatibility healthy: **{{ gate_s02_ok }}** (runtime_now={{ gate_s02_ok_runtime }})
 - Soak cycles sufficient (>=3): **{{ gate_soak_cycles_ok }}**
+- Soak attempts consistent (attempts >= pass cycles and >0): **{{ gate_soak_attempts_consistent }}**
 - Distinct target gate (>=2 or waiver): **{{ gate_distinct_targets_ok }}**
 
 ### Compatibility details

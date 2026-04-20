@@ -1,5 +1,5 @@
 {# Description: Raw copy/paste Jinja template for Spectra LS Phase 3 Slice-01 guarded routing write validation. #}
-{# Version: 2026.04.19.2 #}
+{# Version: 2026.04.19.3 #}
 {# Last updated: 2026-04-19 #}
 
 {# =========================
@@ -14,6 +14,7 @@
 
 {% set s_target = 'sensor.shadow_active_target' if states['sensor.shadow_active_target'] is not none else 'sensor.spectra_ls_shadow_active_target' %}
 {% set s_path = 'sensor.shadow_active_control_path' if states['sensor.shadow_active_control_path'] is not none else 'sensor.spectra_ls_shadow_active_control_path' %}
+{% set freshness_required_s = 180 %}
 
 {% set active_target = states(s_target) %}
 {% set active_path = states(s_path) %}
@@ -36,6 +37,10 @@
 {% set last_reason = last_attempt.reason if last_attempt is mapping and last_attempt.reason is defined else '' %}
 {% set last_correlation_id = last_attempt.correlation_id if last_attempt is mapping and last_attempt.correlation_id is defined else '' %}
 {% set last_timestamp = last_attempt.timestamp if last_attempt is mapping and last_attempt.timestamp is defined else '' %}
+{% set captured_at = state_attr(s_target,'captured_at') | default('', true) %}
+{% set captured_ts = as_timestamp(captured_at) if captured_at not in ['', 'unknown', 'unavailable', 'none', none] else none %}
+{% set captured_age_s = (as_timestamp(now()) - captured_ts) if captured_ts is not none else none %}
+{% set snapshot_fresh = captured_age_s is not none and captured_age_s <= freshness_required_s %}
 
 {% set route_trace_ok = route_decision not in ['','none','unknown','unavailable'] %}
 {% set parity_ok = (parity_unresolved | length) == 0 and (parity_mismatches | length) == 0 %}
@@ -44,11 +49,11 @@
 {% set pass_status_legacy = ['blocked_authority', 'authority_set', 'never_attempted'] %}
 
 {% set verdict = 'FAIL' %}
-{% if authority_mode == 'component' and route_trace_ok and contract_valid and parity_ok and last_status in pass_status_component %}
+{% if authority_mode == 'component' and route_trace_ok and contract_valid and parity_ok and snapshot_fresh and last_status in pass_status_component %}
   {% set verdict = 'PASS' %}
-{% elif authority_mode == 'legacy' and route_trace_ok and contract_valid and parity_ok and last_status in pass_status_legacy %}
+{% elif authority_mode == 'legacy' and route_trace_ok and contract_valid and parity_ok and snapshot_fresh and last_status in pass_status_legacy %}
   {% set verdict = 'PASS' %}
-{% elif write_controls is mapping and route_trace_ok and parity_ok and (contract_valid or not contract_ready) %}
+{% elif write_controls is mapping and route_trace_ok and parity_ok and snapshot_fresh and (contract_valid or not contract_ready) %}
   {% set verdict = 'WARN' %}
 {% endif %}
 
@@ -62,6 +67,7 @@
 - Route decision/reason: **{{ route_decision if route_decision != '' else 'n/a' }}** / **{{ route_reason if route_reason != '' else 'n/a' }}**
 - Contract ready/valid: **{{ contract_ready }} / {{ contract_valid }}**
 - Parity unresolved/mismatch: **{{ parity_unresolved | length }} / {{ parity_mismatches | length }}**
+- Snapshot fresh (<= {{ freshness_required_s }}s): **{{ snapshot_fresh }}** (age={{ (captured_age_s | round(1)) if captured_age_s is not none else 'n/a' }}s)
 
 ### Write control surfaces
 - Authority mode: **{{ authority_mode if authority_mode != '' else 'n/a' }}**

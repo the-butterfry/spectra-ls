@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.19.24 -->
+<!-- Version: 2026.04.19.25 -->
 <!-- Last updated: 2026-04-19 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -161,6 +161,21 @@ Final runtime proof snapshot (2026-04-19 22:51 local):
 - Metadata value probes resolved: `active_meta_entity=media_player.spectra_ls`, `now_playing_entity=media_player.spectra_ls`, `now_playing_state=paused`, `now_playing_title=Network`.
 - All S03 gates true (`contract`, `active_meta`, `now_playing_entity/state/title`, `candidate_payload_ready`, `route_trace_present`).
 - Compatibility boundary remains explicit: runtime can still show non-cutover route/selection context (`route=defer_not_capable`, authority=`legacy`, selection_handoff=`FAIL`) without invalidating diagnostics-only P3-S03 closeout.
+
+### P3-H1 second-pass hardening checkpoint (2026-04-19)
+
+Implemented as a bounded reliability hardening pass (no ownership expansion):
+
+- coordinator listener scope widened to include key helper/metadata entities to reduce stale diagnostics windows,
+- metadata candidate readiness semantics tightened to require structurally meaningful candidate payloads (non-empty entity-bearing candidate data),
+- closure gate now enforces soak-attempt consistency (`attempts >= pass cycles` and `attempts > 0`),
+- P3 templates (`S01`, `S02`, `S03`, closure gate) now include explicit snapshot freshness checks to reduce stale PASS false positives.
+
+Disposition:
+
+- Runtime track: compatibility contracts retained; no authority/ownership cutover.
+- Component track: diagnostics hardening implemented.
+- Parity: preserved; rerun closure templates to capture refreshed evidence when convenient.
 
 ### Phase 4 bounded slice plan (post-P3)
 

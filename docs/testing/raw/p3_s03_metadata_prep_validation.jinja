@@ -1,5 +1,5 @@
 {# Description: Raw copy/paste Jinja template for Spectra LS Phase 3 S03 metadata-prep diagnostics validation. #}
-{# Version: 2026.04.19.5 #}
+{# Version: 2026.04.19.6 #}
 {# Last updated: 2026-04-19 #}
 
 {# =========================
@@ -32,6 +32,7 @@
 
 {% set s_target = 'sensor.shadow_active_target' if states['sensor.shadow_active_target'] is not none else 'sensor.spectra_ls_shadow_active_target' %}
 {% set s_path = 'sensor.shadow_active_control_path' if states['sensor.shadow_active_control_path'] is not none else 'sensor.spectra_ls_shadow_active_control_path' %}
+{% set freshness_required_s = 300 %}
 
 {% set metadata = state_attr(s_target, 'metadata_prep_validation') or {} %}
 {% set contract = state_attr(s_target, 'contract_validation') or {} %}
@@ -62,6 +63,17 @@
 {% set route_decision = route_trace.decision if route_trace is mapping and route_trace.decision is defined else '' %}
 {% set selection_verdict = selection.verdict if selection is mapping and selection.verdict is defined else 'missing' %}
 {% set authority_mode = write_controls.authority_mode if write_controls is mapping and write_controls.authority_mode is defined else 'missing' %}
+{% set captured_at = state_attr(s_target,'captured_at') | default('', true) %}
+{% set captured_ts = as_timestamp(captured_at) if captured_at not in ['', 'unknown', 'unavailable', 'none', none] else none %}
+{% set captured_age_s = (as_timestamp(now()) - captured_ts) if captured_ts is not none else none %}
+{% set snapshot_fresh = captured_age_s is not none and captured_age_s <= freshness_required_s %}
+
+{% set effective_verdict = verdict %}
+{% if verdict == 'PASS' and not snapshot_fresh %}
+  {% set effective_verdict = 'WARN' %}
+{% elif verdict == 'missing' and not snapshot_fresh %}
+  {% set effective_verdict = 'FAIL' %}
+{% endif %}
 
 {% set gate_count = 0 %}
 {% if check_active_meta %}{% set gate_count = gate_count + 1 %}{% endif %}
@@ -73,7 +85,7 @@
 {% if contract_valid %}{% set gate_count = gate_count + 1 %}{% endif %}
 
 ### Phase 3 S03 Metadata-Prep Validation (`spectra_ls`)
-- Result: **{{ verdict }}**
+- Result: **{{ effective_verdict }}** (base={{ verdict }})
 - Timestamp: **{{ now() }}**
 - Ready for metadata handoff: **{{ ready }}**
 - Gate score: **{{ gate_count }}/7**
@@ -84,6 +96,7 @@
 - Route decision: **{{ route_decision if route_decision != '' else 'n/a' }}**
 - Selection handoff verdict: **{{ selection_verdict }}**
 - Write authority mode: **{{ authority_mode }}**
+- Snapshot fresh (<= {{ freshness_required_s }}s): **{{ snapshot_fresh }}** (age={{ (captured_age_s | round(1)) if captured_age_s is not none else 'n/a' }}s)
 
 ### Metadata value probes
 - Active meta entity: **{{ probe_active_meta if probe_active_meta is not none else 'missing' }}**
@@ -117,10 +130,10 @@
 - `sensor.ma_meta_candidates` best candidate: **{{ state_attr('sensor.ma_meta_candidates','best_candidate_json') | default('missing', true) }}**
 
 ### Recommendation
-{% if verdict == 'PASS' %}
+{% if effective_verdict == 'PASS' %}
 - Metadata-prep diagnostics are healthy.
 - Keep ownership in compatibility mode for now and proceed to Phase-4 planning slice.
-{% elif verdict == 'WARN' %}
+{% elif effective_verdict == 'WARN' %}
 - Metadata-prep is partially healthy; stabilize WARN gates before any ownership discussions.
 - Do **not** cut over metadata ownership yet.
 {% else %}

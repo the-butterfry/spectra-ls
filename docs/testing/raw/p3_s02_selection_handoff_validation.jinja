@@ -1,5 +1,5 @@
 {# Description: Raw copy/paste Jinja template for Spectra LS Phase 3 Slice-02 selection-handoff one-shot validation. #}
-{# Version: 2026.04.19.1 #}
+{# Version: 2026.04.19.4 #}
 {# Last updated: 2026-04-19 #}
 
 {# =========================
@@ -10,6 +10,7 @@
     2) Reload this template and inspect selection_handoff_validation + write_controls
   ========================= #}
 
+{% set freshness_required_s = 180 %}
 {% set s_target = 'sensor.shadow_active_target' if states['sensor.shadow_active_target'] is not none else 'sensor.spectra_ls_shadow_active_target' %}
 {% set s_path = 'sensor.shadow_active_control_path' if states['sensor.shadow_active_control_path'] is not none else 'sensor.spectra_ls_shadow_active_control_path' %}
 
@@ -41,12 +42,17 @@
 {% set missing_scripts = compat.missing_scripts if compat is mapping and compat.missing_scripts is defined else [] %}
 {% set missing_automation_ids = compat.missing_automation_ids if compat is mapping and compat.missing_automation_ids is defined else [] %}
 
+{% set captured_at = state_attr(s_target,'captured_at') | default('', true) %}
+{% set captured_ts = as_timestamp(captured_at) if captured_at not in ['', 'unknown', 'unavailable', 'none', none] else none %}
+{% set captured_age_s = (as_timestamp(now()) - captured_ts) if captured_ts is not none else none %}
+{% set snapshot_fresh = captured_age_s is not none and captured_age_s <= freshness_required_s %}
+
 {% set route_ok = route_decision == 'route_linkplay_tcp' %}
 
 {% set verdict = 'FAIL' %}
-{% if handoff_verdict == 'PASS' and handoff_ready and route_ok and contract_valid and helper_exists and helper_target_in_options and (missing_scripts | length) == 0 and (missing_automation_ids | length) == 0 %}
+{% if handoff_verdict == 'PASS' and handoff_ready and route_ok and contract_valid and helper_exists and helper_target_in_options and snapshot_fresh and (missing_scripts | length) == 0 and (missing_automation_ids | length) == 0 %}
   {% set verdict = 'PASS' %}
-{% elif handoff_verdict in ['PASS','WARN'] and route_ok and (contract_valid or not contract_ready) %}
+{% elif handoff_verdict in ['PASS','WARN'] and route_ok and snapshot_fresh and (contract_valid or not contract_ready) %}
   {% set verdict = 'WARN' %}
 {% endif %}
 
@@ -60,6 +66,7 @@
 - Route decision/reason: **{{ route_decision if route_decision != '' else 'n/a' }}** / **{{ route_reason if route_reason != '' else 'n/a' }}**
 - Authority mode: **{{ authority_mode if authority_mode != '' else 'n/a' }}**
 - Contract ready/valid: **{{ contract_ready }} / {{ contract_valid }}**
+- Snapshot fresh (<= {{ freshness_required_s }}s): **{{ snapshot_fresh }}** (age={{ (captured_age_s | round(1)) if captured_age_s is not none else 'n/a' }}s)
 
 ### Selection handoff diagnostics
 - Handoff payload ready: **{{ handoff_ready }}**

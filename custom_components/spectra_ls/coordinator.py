@@ -1,11 +1,12 @@
 # Description: Data coordinator for Spectra LS parity diagnostics, Phase 3 guarded routing write-path controls, and Phase 4 diagnostics scaffolding.
-# Version: 2026.04.19.8
+# Version: 2026.04.19.9
 # Last updated: 2026-04-19
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
+import json
 import logging
 from time import monotonic
 from typing import Any
@@ -72,9 +73,25 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Initialize data and state listeners."""
         await self.async_refresh()
 
+        watched_entities = set(LEGACY_SURFACES.values())
+        watched_entities.update(
+            {
+                LEGACY_ACTIVE_TARGET_HELPER,
+                LEGACY_ACTIVE_META_ENTITY,
+                LEGACY_NOW_PLAYING_ENTITY,
+                LEGACY_NOW_PLAYING_STATE,
+                LEGACY_NOW_PLAYING_TITLE,
+                LEGACY_META_CANDIDATES,
+                LEGACY_CONTROL_HOST,
+                LEGACY_CONTROL_TARGETS,
+                LEGACY_ROOMS_JSON,
+                LEGACY_ROOMS_RAW,
+            }
+        )
+
         self._unsub_state_events = async_track_state_change_event(
             self.hass,
-            list(LEGACY_SURFACES.values()),
+            sorted(watched_entities),
             self._handle_state_change,
         )
 
@@ -227,12 +244,46 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if candidates_state is None:
             return False
 
-        for key in ("best_candidate_json", "candidate_summary_json", "candidate_rows_json"):
-            value = candidates_state.attributes.get(key)
-            if isinstance(value, str) and value.strip() and value.strip() not in {"{}", "[]"}:
+        def _parse_jsonish(value: Any) -> Any:
+            if isinstance(value, (dict, list)):
+                return value
+            if isinstance(value, str):
+                raw = value.strip()
+                if not raw or raw in {"{}", "[]"}:
+                    return None
+                try:
+                    return json.loads(raw)
+                except json.JSONDecodeError:
+                    return None
+            return None
+
+        best_candidate_raw = candidates_state.attributes.get("best_candidate_json")
+        best_candidate = _parse_jsonish(best_candidate_raw)
+        if isinstance(best_candidate, dict):
+            best_entity = str(best_candidate.get("entity", "") or "").strip()
+            if best_entity:
                 return True
-            if isinstance(value, (list, dict)) and len(value) > 0:
+
+        summary_raw = candidates_state.attributes.get("candidate_summary_json")
+        summary = _parse_jsonish(summary_raw)
+        if isinstance(summary, dict):
+            entities = summary.get("entities", [])
+            if isinstance(entities, list):
+                if any(isinstance(entity, str) and entity.strip() for entity in entities):
+                    return True
+            candidate_count = summary.get("candidate_count", 0)
+            if isinstance(candidate_count, (int, float)) and candidate_count > 0:
                 return True
+
+        rows_raw = candidates_state.attributes.get("candidate_rows_json")
+        rows = _parse_jsonish(rows_raw)
+        if isinstance(rows, list):
+            for row in rows:
+                if isinstance(row, dict):
+                    entity = str(row.get("entity", "") or "").strip()
+                    if entity:
+                        return True
+
         return False
 
     def _build_metadata_prep_validation(

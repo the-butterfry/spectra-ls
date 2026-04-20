@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.19.56 -->
+<!-- Version: 2026.04.19.57 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Changelog
 
 ## 2026-04-19
+
+- Validation/P3-S03 Template Listener Hardening (`docs/testing/raw/p3_s03_metadata_prep_validation.jinja`): switch listener anchors to explicit `states.sensor.*` object-path references and include a lightweight watcher checksum in rendered output so Home Assistant’s dependency tracker reliably detects concrete entity subscriptions in Developer Tools Template mode. README parity: no material repo-state change.
 
 - Validation/P3-S03 Template Event Tracking Fix (`docs/testing/raw/p3_s03_metadata_prep_validation.jinja`): add explicit static entity/attribute watchers for both `shadow_*` and `spectra_ls_shadow_*` sensor variants so Home Assistant template dependency tracking reliably subscribes to runtime updates instead of warning that the template has no event listeners. README parity: no material repo-state change.
 

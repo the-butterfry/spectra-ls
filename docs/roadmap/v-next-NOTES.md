@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.19.26 -->
+<!-- Version: 2026.04.19.27 -->
 <!-- Last updated: 2026-04-19 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -184,6 +184,14 @@ Template closeout correctness fix:
 - closure gate now accepts explicit `observed_parity_ok` operator evidence and applies it in `evaluation_mode=soak_evidence`,
 - runtime parity remains visible as `runtime_now` in gate breakdown for drift diagnostics,
 - prevents false WARN closure outcomes when post-soak runtime context temporarily reports parity drift unrelated to the validated soak window.
+
+### P3-H3 closure-gate fail-closed checkpoint (2026-04-19)
+
+Strict closeout enforcement update:
+
+- closure gate defaults now fail-closed (`evaluation_mode=runtime` and conservative observed defaults),
+- soak-evidence mode now requires provenance fields (`observed_evidence_source`, `observed_evidence_reference`, `observed_evidence_collected_at`) and enforces collected-at freshness <=24h,
+- missing/invalid provenance forces `FAIL` to prevent optimistic PASS outcomes from unverified manual toggles.
 
 ### Phase 4 bounded slice plan (post-P3)
 

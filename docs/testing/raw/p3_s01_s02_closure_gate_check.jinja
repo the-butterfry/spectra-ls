@@ -1,5 +1,5 @@
 {# Description: Raw copy/paste Jinja template for Spectra LS Phase 3 S01/S02 closure gate decision. #}
-{# Version: 2026.04.19.4 #}
+{# Version: 2026.04.19.5 #}
 {# Last updated: 2026-04-19 #}
 
 {# =========================
@@ -16,21 +16,27 @@
     - observed_s01_ok
     - observed_s02_ok
     - observed_parity_ok
+    - observed_evidence_source
+    - observed_evidence_reference
+    - observed_evidence_collected_at
 
   Notes:
   - This template does NOT replace S01/S02 templates; it consumes their expected outcomes + soak evidence.
   - Use after running one-shot and soak protocol evidence capture.
   ========================= #}
 
-{% set evaluation_mode = 'soak_evidence' %}
-{% set observed_soak_pass_cycles = 3 %}
-{% set observed_soak_attempts = 5 %}
-{% set observed_distinct_pass_targets = 1 %}
-{% set single_capable_topology_waiver = true %}
-{% set observed_route_eligible = true %}
-{% set observed_s01_ok = true %}
-{% set observed_s02_ok = true %}
-{% set observed_parity_ok = true %}
+{% set evaluation_mode = 'runtime' %}
+{% set observed_soak_pass_cycles = 0 %}
+{% set observed_soak_attempts = 0 %}
+{% set observed_distinct_pass_targets = 0 %}
+{% set single_capable_topology_waiver = false %}
+{% set observed_route_eligible = false %}
+{% set observed_s01_ok = false %}
+{% set observed_s02_ok = false %}
+{% set observed_parity_ok = false %}
+{% set observed_evidence_source = '' %}
+{% set observed_evidence_reference = '' %}
+{% set observed_evidence_collected_at = '' %}
 
 {% set s_target = 'sensor.shadow_active_target' if states['sensor.shadow_active_target'] is not none else 'sensor.spectra_ls_shadow_active_target' %}
 {% set s_path = 'sensor.shadow_active_control_path' if states['sensor.shadow_active_control_path'] is not none else 'sensor.spectra_ls_shadow_active_control_path' %}
@@ -80,6 +86,12 @@
 {% set gate_distinct_targets_ok = observed_distinct_pass_targets >= 2 or single_capable_topology_waiver %}
 
 {% set use_soak_evidence = evaluation_mode == 'soak_evidence' %}
+{% set observed_source_ok = observed_evidence_source | trim == 'script.spectra_p3_soak_one_shot' %}
+{% set observed_reference_ok = (observed_evidence_reference | trim) not in ['', 'unknown', 'unavailable', 'none'] %}
+{% set observed_collected_ts = as_timestamp(observed_evidence_collected_at) if observed_evidence_collected_at not in ['', 'unknown', 'unavailable', 'none', none] else none %}
+{% set observed_collected_age_s = (as_timestamp(now()) - observed_collected_ts) if observed_collected_ts is not none else none %}
+{% set observed_collected_fresh = observed_collected_age_s is not none and observed_collected_age_s <= 86400 %}
+{% set gate_evidence_provenance_ok = (not use_soak_evidence) or (observed_source_ok and observed_reference_ok and observed_collected_fresh) %}
 {% set gate_route_ok = observed_route_eligible if use_soak_evidence else gate_route_ok_runtime %}
 {% set gate_parity_ok = observed_parity_ok if use_soak_evidence else gate_parity_ok_runtime %}
 {% set gate_s01_ok = observed_s01_ok if use_soak_evidence else gate_s01_ok_runtime %}
@@ -102,6 +114,8 @@
 {% endif %}
 
 {% if not gate_soak_attempts_consistent %}
+  {% set verdict = 'FAIL' %}
+{% elif not gate_evidence_provenance_ok %}
   {% set verdict = 'FAIL' %}
 {% elif verdict == 'PASS' and not gate_snapshot_fresh %}
   {% set verdict = 'WARN' %}
@@ -131,6 +145,9 @@
 - Observed S01 PASS during soak window: **{{ observed_s01_ok }}**
 - Observed S02 PASS during soak window: **{{ observed_s02_ok }}**
 - Observed parity clean during soak window: **{{ observed_parity_ok }}**
+- Observed evidence source: **{{ observed_evidence_source if observed_evidence_source | trim != '' else 'missing' }}**
+- Observed evidence reference: **{{ observed_evidence_reference if observed_evidence_reference | trim != '' else 'missing' }}**
+- Observed evidence collected at: **{{ observed_evidence_collected_at if observed_evidence_collected_at | trim != '' else 'missing' }}**
 
 ### Gate breakdown
 - Route is eligible (`route_linkplay_tcp`): **{{ gate_route_ok }}** (runtime_now={{ gate_route_ok_runtime }})
@@ -141,6 +158,7 @@
 - Soak cycles sufficient (>=3): **{{ gate_soak_cycles_ok }}**
 - Soak attempts consistent (attempts >= pass cycles and >0): **{{ gate_soak_attempts_consistent }}**
 - Distinct target gate (>=2 or waiver): **{{ gate_distinct_targets_ok }}**
+- Evidence provenance valid (source+reference+<=24h): **{{ gate_evidence_provenance_ok }}**
 
 ### Compatibility details
 - Missing required contract entities: **{{ missing_required | length }}**

@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.19.63 -->
+<!-- Version: 2026.04.19.64 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Changelog
 
 ## 2026-04-19
+
+- Validation/P3-H3 Closure Gate Fail-Closed Hardening (`docs/testing/raw/p3_s01_s02_closure_gate_check.jinja`, `docs/testing/raw/p3_s01_s02_soak_protocol.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): enforce strict closure semantics by changing defaults to runtime-safe fail values and requiring soak-evidence provenance (`observed_evidence_source`, `observed_evidence_reference`, `observed_evidence_collected_at <=24h`) before soak-mode closure can PASS/WARN; missing provenance now hard-FAILs to prevent optimistic/manual-only closeout toggles. README parity: no material repo-state change.
 
 - Validation/P3-H2 Closure Gate Soak-Parity Fix (`docs/testing/raw/p3_s01_s02_closure_gate_check.jinja`, `docs/testing/raw/p3_s01_s02_soak_protocol.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): eliminate soak-mode false WARN outcomes caused by runtime parity drift outside soak windows by adding explicit operator evidence input `observed_parity_ok` and using it when `evaluation_mode=soak_evidence` (runtime parity is still reported in breakdown for diagnostics). README parity: no material repo-state change.
 

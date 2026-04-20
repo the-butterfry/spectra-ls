@@ -1,5 +1,5 @@
-# Description: Constants for Spectra LS custom integration shadow parity and Phase 3 guarded routing write-path controls.
-# Version: 2026.04.19.6
+# Description: Constants for Spectra LS custom integration shadow parity, Phase 3 guarded routing write-path controls, and Phase 4 diagnostics scaffolding.
+# Version: 2026.04.19.7
 # Last updated: 2026-04-19
 
 from __future__ import annotations
@@ -17,6 +17,8 @@ SERVICE_RUN_P3_S01_SEQUENCE = "run_p3_s01_sequence"
 SERVICE_RUN_P3_S02_SEQUENCE = "run_p3_s02_sequence"
 SERVICE_VALIDATE_METADATA_PREP = "validate_metadata_prep"
 SERVICE_RUN_P3_S03_SEQUENCE = "run_p3_s03_sequence"
+SERVICE_VALIDATE_CAPABILITY_PROFILE = "validate_capability_profile"
+SERVICE_RUN_F4_S01_SEQUENCE = "run_f4_s01_sequence"
 
 PLATFORMS: tuple[Platform, ...] = (
     Platform.SENSOR,

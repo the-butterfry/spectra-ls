@@ -1,5 +1,5 @@
-# Description: Spectra LS custom integration setup for shadow parity and Phase 3 guarded routing write-path services.
-# Version: 2026.04.19.6
+# Description: Spectra LS custom integration setup for shadow parity, Phase 3 guarded routing write-path services, and Phase 4 diagnostics scaffolding services.
+# Version: 2026.04.19.7
 # Last updated: 2026-04-19
 
 from __future__ import annotations
@@ -22,6 +22,8 @@ from .const import (
     SERVICE_VALIDATE_CONTRACTS,
     SERVICE_VALIDATE_METADATA_PREP,
     SERVICE_RUN_P3_S03_SEQUENCE,
+    SERVICE_VALIDATE_CAPABILITY_PROFILE,
+    SERVICE_RUN_F4_S01_SEQUENCE,
 )
 from .coordinator import SpectraLsShadowCoordinator
 
@@ -100,6 +102,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await coordinator.async_validate_selection_handoff()
         await coordinator.async_validate_metadata_prep()
 
+    async def _service_validate_capability_profile(_call: ServiceCall) -> None:
+        await coordinator.async_validate_capability_profile()
+
+    async def _service_run_f4_s01_sequence(call: ServiceCall) -> None:
+        mode = str(call.data.get("mode", "legacy"))
+        reason = str(call.data.get("reason", ""))
+
+        await coordinator.async_set_write_authority(mode=mode, reason=reason)
+        await coordinator.async_rebuild_registry()
+        await coordinator.async_validate_contracts()
+        await coordinator.async_dump_route_trace()
+        await coordinator.async_validate_selection_handoff()
+        await coordinator.async_validate_metadata_prep()
+        await coordinator.async_validate_capability_profile()
+
     if not hass.services.has_service(DOMAIN, SERVICE_REBUILD_REGISTRY):
         hass.services.async_register(DOMAIN, SERVICE_REBUILD_REGISTRY, _service_rebuild_registry)
     if not hass.services.has_service(DOMAIN, SERVICE_VALIDATE_CONTRACTS):
@@ -118,6 +135,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.services.async_register(DOMAIN, SERVICE_VALIDATE_METADATA_PREP, _service_validate_metadata_prep)
     if not hass.services.has_service(DOMAIN, SERVICE_RUN_P3_S03_SEQUENCE):
         hass.services.async_register(DOMAIN, SERVICE_RUN_P3_S03_SEQUENCE, _service_run_p3_s03_sequence)
+    if not hass.services.has_service(DOMAIN, SERVICE_VALIDATE_CAPABILITY_PROFILE):
+        hass.services.async_register(DOMAIN, SERVICE_VALIDATE_CAPABILITY_PROFILE, _service_validate_capability_profile)
+    if not hass.services.has_service(DOMAIN, SERVICE_RUN_F4_S01_SEQUENCE):
+        hass.services.async_register(DOMAIN, SERVICE_RUN_F4_S01_SEQUENCE, _service_run_f4_s01_sequence)
 
     try:
         await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
@@ -155,4 +176,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 hass.services.async_remove(DOMAIN, SERVICE_VALIDATE_METADATA_PREP)
             if hass.services.has_service(DOMAIN, SERVICE_RUN_P3_S03_SEQUENCE):
                 hass.services.async_remove(DOMAIN, SERVICE_RUN_P3_S03_SEQUENCE)
+            if hass.services.has_service(DOMAIN, SERVICE_VALIDATE_CAPABILITY_PROFILE):
+                hass.services.async_remove(DOMAIN, SERVICE_VALIDATE_CAPABILITY_PROFILE)
+            if hass.services.has_service(DOMAIN, SERVICE_RUN_F4_S01_SEQUENCE):
+                hass.services.async_remove(DOMAIN, SERVICE_RUN_F4_S01_SEQUENCE)
     return unload_ok

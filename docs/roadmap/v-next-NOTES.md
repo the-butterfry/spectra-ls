@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.19.23 -->
+<!-- Version: 2026.04.19.24 -->
 <!-- Last updated: 2026-04-19 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -37,7 +37,7 @@ Each feature slice is only complete when both tracks are dispositioned:
 | 1 | Skeleton + shadow parity | Keep existing contracts stable | Scaffold integration + read-only parity outputs | Implemented |
 | 2 | Registry + route foundation | Keep helper contracts + diagnostics parity | Target registry + adapter router (`linkplay_tcp`) | Implemented |
 | 3 | Guarded dual-write | Add shims and loop guards | Controlled write path with correlation/debounce guards | Planned |
-| 4 | Functional expansion | Preserve compatibility while exposing new capabilities | Profiles/actions/capability matrix/crossfade-balance services | Planned |
+| 4 | Functional expansion | Preserve compatibility while exposing new capabilities | Profiles/actions/capability matrix/crossfade-balance services | Active (F4-S01) |
 | 5 | Domain cutover + retirement | Domain-by-domain template retirement | Primary control plane ownership + migration tooling | Planned |
 
 ### Active slice ledger
@@ -50,6 +50,7 @@ Each feature slice is only complete when both tracks are dispositioned:
 | P3-S01 | 3 | Validated (legacy write authority retained behind switch) | Validated (guard framework + manual routing write trial services) | Validated | Medium | Validated |
 | P3-S02 | 3 | Validated (selection compatibility shim validation) | Validated (one-shot selection-handoff validation sequence + diagnostics) | Validated (single-capable waiver) | High | Validated |
 | P3-S03 | 3 | Validated (metadata ownership explicitly deferred to legacy compatibility mode) | Validated (metadata prep diagnostics + one-shot sequence + listener-safe validation template) | Validated (diagnostics-only) | Medium | Validated |
+| F4-S01 | 4 | Active (compatibility contracts retained; no ownership cutover) | Active (capability matrix + profile schema diagnostics scaffolding) | Active (diagnostics-only) | Medium | Active |
 
 ### P1/P2 validation snapshot (2026-04-19)
 
@@ -168,6 +169,23 @@ Final runtime proof snapshot (2026-04-19 22:51 local):
 | F4-S01 | Capability matrix + profile scaffolding | Preserve existing helper behavior/contracts; no ownership cutover | Add profile schema skeleton + capability-map diagnostics surfaces | Deterministic diagnostics output; no parity regressions |
 | F4-S02 | Programmable action catalog safety skeleton | Keep legacy action flows authoritative | Add arm/confirm/cooldown/audit schema + dry-run validation service | Sensitive-action safety gates verified in diagnostics |
 | F4-S03 | Crossfade/balance service contract (diagnostics-first) | Keep current runtime control lane | Add normalized slider-domain contract + no-op service validation path | Contract + diagnostics PASS; no write-path authority expansion |
+
+### F4-S01 implementation checkpoint (2026-04-19)
+
+Implemented in `custom_components/spectra_ls`:
+
+- capability/profile diagnostics payload (`capability_profile_validation`) in coordinator snapshot,
+- capability matrix summary extraction from registry (`control_path_counts`, `hardware_family_counts`, capability union, control-capable counts),
+- deterministic profile-schema skeleton surface (`schema_version`, `required_keys`, defaults),
+- no-authority-expansion guard visibility (`authority_mode=legacy` expected for diagnostics lane),
+- services: `validate_capability_profile`, `run_f4_s01_sequence`,
+- raw validation template: `docs/testing/raw/f4_s01_capability_profile_validation.jinja`.
+
+Still required before closing F4-S01:
+
+- runtime F4-S01 validation evidence capture with PASS verdict,
+- confirmation that authority remains legacy during diagnostics-only validation,
+- roadmap/v-next/changelog closeout note for F4-S01.
 
 Reference specification: `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`.
 

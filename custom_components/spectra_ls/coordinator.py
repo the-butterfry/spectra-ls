@@ -1,5 +1,5 @@
-# Description: Data coordinator for Spectra LS parity diagnostics and Phase 3 guarded routing write-path controls.
-# Version: 2026.04.19.7
+# Description: Data coordinator for Spectra LS parity diagnostics, Phase 3 guarded routing write-path controls, and Phase 4 diagnostics scaffolding.
+# Version: 2026.04.19.8
 # Last updated: 2026-04-19
 
 from __future__ import annotations
@@ -309,6 +309,98 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             },
         }
 
+    def _build_capability_profile_validation(
+        self,
+        *,
+        registry: dict[str, Any],
+        route_trace: dict[str, Any],
+        contract_validation: dict[str, Any],
+        metadata_prep_validation: dict[str, Any],
+    ) -> dict[str, Any]:
+        entries = registry.get("entries", {}) if isinstance(registry.get("entries", {}), dict) else {}
+        targets = list(entries.values()) if isinstance(entries, dict) else []
+
+        control_path_counts: dict[str, int] = {}
+        hardware_family_counts: dict[str, int] = {}
+        capabilities_union: set[str] = set()
+        control_capable_count = 0
+
+        for entry in targets:
+            if not isinstance(entry, dict):
+                continue
+            control_path = str(entry.get("control_path", "unknown") or "unknown")
+            hardware_family = str(entry.get("hardware_family", "unknown") or "unknown")
+            control_path_counts[control_path] = control_path_counts.get(control_path, 0) + 1
+            hardware_family_counts[hardware_family] = hardware_family_counts.get(hardware_family, 0) + 1
+
+            if bool(entry.get("control_capable", False)):
+                control_capable_count += 1
+
+            caps = entry.get("capabilities", [])
+            if isinstance(caps, list):
+                for cap in caps:
+                    if isinstance(cap, str) and cap.strip():
+                        capabilities_union.add(cap.strip())
+
+        route_decision = str(route_trace.get("decision", "") or "")
+        contract_valid = bool(contract_validation.get("valid", False))
+        metadata_ready = bool(metadata_prep_validation.get("ready_for_metadata_handoff", False))
+
+        checks = {
+            "registry_present": len(targets) > 0,
+            "capability_matrix_present": len(control_path_counts) > 0,
+            "route_trace_present": route_decision != "",
+            "contract_valid": contract_valid,
+            "metadata_prep_ready": metadata_ready,
+            "no_authority_expansion": self._write_authority_mode == WRITE_AUTH_LEGACY,
+        }
+
+        verdict = "PASS"
+        if not checks["registry_present"] or not checks["route_trace_present"] or not checks["contract_valid"]:
+            verdict = "FAIL"
+        elif (
+            not checks["capability_matrix_present"]
+            or not checks["metadata_prep_ready"]
+            or not checks["no_authority_expansion"]
+        ):
+            verdict = "WARN"
+
+        profile_schema = {
+            "schema_version": "f4_s01.v1",
+            "required_keys": [
+                "profile_id",
+                "label",
+                "target_scope",
+                "routing_policy",
+                "safety",
+            ],
+            "defaults": {
+                "target_scope": "active_target",
+                "routing_policy": "capability_mapped",
+                "safety": {
+                    "confirm_required": False,
+                    "cooldown_s": 0,
+                },
+            },
+        }
+
+        return {
+            "verdict": verdict,
+            "ready_for_f4_s01": verdict == "PASS",
+            "checks": checks,
+            "authority_mode": self._write_authority_mode,
+            "route_decision": route_decision,
+            "capability_matrix": {
+                "target_count": len(targets),
+                "control_capable_count": control_capable_count,
+                "control_path_counts": control_path_counts,
+                "hardware_family_counts": hardware_family_counts,
+                "capabilities": sorted(capabilities_union),
+                "sample_targets": sorted([str(t.get("target", "")) for t in targets if isinstance(t, dict) and t.get("target")])[:5],
+            },
+            "profile_schema": profile_schema,
+        }
+
     def _build_snapshot(self) -> dict[str, Any]:
         active_target = self._snapshot_for_entity(LEGACY_SURFACES["active_target"])
         active_control_path = self._snapshot_for_entity(LEGACY_SURFACES["active_control_path"])
@@ -372,6 +464,12 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             route_trace=route_trace,
             contract_validation=contract_validation,
         )
+        capability_profile_validation = self._build_capability_profile_validation(
+            registry=registry,
+            route_trace=route_trace,
+            contract_validation=contract_validation,
+            metadata_prep_validation=metadata_prep_validation,
+        )
 
         return {
             "legacy": legacy,
@@ -383,6 +481,7 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "contract_validation": contract_validation,
             "selection_handoff_validation": selection_handoff_validation,
             "metadata_prep_validation": metadata_prep_validation,
+            "capability_profile_validation": capability_profile_validation,
             "write_controls": self._build_write_controls(),
             "captured_at": datetime.now(UTC).isoformat(),
         }
@@ -407,6 +506,10 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     async def async_validate_metadata_prep(self) -> None:
         """Refresh parity data and emit metadata-prep validation diagnostics."""
+        self.async_set_updated_data(self._build_snapshot())
+
+    async def async_validate_capability_profile(self) -> None:
+        """Refresh parity data and emit F4-S01 capability/profile diagnostics."""
         self.async_set_updated_data(self._build_snapshot())
 
     async def async_set_write_authority(self, mode: str, reason: str = "") -> None:

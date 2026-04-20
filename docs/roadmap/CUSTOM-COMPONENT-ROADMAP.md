@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.19.16 -->
+<!-- Version: 2026.04.19.17 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -268,7 +268,7 @@ Implemented in component:
 Not yet claimed complete:
 
 - full selection ownership handoff behavior remains pending after sustained runtime evidence and compatibility soak.
-- closure requires completing `docs/testing/raw/p3_s01_s02_soak_protocol.md` with 3 consecutive S01+S02 PASS cycles spanning at least 2 distinct targets.
+- closure requires completing `docs/testing/raw/p3_s01_s02_soak_protocol.md` with 3 consecutive S01+S02 PASS cycles spanning at least 2 distinct PASS targets (or an explicit single-capable-topology waiver).
 - all soak cycles must keep compatibility/parity clean (`missing_scripts=0`, `missing_automation_ids=0`, `unresolved_sources=0`, `mismatches=0`).
 
 Latest runtime proof artifact (2026-04-19):
@@ -278,14 +278,23 @@ Latest runtime proof artifact (2026-04-19):
 - Contract validation: `ready=true`, `valid=true`.
 - Handoff diagnostics: `payload_ready=true`, `verdict=PASS`, `helper_exists=true`, `target_in_options=true`, `missing_scripts=0`, `missing_automation_ids=0`.
 
+Latest soak runtime artifact (2026-04-19):
+
+- Automated script result: `Spectra soak complete` from `script.spectra_p3_soak_one_shot`.
+- Soak evidence: `3` successful cycles in `5` attempts.
+- PASS-cycle diagnostics: `route=route_linkplay_tcp`, `contract_valid=True`, `handoff=PASS`.
+- Compatibility/parity maintained: `missing_scripts=0`, `missing_automation_ids=0`, `unresolved_sources=0`, `mismatches=0`.
+- Non-capable target behavior: soft-skips on `route=defer_not_capable` observed and tolerated by soak automation.
+- Closure gate note: baseline soak stability met; distinct PASS-target gate remains open unless explicitly waived for single-capable-topology operation.
+
 ### Stage report snapshot — ownership + readiness (2026-04-19)
 
 - Current ownership boundary:
   - **Legacy runtime (`packages/ma_control_hub/*.inc`) still owns** broad production selection/control orchestration.
   - **Component track (`custom_components/spectra_ls`) owns** parity/diagnostics, S01/S02 one-shot orchestration, and guarded routing write-trial scaffolding.
 - Readiness call:
-  - **Ready for next-step soak execution** using `docs/testing/raw/p3_s01_s02_soak_protocol.md`.
-  - **Not closure-ready for P3-S02** until soak evidence meets all closure gates (`3/3` PASS cycles, ≥2 targets, zero compatibility/parity drift).
+  - **Ready for closure logging + gate decision** (baseline soak evidence captured via automated run).
+  - **Not closure-ready for full P3-S02 sign-off** until distinct PASS-target gate is satisfied or explicitly waived.
 
 ### Phase 3 exit criteria
 

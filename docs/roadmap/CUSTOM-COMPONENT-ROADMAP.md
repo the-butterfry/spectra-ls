@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.19.24 -->
+<!-- Version: 2026.04.19.25 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -342,6 +342,14 @@ Track disposition:
 - Runtime track: implemented as compatibility-preserving hardening only.
 - Component track: implemented in diagnostics/validation lane.
 - Parity note: no contract rename/cutover; re-run P3 templates for refreshed runtime evidence on next validation cycle.
+
+### P3-H2 closure-gate soak parity checkpoint (2026-04-19)
+
+Closeout template correctness update:
+
+- add explicit soak-evidence input `observed_parity_ok` to closure gate,
+- use observed parity when `evaluation_mode=soak_evidence` while still exposing runtime parity as a diagnostic companion signal,
+- maintain `runtime` mode behavior unchanged for strict live validation.
 
 ### Phase 4 bounded slice plan (execution-ready)
 

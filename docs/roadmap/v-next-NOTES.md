@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.19.25 -->
+<!-- Version: 2026.04.19.26 -->
 <!-- Last updated: 2026-04-19 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -176,6 +176,14 @@ Disposition:
 - Runtime track: compatibility contracts retained; no authority/ownership cutover.
 - Component track: diagnostics hardening implemented.
 - Parity: preserved; rerun closure templates to capture refreshed evidence when convenient.
+
+### P3-H2 closure-gate soak parity checkpoint (2026-04-19)
+
+Template closeout correctness fix:
+
+- closure gate now accepts explicit `observed_parity_ok` operator evidence and applies it in `evaluation_mode=soak_evidence`,
+- runtime parity remains visible as `runtime_now` in gate breakdown for drift diagnostics,
+- prevents false WARN closure outcomes when post-soak runtime context temporarily reports parity drift unrelated to the validated soak window.
 
 ### Phase 4 bounded slice plan (post-P3)
 

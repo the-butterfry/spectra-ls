@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.20.31 -->
+<!-- Version: 2026.04.20.32 -->
 <!-- Last updated: 2026-04-20 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -122,6 +122,7 @@ Execution playbook reference: `docs/program/PARALLEL-PROGRAM-PLAYBOOK.md`.
 | P3-S03 | 3 | Validated (metadata ownership explicitly deferred to legacy compatibility mode) | Validated (metadata prep diagnostics + one-shot sequence + listener-safe validation template) | Validated (diagnostics-only) | Medium | Validated |
 | F4-S01 | 4 | Validated (compatibility contracts retained; no ownership cutover) | Validated (capability matrix + profile schema diagnostics scaffolding) | Validated (diagnostics-only) | Medium | Validated |
 | F4-S02 | 4 | Validated (legacy action ownership retained; diagnostics-only) | Validated (programmable action-catalog safety skeleton + dry-run diagnostics) | Validated (diagnostics-only) | Medium | Validated |
+| F4-S03 | 4 | Active (legacy crossfade/balance behavior remains authoritative) | Active (crossfade/balance diagnostics scaffold + validation sequence) | Active (diagnostics-only) | Medium | Active |
 
 ## P1/P2 validation snapshot (2026-04-19)
 
@@ -430,17 +431,21 @@ Seal decision:
 - **F4-S02:** sealed/validated.
 - Continue Phase-4 execution on active **F4-S03** diagnostics lane.
 
-### F4-S03 entry checkpoint (2026-04-20)
+### F4-S03 implementation checkpoint (2026-04-20)
 
-Entry artifact published:
+Implemented in component:
 
-- `docs/testing/raw/f4_s03_crossfade_balance_entry_checklist.md` (diagnostics-first kickoff checklist).
+- coordinator diagnostics payload `crossfade_balance_validation`,
+- normalized slider-domain contract schema (`f4_s03.v1`) and mode-profile diagnostics,
+- sample dry-run mix-plan diagnostics (no-op/fallback visibility),
+- services: `spectra_ls.validate_crossfade_balance`, `spectra_ls.run_f4_s03_sequence`,
+- raw operator template: `docs/testing/raw/f4_s03_crossfade_balance_validation.jinja`.
 
-Entry constraints for this lane:
+Open before F4-S03 closeout:
 
-- runtime track remains authoritative for control behavior,
-- component track adds normalized slider-domain contract diagnostics without ownership expansion,
-- closeout requires explicit runtime validation artifact capture before status seal.
+- capture runtime PASS/WARN/FAIL evidence from F4-S03 template,
+- verify runtime authority remains `legacy` with no-authority-expansion checks passing,
+- record closeout decision in roadmap + v-next + changelog.
 
 ### Phase 3 exit criteria
 

@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.20.33 -->
+<!-- Version: 2026.04.20.34 -->
 <!-- Last updated: 2026-04-20 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -52,6 +52,7 @@ Each feature slice is only complete when both tracks are dispositioned:
 | P3-S03 | 3 | Validated (metadata ownership explicitly deferred to legacy compatibility mode) | Validated (metadata prep diagnostics + one-shot sequence + listener-safe validation template) | Validated (diagnostics-only) | Medium | Validated |
 | F4-S01 | 4 | Validated (compatibility contracts retained; no ownership cutover) | Validated (capability matrix + profile schema diagnostics scaffolding) | Validated (diagnostics-only) | Medium | Validated |
 | F4-S02 | 4 | Validated (legacy action ownership retained; diagnostics-only) | Validated (programmable action-catalog safety skeleton + dry-run diagnostics) | Validated (diagnostics-only) | Medium | Validated |
+| F4-S03 | 4 | Active (legacy crossfade/balance behavior remains authoritative) | Active (crossfade/balance diagnostics scaffold + validation sequence) | Active (diagnostics-only) | Medium | Active |
 
 ### P1/P2 validation snapshot (2026-04-19)
 
@@ -264,18 +265,22 @@ Seal decision:
 - **F4-S02:** sealed/validated.
 - Continue Phase-4 execution on active **F4-S03** diagnostics lane.
 
-### F4-S03 entry checkpoint (2026-04-20)
+### F4-S03 implementation checkpoint (2026-04-20)
 
-Entry artifact published:
+Implemented in `custom_components/spectra_ls`:
 
-- `docs/testing/raw/f4_s03_crossfade_balance_entry_checklist.md` (diagnostics-first kickoff checklist).
-- `docs/testing/raw/f4_s03_crossfade_balance_validation.jinja` (raw runtime validator scaffold for contract/freshness/authority gates).
+- diagnostics payload `crossfade_balance_validation` in coordinator snapshot,
+- normalized slider-domain contract schema surface (`f4_s03.v1`, directional domain + safety keys),
+- mode-profile diagnostics for multi-room vs single-room behavior contracts,
+- sample dry-run mix-plan visibility with explicit no-op fallback posture,
+- services: `validate_crossfade_balance`, `run_f4_s03_sequence`,
+- raw validation template: `docs/testing/raw/f4_s03_crossfade_balance_validation.jinja`.
 
-Entry constraints for this lane:
+Still required before closing F4-S03:
 
-- keep legacy runtime as write authority/source-of-truth,
-- implement normalized slider-domain contract surfaces in component diagnostics path only,
-- require explicit runtime template evidence before closeout decision.
+- capture runtime PASS/WARN/FAIL evidence from F4-S03 template,
+- verify authority remains `legacy` (`no_authority_expansion=true`) in runtime capture,
+- record closeout decision in roadmap + v-next + changelog.
 
 Reference specification: `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`.
 

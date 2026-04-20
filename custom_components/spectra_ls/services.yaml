@@ -1,6 +1,6 @@
-# Description: Service definitions for Spectra LS Phase 2/3 diagnostics and Phase 4 Slice-01 capability-profile diagnostics scaffolding.
-# Version: 2026.04.19.6
-# Last updated: 2026-04-19
+# Description: Service definitions for Spectra LS Phase 2/3 diagnostics and Phase 4 Slice-01/Slice-03 diagnostics scaffolding.
+# Version: 2026.04.20.8
+# Last updated: 2026-04-20
 
 rebuild_registry:
   name: Rebuild registry
@@ -153,6 +153,54 @@ validate_capability_profile:
 run_f4_s01_sequence:
   name: Run F4-S01 sequence
   description: Run one-shot F4-S01 diagnostics sequence (authority set, registry/contracts/route/handoff/metadata refresh, capability-profile validation).
+  fields:
+    mode:
+      name: Authority mode
+      description: Optional authority mode to capture in diagnostics (`legacy` default; keep legacy for no-authority-expansion checks).
+      required: false
+      selector:
+        select:
+          options:
+            - legacy
+            - component
+    reason:
+      name: Reason
+      description: Optional operator note captured with authority diagnostics.
+      required: false
+      selector:
+        text:
+
+validate_action_catalog:
+  name: Validate action catalog
+  description: Refresh and expose Phase 4 Slice-02 programmable action-catalog safety diagnostics in shadow attributes.
+
+run_f4_s02_sequence:
+  name: Run F4-S02 sequence
+  description: Run one-shot F4-S02 diagnostics sequence (authority set, registry/contracts/route/handoff/metadata/capability refresh, action-catalog safety validation).
+  fields:
+    mode:
+      name: Authority mode
+      description: Optional authority mode to capture in diagnostics (`legacy` default; keep legacy for no-authority-expansion checks).
+      required: false
+      selector:
+        select:
+          options:
+            - legacy
+            - component
+    reason:
+      name: Reason
+      description: Optional operator note captured with authority diagnostics.
+      required: false
+      selector:
+        text:
+
+validate_crossfade_balance:
+  name: Validate crossfade balance
+  description: Refresh and expose Phase 4 Slice-03 crossfade/balance contract diagnostics in shadow attributes.
+
+run_f4_s03_sequence:
+  name: Run F4-S03 sequence
+  description: Run one-shot F4-S03 diagnostics sequence (authority set, registry/contracts/route/handoff/metadata/capability/action refresh, crossfade-balance validation).
   fields:
     mode:
       name: Authority mode

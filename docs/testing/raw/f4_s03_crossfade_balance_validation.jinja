@@ -1,11 +1,11 @@
 {# Description: Raw copy/paste Jinja template for Spectra LS Phase 4 Slice-03 crossfade/balance contract validation. #}
-{# Version: 2026.04.20.1 #}
+{# Version: 2026.04.20.2 #}
 {# Last updated: 2026-04-20 #}
 
 {# =========================
   Phase 4 F4-S03 Crossfade/Balance Contract Validation (custom_components/spectra_ls)
   Purpose: deterministic diagnostics verdict for normalized slider-domain crossfade/balance scaffolding without authority expansion.
-  Usage: run after the F4-S03 diagnostics sequence/validation service is available; until then, this template still reports pre-implementation readiness context.
+  Usage: run after `spectra_ls.run_f4_s03_sequence` (or `validate_crossfade_balance`).
   Note: service actions may be quiet in UI; treat this rendered output + shadow attributes as source-of-truth feedback.
   ========================= #}
 
@@ -131,3 +131,8 @@
 
 ### Listener debug (for dependency tracking)
 - watcher_checksum: `{{ watcher_checksum }}`
+
+### Run in legacy authority mode (copy/paste service payload)
+- Step 1 (F4-S03 sequence): Developer Tools → Actions → `spectra_ls.run_f4_s03_sequence`
+  - `mode: legacy`
+  - `reason: F4-S03 diagnostics validation (legacy authority baseline)`

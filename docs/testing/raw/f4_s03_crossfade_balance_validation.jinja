@@ -1,0 +1,133 @@
+{# Description: Raw copy/paste Jinja template for Spectra LS Phase 4 Slice-03 crossfade/balance contract validation. #}
+{# Version: 2026.04.20.1 #}
+{# Last updated: 2026-04-20 #}
+
+{# =========================
+  Phase 4 F4-S03 Crossfade/Balance Contract Validation (custom_components/spectra_ls)
+  Purpose: deterministic diagnostics verdict for normalized slider-domain crossfade/balance scaffolding without authority expansion.
+  Usage: run after the F4-S03 diagnostics sequence/validation service is available; until then, this template still reports pre-implementation readiness context.
+  Note: service actions may be quiet in UI; treat this rendered output + shadow attributes as source-of-truth feedback.
+  ========================= #}
+
+{# Static watcher anchors for HA dependency tracking (do not remove). #}
+{% set watch_shadow_target_state = states.sensor.shadow_active_target.state if states.sensor.shadow_active_target is not none else 'missing' %}
+{% set watch_shadow_target_captured_at = state_attr('sensor.shadow_active_target', 'captured_at') | default('missing', true) %}
+{% set watch_shadow_path_state = states.sensor.shadow_active_control_path.state if states.sensor.shadow_active_control_path is not none else 'missing' %}
+{% set watch_shadow_path_captured_at = state_attr('sensor.shadow_active_control_path', 'captured_at') | default('missing', true) %}
+{% set watch_legacy_target_state = states.sensor.spectra_ls_shadow_active_target.state if states.sensor.spectra_ls_shadow_active_target is not none else 'missing' %}
+{% set watch_legacy_target_captured_at = state_attr('sensor.spectra_ls_shadow_active_target', 'captured_at') | default('missing', true) %}
+{% set watch_legacy_path_state = states.sensor.spectra_ls_shadow_active_control_path.state if states.sensor.spectra_ls_shadow_active_control_path is not none else 'missing' %}
+{% set watch_legacy_path_captured_at = state_attr('sensor.spectra_ls_shadow_active_control_path', 'captured_at') | default('missing', true) %}
+{% set watcher_checksum = (
+  watch_shadow_target_state ~ '|' ~
+  watch_shadow_target_captured_at ~ '|' ~
+  watch_shadow_path_state ~ '|' ~
+  watch_shadow_path_captured_at ~ '|' ~
+  watch_legacy_target_state ~ '|' ~
+  watch_legacy_target_captured_at ~ '|' ~
+  watch_legacy_path_state ~ '|' ~
+  watch_legacy_path_captured_at
+) %}
+
+{% set freshness_required_s = 300 %}
+{% set s_target = 'sensor.shadow_active_target' if states['sensor.shadow_active_target'] is not none else 'sensor.spectra_ls_shadow_active_target' %}
+{% set s_path = 'sensor.shadow_active_control_path' if states['sensor.shadow_active_control_path'] is not none else 'sensor.spectra_ls_shadow_active_control_path' %}
+
+{% set f4 = state_attr(s_target, 'crossfade_balance_validation') or {} %}
+{% set action = state_attr(s_target, 'action_catalog_validation') or {} %}
+{% set route_trace = state_attr(s_target, 'route_trace') or {} %}
+{% set contract = state_attr(s_target, 'contract_validation') or {} %}
+{% set write_controls = state_attr(s_target, 'write_controls') or {} %}
+
+{% set payload_present = f4 is mapping and (f4 | count) > 0 %}
+{% set verdict = f4.verdict if f4 is mapping and f4.verdict is defined else 'missing' %}
+{% set ready = f4.ready_for_f4_s03 if f4 is mapping and f4.ready_for_f4_s03 is defined else false %}
+
+{% set checks = f4.checks if f4 is mapping and f4.checks is defined and f4.checks is mapping else {} %}
+{% set schema = f4.slider_domain_schema if f4 is mapping and f4.slider_domain_schema is defined and f4.slider_domain_schema is mapping else {} %}
+{% set modes = f4.mode_profiles if f4 is mapping and f4.mode_profiles is defined and f4.mode_profiles is mapping else {} %}
+{% set sample_plan = f4.sample_mix_plan if f4 is mapping and f4.sample_mix_plan is defined else {} %}
+
+{% set route_decision = route_trace.decision if route_trace is mapping and route_trace.decision is defined else '' %}
+{% set contract_valid = contract.valid if contract is mapping and contract.valid is defined else false %}
+{% set f4_s02_ready = action.ready_for_f4_s02 if action is mapping and action.ready_for_f4_s02 is defined else false %}
+{% set authority_mode = write_controls.authority_mode if write_controls is mapping and write_controls.authority_mode is defined else 'missing' %}
+
+{% set captured_at = state_attr(s_target, 'captured_at') | default('', true) %}
+{% set captured_ts = as_timestamp(captured_at) if captured_at not in ['', 'unknown', 'unavailable', 'none', none] else none %}
+{% set captured_age_s = (as_timestamp(now()) - captured_ts) if captured_ts is not none else none %}
+{% set snapshot_fresh = captured_age_s is not none and captured_age_s <= freshness_required_s %}
+
+{% set c_payload = checks.payload_present if checks.payload_present is defined else payload_present %}
+{% set c_contract = checks.contract_valid if checks.contract_valid is defined else contract_valid %}
+{% set c_route = checks.route_trace_present if checks.route_trace_present is defined else (route_decision != '') %}
+{% set c_f4_s02 = checks.f4_s02_ready if checks.f4_s02_ready is defined else f4_s02_ready %}
+{% set c_schema = checks.slider_schema_present if checks.slider_schema_present is defined else (schema | count) > 0 %}
+{% set c_modes = checks.mode_profiles_present if checks.mode_profiles_present is defined else (modes | count) > 0 %}
+{% set c_no_auth_expansion = checks.no_authority_expansion if checks.no_authority_expansion is defined else authority_mode == 'legacy' %}
+{% set c_fresh = checks.snapshot_fresh if checks.snapshot_fresh is defined else snapshot_fresh %}
+
+{% set gate_count = 0 %}
+{% if c_payload %}{% set gate_count = gate_count + 1 %}{% endif %}
+{% if c_contract %}{% set gate_count = gate_count + 1 %}{% endif %}
+{% if c_route %}{% set gate_count = gate_count + 1 %}{% endif %}
+{% if c_f4_s02 %}{% set gate_count = gate_count + 1 %}{% endif %}
+{% if c_schema %}{% set gate_count = gate_count + 1 %}{% endif %}
+{% if c_modes %}{% set gate_count = gate_count + 1 %}{% endif %}
+{% if c_no_auth_expansion %}{% set gate_count = gate_count + 1 %}{% endif %}
+{% if c_fresh %}{% set gate_count = gate_count + 1 %}{% endif %}
+
+{% set effective_verdict = verdict %}
+{% if verdict == 'PASS' and not c_fresh %}
+  {% set effective_verdict = 'WARN' %}
+{% elif verdict in ['missing', 'FAIL'] and (not c_payload) and c_contract and c_route and c_f4_s02 and c_no_auth_expansion %}
+  {% set effective_verdict = 'WARN' %}
+{% endif %}
+
+### Phase 4 F4-S03 Crossfade/Balance Contract Validation (`spectra_ls`)
+- Result: **{{ effective_verdict }}**
+- Raw payload verdict: **{{ verdict }}**
+- Timestamp: **{{ now() }}**
+- Ready for F4-S03 closeout: **{{ ready }}**
+- Gate score: **{{ gate_count }}/8**
+
+### Runtime context
+- Active target (`{{ s_target }}`): **{{ states(s_target) }}**
+- Active path (`{{ s_path }}`): **{{ states(s_path) }}**
+- Route decision: **{{ route_decision if route_decision != '' else 'n/a' }}**
+- Authority mode now: **{{ authority_mode }}**
+- F4-S02 ready reference: **{{ f4_s02_ready }}**
+- Snapshot fresh (<= {{ freshness_required_s }}s): **{{ c_fresh }}** (age={{ (captured_age_s | round(1)) if captured_age_s is not none else 'n/a' }}s)
+
+### Crossfade/balance contract snapshot
+- Slider schema: **{{ schema }}**
+- Mode profiles: **{{ modes }}**
+- Sample mix plan: **{{ sample_plan }}**
+
+### Gate breakdown
+- Payload present: **{{ c_payload }}**
+- Contract valid: **{{ c_contract }}**
+- Route trace present: **{{ c_route }}**
+- F4-S02 ready dependency: **{{ c_f4_s02 }}**
+- Slider schema present: **{{ c_schema }}**
+- Mode profiles present: **{{ c_modes }}**
+- No authority expansion (`legacy`): **{{ c_no_auth_expansion }}**
+- Snapshot fresh: **{{ c_fresh }}**
+
+### Recommendation
+{% if effective_verdict == 'PASS' %}
+- F4-S03 diagnostics scaffolding is healthy for this capture.
+- Proceed with bounded implementation evidence capture while preserving legacy authority boundaries.
+{% elif effective_verdict == 'WARN' %}
+- F4-S03 is partially ready in this capture.
+{% if not c_payload %}
+- Pre-implementation baseline detected: `crossfade_balance_validation` payload is not yet emitted; complete F4-S03 diagnostics service/payload wiring, then rerun this template.
+{% else %}
+- Resolve WARN gates and rerun before closeout.
+{% endif %}
+{% else %}
+- F4-S03 is not ready for closeout; fix FAIL gates and rerun.
+{% endif %}
+
+### Listener debug (for dependency tracking)
+- watcher_checksum: `{{ watcher_checksum }}`

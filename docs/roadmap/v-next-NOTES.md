@@ -1,6 +1,6 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.19.27 -->
-<!-- Last updated: 2026-04-19 -->
+<!-- Version: 2026.04.20.33 -->
+<!-- Last updated: 2026-04-20 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
 
@@ -36,8 +36,8 @@ Each feature slice is only complete when both tracks are dispositioned:
 | 0 | Charter + contract freeze | Documented in v-next + changelog | Documented in roadmap/spec | In Progress |
 | 1 | Skeleton + shadow parity | Keep existing contracts stable | Scaffold integration + read-only parity outputs | Implemented |
 | 2 | Registry + route foundation | Keep helper contracts + diagnostics parity | Target registry + adapter router (`linkplay_tcp`) | Implemented |
-| 3 | Guarded dual-write | Add shims and loop guards | Controlled write path with correlation/debounce guards | Planned |
-| 4 | Functional expansion | Preserve compatibility while exposing new capabilities | Profiles/actions/capability matrix/crossfade-balance services | Active (F4-S01) |
+| 3 | Guarded dual-write | Add shims and loop guards | Controlled write path with correlation/debounce guards | Validated (Sealed 2026-04-20) |
+| 4 | Functional expansion | Preserve compatibility while exposing new capabilities | Profiles/actions/capability matrix/crossfade-balance services | Active (F4-S03 diagnostics lane; F4-S01/F4-S02 sealed) |
 | 5 | Domain cutover + retirement | Domain-by-domain template retirement | Primary control plane ownership + migration tooling | Planned |
 
 ### Active slice ledger
@@ -50,7 +50,8 @@ Each feature slice is only complete when both tracks are dispositioned:
 | P3-S01 | 3 | Validated (legacy write authority retained behind switch) | Validated (guard framework + manual routing write trial services) | Validated | Medium | Validated |
 | P3-S02 | 3 | Validated (selection compatibility shim validation) | Validated (one-shot selection-handoff validation sequence + diagnostics) | Validated (single-capable waiver) | High | Validated |
 | P3-S03 | 3 | Validated (metadata ownership explicitly deferred to legacy compatibility mode) | Validated (metadata prep diagnostics + one-shot sequence + listener-safe validation template) | Validated (diagnostics-only) | Medium | Validated |
-| F4-S01 | 4 | Active (compatibility contracts retained; no ownership cutover) | Active (capability matrix + profile schema diagnostics scaffolding) | Active (diagnostics-only) | Medium | Active |
+| F4-S01 | 4 | Validated (compatibility contracts retained; no ownership cutover) | Validated (capability matrix + profile schema diagnostics scaffolding) | Validated (diagnostics-only) | Medium | Validated |
+| F4-S02 | 4 | Validated (legacy action ownership retained; diagnostics-only) | Validated (programmable action-catalog safety skeleton + dry-run diagnostics) | Validated (diagnostics-only) | Medium | Validated |
 
 ### P1/P2 validation snapshot (2026-04-19)
 
@@ -86,9 +87,11 @@ Implemented in `custom_components/spectra_ls`:
 - debounce + reentrancy + route-decision eligibility gates,
 - write-control diagnostics (`write_controls`) in coordinator/shadow attributes.
 
-Still required before closing P3-S01:
+Closeout status (2026-04-20):
 
-- runtime trial evidence under `component` authority showing no flapping and no parity regression.
+- runtime trial + soak evidence captured under `component` authority,
+- no parity regression gates outstanding for P3-S01,
+- slice sealed in final P3 closeout checkpoint below.
 
 ### P3-S02 validation checkpoint (2026-04-19)
 
@@ -128,8 +131,8 @@ Latest soak runtime artifact (2026-04-19):
   - **Legacy runtime (`packages/ma_control_hub/*.inc`) remains source-of-truth** for broad target-selection/control orchestration and compatibility helper surfaces.
   - **Custom component (`custom_components/spectra_ls`) currently owns** diagnostics/parity snapshots, one-shot validation orchestration (S01/S02), route-trace visibility, and guarded write-trial control framework.
 - Readiness status:
-  - **Ready to move forward with closure logging + gate decision** (baseline soak evidence captured).
-  - **Not fully closed for P3-S02 yet** because the distinct PASS-target gate is still open unless waived for single-capable-topology operation.
+  - **Closure-ready and sealed for P3-S02** using final soak evidence (`3/3` in `4` attempts, `distinct_pass_targets=2`).
+  - Distinct PASS-target gate satisfied without waiver in the final run.
 
 ### P3-S03 implementation checkpoint (2026-04-19)
 
@@ -193,6 +196,22 @@ Strict closeout enforcement update:
 - soak-evidence mode now requires provenance fields (`observed_evidence_source`, `observed_evidence_reference`, `observed_evidence_collected_at`) and enforces collected-at freshness <=24h,
 - missing/invalid provenance forces `FAIL` to prevent optimistic PASS outcomes from unverified manual toggles.
 
+### P3 final closeout checkpoint (2026-04-20)
+
+Final sealing evidence captured:
+
+- Soak automation completion: `Spectra soak complete` with `3` successful cycles in `4` attempts and `distinct_pass_targets=2`.
+- PASS-cycle evidence includes deterministic eligible route (`route_linkplay_tcp`), `contract_valid=True`, and `handoff=PASS` on successful cycles.
+- Closure gate semantics hardened and clarified: `runtime` mode is health-check-only; `soak_evidence` mode is closure-grade.
+- Metadata candidate payload parity proof: `PASS 5/5` (`state_count=4`, `row_count=4`, `summary_entities=4`, aligned `best_candidate_json`/`summary.best_*`).
+
+Seal decision:
+
+- **P3-S01:** sealed.
+- **P3-S02:** sealed.
+- **P3-S03:** sealed (diagnostics-only metadata-prep lane as previously documented).
+- **Phase 3 overall:** sealed; Phase-4 validation now sealed through F4-S02.
+
 ### Phase 4 bounded slice plan (post-P3)
 
 | Slice | Scope | Runtime Track | Component Track | Exit gate |
@@ -212,11 +231,51 @@ Implemented in `custom_components/spectra_ls`:
 - services: `validate_capability_profile`, `run_f4_s01_sequence`,
 - raw validation template: `docs/testing/raw/f4_s01_capability_profile_validation.jinja`.
 
-Still required before closing F4-S01:
+F4-S01 closeout evidence (2026-04-20):
 
-- runtime F4-S01 validation evidence capture with PASS verdict,
-- confirmation that authority remains legacy during diagnostics-only validation,
-- roadmap/v-next/changelog closeout note for F4-S01.
+- Runtime closure artifact captured with **PASS** (`gate_score=6/6`, timestamp `2026-04-20 03:14:23.318195-07:00`).
+- Authority/ownership check passed: `authority_mode=legacy`, `no_authority_expansion=true`.
+- Route/contract/metadata checks passed: `route=route_linkplay_tcp`, `contract_valid=true`, `metadata_prep_ready=true`.
+
+Seal decision:
+
+- **F4-S01:** sealed/validated.
+- Continue Phase-4 execution on active **F4-S02** diagnostics lane.
+
+### F4-S02 implementation checkpoint (2026-04-20)
+
+Implemented in `custom_components/spectra_ls`:
+
+- diagnostics payload `action_catalog_validation` in coordinator snapshot,
+- deterministic action-schema surface for safety contracts (`action_id/label/domain/service/target_scope/safety` + required safety keys),
+- diagnostics-only catalog rows with explicit `dry_run_only` safety posture,
+- no-authority-expansion guard and F4-S01 readiness reference in validation checks,
+- services: `validate_action_catalog`, `run_f4_s02_sequence`,
+- raw validation template: `docs/testing/raw/f4_s02_action_catalog_validation.jinja`.
+
+F4-S02 closeout evidence (2026-04-20):
+
+- Runtime closure artifact captured with **PASS** (`gate_score=7/7`, timestamp `2026-04-20 03:19:04.074224-07:00`).
+- Authority/safety checks passed: `authority_mode=legacy`, `dry_run_only=true`, `no_authority_expansion=true`.
+- Dependency check passed: `f4_s01_ready_reference=true`.
+
+Seal decision:
+
+- **F4-S02:** sealed/validated.
+- Continue Phase-4 execution on active **F4-S03** diagnostics lane.
+
+### F4-S03 entry checkpoint (2026-04-20)
+
+Entry artifact published:
+
+- `docs/testing/raw/f4_s03_crossfade_balance_entry_checklist.md` (diagnostics-first kickoff checklist).
+- `docs/testing/raw/f4_s03_crossfade_balance_validation.jinja` (raw runtime validator scaffold for contract/freshness/authority gates).
+
+Entry constraints for this lane:
+
+- keep legacy runtime as write authority/source-of-truth,
+- implement normalized slider-domain contract surfaces in component diagnostics path only,
+- require explicit runtime template evidence before closeout decision.
 
 Reference specification: `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`.
 

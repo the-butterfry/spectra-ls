@@ -1,0 +1,111 @@
+{# Description: Raw copy/paste Jinja template for Spectra LS P3 metadata candidate payload parity validation. #}
+{# Version: 2026.04.20.1 #}
+{# Last updated: 2026-04-20 #}
+
+{# =========================
+  P3 Candidate Payload Parity Validation (MA Meta Candidates)
+  Purpose: verify that state count, candidate rows, summary payload, and best-candidate payload are internally consistent.
+
+  Expected healthy behavior:
+    - state_count > 0 when rows/entities exist
+    - row_count == summary_entities_count
+    - best_entity is non-empty when best_score > 0
+    - best_entity is contained in summary entities when summary has rows
+  ========================= #}
+
+{% set s = 'sensor.ma_meta_candidates' %}
+{% set state_count = states(s) | int(0) %}
+
+{% set rows_raw = state_attr(s, 'candidate_rows_json') | default([], true) %}
+{% set rows = [] %}
+{% if rows_raw is sequence and rows_raw is not string and rows_raw is not mapping %}
+  {% set rows = rows_raw %}
+{% elif rows_raw is mapping %}
+  {% set mapped = (rows_raw.rows if rows_raw.rows is defined else (rows_raw.result if rows_raw.result is defined else [])) %}
+  {% if mapped is sequence and mapped is not string and mapped is not mapping %}
+    {% set rows = mapped %}
+  {% endif %}
+{% elif rows_raw is string %}
+  {% set raw_trim = rows_raw | trim %}
+  {% set raw_trim_l = raw_trim | lower %}
+  {% if raw_trim_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
+    {% set parsed = raw_trim | from_json %}
+    {% if parsed is sequence and parsed is not string and parsed is not mapping %}
+      {% set rows = parsed %}
+    {% elif parsed is mapping %}
+      {% set mapped = (parsed.rows if parsed.rows is defined else (parsed.result if parsed.result is defined else [])) %}
+      {% if mapped is sequence and mapped is not string and mapped is not mapping %}
+        {% set rows = mapped %}
+      {% endif %}
+    {% endif %}
+  {% endif %}
+{% endif %}
+
+{% set summary_raw = state_attr(s, 'candidate_summary_json') | default('{}', true) %}
+{% set summary = summary_raw if (summary_raw is mapping) else ((summary_raw | from_json) if (summary_raw is string and (summary_raw | trim).startswith('{')) else {}) %}
+{% set summary_entities = (summary.entities if summary is mapping and summary.entities is defined else []) %}
+{% set summary_best_entity = (summary.best_entity if summary is mapping and summary.best_entity is defined else '') %}
+{% set summary_best_score = (summary.best_score if summary is mapping and summary.best_score is defined else 0) | int(0) %}
+
+{% set best_raw = state_attr(s, 'best_candidate_json') | default('{}', true) %}
+{% set best = best_raw if (best_raw is mapping) else ((best_raw | from_json) if (best_raw is string and (best_raw | trim).startswith('{')) else {}) %}
+{% set best_entity = (best.entity if best is mapping and best.entity is defined else '') %}
+{% set best_score = (best.score if best is mapping and best.score is defined else 0) | int(0) %}
+
+{% set row_count = rows | length %}
+{% set summary_count = summary_entities | length %}
+
+{% set count_matches_rows = (state_count == row_count) %}
+{% set rows_match_summary = (row_count == summary_count) %}
+{% set best_pair_valid = (best_score == 0 and best_entity in ['', none]) or (best_score > 0 and best_entity not in ['', none]) %}
+{% set summary_best_pair_valid = (summary_best_score == 0 and summary_best_entity in ['', none]) or (summary_best_score > 0 and summary_best_entity not in ['', none]) %}
+{% set best_in_summary = (summary_count == 0 and best_entity in ['', none]) or (best_entity in summary_entities) %}
+
+{% set ok_count = 0 %}
+{% if count_matches_rows %}{% set ok_count = ok_count + 1 %}{% endif %}
+{% if rows_match_summary %}{% set ok_count = ok_count + 1 %}{% endif %}
+{% if best_pair_valid %}{% set ok_count = ok_count + 1 %}{% endif %}
+{% if summary_best_pair_valid %}{% set ok_count = ok_count + 1 %}{% endif %}
+{% if best_in_summary %}{% set ok_count = ok_count + 1 %}{% endif %}
+
+{% set verdict = 'PASS' %}
+{% if ok_count < 3 %}
+  {% set verdict = 'FAIL' %}
+{% elif ok_count < 5 %}
+  {% set verdict = 'WARN' %}
+{% endif %}
+
+### P3 Candidate Payload Parity Validation (`sensor.ma_meta_candidates`)
+- Result: **{{ verdict }}**
+- Timestamp: **{{ now() }}**
+- Gate score: **{{ ok_count }}/5**
+
+### Counts
+- State count: **{{ state_count }}**
+- Candidate rows count: **{{ row_count }}**
+- Summary entities count: **{{ summary_count }}**
+
+### Best-candidate surfaces
+- `best_candidate_json`: **{{ {'entity': best_entity, 'score': best_score} | tojson }}**
+- `summary.best_*`: **{{ {'entity': summary_best_entity, 'score': summary_best_score} | tojson }}**
+
+### Checks
+- State count matches row count: **{{ count_matches_rows }}**
+- Row count matches summary entities count: **{{ rows_match_summary }}**
+- `best_candidate_json` pair valid: **{{ best_pair_valid }}**
+- `summary.best_*` pair valid: **{{ summary_best_pair_valid }}**
+- Best entity is in summary entities: **{{ best_in_summary }}**
+
+### Debug payload snapshots
+- `candidate_rows_json`: **{{ rows_raw }}**
+- `candidate_summary_json`: **{{ summary_raw }}**
+- `best_candidate_json`: **{{ best_raw }}**
+
+### Recommendation
+{% if verdict == 'PASS' %}
+- Candidate payload contract is internally consistent.
+{% elif verdict == 'WARN' %}
+- Candidate contract is partially consistent; review failed checks before relying on closeout gates.
+{% else %}
+- Candidate contract is inconsistent; do not rely on metadata closeout gates until fixed.
+{% endif %}

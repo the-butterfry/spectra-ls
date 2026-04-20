@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.19.62 -->
+<!-- Version: 2026.04.19.63 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Changelog
 
 ## 2026-04-19
+
+- Validation/P3-H2 Closure Gate Soak-Parity Fix (`docs/testing/raw/p3_s01_s02_closure_gate_check.jinja`, `docs/testing/raw/p3_s01_s02_soak_protocol.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): eliminate soak-mode false WARN outcomes caused by runtime parity drift outside soak windows by adding explicit operator evidence input `observed_parity_ok` and using it when `evaluation_mode=soak_evidence` (runtime parity is still reported in breakdown for diagnostics). README parity: no material repo-state change.
 
 - Validation/P3-H1 Hardening Second Pass (`custom_components/spectra_ls/coordinator.py`, `docs/testing/raw/p3_s01_guarded_write_validation.jinja`, `docs/testing/raw/p3_s02_selection_handoff_validation.jinja`, `docs/testing/raw/p3_s03_metadata_prep_validation.jinja`, `docs/testing/raw/p3_s01_s02_closure_gate_check.jinja`, `docs/testing/raw/p3_s01_s02_soak_protocol.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): strengthen Phase-3 reliability with stricter metadata-candidate readiness semantics (reject empty best-candidate payloads), broader coordinator listener coverage for helper/metadata entities, closure-gate soak-attempt consistency checks, and snapshot-freshness guards across P3 validation templates to reduce stale/false-positive closeout outcomes. README parity: no material repo-state change.
 

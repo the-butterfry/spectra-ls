@@ -1,5 +1,5 @@
 {# Description: Raw copy/paste Jinja template for Spectra LS Phase 3 S01/S02 closure gate decision. #}
-{# Version: 2026.04.19.3 #}
+{# Version: 2026.04.19.4 #}
 {# Last updated: 2026-04-19 #}
 
 {# =========================
@@ -15,6 +15,7 @@
     - observed_route_eligible
     - observed_s01_ok
     - observed_s02_ok
+    - observed_parity_ok
 
   Notes:
   - This template does NOT replace S01/S02 templates; it consumes their expected outcomes + soak evidence.
@@ -29,6 +30,7 @@
 {% set observed_route_eligible = true %}
 {% set observed_s01_ok = true %}
 {% set observed_s02_ok = true %}
+{% set observed_parity_ok = true %}
 
 {% set s_target = 'sensor.shadow_active_target' if states['sensor.shadow_active_target'] is not none else 'sensor.spectra_ls_shadow_active_target' %}
 {% set s_path = 'sensor.shadow_active_control_path' if states['sensor.shadow_active_control_path'] is not none else 'sensor.spectra_ls_shadow_active_control_path' %}
@@ -70,7 +72,7 @@
 
 {% set gate_route_ok_runtime = route_decision == 'route_linkplay_tcp' %}
 {% set gate_contract_ok = contract_ready and contract_valid and (missing_required | length) == 0 %}
-{% set gate_parity_ok = (parity_unresolved | length) == 0 and (parity_mismatches | length) == 0 %}
+{% set gate_parity_ok_runtime = (parity_unresolved | length) == 0 and (parity_mismatches | length) == 0 %}
 {% set gate_s01_ok_runtime = authority_mode == 'component' and last_status in pass_status_component %}
 {% set gate_s02_ok_runtime = handoff_verdict == 'PASS' and handoff_ready and (missing_scripts | length) == 0 and (missing_automation_ids | length) == 0 %}
 {% set gate_soak_cycles_ok = observed_soak_pass_cycles >= 3 %}
@@ -79,6 +81,7 @@
 
 {% set use_soak_evidence = evaluation_mode == 'soak_evidence' %}
 {% set gate_route_ok = observed_route_eligible if use_soak_evidence else gate_route_ok_runtime %}
+{% set gate_parity_ok = observed_parity_ok if use_soak_evidence else gate_parity_ok_runtime %}
 {% set gate_s01_ok = observed_s01_ok if use_soak_evidence else gate_s01_ok_runtime %}
 {% set gate_s02_ok = observed_s02_ok if use_soak_evidence else gate_s02_ok_runtime %}
 
@@ -127,11 +130,12 @@
 - Observed route eligible during soak window: **{{ observed_route_eligible }}**
 - Observed S01 PASS during soak window: **{{ observed_s01_ok }}**
 - Observed S02 PASS during soak window: **{{ observed_s02_ok }}**
+- Observed parity clean during soak window: **{{ observed_parity_ok }}**
 
 ### Gate breakdown
 - Route is eligible (`route_linkplay_tcp`): **{{ gate_route_ok }}** (runtime_now={{ gate_route_ok_runtime }})
 - Contract valid + no missing required: **{{ gate_contract_ok }}**
-- Parity clean (`unresolved=0`, `mismatches=0`): **{{ gate_parity_ok }}**
+- Parity clean (`unresolved=0`, `mismatches=0`): **{{ gate_parity_ok }}** (runtime_now={{ gate_parity_ok_runtime }})
 - S01 guarded-write status healthy: **{{ gate_s01_ok }}** (runtime_now={{ gate_s01_ok_runtime }})
 - S02 handoff compatibility healthy: **{{ gate_s02_ok }}** (runtime_now={{ gate_s02_ok_runtime }})
 - Soak cycles sufficient (>=3): **{{ gate_soak_cycles_ok }}**

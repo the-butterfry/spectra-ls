@@ -1,12 +1,24 @@
 {# Description: Raw copy/paste Jinja template for Spectra LS Phase 3 S03 metadata-prep diagnostics validation. #}
-{# Version: 2026.04.19.1 #}
+{# Version: 2026.04.19.2 #}
 {# Last updated: 2026-04-19 #}
 
 {# =========================
   Phase 3 S03 Metadata-Prep Validation (custom_components/spectra_ls)
   Purpose: deterministic diagnostics verdict for metadata handoff readiness without metadata ownership cutover.
   Usage: run after `spectra_ls.run_p3_s03_sequence` (or `validate_metadata_prep`).
+  Note: explicit static entity watchers below are intentional so HA template dependency tracking
+        subscribes to updates for both shadow sensor naming variants.
   ========================= #}
+
+{# Static watcher anchors for HA dependency tracking (do not remove). #}
+{% set watch_shadow_target_state = states('sensor.shadow_active_target') %}
+{% set watch_shadow_target_captured_at = state_attr('sensor.shadow_active_target', 'captured_at') %}
+{% set watch_shadow_path_state = states('sensor.shadow_active_control_path') %}
+{% set watch_shadow_path_captured_at = state_attr('sensor.shadow_active_control_path', 'captured_at') %}
+{% set watch_legacy_target_state = states('sensor.spectra_ls_shadow_active_target') %}
+{% set watch_legacy_target_captured_at = state_attr('sensor.spectra_ls_shadow_active_target', 'captured_at') %}
+{% set watch_legacy_path_state = states('sensor.spectra_ls_shadow_active_control_path') %}
+{% set watch_legacy_path_captured_at = state_attr('sensor.spectra_ls_shadow_active_control_path', 'captured_at') %}
 
 {% set s_target = 'sensor.shadow_active_target' if states['sensor.shadow_active_target'] is not none else 'sensor.spectra_ls_shadow_active_target' %}
 {% set s_path = 'sensor.shadow_active_control_path' if states['sensor.shadow_active_control_path'] is not none else 'sensor.spectra_ls_shadow_active_control_path' %}

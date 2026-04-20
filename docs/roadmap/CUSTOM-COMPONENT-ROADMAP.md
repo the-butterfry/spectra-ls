@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.19.17 -->
+<!-- Version: 2026.04.19.18 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -270,6 +270,7 @@ Not yet claimed complete:
 - full selection ownership handoff behavior remains pending after sustained runtime evidence and compatibility soak.
 - closure requires completing `docs/testing/raw/p3_s01_s02_soak_protocol.md` with 3 consecutive S01+S02 PASS cycles spanning at least 2 distinct PASS targets (or an explicit single-capable-topology waiver).
 - all soak cycles must keep compatibility/parity clean (`missing_scripts=0`, `missing_automation_ids=0`, `unresolved_sources=0`, `mismatches=0`).
+- closure decision must include `docs/testing/raw/p3_s01_s02_closure_gate_check.jinja` output with explicit distinct-target gate or waiver declaration.
 
 Latest runtime proof artifact (2026-04-19):
 

@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.20.77 -->
+<!-- Version: 2026.04.20.78 -->
 <!-- Last updated: 2026-04-20 -->
 
 # Changelog
 
 ## 2026-04-20
+
+- Custom Component/F4 Sequence Hardening Pass-2 (`custom_components/spectra_ls/__init__.py`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): harden `run_f4_s01_sequence`, `run_f4_s02_sequence`, and `run_f4_s03_sequence` with explicit stage-level execution wrappers and surfaced failure stage context (instead of opaque unknown-action failures), preserving diagnostics-only behavior and legacy authority boundaries. README parity: no material repo-state change.
 
 - Custom Component/F4-S03 Crossfade-Balance Diagnostics Scaffold (`custom_components/spectra_ls/const.py`, `custom_components/spectra_ls/__init__.py`, `custom_components/spectra_ls/coordinator.py`, `custom_components/spectra_ls/services.yaml`, `custom_components/spectra_ls/sensor.py`, `custom_components/spectra_ls/binary_sensor.py`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): implement Phase 4 Slice-03 diagnostics-only service/payload path (`validate_crossfade_balance`, `run_f4_s03_sequence`) with normalized slider-domain schema, mode-profile contract visibility, sample no-op mix plan diagnostics, and no-authority-expansion checks while preserving legacy runtime write ownership. README parity: no material repo-state change.
 

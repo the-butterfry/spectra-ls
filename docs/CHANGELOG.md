@@ -1,10 +1,16 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.19.49 -->
+<!-- Version: 2026.04.19.51 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Changelog
 
 ## 2026-04-19
+
+- ESPHome/Audio Warning Noise Reduction (`esphome/control-py/packages/spectra-ls-audio-tcp.yaml`, mirrored in `esphome/spectra_ls_system/packages/spectra-ls-audio-tcp.yaml`): remove unused Home Assistant numeric mirror sensor for `sensor.ma_active_volume` (`id: ha_audio_volume`) to eliminate repeated ESPHome conversion warnings when MA volume is transiently `unknown` during startup/reconnect windows; no control-path behavior changes. README parity: no material repo-state change.
+
+- HA/DST Config Warning Cleanup (`packages/dst_tuya_ac.yaml`): remove `min_cycle_duration` from `dual_smart_thermostat` config because it is ignored when `keep_alive` is defined, eliminating recurring integration warnings while preserving existing cool-only control behavior. README parity: no material repo-state change.
+
+- Validation/P3 Soak Runner Topology Default (`scripts.yaml`): align `script.spectra_p3_soak_one_shot` default distinct-pass-target gate to single-active-target topology (`required_distinct_pass_targets=1`) so successful 3/3 single-target control-path validation no longer reports false "incomplete" outcomes by default; strict multi-target validation remains available by explicitly setting the gate to `2+`. README parity: no material repo-state change.
 
 - Validation/P3-S02 Soak Runtime Evidence (`docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): capture automated one-shot soak result (`script.spectra_p3_soak_one_shot`) with **3 successful cycles in 5 attempts**, preserving zero contract/parity drift (`contract_valid=true`, `missing_scripts=0`, `missing_automation_ids=0`, `unresolved_sources=0`, `mismatches=0`) and deterministic eligible-route PASS cycles on `route_linkplay_tcp`; note that non-capable target hops were soft-skipped (`defer_not_capable`) and the explicit “≥2 distinct PASS targets” closure gate remains open unless waived for single-capable-topology conditions. README parity: no material repo-state change.
 

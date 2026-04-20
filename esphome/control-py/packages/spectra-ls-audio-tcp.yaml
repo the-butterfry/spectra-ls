@@ -1,6 +1,6 @@
 # Description: Spectra LS audio controls package for Control Board v2 (TCP-only).
-# Version: 2026.04.16.3
-# Last updated: 2026-04-16
+# Version: 2026.04.19.4
+# Last updated: 2026-04-19
 # Update version/date whenever you change this file.
 
 binary_sensor:
@@ -505,12 +505,6 @@ sensor:
     on_value:
       - lambda: |-
           id(ha_audio_duration_value) = x;
-  - platform: homeassistant
-    id: ha_audio_volume
-    entity_id: ${ha_ma_active_volume}
-    internal: true
-    accuracy_decimals: 2
-
 number:
   - platform: template
     name: "EQ Low"

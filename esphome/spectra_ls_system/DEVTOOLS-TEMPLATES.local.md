@@ -1,5 +1,5 @@
 <!-- Description: Copy/paste Home Assistant Dev Tools template diagnostics for Spectra LS System. -->
-<!-- Version: 2026.04.19.26 -->
+<!-- Version: 2026.04.19.27 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Spectra LS System — Dev Tools Template Validation
@@ -16,6 +16,7 @@
   - `docs/testing/raw/p2_negative_case_regression.jinja`
   - `docs/testing/raw/p3_s01_guarded_write_validation.jinja`
   - `docs/testing/raw/p3_s02_selection_handoff_validation.jinja`
+  - `docs/testing/raw/p3_s01_s02_soak_protocol.md`
 
 ## 1) Overall Spectra LS Health Check (Comprehensive)
 
@@ -1880,6 +1881,11 @@ Unavailable core entities:
 - Raw copy/paste file (no markdown fences): `docs/testing/raw/p3_s02_selection_handoff_validation.jinja`
 - Use this to validate selection-handoff readiness diagnostics (`selection_handoff_validation`) with helper/options + compatibility shim checks.
 - One-shot shortcut is available: run `spectra_ls.run_p3_s02_sequence` to execute authority set + rebuild + validate + route-trace + optional write-trial + handoff validation in one action call.
+
+## 21) Phase 3 Small Soak Protocol (S01 + S02) — Custom Component (`spectra_ls`)
+
+- Operator runbook file: `docs/testing/raw/p3_s01_s02_soak_protocol.md`
+- Use this after baseline S01/S02 PASS to perform compact multi-cycle target-switch soak evidence collection before graduating P3-S02 from Active/Pending.
 
 <!-- EOF -->
 

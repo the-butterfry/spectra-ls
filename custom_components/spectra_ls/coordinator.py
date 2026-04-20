@@ -1,6 +1,6 @@
-# Description: Data coordinator for Spectra LS parity diagnostics, Phase 3 guarded routing write-path controls, and Phase 4 diagnostics scaffolding.
-# Version: 2026.04.19.9
-# Last updated: 2026-04-19
+# Description: Data coordinator for Spectra LS parity diagnostics, Phase 3 guarded routing write-path controls, and Phase 4 diagnostics scaffolding (F4-S01/F4-S03).
+# Version: 2026.04.20.11
+# Last updated: 2026-04-20
 
 from __future__ import annotations
 
@@ -452,6 +452,257 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "profile_schema": profile_schema,
         }
 
+    def _build_action_catalog_validation(
+        self,
+        *,
+        registry: dict[str, Any],
+        contract_validation: dict[str, Any],
+        capability_profile_validation: dict[str, Any],
+    ) -> dict[str, Any]:
+        entries = registry.get("entries", {}) if isinstance(registry.get("entries", {}), dict) else {}
+        targets = list(entries.values()) if isinstance(entries, dict) else []
+
+        capabilities_union: set[str] = set()
+        for entry in targets:
+            if not isinstance(entry, dict):
+                continue
+            caps = entry.get("capabilities", [])
+            if isinstance(caps, list):
+                for cap in caps:
+                    if isinstance(cap, str) and cap.strip():
+                        capabilities_union.add(cap.strip())
+
+        action_schema = {
+            "schema_version": "f4_s02.v1",
+            "required_keys": [
+                "action_id",
+                "label",
+                "domain",
+                "service",
+                "target_scope",
+                "safety",
+            ],
+            "safety_required_keys": [
+                "confirm_required",
+                "cooldown_s",
+                "sensitive",
+                "audit_event",
+            ],
+            "defaults": {
+                "target_scope": "active_target",
+                "dry_run_only": True,
+                "safety": {
+                    "confirm_required": True,
+                    "cooldown_s": 3,
+                    "sensitive": True,
+                },
+            },
+        }
+
+    def _build_crossfade_balance_validation(
+        self,
+        *,
+        route_trace: dict[str, Any],
+        contract_validation: dict[str, Any],
+        action_catalog_validation: dict[str, Any],
+    ) -> dict[str, Any]:
+        route_decision = str(route_trace.get("decision", "") or "")
+        contract_valid = bool(contract_validation.get("valid", False))
+        f4_s02_ready = bool(action_catalog_validation.get("ready_for_f4_s02", False))
+
+        slider_domain_schema = {
+            "schema_version": "f4_s03.v1",
+            "domain": [-100, 100],
+            "center": 0,
+            "step": 1,
+            "required_keys": [
+                "mode",
+                "value",
+                "target_scope",
+                "safety",
+            ],
+            "safety_required_keys": [
+                "dry_run_only",
+                "cooldown_s",
+                "audit_event",
+            ],
+        }
+
+        mode_profiles = {
+            "multi_room": {
+                "intent": "room_weight_balance",
+                "value_map": "negative=weight_room_a, positive=weight_room_b",
+                "supports_write": False,
+            },
+            "single_room": {
+                "intent": "stereo_lr_balance",
+                "value_map": "negative=left_bias, positive=right_bias",
+                "supports_write": False,
+            },
+        }
+
+        sample_mix_plan = {
+            "dry_run_only": True,
+            "samples": {
+                "-100": {"multi_room": {"room_a": 1.0, "room_b": 0.0}, "single_room": {"left": 1.0, "right": 0.0}},
+                "0": {"multi_room": {"room_a": 0.5, "room_b": 0.5}, "single_room": {"left": 0.5, "right": 0.5}},
+                "100": {"multi_room": {"room_a": 0.0, "room_b": 1.0}, "single_room": {"left": 0.0, "right": 1.0}},
+            },
+            "fallback": "hold_current_mix_and_emit_notice",
+        }
+
+        schema_required = slider_domain_schema.get("required_keys", [])
+        schema_safety_required = slider_domain_schema.get("safety_required_keys", [])
+
+        checks = {
+            "payload_present": True,
+            "contract_valid": contract_valid,
+            "route_trace_present": route_decision != "",
+            "f4_s02_ready": f4_s02_ready,
+            "slider_schema_present": isinstance(schema_required, list)
+            and len(schema_required) > 0
+            and isinstance(schema_safety_required, list)
+            and len(schema_safety_required) > 0,
+            "mode_profiles_present": isinstance(mode_profiles, dict)
+            and "multi_room" in mode_profiles
+            and "single_room" in mode_profiles,
+            "no_authority_expansion": self._write_authority_mode == WRITE_AUTH_LEGACY,
+            "snapshot_fresh": True,
+        }
+
+        verdict = "PASS"
+        if not checks["contract_valid"] or not checks["route_trace_present"]:
+            verdict = "FAIL"
+        elif (
+            not checks["f4_s02_ready"]
+            or not checks["slider_schema_present"]
+            or not checks["mode_profiles_present"]
+            or not checks["no_authority_expansion"]
+        ):
+            verdict = "WARN"
+
+        return {
+            "verdict": verdict,
+            "ready_for_f4_s03": verdict == "PASS",
+            "checks": checks,
+            "authority_mode": self._write_authority_mode,
+            "route_decision": route_decision,
+            "dependency_reference": {
+                "ready_for_f4_s02": f4_s02_ready,
+                "schema_version": action_catalog_validation.get("action_schema", {}).get("schema_version", "missing")
+                if isinstance(action_catalog_validation.get("action_schema", {}), dict)
+                else "missing",
+            },
+            "slider_domain_schema": slider_domain_schema,
+            "mode_profiles": mode_profiles,
+            "sample_mix_plan": sample_mix_plan,
+        }
+
+        action_catalog = [
+            {
+                "action_id": "transport_play_pause",
+                "label": "Play/Pause",
+                "domain": "media_player",
+                "service": "media_play_pause",
+                "target_scope": "active_target",
+                "requires_capabilities": [],
+                "dry_run_only": True,
+                "safety": {
+                    "confirm_required": False,
+                    "cooldown_s": 0,
+                    "sensitive": False,
+                    "audit_event": "transport_play_pause",
+                },
+            },
+            {
+                "action_id": "safe_scene_trigger",
+                "label": "Run Safe Scene",
+                "domain": "scene",
+                "service": "turn_on",
+                "target_scope": "profile_scope",
+                "requires_capabilities": [],
+                "dry_run_only": True,
+                "safety": {
+                    "confirm_required": True,
+                    "cooldown_s": 5,
+                    "sensitive": True,
+                    "audit_event": "safe_scene_trigger",
+                },
+            },
+        ]
+
+        contract_valid = bool(contract_validation.get("valid", False))
+        capability_profile_ready = bool(capability_profile_validation.get("ready_for_f4_s01", False))
+        no_authority_expansion = self._write_authority_mode == WRITE_AUTH_LEGACY
+
+        schema_required = action_schema.get("required_keys", [])
+        schema_safety_required = action_schema.get("safety_required_keys", [])
+
+        dry_run_only = all(bool(action.get("dry_run_only", False)) for action in action_catalog)
+
+        checks = {
+            "registry_present": len(targets) > 0,
+            "contract_valid": contract_valid,
+            "capability_profile_ready": capability_profile_ready,
+            "action_schema_present": isinstance(schema_required, list)
+            and len(schema_required) > 0
+            and isinstance(schema_safety_required, list)
+            and len(schema_safety_required) > 0,
+            "action_catalog_present": len(action_catalog) > 0,
+            "dry_run_only": dry_run_only,
+            "no_authority_expansion": no_authority_expansion,
+        }
+
+        verdict = "PASS"
+        if (
+            not checks["registry_present"]
+            or not checks["contract_valid"]
+            or not checks["action_schema_present"]
+            or not checks["action_catalog_present"]
+        ):
+            verdict = "FAIL"
+        elif (
+            not checks["capability_profile_ready"]
+            or not checks["dry_run_only"]
+            or not checks["no_authority_expansion"]
+        ):
+            verdict = "WARN"
+
+        confirm_required_count = 0
+        sensitive_count = 0
+        max_cooldown_s = 0
+        for action in action_catalog:
+            safety = action.get("safety", {}) if isinstance(action.get("safety", {}), dict) else {}
+            if bool(safety.get("confirm_required", False)):
+                confirm_required_count += 1
+            if bool(safety.get("sensitive", False)):
+                sensitive_count += 1
+            cooldown = safety.get("cooldown_s", 0)
+            if isinstance(cooldown, (int, float)):
+                max_cooldown_s = max(max_cooldown_s, int(cooldown))
+
+        return {
+            "verdict": verdict,
+            "ready_for_f4_s02": verdict == "PASS",
+            "checks": checks,
+            "authority_mode": self._write_authority_mode,
+            "capability_reference": {
+                "ready_for_f4_s01": capability_profile_ready,
+                "schema_version": capability_profile_validation.get("profile_schema", {}).get("schema_version", "missing")
+                if isinstance(capability_profile_validation.get("profile_schema", {}), dict)
+                else "missing",
+            },
+            "action_schema": action_schema,
+            "action_catalog": action_catalog,
+            "catalog_summary": {
+                "action_count": len(action_catalog),
+                "confirm_required_count": confirm_required_count,
+                "sensitive_count": sensitive_count,
+                "max_cooldown_s": max_cooldown_s,
+                "capability_pool": sorted(capabilities_union),
+            },
+        }
+
     def _build_snapshot(self) -> dict[str, Any]:
         active_target = self._snapshot_for_entity(LEGACY_SURFACES["active_target"])
         active_control_path = self._snapshot_for_entity(LEGACY_SURFACES["active_control_path"])
@@ -521,6 +772,16 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             contract_validation=contract_validation,
             metadata_prep_validation=metadata_prep_validation,
         )
+        action_catalog_validation = self._build_action_catalog_validation(
+            registry=registry,
+            contract_validation=contract_validation,
+            capability_profile_validation=capability_profile_validation,
+        )
+        crossfade_balance_validation = self._build_crossfade_balance_validation(
+            route_trace=route_trace,
+            contract_validation=contract_validation,
+            action_catalog_validation=action_catalog_validation,
+        )
 
         return {
             "legacy": legacy,
@@ -533,6 +794,8 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "selection_handoff_validation": selection_handoff_validation,
             "metadata_prep_validation": metadata_prep_validation,
             "capability_profile_validation": capability_profile_validation,
+            "action_catalog_validation": action_catalog_validation,
+            "crossfade_balance_validation": crossfade_balance_validation,
             "write_controls": self._build_write_controls(),
             "captured_at": datetime.now(UTC).isoformat(),
         }
@@ -561,6 +824,14 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     async def async_validate_capability_profile(self) -> None:
         """Refresh parity data and emit F4-S01 capability/profile diagnostics."""
+        self.async_set_updated_data(self._build_snapshot())
+
+    async def async_validate_action_catalog(self) -> None:
+        """Refresh parity data and emit F4-S02 action-catalog safety diagnostics."""
+        self.async_set_updated_data(self._build_snapshot())
+
+    async def async_validate_crossfade_balance(self) -> None:
+        """Refresh parity data and emit F4-S03 crossfade/balance diagnostics."""
         self.async_set_updated_data(self._build_snapshot())
 
     async def async_set_write_authority(self, mode: str, reason: str = "") -> None:

@@ -1,5 +1,5 @@
 {# Description: Raw copy/paste Jinja template for Spectra LS Phase 3 S03 metadata-prep diagnostics validation. #}
-{# Version: 2026.04.19.2 #}
+{# Version: 2026.04.19.3 #}
 {# Last updated: 2026-04-19 #}
 
 {# =========================
@@ -11,14 +11,24 @@
   ========================= #}
 
 {# Static watcher anchors for HA dependency tracking (do not remove). #}
-{% set watch_shadow_target_state = states('sensor.shadow_active_target') %}
-{% set watch_shadow_target_captured_at = state_attr('sensor.shadow_active_target', 'captured_at') %}
-{% set watch_shadow_path_state = states('sensor.shadow_active_control_path') %}
-{% set watch_shadow_path_captured_at = state_attr('sensor.shadow_active_control_path', 'captured_at') %}
-{% set watch_legacy_target_state = states('sensor.spectra_ls_shadow_active_target') %}
-{% set watch_legacy_target_captured_at = state_attr('sensor.spectra_ls_shadow_active_target', 'captured_at') %}
-{% set watch_legacy_path_state = states('sensor.spectra_ls_shadow_active_control_path') %}
-{% set watch_legacy_path_captured_at = state_attr('sensor.spectra_ls_shadow_active_control_path', 'captured_at') %}
+{% set watch_shadow_target_state = states.sensor.shadow_active_target.state if states.sensor.shadow_active_target is not none else 'missing' %}
+{% set watch_shadow_target_captured_at = state_attr('sensor.shadow_active_target', 'captured_at') | default('missing', true) %}
+{% set watch_shadow_path_state = states.sensor.shadow_active_control_path.state if states.sensor.shadow_active_control_path is not none else 'missing' %}
+{% set watch_shadow_path_captured_at = state_attr('sensor.shadow_active_control_path', 'captured_at') | default('missing', true) %}
+{% set watch_legacy_target_state = states.sensor.spectra_ls_shadow_active_target.state if states.sensor.spectra_ls_shadow_active_target is not none else 'missing' %}
+{% set watch_legacy_target_captured_at = state_attr('sensor.spectra_ls_shadow_active_target', 'captured_at') | default('missing', true) %}
+{% set watch_legacy_path_state = states.sensor.spectra_ls_shadow_active_control_path.state if states.sensor.spectra_ls_shadow_active_control_path is not none else 'missing' %}
+{% set watch_legacy_path_captured_at = state_attr('sensor.spectra_ls_shadow_active_control_path', 'captured_at') | default('missing', true) %}
+{% set watcher_checksum = (
+  watch_shadow_target_state ~ '|' ~
+  watch_shadow_target_captured_at ~ '|' ~
+  watch_shadow_path_state ~ '|' ~
+  watch_shadow_path_captured_at ~ '|' ~
+  watch_legacy_target_state ~ '|' ~
+  watch_legacy_target_captured_at ~ '|' ~
+  watch_legacy_path_state ~ '|' ~
+  watch_legacy_path_captured_at
+) %}
 
 {% set s_target = 'sensor.shadow_active_target' if states['sensor.shadow_active_target'] is not none else 'sensor.spectra_ls_shadow_active_target' %}
 {% set s_path = 'sensor.shadow_active_control_path' if states['sensor.shadow_active_control_path'] is not none else 'sensor.spectra_ls_shadow_active_control_path' %}
@@ -88,6 +98,7 @@
 ### Contract details
 - Missing required metadata entities: **{{ missing_required | length }}**
 - Missing keys: **{{ missing_required }}**
+- Listener checksum (debug): **{{ watcher_checksum | length }} chars**
 
 ### Recommendation
 {% if verdict == 'PASS' %}

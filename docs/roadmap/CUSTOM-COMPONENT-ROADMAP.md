@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.19.15 -->
+<!-- Version: 2026.04.19.16 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -277,6 +277,15 @@ Latest runtime proof artifact (2026-04-19):
 - Authority/route: `component` + `route_linkplay_tcp`.
 - Contract validation: `ready=true`, `valid=true`.
 - Handoff diagnostics: `payload_ready=true`, `verdict=PASS`, `helper_exists=true`, `target_in_options=true`, `missing_scripts=0`, `missing_automation_ids=0`.
+
+### Stage report snapshot — ownership + readiness (2026-04-19)
+
+- Current ownership boundary:
+  - **Legacy runtime (`packages/ma_control_hub/*.inc`) still owns** broad production selection/control orchestration.
+  - **Component track (`custom_components/spectra_ls`) owns** parity/diagnostics, S01/S02 one-shot orchestration, and guarded routing write-trial scaffolding.
+- Readiness call:
+  - **Ready for next-step soak execution** using `docs/testing/raw/p3_s01_s02_soak_protocol.md`.
+  - **Not closure-ready for P3-S02** until soak evidence meets all closure gates (`3/3` PASS cycles, ≥2 targets, zero compatibility/parity drift).
 
 ### Phase 3 exit criteria
 

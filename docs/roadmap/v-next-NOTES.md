@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.19.16 -->
+<!-- Version: 2026.04.19.17 -->
 <!-- Last updated: 2026-04-19 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -110,6 +110,15 @@ Latest runtime proof artifact (2026-04-19):
 - Authority/route: `component` + `route_linkplay_tcp`.
 - Contract validation: `ready=true`, `valid=true`.
 - Handoff diagnostics: `payload_ready=true`, `verdict=PASS`, `helper_exists=true`, `target_in_options=true`, `missing_scripts=0`, `missing_automation_ids=0`.
+
+### Stage report snapshot — ownership + readiness (2026-04-19)
+
+- Current ownership boundary:
+  - **Legacy runtime (`packages/ma_control_hub/*.inc`) remains source-of-truth** for broad target-selection/control orchestration and compatibility helper surfaces.
+  - **Custom component (`custom_components/spectra_ls`) currently owns** diagnostics/parity snapshots, one-shot validation orchestration (S01/S02), route-trace visibility, and guarded write-trial control framework.
+- Readiness status:
+  - **Ready to move forward with soak execution** (protocol is documented and one-shot paths are in place).
+  - **Not ready to close P3-S02 yet** until soak closure gates are satisfied (`3/3` PASS cycles across at least 2 targets with zero compatibility/parity regressions).
 
 Reference specification: `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`.
 

@@ -1,6 +1,6 @@
 {# Description: Raw copy/paste Jinja template for Spectra LS Phase 4 Slice-01 capability/profile diagnostics validation. #}
-{# Version: 2026.04.19.1 #}
-{# Last updated: 2026-04-19 #}
+{# Version: 2026.04.20.3 #}
+{# Last updated: 2026-04-20 #}
 
 {# =========================
   Phase 4 F4-S01 Capability + Profile Validation (custom_components/spectra_ls)
@@ -29,6 +29,7 @@
 {% set c_contract = checks.contract_valid if checks.contract_valid is defined else false %}
 {% set c_metadata = checks.metadata_prep_ready if checks.metadata_prep_ready is defined else false %}
 {% set c_no_auth_expansion = checks.no_authority_expansion if checks.no_authority_expansion is defined else false %}
+{% set only_authority_gate_failing = c_registry and c_matrix and c_route and c_contract and c_metadata and (not c_no_auth_expansion) %}
 
 {% set gate_count = 0 %}
 {% if c_registry %}{% set gate_count = gate_count + 1 %}{% endif %}
@@ -78,6 +79,15 @@
 - Proceed to F4-S02 safety skeleton slice while keeping ownership boundaries unchanged.
 {% elif verdict == 'WARN' %}
 - F4-S01 is partially healthy; resolve WARN gates and rerun before moving to F4-S02.
+{% if only_authority_gate_failing %}
+- Observed WARN is authority-mode-only; rerun `spectra_ls.run_f4_s01_sequence` with `mode: legacy` to satisfy no-authority-expansion closeout criteria.
+{% endif %}
 {% else %}
 - F4-S01 is not ready; fix FAIL gates before any Phase-4 expansion.
 {% endif %}
+
+### Run in legacy authority mode (copy/paste service payload)
+- Developer Tools → Actions → `spectra_ls.run_f4_s01_sequence`
+- Service data:
+  - `mode: legacy`
+  - `reason: F4-S01 diagnostics closeout (legacy authority baseline)`

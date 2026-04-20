@@ -1,0 +1,99 @@
+{# Description: Raw copy/paste Jinja template for Spectra LS Phase 4 Slice-02 programmable action-catalog safety validation. #}
+{# Version: 2026.04.20.3 #}
+{# Last updated: 2026-04-20 #}
+
+{# =========================
+  Phase 4 F4-S02 Action Catalog Safety Validation (custom_components/spectra_ls)
+  Purpose: deterministic diagnostics verdict for arm/confirm/cooldown/audit scaffolding with dry-run-only safety checks.
+  Usage: run after `spectra_ls.run_f4_s02_sequence` (or `validate_action_catalog`).
+  Note: the actions are expected to be quiet (no toast/modal confirmation); validate via this rendered output and shadow entity attributes.
+  ========================= #}
+
+{% set s_target = 'sensor.shadow_active_target' if states['sensor.shadow_active_target'] is not none else 'sensor.spectra_ls_shadow_active_target' %}
+{% set s_path = 'sensor.shadow_active_control_path' if states['sensor.shadow_active_control_path'] is not none else 'sensor.spectra_ls_shadow_active_control_path' %}
+
+{% set f4 = state_attr(s_target, 'action_catalog_validation') or {} %}
+{% set capability = state_attr(s_target, 'capability_profile_validation') or {} %}
+{% set write_controls = state_attr(s_target, 'write_controls') or {} %}
+
+{% set verdict = f4.verdict if f4 is mapping and f4.verdict is defined else 'missing' %}
+{% set ready = f4.ready_for_f4_s02 if f4 is mapping and f4.ready_for_f4_s02 is defined else false %}
+
+{% set checks = f4.checks if f4 is mapping and f4.checks is defined and f4.checks is mapping else {} %}
+{% set schema = f4.action_schema if f4 is mapping and f4.action_schema is defined and f4.action_schema is mapping else {} %}
+{% set catalog = f4.action_catalog if f4 is mapping and f4.action_catalog is defined and f4.action_catalog is sequence and f4.action_catalog is not string and f4.action_catalog is not mapping else [] %}
+{% set summary = f4.catalog_summary if f4 is mapping and f4.catalog_summary is defined and f4.catalog_summary is mapping else {} %}
+
+{% set c_registry = checks.registry_present if checks.registry_present is defined else false %}
+{% set c_contract = checks.contract_valid if checks.contract_valid is defined else false %}
+{% set c_f4_s01 = checks.capability_profile_ready if checks.capability_profile_ready is defined else false %}
+{% set c_schema = checks.action_schema_present if checks.action_schema_present is defined else false %}
+{% set c_catalog = checks.action_catalog_present if checks.action_catalog_present is defined else false %}
+{% set c_dry_run = checks.dry_run_only if checks.dry_run_only is defined else false %}
+{% set c_no_auth_expansion = checks.no_authority_expansion if checks.no_authority_expansion is defined else false %}
+{% set only_f4_s01_gate_failing = c_registry and c_contract and (not c_f4_s01) and c_schema and c_catalog and c_dry_run and c_no_auth_expansion %}
+
+{% set gate_count = 0 %}
+{% if c_registry %}{% set gate_count = gate_count + 1 %}{% endif %}
+{% if c_contract %}{% set gate_count = gate_count + 1 %}{% endif %}
+{% if c_f4_s01 %}{% set gate_count = gate_count + 1 %}{% endif %}
+{% if c_schema %}{% set gate_count = gate_count + 1 %}{% endif %}
+{% if c_catalog %}{% set gate_count = gate_count + 1 %}{% endif %}
+{% if c_dry_run %}{% set gate_count = gate_count + 1 %}{% endif %}
+{% if c_no_auth_expansion %}{% set gate_count = gate_count + 1 %}{% endif %}
+
+### Phase 4 F4-S02 Action Catalog Safety Validation (`spectra_ls`)
+- Result: **{{ verdict }}**
+- Timestamp: **{{ now() }}**
+- Ready for F4-S02 closeout: **{{ ready }}**
+- Gate score: **{{ gate_count }}/7**
+
+### Runtime context
+- Active target (`{{ s_target }}`): **{{ states(s_target) }}**
+- Active path (`{{ s_path }}`): **{{ states(s_path) }}**
+- Authority mode now: **{{ write_controls.authority_mode if write_controls is mapping and write_controls.authority_mode is defined else 'missing' }}**
+- F4-S01 ready reference: **{{ capability.ready_for_f4_s01 if capability is mapping and capability.ready_for_f4_s01 is defined else false }}**
+
+### Action schema snapshot
+- Schema version: **{{ schema.schema_version if schema.schema_version is defined else 'missing' }}**
+- Required keys: **{{ schema.required_keys if schema.required_keys is defined else [] }}**
+- Safety required keys: **{{ schema.safety_required_keys if schema.safety_required_keys is defined else [] }}**
+- Defaults: **{{ schema.defaults if schema.defaults is defined else {} }}**
+
+### Action catalog snapshot
+- Action count: **{{ summary.action_count if summary.action_count is defined else (catalog | length) }}**
+- Confirm-required count: **{{ summary.confirm_required_count if summary.confirm_required_count is defined else 0 }}**
+- Sensitive count: **{{ summary.sensitive_count if summary.sensitive_count is defined else 0 }}**
+- Max cooldown (s): **{{ summary.max_cooldown_s if summary.max_cooldown_s is defined else 0 }}**
+- Capability pool: **{{ summary.capability_pool if summary.capability_pool is defined else [] }}**
+- Catalog rows: **{{ catalog }}**
+
+### Gate breakdown
+- Registry present: **{{ c_registry }}**
+- Contract valid: **{{ c_contract }}**
+- F4-S01 capability profile ready: **{{ c_f4_s01 }}**
+- Action schema present: **{{ c_schema }}**
+- Action catalog present: **{{ c_catalog }}**
+- Dry-run-only enforced: **{{ c_dry_run }}**
+- No authority expansion (`legacy`): **{{ c_no_auth_expansion }}**
+
+### Recommendation
+{% if verdict == 'PASS' %}
+- F4-S02 diagnostics scaffolding is healthy.
+- Proceed to richer action-profile wiring only after preserving legacy ownership boundaries.
+{% elif verdict == 'WARN' %}
+- F4-S02 is partially healthy; resolve WARN gates and rerun before closing this slice.
+{% if only_f4_s01_gate_failing %}
+- Observed WARN is dependency-only (`capability_profile_ready=false`); run `spectra_ls.run_f4_s01_sequence` with `mode: legacy`, then rerun `spectra_ls.run_f4_s02_sequence` with `mode: legacy`.
+{% endif %}
+{% else %}
+- F4-S02 is not ready; fix FAIL gates before any action-path expansion.
+{% endif %}
+
+### Run in legacy authority mode (copy/paste service payload)
+- Step 1 (dependency baseline): Developer Tools → Actions → `spectra_ls.run_f4_s01_sequence`
+  - `mode: legacy`
+  - `reason: F4-S02 dependency baseline (legacy authority)`
+- Step 2 (F4-S02 check): Developer Tools → Actions → `spectra_ls.run_f4_s02_sequence`
+  - `mode: legacy`
+  - `reason: F4-S02 diagnostics closeout (legacy authority baseline)`

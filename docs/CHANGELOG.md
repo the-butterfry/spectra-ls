@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.19.48 -->
+<!-- Version: 2026.04.19.49 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Changelog
 
 ## 2026-04-19
+
+- Validation/P3-S02 Soak Runtime Evidence (`docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): capture automated one-shot soak result (`script.spectra_p3_soak_one_shot`) with **3 successful cycles in 5 attempts**, preserving zero contract/parity drift (`contract_valid=true`, `missing_scripts=0`, `missing_automation_ids=0`, `unresolved_sources=0`, `mismatches=0`) and deterministic eligible-route PASS cycles on `route_linkplay_tcp`; note that non-capable target hops were soft-skipped (`defer_not_capable`) and the explicit “≥2 distinct PASS targets” closure gate remains open unless waived for single-capable-topology conditions. README parity: no material repo-state change.
 
 - Validation/P3 Stage-Report Ownership Snapshot (`docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): add an explicit stage-report note clarifying current ownership boundaries (legacy `.inc` runtime remains source-of-truth for broad selection/control orchestration while `custom_components/spectra_ls` owns diagnostics/one-shot orchestration/guarded write-trial framework), with readiness callouts for next-step soak execution vs. closure readiness. README parity: no material repo-state change.
 

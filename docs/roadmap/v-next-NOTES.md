@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.19.17 -->
+<!-- Version: 2026.04.19.18 -->
 <!-- Last updated: 2026-04-19 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -101,7 +101,7 @@ Implemented in `custom_components/spectra_ls`:
 Still required before closing P3-S02:
 
 - sustained runtime evidence that selection handoff remains stable under single-writer guard without regressions.
-- complete the small soak protocol in `docs/testing/raw/p3_s01_s02_soak_protocol.md` with **3/3 consecutive cycle PASS** across at least 2 distinct targets.
+- complete the small soak protocol in `docs/testing/raw/p3_s01_s02_soak_protocol.md` with **3/3 consecutive cycle PASS** across at least 2 distinct PASS targets (or publish explicit waiver rationale for single-capable-topology runs).
 - maintain zero compatibility regressions across soak cycles (`missing_scripts=0`, `missing_automation_ids=0`, parity drift counters unchanged at zero).
 
 Latest runtime proof artifact (2026-04-19):
@@ -111,14 +111,23 @@ Latest runtime proof artifact (2026-04-19):
 - Contract validation: `ready=true`, `valid=true`.
 - Handoff diagnostics: `payload_ready=true`, `verdict=PASS`, `helper_exists=true`, `target_in_options=true`, `missing_scripts=0`, `missing_automation_ids=0`.
 
+Latest soak runtime artifact (2026-04-19):
+
+- Automated script verdict: `Spectra soak complete` (`script.spectra_p3_soak_one_shot`).
+- Soak count/attempts: `3` successful cycles in `5` attempts.
+- PASS cycles: `route=route_linkplay_tcp`, `contract_valid=True`, `handoff=PASS`.
+- Drift/compatibility: `unresolved_sources=0`, `mismatches=0`, `missing_scripts=0`, `missing_automation_ids=0`.
+- Skip behavior observed as expected: non-capable target soft-skips on `route=defer_not_capable`.
+- Gate status: baseline soak stability gate met; distinct PASS-target gate remains open pending either second eligible target PASS or explicit waiver.
+
 ### Stage report snapshot — ownership + readiness (2026-04-19)
 
 - Current ownership boundary:
   - **Legacy runtime (`packages/ma_control_hub/*.inc`) remains source-of-truth** for broad target-selection/control orchestration and compatibility helper surfaces.
   - **Custom component (`custom_components/spectra_ls`) currently owns** diagnostics/parity snapshots, one-shot validation orchestration (S01/S02), route-trace visibility, and guarded write-trial control framework.
 - Readiness status:
-  - **Ready to move forward with soak execution** (protocol is documented and one-shot paths are in place).
-  - **Not ready to close P3-S02 yet** until soak closure gates are satisfied (`3/3` PASS cycles across at least 2 targets with zero compatibility/parity regressions).
+  - **Ready to move forward with closure logging + gate decision** (baseline soak evidence captured).
+  - **Not fully closed for P3-S02 yet** because the distinct PASS-target gate is still open unless waived for single-capable-topology operation.
 
 Reference specification: `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`.
 

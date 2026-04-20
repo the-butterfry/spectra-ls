@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.19.46 -->
+<!-- Version: 2026.04.19.47 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Changelog
 
 ## 2026-04-19
+
+- Validation/P3 Soak Protocol (`docs/testing/raw/p3_s01_s02_soak_protocol.md`, `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`, `docs/roadmap/v-next-NOTES.md`): add a no-cowboy small soak runbook for repeating P3-S01 + P3-S02 one-shot validation across multiple active-target switches, and codify evidence-based closure gates (consecutive PASS cycles, zero parity/missing-compat regressions) before graduating P3-S02 from Active/Pending. README parity: no material repo-state change.
 
 - Validation/P3-S02 Runtime Proof (`docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`, `docs/roadmap/v-next-NOTES.md`): capture live operator evidence for `p3_s02_selection_handoff_validation.jinja` showing `PASS` in `component` authority mode with deterministic `route_linkplay_tcp`, valid contracts, helper/options readiness (`target_in_options=true`), and zero missing compatibility scripts/automation IDs. README parity: no material repo-state change.
 

@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.19.15 -->
+<!-- Version: 2026.04.19.16 -->
 <!-- Last updated: 2026-04-19 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -101,6 +101,8 @@ Implemented in `custom_components/spectra_ls`:
 Still required before closing P3-S02:
 
 - sustained runtime evidence that selection handoff remains stable under single-writer guard without regressions.
+- complete the small soak protocol in `docs/testing/raw/p3_s01_s02_soak_protocol.md` with **3/3 consecutive cycle PASS** across at least 2 distinct targets.
+- maintain zero compatibility regressions across soak cycles (`missing_scripts=0`, `missing_automation_ids=0`, parity drift counters unchanged at zero).
 
 Latest runtime proof artifact (2026-04-19):
 

@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.20.35 -->
+<!-- Version: 2026.04.20.36 -->
 <!-- Last updated: 2026-04-20 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -449,6 +449,10 @@ Hardening pass-2 (2026-04-20):
 Hardening pass-3 (2026-04-20):
 
 - F4-S03 payload now includes explicit dependency context (`active_target_resolved`, `route_decision`, `blocking_reasons`) and operator validation template guidance for dependency-only/no-target WARN captures (`f4_s02_not_ready`, `route_deferred_no_target`) with deterministic legacy-mode rerun order.
+
+Hardening pass-4 (2026-04-20):
+
+- Fixed accidental function-split regression where F4-S02 action-catalog builder could return `None` after F4-S03 insertion, causing persistent false dependency WARN gates in F4-S03; restored full F4-S02 payload return path.
 
 Open before F4-S03 closeout:
 

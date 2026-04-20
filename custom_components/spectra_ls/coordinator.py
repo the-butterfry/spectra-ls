@@ -1,5 +1,5 @@
 # Description: Data coordinator for Spectra LS parity diagnostics, Phase 3 guarded routing write-path controls, and Phase 4 diagnostics scaffolding (F4-S01/F4-S03).
-# Version: 2026.04.20.13
+# Version: 2026.04.20.14
 # Last updated: 2026-04-20
 
 from __future__ import annotations
@@ -499,6 +499,111 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             },
         }
 
+        action_catalog = [
+            {
+                "action_id": "transport_play_pause",
+                "label": "Play/Pause",
+                "domain": "media_player",
+                "service": "media_play_pause",
+                "target_scope": "active_target",
+                "requires_capabilities": [],
+                "dry_run_only": True,
+                "safety": {
+                    "confirm_required": False,
+                    "cooldown_s": 0,
+                    "sensitive": False,
+                    "audit_event": "transport_play_pause",
+                },
+            },
+            {
+                "action_id": "safe_scene_trigger",
+                "label": "Run Safe Scene",
+                "domain": "scene",
+                "service": "turn_on",
+                "target_scope": "profile_scope",
+                "requires_capabilities": [],
+                "dry_run_only": True,
+                "safety": {
+                    "confirm_required": True,
+                    "cooldown_s": 5,
+                    "sensitive": True,
+                    "audit_event": "safe_scene_trigger",
+                },
+            },
+        ]
+
+        contract_valid = bool(contract_validation.get("valid", False))
+        capability_profile_ready = bool(capability_profile_validation.get("ready_for_f4_s01", False))
+        no_authority_expansion = self._write_authority_mode == WRITE_AUTH_LEGACY
+
+        schema_required = action_schema.get("required_keys", [])
+        schema_safety_required = action_schema.get("safety_required_keys", [])
+
+        dry_run_only = all(bool(action.get("dry_run_only", False)) for action in action_catalog)
+
+        checks = {
+            "registry_present": len(targets) > 0,
+            "contract_valid": contract_valid,
+            "capability_profile_ready": capability_profile_ready,
+            "action_schema_present": isinstance(schema_required, list)
+            and len(schema_required) > 0
+            and isinstance(schema_safety_required, list)
+            and len(schema_safety_required) > 0,
+            "action_catalog_present": len(action_catalog) > 0,
+            "dry_run_only": dry_run_only,
+            "no_authority_expansion": no_authority_expansion,
+        }
+
+        verdict = "PASS"
+        if (
+            not checks["registry_present"]
+            or not checks["contract_valid"]
+            or not checks["action_schema_present"]
+            or not checks["action_catalog_present"]
+        ):
+            verdict = "FAIL"
+        elif (
+            not checks["capability_profile_ready"]
+            or not checks["dry_run_only"]
+            or not checks["no_authority_expansion"]
+        ):
+            verdict = "WARN"
+
+        confirm_required_count = 0
+        sensitive_count = 0
+        max_cooldown_s = 0
+        for action in action_catalog:
+            safety = action.get("safety", {}) if isinstance(action.get("safety", {}), dict) else {}
+            if bool(safety.get("confirm_required", False)):
+                confirm_required_count += 1
+            if bool(safety.get("sensitive", False)):
+                sensitive_count += 1
+            cooldown = safety.get("cooldown_s", 0)
+            if isinstance(cooldown, (int, float)):
+                max_cooldown_s = max(max_cooldown_s, int(cooldown))
+
+        return {
+            "verdict": verdict,
+            "ready_for_f4_s02": verdict == "PASS",
+            "checks": checks,
+            "authority_mode": self._write_authority_mode,
+            "capability_reference": {
+                "ready_for_f4_s01": capability_profile_ready,
+                "schema_version": capability_profile_validation.get("profile_schema", {}).get("schema_version", "missing")
+                if isinstance(capability_profile_validation.get("profile_schema", {}), dict)
+                else "missing",
+            },
+            "action_schema": action_schema,
+            "action_catalog": action_catalog,
+            "catalog_summary": {
+                "action_count": len(action_catalog),
+                "confirm_required_count": confirm_required_count,
+                "sensitive_count": sensitive_count,
+                "max_cooldown_s": max_cooldown_s,
+                "capability_pool": sorted(capabilities_union),
+            },
+        }
+
     def _build_crossfade_balance_validation(
         self,
         *,
@@ -621,111 +726,6 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "slider_domain_schema": slider_domain_schema,
             "mode_profiles": mode_profiles,
             "sample_mix_plan": sample_mix_plan,
-        }
-
-        action_catalog = [
-            {
-                "action_id": "transport_play_pause",
-                "label": "Play/Pause",
-                "domain": "media_player",
-                "service": "media_play_pause",
-                "target_scope": "active_target",
-                "requires_capabilities": [],
-                "dry_run_only": True,
-                "safety": {
-                    "confirm_required": False,
-                    "cooldown_s": 0,
-                    "sensitive": False,
-                    "audit_event": "transport_play_pause",
-                },
-            },
-            {
-                "action_id": "safe_scene_trigger",
-                "label": "Run Safe Scene",
-                "domain": "scene",
-                "service": "turn_on",
-                "target_scope": "profile_scope",
-                "requires_capabilities": [],
-                "dry_run_only": True,
-                "safety": {
-                    "confirm_required": True,
-                    "cooldown_s": 5,
-                    "sensitive": True,
-                    "audit_event": "safe_scene_trigger",
-                },
-            },
-        ]
-
-        contract_valid = bool(contract_validation.get("valid", False))
-        capability_profile_ready = bool(capability_profile_validation.get("ready_for_f4_s01", False))
-        no_authority_expansion = self._write_authority_mode == WRITE_AUTH_LEGACY
-
-        schema_required = action_schema.get("required_keys", [])
-        schema_safety_required = action_schema.get("safety_required_keys", [])
-
-        dry_run_only = all(bool(action.get("dry_run_only", False)) for action in action_catalog)
-
-        checks = {
-            "registry_present": len(targets) > 0,
-            "contract_valid": contract_valid,
-            "capability_profile_ready": capability_profile_ready,
-            "action_schema_present": isinstance(schema_required, list)
-            and len(schema_required) > 0
-            and isinstance(schema_safety_required, list)
-            and len(schema_safety_required) > 0,
-            "action_catalog_present": len(action_catalog) > 0,
-            "dry_run_only": dry_run_only,
-            "no_authority_expansion": no_authority_expansion,
-        }
-
-        verdict = "PASS"
-        if (
-            not checks["registry_present"]
-            or not checks["contract_valid"]
-            or not checks["action_schema_present"]
-            or not checks["action_catalog_present"]
-        ):
-            verdict = "FAIL"
-        elif (
-            not checks["capability_profile_ready"]
-            or not checks["dry_run_only"]
-            or not checks["no_authority_expansion"]
-        ):
-            verdict = "WARN"
-
-        confirm_required_count = 0
-        sensitive_count = 0
-        max_cooldown_s = 0
-        for action in action_catalog:
-            safety = action.get("safety", {}) if isinstance(action.get("safety", {}), dict) else {}
-            if bool(safety.get("confirm_required", False)):
-                confirm_required_count += 1
-            if bool(safety.get("sensitive", False)):
-                sensitive_count += 1
-            cooldown = safety.get("cooldown_s", 0)
-            if isinstance(cooldown, (int, float)):
-                max_cooldown_s = max(max_cooldown_s, int(cooldown))
-
-        return {
-            "verdict": verdict,
-            "ready_for_f4_s02": verdict == "PASS",
-            "checks": checks,
-            "authority_mode": self._write_authority_mode,
-            "capability_reference": {
-                "ready_for_f4_s01": capability_profile_ready,
-                "schema_version": capability_profile_validation.get("profile_schema", {}).get("schema_version", "missing")
-                if isinstance(capability_profile_validation.get("profile_schema", {}), dict)
-                else "missing",
-            },
-            "action_schema": action_schema,
-            "action_catalog": action_catalog,
-            "catalog_summary": {
-                "action_count": len(action_catalog),
-                "confirm_required_count": confirm_required_count,
-                "sensitive_count": sensitive_count,
-                "max_cooldown_s": max_cooldown_s,
-                "capability_pool": sorted(capabilities_union),
-            },
         }
 
     def _build_snapshot(self) -> dict[str, Any]:

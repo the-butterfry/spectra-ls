@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.19.22 -->
+<!-- Version: 2026.04.19.23 -->
 <!-- Last updated: 2026-04-19 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -153,6 +153,13 @@ Latest runtime proof artifact (2026-04-19):
 - Gate score: `7/7`.
 - Metadata-prep readiness: `ready_for_metadata_handoff=true`.
 - Contract details: `missing_required=0`, `missing_keys=[]`.
+
+Final runtime proof snapshot (2026-04-19 22:51 local):
+
+- Active target/path: `media_player.spectra_ls_2` / `linkplay_tcp`.
+- Metadata value probes resolved: `active_meta_entity=media_player.spectra_ls`, `now_playing_entity=media_player.spectra_ls`, `now_playing_state=paused`, `now_playing_title=Network`.
+- All S03 gates true (`contract`, `active_meta`, `now_playing_entity/state/title`, `candidate_payload_ready`, `route_trace_present`).
+- Compatibility boundary remains explicit: runtime can still show non-cutover route/selection context (`route=defer_not_capable`, authority=`legacy`, selection_handoff=`FAIL`) without invalidating diagnostics-only P3-S03 closeout.
 
 ### Phase 4 bounded slice plan (post-P3)
 

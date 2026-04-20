@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.19.21 -->
+<!-- Version: 2026.04.19.22 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -319,6 +319,13 @@ Latest runtime proof artifact (2026-04-19):
 - Gate score: `7/7`.
 - Metadata-prep readiness: `true`.
 - Contract detail: `missing_required=0`, `missing_keys=[]`.
+
+Final runtime proof snapshot (2026-04-19 22:51 local):
+
+- Active target/path: `media_player.spectra_ls_2` / `linkplay_tcp`.
+- Metadata probes resolved in validation output (`active_meta_entity`, `now_playing_entity`, `now_playing_state`, `now_playing_title`).
+- All S03 gates true with `missing_required=0`.
+- Compatibility boundary retained by design: non-cutover route/selection context (`defer_not_capable`, legacy authority, S02 FAIL) does not block diagnostics-only S03 closeout.
 
 ### Phase 4 bounded slice plan (execution-ready)
 

@@ -1,5 +1,5 @@
 # Description: Data coordinator for Spectra LS parity diagnostics and Phase 3 guarded routing write-path controls.
-# Version: 2026.04.19.6
+# Version: 2026.04.19.7
 # Last updated: 2026-04-19
 
 from __future__ import annotations
@@ -17,9 +17,14 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .const import (
     DOMAIN,
+    LEGACY_ACTIVE_META_ENTITY,
     LEGACY_CONTROL_HOST,
     LEGACY_CONTROL_TARGETS,
+    LEGACY_META_CANDIDATES,
     LEGACY_ACTIVE_TARGET_HELPER,
+    LEGACY_NOW_PLAYING_ENTITY,
+    LEGACY_NOW_PLAYING_STATE,
+    LEGACY_NOW_PLAYING_TITLE,
     LEGACY_ROOMS_JSON,
     LEGACY_ROOMS_RAW,
     LEGACY_SURFACES,
@@ -212,6 +217,98 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             },
         }
 
+    @staticmethod
+    def _is_resolved_state(raw_state: str) -> bool:
+        normalized = (raw_state or "").strip().lower()
+        return normalized not in {"", "none", "unknown", "unavailable", "missing"}
+
+    def _metadata_candidate_payload_ready(self) -> bool:
+        candidates_state = self.hass.states.get(LEGACY_META_CANDIDATES)
+        if candidates_state is None:
+            return False
+
+        for key in ("best_candidate_json", "candidate_summary_json", "candidate_rows_json"):
+            value = candidates_state.attributes.get(key)
+            if isinstance(value, str) and value.strip() and value.strip() not in {"{}", "[]"}:
+                return True
+            if isinstance(value, (list, dict)) and len(value) > 0:
+                return True
+        return False
+
+    def _build_metadata_prep_validation(
+        self,
+        *,
+        route_trace: dict[str, Any],
+        contract_validation: dict[str, Any],
+    ) -> dict[str, Any]:
+        required_entities = {
+            "active_meta_entity": LEGACY_ACTIVE_META_ENTITY,
+            "now_playing_entity": LEGACY_NOW_PLAYING_ENTITY,
+            "now_playing_state": LEGACY_NOW_PLAYING_STATE,
+            "now_playing_title": LEGACY_NOW_PLAYING_TITLE,
+            "meta_candidates": LEGACY_META_CANDIDATES,
+        }
+
+        missing_required = [
+            key for key, entity_id in required_entities.items() if self.hass.states.get(entity_id) is None
+        ]
+
+        active_meta_raw = self.hass.states.get(LEGACY_ACTIVE_META_ENTITY)
+        now_playing_entity_raw = self.hass.states.get(LEGACY_NOW_PLAYING_ENTITY)
+        now_playing_state_raw = self.hass.states.get(LEGACY_NOW_PLAYING_STATE)
+        now_playing_title_raw = self.hass.states.get(LEGACY_NOW_PLAYING_TITLE)
+
+        active_meta_entity = active_meta_raw.state if active_meta_raw is not None else "missing"
+        now_playing_entity = now_playing_entity_raw.state if now_playing_entity_raw is not None else "missing"
+        now_playing_state = now_playing_state_raw.state if now_playing_state_raw is not None else "missing"
+        now_playing_title = now_playing_title_raw.state if now_playing_title_raw is not None else "missing"
+
+        active_meta_entity_resolved = self._is_resolved_state(active_meta_entity)
+        now_playing_entity_resolved = self._is_resolved_state(now_playing_entity)
+        now_playing_state_resolved = self._is_resolved_state(now_playing_state)
+        now_playing_title_resolved = self._is_resolved_state(now_playing_title)
+
+        route_decision = str(route_trace.get("decision", "") or "")
+        route_trace_present = route_decision != ""
+        contract_valid = bool(contract_validation.get("valid", False))
+        candidate_payload_ready = self._metadata_candidate_payload_ready()
+
+        verdict = "PASS"
+        if len(missing_required) > 0 or not contract_valid:
+            verdict = "FAIL"
+        elif (
+            not active_meta_entity_resolved
+            or not now_playing_entity_resolved
+            or not now_playing_state_resolved
+            or not route_trace_present
+        ):
+            verdict = "FAIL"
+        elif not now_playing_title_resolved or not candidate_payload_ready:
+            verdict = "WARN"
+
+        return {
+            "verdict": verdict,
+            "ready_for_metadata_handoff": verdict == "PASS",
+            "required_entities": required_entities,
+            "missing_required": missing_required,
+            "contract_valid": contract_valid,
+            "route_decision": route_decision,
+            "checks": {
+                "active_meta_entity_resolved": active_meta_entity_resolved,
+                "now_playing_entity_resolved": now_playing_entity_resolved,
+                "now_playing_state_resolved": now_playing_state_resolved,
+                "now_playing_title_resolved": now_playing_title_resolved,
+                "candidate_payload_ready": candidate_payload_ready,
+                "route_trace_present": route_trace_present,
+            },
+            "values": {
+                "active_meta_entity": active_meta_entity,
+                "now_playing_entity": now_playing_entity,
+                "now_playing_state": now_playing_state,
+                "now_playing_title": now_playing_title,
+            },
+        }
+
     def _build_snapshot(self) -> dict[str, Any]:
         active_target = self._snapshot_for_entity(LEGACY_SURFACES["active_target"])
         active_control_path = self._snapshot_for_entity(LEGACY_SURFACES["active_control_path"])
@@ -271,6 +368,10 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             route_trace=route_trace,
             contract_validation=contract_validation,
         )
+        metadata_prep_validation = self._build_metadata_prep_validation(
+            route_trace=route_trace,
+            contract_validation=contract_validation,
+        )
 
         return {
             "legacy": legacy,
@@ -281,6 +382,7 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "route_trace": route_trace,
             "contract_validation": contract_validation,
             "selection_handoff_validation": selection_handoff_validation,
+            "metadata_prep_validation": metadata_prep_validation,
             "write_controls": self._build_write_controls(),
             "captured_at": datetime.now(UTC).isoformat(),
         }
@@ -301,6 +403,10 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     async def async_validate_selection_handoff(self) -> None:
         """Refresh parity data and emit selection-handoff validation diagnostics."""
+        self.async_set_updated_data(self._build_snapshot())
+
+    async def async_validate_metadata_prep(self) -> None:
+        """Refresh parity data and emit metadata-prep validation diagnostics."""
         self.async_set_updated_data(self._build_snapshot())
 
     async def async_set_write_authority(self, mode: str, reason: str = "") -> None:

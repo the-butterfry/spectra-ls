@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.19.54 -->
+<!-- Version: 2026.04.19.55 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Changelog
 
 ## 2026-04-19
+
+- Custom Component/P3-S03 Metadata Prep (Diagnostics-Only) (`custom_components/spectra_ls/*`, `docs/testing/raw/p3_s03_metadata_prep_validation.jinja`, `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): add metadata-preparation validation surfaces and one-shot sequence service for Phase 3 Slice-03 without enabling metadata ownership cutover, including explicit checks for legacy metadata contract entities and candidate payload readiness. README parity: no material repo-state change.
 
 - Validation/P3 Closure Gate False-Negative Fix (`docs/testing/raw/p3_s01_s02_closure_gate_check.jinja`, `docs/testing/raw/p3_s01_s02_soak_protocol.md`, `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md`): add explicit `evaluation_mode` support so closeout checks can run against recorded soak evidence (`soak_evidence`) instead of transient live runtime context (`runtime`) that may legitimately return `legacy` authority or `defer_not_capable` after the soak window; prevents post-soak false FAIL outcomes while keeping runtime-strict mode available for live checks. README parity: no material repo-state change.
 

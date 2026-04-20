@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.19.20 -->
+<!-- Version: 2026.04.19.21 -->
 <!-- Last updated: 2026-04-19 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -49,7 +49,7 @@ Each feature slice is only complete when both tracks are dispositioned:
 | P2-S02 | 2 | Implemented (legacy route contracts retained) | Implemented (deterministic validation hardening + P2 diagnostics closure) | Implemented | Low | Implemented |
 | P3-S01 | 3 | Validated (legacy write authority retained behind switch) | Validated (guard framework + manual routing write trial services) | Validated | Medium | Validated |
 | P3-S02 | 3 | Validated (selection compatibility shim validation) | Validated (one-shot selection-handoff validation sequence + diagnostics) | Validated (single-capable waiver) | High | Validated |
-| P3-S03 | 3 | Planned (metadata ownership deferred/compatibility mode) | Planned (metadata prep + diagnostics-only expansion) | Planned | Medium | Planned |
+| P3-S03 | 3 | Planned (metadata ownership deferred/compatibility mode retained) | Implemented (metadata prep diagnostics + one-shot sequence; no ownership cutover) | Active (diagnostics-only) | Medium | Active |
 
 ### P1/P2 validation snapshot (2026-04-19)
 
@@ -129,6 +129,22 @@ Latest soak runtime artifact (2026-04-19):
 - Readiness status:
   - **Ready to move forward with closure logging + gate decision** (baseline soak evidence captured).
   - **Not fully closed for P3-S02 yet** because the distinct PASS-target gate is still open unless waived for single-capable-topology operation.
+
+### P3-S03 implementation checkpoint (2026-04-19)
+
+Implemented in `custom_components/spectra_ls`:
+
+- metadata-prep diagnostics payload in coordinator snapshot (`metadata_prep_validation`),
+- metadata contract presence checks for `ma_active_meta_entity`, `now_playing_*`, and `ma_meta_candidates`,
+- deterministic metadata-prep verdicting (`PASS`/`WARN`/`FAIL`) with readiness flag,
+- one-shot service orchestration (`run_p3_s03_sequence`) and direct refresh service (`validate_metadata_prep`),
+- raw validation template for operator evidence capture (`docs/testing/raw/p3_s03_metadata_prep_validation.jinja`).
+
+Still required before closing P3-S03:
+
+- runtime evidence capture from the S03 template in normal playback + target-switch conditions,
+- explicit confirmation that metadata ownership remains compatibility/deferred (no cutover writes introduced),
+- roadmap/v-next closeout note after evidence is archived.
 
 Reference specification: `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`.
 

@@ -1,5 +1,5 @@
 <!-- Description: Operator runbook for small soak validation of Spectra LS P3-S01 and P3-S02 one-shot sequences. -->
-<!-- Version: 2026.04.19.5 -->
+<!-- Version: 2026.04.19.6 -->
 <!-- Last updated: 2026-04-19 -->
 
 # P3 S01+S02 Small Soak Protocol (`spectra_ls`)
@@ -47,6 +47,9 @@ Run one additional S02 cycle with `run_write_trial=true` and a unique `correlati
    - `observed_s01_ok`
    - `observed_s02_ok`
    - `observed_parity_ok`
+   - `observed_evidence_source` (must be `script.spectra_p3_soak_one_shot`)
+   - `observed_evidence_reference` (non-empty run note/reference)
+   - `observed_evidence_collected_at` (ISO timestamp, <=24h old)
 3. Confirm closure gate checks are consistent (`observed_soak_attempts >= observed_soak_pass_cycles`) and runtime snapshot freshness is true.
 4. Record the output verdict and gate breakdown in closure notes.
 

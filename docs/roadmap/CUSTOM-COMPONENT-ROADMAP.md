@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.19.25 -->
+<!-- Version: 2026.04.19.26 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -350,6 +350,14 @@ Closeout template correctness update:
 - add explicit soak-evidence input `observed_parity_ok` to closure gate,
 - use observed parity when `evaluation_mode=soak_evidence` while still exposing runtime parity as a diagnostic companion signal,
 - maintain `runtime` mode behavior unchanged for strict live validation.
+
+### P3-H3 closure-gate fail-closed checkpoint (2026-04-19)
+
+Closure integrity hardening:
+
+- default closure inputs changed to fail-closed values,
+- soak-evidence mode now requires explicit evidence provenance/freshness fields (source, reference, collected-at <=24h),
+- invalid/missing provenance now hard-fails closure to enforce evidence-backed sign-off quality.
 
 ### Phase 4 bounded slice plan (execution-ready)
 

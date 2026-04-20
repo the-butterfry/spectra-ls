@@ -1,0 +1,92 @@
+{# Description: Raw copy/paste Jinja template for Spectra LS Phase 3 Slice-01 guarded routing write validation. #}
+{# Version: 2026.04.19.2 #}
+{# Last updated: 2026-04-19 #}
+
+{# =========================
+  Phase 3-S01 Guarded Write Validation (custom_components/spectra_ls)
+  Purpose: validate authority-mode behavior and guarded write attempt outcomes.
+  Workflow:
+    1) Run: spectra_ls.rebuild_registry + spectra_ls.validate_contracts + spectra_ls.dump_route_trace
+    2) (Optional) Set mode via spectra_ls.set_write_authority (legacy|component)
+    3) Run: spectra_ls.route_write_trial (optionally with correlation_id)
+    4) Reload this template and inspect write_controls.last_attempt status/reason
+  ========================= #}
+
+{% set s_target = 'sensor.shadow_active_target' if states['sensor.shadow_active_target'] is not none else 'sensor.spectra_ls_shadow_active_target' %}
+{% set s_path = 'sensor.shadow_active_control_path' if states['sensor.shadow_active_control_path'] is not none else 'sensor.spectra_ls_shadow_active_control_path' %}
+
+{% set active_target = states(s_target) %}
+{% set active_path = states(s_path) %}
+{% set parity_unresolved = state_attr(s_target,'unresolved_sources') or [] %}
+{% set parity_mismatches = state_attr(s_target,'mismatches') or [] %}
+{% set route_trace = state_attr(s_target,'route_trace') or {} %}
+{% set route_decision = route_trace.decision if route_trace is mapping and route_trace.decision is defined else '' %}
+{% set route_reason = route_trace.reason if route_trace is mapping and route_trace.reason is defined else '' %}
+{% set contract_validation = state_attr(s_target,'contract_validation') or {} %}
+{% set contract_ready = contract_validation is mapping and contract_validation.valid is defined %}
+{% set contract_valid = contract_validation.valid if contract_ready else false %}
+
+{% set write_controls = state_attr(s_target,'write_controls') or {} %}
+{% set authority_mode = write_controls.authority_mode if write_controls is mapping and write_controls.authority_mode is defined else '' %}
+{% set in_progress = write_controls.in_progress if write_controls is mapping and write_controls.in_progress is defined else false %}
+{% set debounce_s = write_controls.debounce_s if write_controls is mapping and write_controls.debounce_s is defined else 'n/a' %}
+{% set last_attempt = write_controls.last_attempt if write_controls is mapping and write_controls.last_attempt is defined and write_controls.last_attempt is mapping else {} %}
+
+{% set last_status = last_attempt.status if last_attempt is mapping and last_attempt.status is defined else 'missing' %}
+{% set last_reason = last_attempt.reason if last_attempt is mapping and last_attempt.reason is defined else '' %}
+{% set last_correlation_id = last_attempt.correlation_id if last_attempt is mapping and last_attempt.correlation_id is defined else '' %}
+{% set last_timestamp = last_attempt.timestamp if last_attempt is mapping and last_attempt.timestamp is defined else '' %}
+
+{% set route_trace_ok = route_decision not in ['','none','unknown','unavailable'] %}
+{% set parity_ok = (parity_unresolved | length) == 0 and (parity_mismatches | length) == 0 %}
+
+{% set pass_status_component = ['write_applied', 'noop_already_selected', 'blocked_debounce', 'blocked_reentrancy'] %}
+{% set pass_status_legacy = ['blocked_authority', 'authority_set', 'never_attempted'] %}
+
+{% set verdict = 'FAIL' %}
+{% if authority_mode == 'component' and route_trace_ok and contract_valid and parity_ok and last_status in pass_status_component %}
+  {% set verdict = 'PASS' %}
+{% elif authority_mode == 'legacy' and route_trace_ok and contract_valid and parity_ok and last_status in pass_status_legacy %}
+  {% set verdict = 'PASS' %}
+{% elif write_controls is mapping and route_trace_ok and parity_ok and (contract_valid or not contract_ready) %}
+  {% set verdict = 'WARN' %}
+{% endif %}
+
+### Phase 3-S01 Guarded Write Validation (`spectra_ls`)
+- Result: **{{ verdict }}**
+- Timestamp: **{{ now() }}**
+
+### Routing context
+- Active target (`{{ s_target }}`): **{{ active_target }}**
+- Active path (`{{ s_path }}`): **{{ active_path }}**
+- Route decision/reason: **{{ route_decision if route_decision != '' else 'n/a' }}** / **{{ route_reason if route_reason != '' else 'n/a' }}**
+- Contract ready/valid: **{{ contract_ready }} / {{ contract_valid }}**
+- Parity unresolved/mismatch: **{{ parity_unresolved | length }} / {{ parity_mismatches | length }}**
+
+### Write control surfaces
+- Authority mode: **{{ authority_mode if authority_mode != '' else 'n/a' }}**
+- Write in progress: **{{ in_progress }}**
+- Debounce seconds: **{{ debounce_s }}**
+
+### Last write attempt
+- Status: **{{ last_status }}**
+- Reason: **{{ last_reason if last_reason != '' else 'n/a' }}**
+- Correlation ID: **{{ last_correlation_id if last_correlation_id != '' else 'n/a' }}**
+- Attempt timestamp: **{{ last_timestamp if last_timestamp != '' else 'n/a' }}**
+
+### Execution semantics
+- HA service checkmarks only confirm the action call executed.
+- Semantic success/failure is determined by `last write attempt` status/reason above.
+
+### Guidance
+{% if verdict == 'PASS' and authority_mode == 'legacy' %}
+- Legacy authority mode is correctly blocking component writes (safe baseline).
+{% elif verdict == 'PASS' and authority_mode == 'component' %}
+- Guarded write trial behavior is healthy for component authority mode.
+{% elif verdict == 'WARN' %}
+- Guards/diagnostics are present, but state is not yet at a clean PASS outcome.
+- Re-run: `rebuild_registry` + `validate_contracts` + `dump_route_trace` + `route_write_trial` and compare `last_status`.
+- If `contract_ready` is false, run `validate_contracts` again and confirm contract payload repopulates.
+{% else %}
+- Missing/invalid write-control context. Confirm integration entities are loaded and services were executed.
+{% endif %}

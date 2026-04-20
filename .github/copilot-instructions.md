@@ -3,7 +3,7 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 ---
 
 <!-- Description: Workspace Copilot operating instructions for Home Assistant + ESPHome. -->
-<!-- Version: 2026.04.19.11 -->
+<!-- Version: 2026.04.19.12 -->
 <!-- Last updated: 2026-04-19 -->
 
 # GitHub Copilot Instructions — Home Assistant + ESPHome
@@ -14,15 +14,24 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 - If a request conflicts with safety/contract rules, call it out and offer the safest alternative.
 - If uncertain and blocked by ambiguity, ask one concise question.
 
+## Evidence-First / No-Assumption Rule (Critical)
+- No cowboy changes. No assumptions presented as facts.
+- Before proposing migration/write-path changes, build an explicit contract inventory from active sources (`packages/`, `custom_components/`, `esphome/`) and cite concrete entity/helper/script surfaces.
+- If information is incomplete (for example live HA runtime state unavailable), state the exact gap and required evidence to close it; do not gloss over uncertainty.
+- Surface tough spots explicitly (race risk, loop risk, parser-shape risk, fallback ambiguity) with severity and mitigation, even if that slows the slice.
+- For anonymous productization, avoid install-specific hardcodes in tracked logic; use discovery-first contracts, capability metadata, and secrets/local-only overlays.
+
 ## Mandatory Workflow
 - For `esphome/spectra_ls_system/**`, read `docs/roadmap/v-next-NOTES.md` before changes.
 - For `esphome/control-py/**`, read `docs/control-py/NOTES-control-board-2.md` before changes.
 - For any functional change, update `docs/CHANGELOG.md` **before** code edits.
+- For roadmap/migration changes, include a P1/P2/P3 impact check (what remains source-of-truth, what is parity-validated, what is deferred).
 - For any functionality or feature change, update or create the corresponding architecture/feature documentation in the same change set (for example runtime docs, control-hub docs, and cleanup/deprecation notes when relevant).
 - Keep `README.md` aligned to current `main` direction in `docs/roadmap/v-next-NOTES.md`.
 - Add a required docs-parity step for repo-state changes: update `README.md` in the same change set whenever contracts, behavior, architecture, structure, setup, or operator workflow materially changes.
 - Add a required wiki-parity step for repo-state/operator-workflow changes: update `docs/wiki/` pages in the same change set when user-facing setup, deployment, integration, bug workflow, governance intake, or process routing changes.
 - For ESPHome/runtime changes, enforce this sequence with no shortcuts: **edit → update README parity (if repo-state changed) → build/compile verify → fix failures → commit → push → OTA upload (when requested or implied) → post-upload verification evidence**.
+- Before Phase 3+ migration work, publish/update `docs/notes/NOTES-engineering-rigor.md` with current entity-contract inventory, known tough spots, and blockers.
 
 ## Parallel Custom-Component Program (Required)
 - Develop `custom_components/spectra_ls` in parallel with the current runtime stack (`packages/` + `esphome/`) rather than as a big-bang replacement.

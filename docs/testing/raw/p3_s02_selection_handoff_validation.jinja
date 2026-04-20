@@ -1,0 +1,85 @@
+{# Description: Raw copy/paste Jinja template for Spectra LS Phase 3 Slice-02 selection-handoff one-shot validation. #}
+{# Version: 2026.04.19.1 #}
+{# Last updated: 2026-04-19 #}
+
+{# =========================
+  Phase 3-S02 Selection-Handoff Validation (custom_components/spectra_ls)
+  Purpose: validate selection-handoff readiness diagnostics emitted by one-shot sequence.
+  Workflow:
+    1) Run: spectra_ls.run_p3_s02_sequence
+    2) Reload this template and inspect selection_handoff_validation + write_controls
+  ========================= #}
+
+{% set s_target = 'sensor.shadow_active_target' if states['sensor.shadow_active_target'] is not none else 'sensor.spectra_ls_shadow_active_target' %}
+{% set s_path = 'sensor.shadow_active_control_path' if states['sensor.shadow_active_control_path'] is not none else 'sensor.spectra_ls_shadow_active_control_path' %}
+
+{% set active_target = states(s_target) %}
+{% set active_path = states(s_path) %}
+{% set route_trace = state_attr(s_target,'route_trace') or {} %}
+{% set route_decision = route_trace.decision if route_trace is mapping and route_trace.decision is defined else '' %}
+{% set route_reason = route_trace.reason if route_trace is mapping and route_trace.reason is defined else '' %}
+
+{% set contract_validation = state_attr(s_target,'contract_validation') or {} %}
+{% set contract_ready = contract_validation is mapping and contract_validation.valid is defined %}
+{% set contract_valid = contract_validation.valid if contract_ready else false %}
+
+{% set write_controls = state_attr(s_target,'write_controls') or {} %}
+{% set authority_mode = write_controls.authority_mode if write_controls is mapping and write_controls.authority_mode is defined else '' %}
+{% set last_attempt = write_controls.last_attempt if write_controls is mapping and write_controls.last_attempt is defined and write_controls.last_attempt is mapping else {} %}
+{% set last_status = last_attempt.status if last_attempt is mapping and last_attempt.status is defined else 'missing' %}
+{% set last_reason = last_attempt.reason if last_attempt is mapping and last_attempt.reason is defined else '' %}
+
+{% set handoff = state_attr(s_target,'selection_handoff_validation') or {} %}
+{% set handoff_ready = handoff is mapping and handoff.ready_for_handoff is defined %}
+{% set handoff_verdict = handoff.verdict if handoff is mapping and handoff.verdict is defined else 'missing' %}
+{% set helper = handoff.helper if handoff is mapping and handoff.helper is defined and handoff.helper is mapping else {} %}
+{% set helper_exists = helper.exists if helper is mapping and helper.exists is defined else false %}
+{% set helper_options_count = helper.options_count if helper is mapping and helper.options_count is defined else 0 %}
+{% set helper_target_in_options = helper.target_in_options if helper is mapping and helper.target_in_options is defined else false %}
+
+{% set compat = handoff.compatibility if handoff is mapping and handoff.compatibility is defined and handoff.compatibility is mapping else {} %}
+{% set missing_scripts = compat.missing_scripts if compat is mapping and compat.missing_scripts is defined else [] %}
+{% set missing_automation_ids = compat.missing_automation_ids if compat is mapping and compat.missing_automation_ids is defined else [] %}
+
+{% set route_ok = route_decision == 'route_linkplay_tcp' %}
+
+{% set verdict = 'FAIL' %}
+{% if handoff_verdict == 'PASS' and handoff_ready and route_ok and contract_valid and helper_exists and helper_target_in_options and (missing_scripts | length) == 0 and (missing_automation_ids | length) == 0 %}
+  {% set verdict = 'PASS' %}
+{% elif handoff_verdict in ['PASS','WARN'] and route_ok and (contract_valid or not contract_ready) %}
+  {% set verdict = 'WARN' %}
+{% endif %}
+
+### Phase 3-S02 Selection-Handoff Validation (`spectra_ls`)
+- Result: **{{ verdict }}**
+- Timestamp: **{{ now() }}**
+
+### Routing + authority context
+- Active target (`{{ s_target }}`): **{{ active_target }}**
+- Active path (`{{ s_path }}`): **{{ active_path }}**
+- Route decision/reason: **{{ route_decision if route_decision != '' else 'n/a' }}** / **{{ route_reason if route_reason != '' else 'n/a' }}**
+- Authority mode: **{{ authority_mode if authority_mode != '' else 'n/a' }}**
+- Contract ready/valid: **{{ contract_ready }} / {{ contract_valid }}**
+
+### Selection handoff diagnostics
+- Handoff payload ready: **{{ handoff_ready }}**
+- Handoff verdict: **{{ handoff_verdict }}**
+- Helper exists: **{{ helper_exists }}**
+- Helper options count: **{{ helper_options_count }}**
+- Active target in helper options: **{{ helper_target_in_options }}**
+- Missing scripts: **{{ missing_scripts | length }}**
+- Missing automation ids: **{{ missing_automation_ids | length }}**
+
+### Last write attempt (if write trial enabled)
+- Status: **{{ last_status }}**
+- Reason: **{{ last_reason if last_reason != '' else 'n/a' }}**
+
+### Guidance
+{% if verdict == 'PASS' %}
+- Selection-handoff readiness is healthy for guarded P3-S02 progression.
+{% elif verdict == 'WARN' %}
+- Core diagnostics are present but compatibility/readiness is incomplete.
+- Re-run `spectra_ls.run_p3_s02_sequence`; if warnings persist, review missing scripts/automation IDs and helper options.
+{% else %}
+- Missing/invalid S02 diagnostics context. Confirm the integration is loaded and rerun `spectra_ls.run_p3_s02_sequence`.
+{% endif %}

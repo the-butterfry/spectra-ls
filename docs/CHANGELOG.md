@@ -1,10 +1,30 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.19.35 -->
+<!-- Version: 2026.04.19.46 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Changelog
 
 ## 2026-04-19
+
+- Validation/P3-S02 Runtime Proof (`docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`, `docs/roadmap/v-next-NOTES.md`): capture live operator evidence for `p3_s02_selection_handoff_validation.jinja` showing `PASS` in `component` authority mode with deterministic `route_linkplay_tcp`, valid contracts, helper/options readiness (`target_in_options=true`), and zero missing compatibility scripts/automation IDs. README parity: no material repo-state change.
+
+- Custom Component/P3-S02 One-Shot Validation Slice (`custom_components/spectra_ls/__init__.py`, `custom_components/spectra_ls/const.py`, `custom_components/spectra_ls/coordinator.py`, `custom_components/spectra_ls/services.yaml`, `custom_components/spectra_ls/sensor.py`, `custom_components/spectra_ls/binary_sensor.py`, `docs/testing/raw/p3_s02_selection_handoff_validation.jinja`, `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`, `docs/roadmap/v-next-NOTES.md`): add a guarded one-shot P3-S02 validation sequence that performs authority/registry/contract/route refresh and emits explicit selection-handoff readiness diagnostics (legacy helper/options/scripting surfaces) with a raw template for PASS/WARN/FAIL operator validation. README parity: no material repo-state change.
+
+- Custom Component/P3 Operator UX (`custom_components/spectra_ls/__init__.py`, `custom_components/spectra_ls/const.py`, `custom_components/spectra_ls/services.yaml`, `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md`): add one-shot Phase 3-S01 sequence service (`spectra_ls.run_p3_s01_sequence`) to run authority set + rebuild + contract validation + route-trace refresh + guarded write trial in a single action call, reducing manual multi-step operator execution overhead. README parity: no material repo-state change.
+
+- Custom Component/P3 Validation Correctness Fix (`custom_components/spectra_ls/coordinator.py`, `docs/testing/raw/p3_s01_guarded_write_validation.jinja`): fix false FAIL outcomes where `contract_validation` could disappear on subsequent snapshot refreshes after a successful write trial; coordinator now emits contract-validation state consistently and P3 template degrades to WARN when contract-validation payload is missing rather than misclassifying healthy guarded write outcomes as hard FAIL. README parity: no material repo-state change.
+
+- Validation/Template Hardening (`docs/testing/raw/p2_negative_case_regression.jinja`, `docs/testing/raw/p3_s01_guarded_write_validation.jinja`, `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md`): clarify that service checkmarks indicate execution (not semantic pass), strengthen negative-case interpretation when route remains healthy, and add a dedicated P3-S01 guarded-write validation template focused on authority mode, last write attempt status, and guard outcomes. README parity: no material repo-state change.
+
+- Custom Component/Phase 3 Slice-01 Guard Framework (`custom_components/spectra_ls/__init__.py`, `custom_components/spectra_ls/coordinator.py`, `custom_components/spectra_ls/const.py`, `custom_components/spectra_ls/services.yaml`, `custom_components/spectra_ls/sensor.py`, `custom_components/spectra_ls/binary_sensor.py`, `custom_components/spectra_ls/manifest.json`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`, `docs/roadmap/v-next-NOTES.md`, `docs/architecture/CONTROL-HUB-ARCHITECTURE.md`): implement single-writer authority controls (`legacy` default, `component` opt-in), guarded manual route-write trial service, and anti-loop safeguards (debounce, reentrancy, route-decision eligibility, correlation-id tracing) with write-control diagnostics surfaced in shadow attributes. README parity: no material repo-state change.
+
+- Custom Component/Phase 3 Slice-01 Start (`custom_components/spectra_ls/*`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`, `docs/roadmap/v-next-NOTES.md`): begin guarded routing write-path work with single-writer authority controls, loop/flap prevention guards, and rollback-safe defaults while preserving legacy source-of-truth compatibility during activation staging. README parity: no material repo-state change.
+
+- Validation/Roadmap Progression (`docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`, `docs/roadmap/v-next-NOTES.md`): record fresh live P2 runtime proof artifact (`PASS 8/8`, deterministic `route_linkplay_tcp`, contract valid with zero missing required entities, zero unresolved/mismatch drift, fresh snapshot) and advance `P3-S01` status to **Active** for guarded routing write-path work. README parity: no material repo-state change.
+
+- Program Governance/No-Assumption Hardening (`.github/copilot-instructions.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`, `docs/roadmap/v-next-NOTES.md`, `docs/notes/NOTES-engineering-rigor.md`): codify evidence-first implementation policy (no cowboy/no assumptions), require explicit contract inventory + tough-spot disclosure before migration write-path changes, add a P1/P2 validation snapshot, and expand Phase 3+ into explicit guarded slices (`P3-S01` routing write path, `P3-S02` selection handoff, `P3-S03` metadata prep) with stricter acceptance gates. README parity: no material repo-state change.
+
+- Docs/Roadmap Quality Cleanup (`docs/roadmap/v-next-NOTES.md`): resolve residual roadmap markdown structure debt (heading/list spacing and indentation) so validation/lint checks are clean before Phase 3 execution work. README parity: no material repo-state change.
 
 - Custom Component/Phase 2 Closure Hardening (`custom_components/spectra_ls/sensor.py`, `custom_components/spectra_ls/binary_sensor.py`, `docs/testing/raw/p2_registry_router_verification.jinja`, `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md`, `docs/testing/raw/p2_negative_case_regression.jinja`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`, `docs/roadmap/v-next-NOTES.md`): expose registry/route-trace/contract-validation diagnostics on shadow entities, add snapshot freshness gating to P2 verification, and add an explicit negative-case regression template for alarm-path validation before Phase 3 planning. README parity: no material repo-state change.
 

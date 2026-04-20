@@ -1,5 +1,5 @@
-# Description: Data coordinator for Spectra LS read-only shadow parity and Phase 2 deterministic registry/router validation scaffolding.
-# Version: 2026.04.19.3
+# Description: Data coordinator for Spectra LS parity diagnostics and Phase 3 guarded routing write-path controls.
+# Version: 2026.04.19.6
 # Last updated: 2026-04-19
 
 from __future__ import annotations
@@ -7,7 +7,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime
 import logging
+from time import monotonic
 from typing import Any
+from uuid import uuid4
 
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.event import async_track_state_change_event
@@ -17,9 +19,14 @@ from .const import (
     DOMAIN,
     LEGACY_CONTROL_HOST,
     LEGACY_CONTROL_TARGETS,
+    LEGACY_ACTIVE_TARGET_HELPER,
     LEGACY_ROOMS_JSON,
     LEGACY_ROOMS_RAW,
     LEGACY_SURFACES,
+    WRITE_AUTH_ALLOWED,
+    WRITE_AUTH_COMPONENT,
+    WRITE_AUTH_LEGACY,
+    WRITE_DEBOUNCE_SECONDS,
 )
 from .registry import build_registry_snapshot
 from .router import build_route_trace
@@ -46,6 +53,15 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             name=f"{DOMAIN}_shadow_parity",
         )
         self._unsub_state_events = None
+        self._write_authority_mode = WRITE_AUTH_LEGACY
+        self._write_debounce_s = float(WRITE_DEBOUNCE_SECONDS)
+        self._write_in_progress = False
+        self._last_write_monotonic = 0.0
+        self._last_write_attempt: dict[str, Any] = {
+            "status": "never_attempted",
+            "timestamp": None,
+            "reason": "No write attempts yet",
+        }
 
     async def async_setup(self) -> None:
         """Initialize data and state listeners."""
@@ -84,6 +100,117 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             return LegacySnapshot(value=bool_value, state=state.state, available=available)
 
         return LegacySnapshot(value=state.state if available else "", state=state.state, available=available)
+
+    @staticmethod
+    def _normalize_write_authority(mode: str) -> str:
+        normalized = (mode or "").strip().lower()
+        return normalized if normalized in WRITE_AUTH_ALLOWED else WRITE_AUTH_LEGACY
+
+    def _build_write_controls(self) -> dict[str, Any]:
+        return {
+            "authority_mode": self._write_authority_mode,
+            "allowed_modes": list(WRITE_AUTH_ALLOWED),
+            "debounce_s": self._write_debounce_s,
+            "in_progress": self._write_in_progress,
+            "last_attempt": self._last_write_attempt,
+            "target_helper_entity": LEGACY_ACTIVE_TARGET_HELPER,
+        }
+
+    def _build_contract_validation(self) -> dict[str, Any]:
+        required_entities = {
+            "active_target": LEGACY_SURFACES["active_target"],
+            "active_control_path": LEGACY_SURFACES["active_control_path"],
+            "active_control_capable": LEGACY_SURFACES["active_control_capable"],
+            "control_hosts": LEGACY_SURFACES["control_hosts"],
+            "control_host": LEGACY_CONTROL_HOST,
+            "control_targets": LEGACY_CONTROL_TARGETS,
+            "rooms_json": LEGACY_ROOMS_JSON,
+            "rooms_raw": LEGACY_ROOMS_RAW,
+        }
+        missing_required = [
+            key for key, entity_id in required_entities.items() if self.hass.states.get(entity_id) is None
+        ]
+        return {
+            "required_entities": required_entities,
+            "missing_required": missing_required,
+            "valid": len(missing_required) == 0,
+        }
+
+    def _build_selection_handoff_validation(
+        self,
+        *,
+        parity: dict[str, Any],
+        route_trace: dict[str, Any],
+        contract_validation: dict[str, Any],
+    ) -> dict[str, Any]:
+        helper_state = self.hass.states.get(LEGACY_ACTIVE_TARGET_HELPER)
+        helper_exists = helper_state is not None
+        helper_options_attr = helper_state.attributes.get("options", []) if helper_state is not None else []
+        helper_options = (
+            [str(item) for item in helper_options_attr if isinstance(item, str)]
+            if isinstance(helper_options_attr, list)
+            else []
+        )
+
+        active_target = str(parity.get("active_target", "") or "").strip()
+        active_target_resolved = active_target.lower() not in {"", "none", "unknown", "unavailable"}
+        target_in_helper_options = active_target_resolved and active_target in helper_options
+
+        required_scripts = [
+            "script.ma_update_target_options",
+            "script.ma_auto_select",
+            "script.ma_cycle_target",
+        ]
+        missing_scripts = [entity_id for entity_id in required_scripts if self.hass.states.get(entity_id) is None]
+
+        required_automation_ids = [
+            "ma_update_target_options_start",
+            "ma_auto_select_loop",
+            "ma_track_last_valid_target",
+        ]
+        available_automation_ids = {
+            str(state.attributes.get("id", ""))
+            for state in self.hass.states.async_all("automation")
+            if isinstance(state.attributes.get("id", ""), str)
+        }
+        missing_automation_ids = [
+            automation_id for automation_id in required_automation_ids if automation_id not in available_automation_ids
+        ]
+
+        route_decision = str(route_trace.get("decision", "") or "")
+        route_ready = route_decision == "route_linkplay_tcp"
+        contract_valid = bool(contract_validation.get("valid", False))
+
+        verdict = "PASS"
+        if not helper_exists or not active_target_resolved or not route_ready or not contract_valid:
+            verdict = "FAIL"
+        elif (
+            not helper_options
+            or not target_in_helper_options
+            or len(missing_scripts) > 0
+            or len(missing_automation_ids) > 0
+        ):
+            verdict = "WARN"
+
+        return {
+            "verdict": verdict,
+            "ready_for_handoff": verdict == "PASS",
+            "active_target": active_target,
+            "route_decision": route_decision,
+            "contract_valid": contract_valid,
+            "helper": {
+                "entity_id": LEGACY_ACTIVE_TARGET_HELPER,
+                "exists": helper_exists,
+                "options_count": len(helper_options),
+                "target_in_options": target_in_helper_options,
+            },
+            "compatibility": {
+                "required_scripts": required_scripts,
+                "missing_scripts": missing_scripts,
+                "required_automation_ids": required_automation_ids,
+                "missing_automation_ids": missing_automation_ids,
+            },
+        }
 
     def _build_snapshot(self) -> dict[str, Any]:
         active_target = self._snapshot_for_entity(LEGACY_SURFACES["active_target"])
@@ -138,6 +265,13 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             registry=registry,
         )
 
+        contract_validation = self._build_contract_validation()
+        selection_handoff_validation = self._build_selection_handoff_validation(
+            parity=parity,
+            route_trace=route_trace,
+            contract_validation=contract_validation,
+        )
+
         return {
             "legacy": legacy,
             "parity": parity,
@@ -145,6 +279,9 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "mismatches": mismatches,
             "registry": registry,
             "route_trace": route_trace,
+            "contract_validation": contract_validation,
+            "selection_handoff_validation": selection_handoff_validation,
+            "write_controls": self._build_write_controls(),
             "captured_at": datetime.now(UTC).isoformat(),
         }
 
@@ -155,28 +292,152 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     async def async_validate_contracts(self) -> None:
         """Refresh parity data and emit contract validation visibility in snapshot."""
         data = self._build_snapshot()
-        required_entities = {
-            "active_target": LEGACY_SURFACES["active_target"],
-            "active_control_path": LEGACY_SURFACES["active_control_path"],
-            "active_control_capable": LEGACY_SURFACES["active_control_capable"],
-            "control_hosts": LEGACY_SURFACES["control_hosts"],
-            "control_host": LEGACY_CONTROL_HOST,
-            "control_targets": LEGACY_CONTROL_TARGETS,
-            "rooms_json": LEGACY_ROOMS_JSON,
-            "rooms_raw": LEGACY_ROOMS_RAW,
-        }
-        missing_required = [
-            key for key, entity_id in required_entities.items() if self.hass.states.get(entity_id) is None
-        ]
-        data["contract_validation"] = {
-            "required_entities": required_entities,
-            "missing_required": missing_required,
-            "valid": len(missing_required) == 0,
-        }
+        data["contract_validation"] = self._build_contract_validation()
         self.async_set_updated_data(data)
 
     async def async_dump_route_trace(self) -> None:
         """Refresh parity data so latest route trace appears in diagnostics."""
+        self.async_set_updated_data(self._build_snapshot())
+
+    async def async_validate_selection_handoff(self) -> None:
+        """Refresh parity data and emit selection-handoff validation diagnostics."""
+        self.async_set_updated_data(self._build_snapshot())
+
+    async def async_set_write_authority(self, mode: str, reason: str = "") -> None:
+        """Set write authority mode for guarded routing write-path trials."""
+        normalized_mode = self._normalize_write_authority(mode)
+        self._write_authority_mode = normalized_mode
+        self._last_write_attempt = {
+            "status": "authority_set",
+            "timestamp": datetime.now(UTC).isoformat(),
+            "authority_mode": normalized_mode,
+            "reason": (reason or "").strip() or "Authority mode updated",
+            "correlation_id": f"authority-{uuid4().hex[:12]}",
+        }
+        self.async_set_updated_data(self._build_snapshot())
+
+    async def async_route_write_trial(self, correlation_id: str | None = None, force: bool = False) -> None:
+        """Attempt a guarded routing write to the active-target helper."""
+        corr = (correlation_id or "").strip() or f"route-write-{uuid4().hex[:12]}"
+        now_iso = datetime.now(UTC).isoformat()
+        snapshot = self._build_snapshot()
+        route_trace = snapshot.get("route_trace", {})
+        active_target = str(route_trace.get("active_target", "") or "").strip()
+        route_decision = str(route_trace.get("decision", "") or "").strip()
+        helper_state = self.hass.states.get(LEGACY_ACTIVE_TARGET_HELPER)
+
+        result: dict[str, Any] = {
+            "timestamp": now_iso,
+            "correlation_id": corr,
+            "authority_mode": self._write_authority_mode,
+            "force": bool(force),
+            "route_decision": route_decision,
+            "active_target": active_target,
+            "target_helper_entity": LEGACY_ACTIVE_TARGET_HELPER,
+        }
+
+        if self._write_authority_mode != WRITE_AUTH_COMPONENT:
+            result.update(
+                {
+                    "status": "blocked_authority",
+                    "reason": "Write authority is legacy; component write is intentionally blocked",
+                }
+            )
+        elif self._write_in_progress and not force:
+            result.update(
+                {
+                    "status": "blocked_reentrancy",
+                    "reason": "A prior write attempt is still in progress",
+                }
+            )
+        elif not force and self._last_write_monotonic > 0:
+            elapsed = monotonic() - self._last_write_monotonic
+            if elapsed < self._write_debounce_s:
+                result.update(
+                    {
+                        "status": "blocked_debounce",
+                        "reason": "Debounce guard active",
+                        "elapsed_s": round(elapsed, 3),
+                        "debounce_s": self._write_debounce_s,
+                    }
+                )
+        if "status" not in result and route_decision != "route_linkplay_tcp":
+            result.update(
+                {
+                    "status": "blocked_route_decision",
+                    "reason": "Route decision is not eligible for P3-S01 routing write trial",
+                }
+            )
+        if "status" not in result and active_target.lower() in {"", "none", "unknown", "unavailable"}:
+            result.update(
+                {
+                    "status": "blocked_target_missing",
+                    "reason": "Active target is unresolved",
+                }
+            )
+        if "status" not in result and helper_state is None:
+            result.update(
+                {
+                    "status": "blocked_missing_target_helper",
+                    "reason": "Target helper entity is missing",
+                }
+            )
+
+        helper_options: list[str] = []
+        if helper_state is not None:
+            options_attr = helper_state.attributes.get("options", [])
+            if isinstance(options_attr, list):
+                helper_options = [str(item) for item in options_attr if isinstance(item, str)]
+
+        if "status" not in result and helper_options and active_target not in helper_options:
+            result.update(
+                {
+                    "status": "blocked_option_mismatch",
+                    "reason": "Active target is not present in helper options",
+                    "helper_options_count": len(helper_options),
+                }
+            )
+
+        helper_current = helper_state.state if helper_state is not None else ""
+        if "status" not in result and helper_current == active_target:
+            result.update(
+                {
+                    "status": "noop_already_selected",
+                    "reason": "Target helper already matches active target",
+                }
+            )
+
+        if "status" not in result:
+            self._write_in_progress = True
+            try:
+                await self.hass.services.async_call(
+                    "input_select",
+                    "select_option",
+                    {
+                        "entity_id": LEGACY_ACTIVE_TARGET_HELPER,
+                        "option": active_target,
+                    },
+                    blocking=True,
+                )
+                result.update(
+                    {
+                        "status": "write_applied",
+                        "reason": "Guarded routing write was applied successfully",
+                    }
+                )
+            except Exception as err:  # pragma: no cover - defensive runtime guard
+                result.update(
+                    {
+                        "status": "write_error",
+                        "reason": "Service call failed during guarded routing write",
+                        "error": str(err),
+                    }
+                )
+            finally:
+                self._write_in_progress = False
+
+        self._last_write_monotonic = monotonic()
+        self._last_write_attempt = result
         self.async_set_updated_data(self._build_snapshot())
 
     @callback

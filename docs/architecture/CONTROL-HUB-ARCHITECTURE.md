@@ -1,5 +1,5 @@
 <!-- Description: Retroactive architecture and feature documentation for the MA control hub package split. -->
-<!-- Version: 2026.04.19.1 -->
+<!-- Version: 2026.04.19.2 -->
 <!-- Last updated: 2026-04-19 -->
 
 # MA Control Hub Architecture (Retroactive Baseline)
@@ -110,6 +110,25 @@ This contract is required across readers of:
 - `ma_set_volume` and `ma_set_balance` are intentionally disabled (read-only write path policy).
 - Route support is currently practical for `linkplay_tcp`; other routes are classified but not direct-routed by runtime.
 - Legacy helper names are still part of active runtime contract.
+
+## Component migration interaction contract (P3-S01)
+
+During guarded migration trials, the custom component may attempt routing writes to
+`input_select.ma_active_target` only when explicit authority mode is set to `component`.
+
+Implemented guard controls in `custom_components/spectra_ls` include:
+
+- single-writer authority mode (`legacy` default, `component` opt-in),
+- guarded manual route-write trial path (no broad autonomous write loop),
+- debounce and reentrancy protections,
+- route-decision eligibility gate (`route_linkplay_tcp` only in P3-S01),
+- correlation-id and last-attempt diagnostics (`write_controls`).
+
+Compatibility posture:
+
+- legacy control-hub remains source-of-truth by default,
+- component write behavior is explicitly opt-in and reversible,
+- metadata/selection broader ownership remains deferred to later P3 slices.
 
 ## Change discipline for future slices
 

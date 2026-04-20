@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.19.9 -->
+<!-- Version: 2026.04.19.14 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -114,9 +114,33 @@ Execution playbook reference: `docs/program/PARALLEL-PROGRAM-PLAYBOOK.md`.
 
 | Slice | Phase | Runtime Track | Component Track | Parity | Risk | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| P1-S01 | 1 | Implemented (legacy source-of-truth retained) | Active (read-only shadow parity) | Pending | Low | Active |
-| P2-S01 | 2 | Implemented (legacy route contracts retained) | Implemented (registry/router scaffold; read-only) | Pending | Low | Implemented |
+| P1-S01 | 1 | Implemented (legacy source-of-truth retained) | Implemented (read-only shadow parity) | Implemented | Low | Implemented |
+| P2-S01 | 2 | Implemented (legacy route contracts retained) | Implemented (registry/router scaffold; read-only) | Implemented | Low | Implemented |
 | P2-S02 | 2 | Implemented (legacy route contracts retained) | Implemented (deterministic validation hardening + P2 diagnostics closure) | Implemented | Low | Implemented |
+| P3-S01 | 3 | Active (legacy write authority retained behind switch) | Implemented (guard framework + manual routing write trial services) | Pending | Medium | Active |
+| P3-S02 | 3 | Active (selection scripts/automations compatibility shim validation) | Active (one-shot validation sequence + selection handoff diagnostics) | Pending | High | Active |
+| P3-S03 | 3 | Planned (metadata ownership deferred/compatibility mode) | Planned (metadata prep + observability, no full cutover) | Planned | Medium | Planned |
+
+## P1/P2 validation snapshot (2026-04-19)
+
+Validated now:
+
+- P2 verification template score observed at `8/8` with deterministic route decision and contract-valid diagnostics.
+- Component diagnostic surfaces now include `registry`, `route_trace`, `contract_validation`, and `captured_at` freshness gating.
+- Legacy source-of-truth surfaces remain in place (`sensor.ma_*` / `binary_sensor.ma_*`) and component remains read-only.
+
+Known evidence boundary (explicit):
+
+- Validation is strong for documented parity templates and code-surface audit, but live HA runtime can still drift due to environment timing/restart state.
+- Any Phase 3 write-path activation must re-run parity templates and include fresh proof artifacts in the same change set.
+
+Latest runtime proof artifact (2026-04-19):
+
+- P2 verification output: `PASS`, score `8/8`.
+- Route trace decision: `route_linkplay_tcp`.
+- Contract validation: `ready=true`, `valid=true`, `missing_required=0`.
+- Parity drift: `unresolved_sources=0`, `mismatches=0`.
+- Snapshot freshness: `true` (captured-at age within threshold).
 
 ## Phase 0 — Charter + contract freeze
 
@@ -211,13 +235,53 @@ Implement the first read-only parity slice for routing core visibility without i
 
 ## Phase 3 — Controlled write path (dual-write)
 
-- Start orchestration writes behind compatibility shims.
+- Slice into explicit sub-phases to prevent blended ownership:
+  - **P3-S01 (Routing write path only):** target + host route writes behind a runtime authority switch.
+  - **P3-S02 (Selection handoff):** controlled handoff of target-selection orchestration with legacy compatibility shims.
+  - **P3-S03 (Metadata prep):** metadata ownership instrumentation and parity checks, no premature full metadata cutover.
 - Preserve existing helper/script endpoints expected by ESPHome and dashboards.
-- Add anti-loop safeguards (correlation IDs/debounce windows/reentrancy guards).
+- Add anti-loop safeguards (correlation IDs/debounce windows/reentrancy guards + single-writer guard).
+- Keep fallback policy explicit: no silent static-fallback enablement when fallback is configured off.
+
+### P3-S01 implementation status (2026-04-19)
+
+Implemented in component:
+
+- Single-writer authority mode control (`legacy` default, `component` opt-in) via service contract.
+- Guarded manual route-write trial service bound to route-trace decision eligibility.
+- Loop/flap protections: authority gate, debounce window, reentrancy guard, and correlation IDs.
+- Write-control diagnostics exposed in shadow entity attributes and coordinator snapshot.
+
+Not yet claimed complete:
+
+- P3-S01 parity/soak closeout is pending runtime trial evidence under `component` authority mode.
+
+### P3-S02 implementation checkpoint (2026-04-19)
+
+Implemented in component:
+
+- one-shot `run_p3_s02_sequence` orchestration for selection-handoff validation,
+- optional guarded write-trial execution inside the sequence (explicit operator toggle),
+- snapshot diagnostics payload `selection_handoff_validation` for helper/options + legacy compatibility shim checks,
+- raw operator template for S02 verdict checks (`docs/testing/raw/p3_s02_selection_handoff_validation.jinja`).
+
+Not yet claimed complete:
+
+- full selection ownership handoff behavior remains pending after sustained runtime evidence and compatibility soak.
+
+Latest runtime proof artifact (2026-04-19):
+
+- Template verdict: `PASS` (`p3_s02_selection_handoff_validation.jinja`).
+- Authority/route: `component` + `route_linkplay_tcp`.
+- Contract validation: `ready=true`, `valid=true`.
+- Handoff diagnostics: `payload_ready=true`, `verdict=PASS`, `helper_exists=true`, `target_in_options=true`, `missing_scripts=0`, `missing_automation_ids=0`.
 
 ### Phase 3 exit criteria
 
 - No route or selection flapping under dual-write operation.
+- Single-writer authority is provable at any instant (legacy or component, never both).
+- Rollback switch restores legacy authority without contract breakage.
+- P2 parity templates still PASS after P3-S01 and P3-S02 trials.
 
 ## Phase 4 — Functional expansion beyond setup/settings
 
@@ -225,10 +289,12 @@ Implement the first read-only parity slice for routing core visibility without i
 - Profile APIs + options flow integration.
 - Programmable action catalog.
 - Crossfade/balance service layer implementation.
+- Capability-matrix gating for per-feature routing (not only boolean control-capable).
 
 ### Phase 4 exit criteria
 
 - New features operate through component contracts while legacy surfaces remain intact.
+- Sensitive actions use explicit safety gates (confirm/cooldown/audit).
 
 ## Phase 5 — Domain cutover + legacy retirement
 
@@ -293,6 +359,13 @@ If new findings force strategy changes mid-slice:
 3. **Parser shape regressions** across string/native payload forms.
 4. **Target ambiguity regressions** in discovery/routing transitions.
 5. **Naming migration blast radius** if cleanup starts before gates.
+
+## Known tough spots (must be surfaced, not glossed)
+
+1. **Selection-loop risk (High):** `ma_auto_select` + broad `state_changed` automation triggers can fight component write trials unless single-writer + debounce guards are active.
+2. **Fallback ambiguity risk (Medium):** static host/entity fallback branches still exist and can mask discovery-routing regressions when enabled.
+3. **Parser contract risk (Medium):** dual-mode payload parsing is broad and duplicated; regressions can appear if component payload shape drifts.
+4. **Authority boundary risk (High):** routing, selection, and metadata are coupled in legacy templates; P3 must avoid multi-domain write activation in one slice.
 
 ## Verification matrix
 

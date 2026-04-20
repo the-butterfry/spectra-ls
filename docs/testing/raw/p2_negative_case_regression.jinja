@@ -1,5 +1,5 @@
 {# Description: Raw copy/paste Jinja template for Spectra LS Phase 2 negative-case regression validation. #}
-{# Version: 2026.04.19.1 #}
+{# Version: 2026.04.19.2 #}
 {# Last updated: 2026-04-19 #}
 
 {# =========================
@@ -29,6 +29,8 @@
 {% set parity_signal_present = (parity_unresolved | length) > 0 or (parity_mismatches | length) > 0 %}
 {% set diagnostics_present = route_decision not in ['','none','unknown','unavailable'] and route_reason not in ['','none','unknown','unavailable'] %}
 
+{% set healthy_route = route_decision == 'route_linkplay_tcp' and (parity_unresolved | length) == 0 and (parity_mismatches | length) == 0 and contract_valid %}
+
 {% set verdict = 'FAIL' %}
 {% if observed_defer and diagnostics_present %}
   {% set verdict = 'PASS' %}
@@ -49,13 +51,21 @@
 ### Negative-case signals
 - Defer decision observed: **{{ observed_defer }}**
 - Diagnostics present: **{{ diagnostics_present }}**
+- Healthy-route observed instead of negative case: **{{ healthy_route }}**
 - Parity unresolved count: **{{ parity_unresolved | length }}**
 - Parity mismatch count: **{{ parity_mismatches | length }}**
 - Contract valid: **{{ contract_valid }}**
 
+### Execution semantics
+- Service checkmarks in HA Actions only confirm the service call executed.
+- Checkmarks do **not** prove expected negative-case route behavior; use route decision/reason above as source of truth.
+
 ### Interpretation
 {% if verdict == 'PASS' %}
 - Negative-case routing produced explicit defer diagnostics as expected.
+{% elif healthy_route %}
+- The system stayed on a healthy route (`route_linkplay_tcp`), so no negative case was actually injected.
+- Intentionally create one bad condition first, then rerun services and this template.
 {% elif verdict == 'WARN' %}
 - Some warning signals are present, but expected defer diagnostics are incomplete. Confirm route decision/reason after rerunning services.
 {% else %}

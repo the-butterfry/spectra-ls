@@ -1,5 +1,5 @@
 <!-- Description: Operator runbook for small soak validation of Spectra LS P3-S01 and P3-S02 one-shot sequences. -->
-<!-- Version: 2026.04.19.1 -->
+<!-- Version: 2026.04.19.2 -->
 <!-- Last updated: 2026-04-19 -->
 
 # P3 S01+S02 Small Soak Protocol (`spectra_ls`)
@@ -33,6 +33,16 @@ Purpose: collect enough runtime evidence to graduate P3-S02 from **Active/Pendin
 ## Optional stress pass (after baseline 3/3 PASS)
 
 Run one additional S02 cycle with `run_write_trial=true` and a unique `correlation_id`.
+
+## Closure gate check (required before status flip)
+
+1. Render: `docs/testing/raw/p3_s01_s02_closure_gate_check.jinja`.
+2. Populate operator evidence inputs at top of the template:
+   - `observed_soak_pass_cycles`
+   - `observed_soak_attempts`
+   - `observed_distinct_pass_targets`
+   - `single_capable_topology_waiver`
+3. Record the output verdict and gate breakdown in closure notes.
 
 ## Cycle evidence log
 

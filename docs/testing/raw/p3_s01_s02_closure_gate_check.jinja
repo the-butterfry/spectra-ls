@@ -1,0 +1,129 @@
+{# Description: Raw copy/paste Jinja template for Spectra LS Phase 3 S01/S02 closure gate decision. #}
+{# Version: 2026.04.19.1 #}
+{# Last updated: 2026-04-19 #}
+
+{# =========================
+  Phase 3 S01/S02 Closure Gate Check (custom_components/spectra_ls)
+  Purpose: single deterministic closeout verdict for P3-S01/S02.
+
+  Operator inputs (edit these 4 values before running):
+    - observed_soak_pass_cycles
+    - observed_soak_attempts
+    - observed_distinct_pass_targets
+    - single_capable_topology_waiver
+
+  Notes:
+  - This template does NOT replace S01/S02 templates; it consumes their expected outcomes + soak evidence.
+  - Use after running one-shot and soak protocol evidence capture.
+  ========================= #}
+
+{% set observed_soak_pass_cycles = 3 %}
+{% set observed_soak_attempts = 5 %}
+{% set observed_distinct_pass_targets = 1 %}
+{% set single_capable_topology_waiver = true %}
+
+{% set s_target = 'sensor.shadow_active_target' if states['sensor.shadow_active_target'] is not none else 'sensor.spectra_ls_shadow_active_target' %}
+{% set s_path = 'sensor.shadow_active_control_path' if states['sensor.shadow_active_control_path'] is not none else 'sensor.spectra_ls_shadow_active_control_path' %}
+
+{% set active_target = states(s_target) %}
+{% set active_path = states(s_path) %}
+
+{% set route_trace = state_attr(s_target,'route_trace') or {} %}
+{% set route_decision = route_trace.decision if route_trace is mapping and route_trace.decision is defined else '' %}
+{% set route_reason = route_trace.reason if route_trace is mapping and route_trace.reason is defined else '' %}
+
+{% set contract_validation = state_attr(s_target,'contract_validation') or {} %}
+{% set contract_ready = contract_validation is mapping and contract_validation.valid is defined %}
+{% set contract_valid = contract_validation.valid if contract_ready else false %}
+{% set missing_required = contract_validation.missing_required if contract_ready and contract_validation.missing_required is defined else [] %}
+
+{% set parity_unresolved = state_attr(s_target,'unresolved_sources') or [] %}
+{% set parity_mismatches = state_attr(s_target,'mismatches') or [] %}
+
+{% set write_controls = state_attr(s_target,'write_controls') or {} %}
+{% set authority_mode = write_controls.authority_mode if write_controls is mapping and write_controls.authority_mode is defined else '' %}
+{% set last_attempt = write_controls.last_attempt if write_controls is mapping and write_controls.last_attempt is defined and write_controls.last_attempt is mapping else {} %}
+{% set last_status = last_attempt.status if last_attempt is mapping and last_attempt.status is defined else 'missing' %}
+{% set last_reason = last_attempt.reason if last_attempt is mapping and last_attempt.reason is defined else '' %}
+
+{% set handoff = state_attr(s_target,'selection_handoff_validation') or {} %}
+{% set handoff_verdict = handoff.verdict if handoff is mapping and handoff.verdict is defined else 'missing' %}
+{% set handoff_ready = handoff.ready_for_handoff if handoff is mapping and handoff.ready_for_handoff is defined else false %}
+{% set compat = handoff.compatibility if handoff is mapping and handoff.compatibility is defined and handoff.compatibility is mapping else {} %}
+{% set missing_scripts = compat.missing_scripts if compat is mapping and compat.missing_scripts is defined else [] %}
+{% set missing_automation_ids = compat.missing_automation_ids if compat is mapping and compat.missing_automation_ids is defined else [] %}
+
+{% set pass_status_component = ['write_applied', 'noop_already_selected', 'blocked_debounce', 'blocked_reentrancy'] %}
+
+{% set gate_route_ok = route_decision == 'route_linkplay_tcp' %}
+{% set gate_contract_ok = contract_ready and contract_valid and (missing_required | length) == 0 %}
+{% set gate_parity_ok = (parity_unresolved | length) == 0 and (parity_mismatches | length) == 0 %}
+{% set gate_s01_ok = authority_mode == 'component' and last_status in pass_status_component %}
+{% set gate_s02_ok = handoff_verdict == 'PASS' and handoff_ready and (missing_scripts | length) == 0 and (missing_automation_ids | length) == 0 %}
+{% set gate_soak_cycles_ok = observed_soak_pass_cycles >= 3 %}
+{% set gate_distinct_targets_ok = observed_distinct_pass_targets >= 2 or single_capable_topology_waiver %}
+
+{% set gate_ok_count = 0 %}
+{% if gate_route_ok %}{% set gate_ok_count = gate_ok_count + 1 %}{% endif %}
+{% if gate_contract_ok %}{% set gate_ok_count = gate_ok_count + 1 %}{% endif %}
+{% if gate_parity_ok %}{% set gate_ok_count = gate_ok_count + 1 %}{% endif %}
+{% if gate_s01_ok %}{% set gate_ok_count = gate_ok_count + 1 %}{% endif %}
+{% if gate_s02_ok %}{% set gate_ok_count = gate_ok_count + 1 %}{% endif %}
+{% if gate_soak_cycles_ok %}{% set gate_ok_count = gate_ok_count + 1 %}{% endif %}
+{% if gate_distinct_targets_ok %}{% set gate_ok_count = gate_ok_count + 1 %}{% endif %}
+
+{% set verdict = 'PASS' %}
+{% if gate_ok_count < 5 %}
+  {% set verdict = 'FAIL' %}
+{% elif gate_ok_count < 7 %}
+  {% set verdict = 'WARN' %}
+{% endif %}
+
+### Phase 3 S01/S02 Closure Gate Check (`spectra_ls`)
+- Result: **{{ verdict }}**
+- Timestamp: **{{ now() }}**
+- Gate score: **{{ gate_ok_count }}/7**
+
+### Runtime context
+- Active target (`{{ s_target }}`): **{{ active_target }}**
+- Active path (`{{ s_path }}`): **{{ active_path }}**
+- Route decision/reason: **{{ route_decision if route_decision != '' else 'n/a' }}** / **{{ route_reason if route_reason != '' else 'n/a' }}**
+- Authority mode: **{{ authority_mode if authority_mode != '' else 'n/a' }}**
+- Last write attempt: **{{ last_status }}** (reason={{ last_reason if last_reason != '' else 'n/a' }})
+- Handoff verdict/ready: **{{ handoff_verdict }} / {{ handoff_ready }}**
+
+### Soak evidence inputs (operator-supplied)
+- Observed soak pass cycles: **{{ observed_soak_pass_cycles }}**
+- Observed soak attempts: **{{ observed_soak_attempts }}**
+- Observed distinct PASS targets: **{{ observed_distinct_pass_targets }}**
+- Single-capable-topology waiver enabled: **{{ single_capable_topology_waiver }}**
+
+### Gate breakdown
+- Route is eligible (`route_linkplay_tcp`): **{{ gate_route_ok }}**
+- Contract valid + no missing required: **{{ gate_contract_ok }}**
+- Parity clean (`unresolved=0`, `mismatches=0`): **{{ gate_parity_ok }}**
+- S01 guarded-write status healthy: **{{ gate_s01_ok }}**
+- S02 handoff compatibility healthy: **{{ gate_s02_ok }}**
+- Soak cycles sufficient (>=3): **{{ gate_soak_cycles_ok }}**
+- Distinct target gate (>=2 or waiver): **{{ gate_distinct_targets_ok }}**
+
+### Compatibility details
+- Missing required contract entities: **{{ missing_required | length }}**
+- Missing scripts: **{{ missing_scripts | length }}**
+- Missing automation IDs: **{{ missing_automation_ids | length }}**
+- Parity unresolved/mismatches: **{{ parity_unresolved | length }} / {{ parity_mismatches | length }}**
+
+### Closure recommendation
+{% if verdict == 'PASS' %}
+- **Recommend close P3-S01:** Yes
+- **Recommend close P3-S02:** Yes
+- Record closure note in roadmap + v-next + changelog with the soak/waiver evidence above.
+{% elif verdict == 'WARN' %}
+- **Recommend close P3-S01:** {{ 'Yes' if gate_s01_ok and gate_route_ok and gate_contract_ok and gate_parity_ok else 'No' }}
+- **Recommend close P3-S02:** No
+- Remaining blockers are listed in the gate breakdown; resolve and rerun.
+{% else %}
+- **Recommend close P3-S01:** No
+- **Recommend close P3-S02:** No
+- Resolve FAIL gates first; do not advance to P3-S03/Phase 4.
+{% endif %}

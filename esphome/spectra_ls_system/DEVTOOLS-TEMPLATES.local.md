@@ -1,5 +1,5 @@
 <!-- Description: Copy/paste Home Assistant Dev Tools template diagnostics for Spectra LS System. -->
-<!-- Version: 2026.04.19.27 -->
+<!-- Version: 2026.04.19.28 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Spectra LS System — Dev Tools Template Validation
@@ -17,6 +17,7 @@
   - `docs/testing/raw/p3_s01_guarded_write_validation.jinja`
   - `docs/testing/raw/p3_s02_selection_handoff_validation.jinja`
   - `docs/testing/raw/p3_s01_s02_soak_protocol.md`
+  - `docs/testing/raw/p3_s01_s02_closure_gate_check.jinja`
 
 ## 1) Overall Spectra LS Health Check (Comprehensive)
 
@@ -1886,6 +1887,11 @@ Unavailable core entities:
 
 - Operator runbook file: `docs/testing/raw/p3_s01_s02_soak_protocol.md`
 - Use this after baseline S01/S02 PASS to perform compact multi-cycle target-switch soak evidence collection before graduating P3-S02 from Active/Pending.
+
+## 22) Phase 3 Closure Gate Check (S01 + S02) — Custom Component (`spectra_ls`)
+
+- Raw copy/paste file (no markdown fences): `docs/testing/raw/p3_s01_s02_closure_gate_check.jinja`
+- Use this after soak collection to produce one deterministic closure verdict covering route/contract/parity/S01/S02 gates plus the distinct-target (or explicit single-capable waiver) decision.
 
 <!-- EOF -->
 

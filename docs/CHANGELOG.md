@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.19.51 -->
+<!-- Version: 2026.04.19.52 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Changelog
 
 ## 2026-04-19
+
+- Validation/P3 Closure Gate Tooling (`docs/testing/raw/p3_s01_s02_closure_gate_check.jinja`, `docs/testing/raw/p3_s01_s02_soak_protocol.md`, `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): add a single deterministic closeout template that combines S01 guard status, S02 handoff status, parity/contract checks, and explicit soak evidence inputs (including single-capable-topology waiver handling) so P3-S01/S02 closure decisions are evidence-driven and reproducible without broad multi-template interpretation drift. README parity: no material repo-state change.
 
 - ESPHome/Audio Warning Noise Reduction (`esphome/control-py/packages/spectra-ls-audio-tcp.yaml`, mirrored in `esphome/spectra_ls_system/packages/spectra-ls-audio-tcp.yaml`): remove unused Home Assistant numeric mirror sensor for `sensor.ma_active_volume` (`id: ha_audio_volume`) to eliminate repeated ESPHome conversion warnings when MA volume is transiently `unknown` during startup/reconnect windows; no control-path behavior changes. README parity: no material repo-state change.
 

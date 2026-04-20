@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.20.34 -->
+<!-- Version: 2026.04.20.35 -->
 <!-- Last updated: 2026-04-20 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -445,6 +445,10 @@ Hardening pass-2 (2026-04-20):
 
 - F4 one-shot sequence services (`run_f4_s01_sequence`, `run_f4_s02_sequence`, `run_f4_s03_sequence`) now report explicit stage-failure context when action execution errors occur, improving operator debugging and reducing opaque "Unknown error" outcomes.
 - F4-S03 dependency access is now guarded against nullable action-catalog payloads during snapshot builds and callback refresh failures are contained to logged diagnostics, preventing repeated event-dispatch exception cascades.
+
+Hardening pass-3 (2026-04-20):
+
+- F4-S03 payload now includes explicit dependency context (`active_target_resolved`, `route_decision`, `blocking_reasons`) and operator validation template guidance for dependency-only/no-target WARN captures (`f4_s02_not_ready`, `route_deferred_no_target`) with deterministic legacy-mode rerun order.
 
 Open before F4-S03 closeout:
 

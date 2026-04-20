@@ -1,5 +1,5 @@
 # Description: Data coordinator for Spectra LS parity diagnostics, Phase 3 guarded routing write-path controls, and Phase 4 diagnostics scaffolding (F4-S01/F4-S03).
-# Version: 2026.04.20.12
+# Version: 2026.04.20.13
 # Last updated: 2026-04-20
 
 from __future__ import annotations
@@ -508,6 +508,8 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     ) -> dict[str, Any]:
         action_validation = action_catalog_validation if isinstance(action_catalog_validation, dict) else {}
         route_decision = str(route_trace.get("decision", "") or "")
+        active_target = str(route_trace.get("active_target", "") or "").strip()
+        active_target_resolved = active_target.lower() not in {"", "none", "unknown", "unavailable"}
         contract_valid = bool(contract_validation.get("valid", False))
         f4_s02_ready = bool(action_validation.get("ready_for_f4_s02", False))
 
@@ -582,6 +584,24 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         ):
             verdict = "WARN"
 
+        blocking_reasons: list[str] = []
+        if not checks["contract_valid"]:
+            blocking_reasons.append("contract_invalid")
+        if not checks["route_trace_present"]:
+            blocking_reasons.append("route_trace_missing")
+        if not checks["f4_s02_ready"]:
+            blocking_reasons.append("f4_s02_not_ready")
+        if not active_target_resolved:
+            blocking_reasons.append("active_target_unresolved")
+        if route_decision == "defer_no_target":
+            blocking_reasons.append("route_deferred_no_target")
+        if not checks["slider_schema_present"]:
+            blocking_reasons.append("slider_schema_missing")
+        if not checks["mode_profiles_present"]:
+            blocking_reasons.append("mode_profiles_missing")
+        if not checks["no_authority_expansion"]:
+            blocking_reasons.append("authority_expansion_detected")
+
         return {
             "verdict": verdict,
             "ready_for_f4_s03": verdict == "PASS",
@@ -590,6 +610,10 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "route_decision": route_decision,
             "dependency_reference": {
                 "ready_for_f4_s02": f4_s02_ready,
+                "active_target": active_target,
+                "active_target_resolved": active_target_resolved,
+                "route_decision": route_decision,
+                "blocking_reasons": blocking_reasons,
                 "schema_version": action_validation.get("action_schema", {}).get("schema_version", "missing")
                 if isinstance(action_validation.get("action_schema", {}), dict)
                 else "missing",

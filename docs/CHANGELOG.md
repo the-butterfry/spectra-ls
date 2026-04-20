@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.20.78 -->
+<!-- Version: 2026.04.20.79 -->
 <!-- Last updated: 2026-04-20 -->
 
 # Changelog
 
 ## 2026-04-20
+
+- Custom Component/F4-S03 None-Payload Crash Guard (`custom_components/spectra_ls/coordinator.py`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): fix runtime crash path where `crossfade_balance_validation` attempted `.get(...)` on a `None` `action_catalog_validation` object during snapshot builds (service and state-change callback paths), by normalizing upstream F4 payloads to mapping-safe defaults and hardening event callback snapshot refresh to fail-safe logging rather than uncaught callback exceptions. README parity: no material repo-state change.
 
 - Custom Component/F4 Sequence Hardening Pass-2 (`custom_components/spectra_ls/__init__.py`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): harden `run_f4_s01_sequence`, `run_f4_s02_sequence`, and `run_f4_s03_sequence` with explicit stage-level execution wrappers and surfaced failure stage context (instead of opaque unknown-action failures), preserving diagnostics-only behavior and legacy authority boundaries. README parity: no material repo-state change.
 

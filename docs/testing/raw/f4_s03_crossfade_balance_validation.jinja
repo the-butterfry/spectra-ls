@@ -1,5 +1,5 @@
 {# Description: Raw copy/paste Jinja template for Spectra LS Phase 4 Slice-03 crossfade/balance contract validation. #}
-{# Version: 2026.04.20.2 #}
+{# Version: 2026.04.20.3 #}
 {# Last updated: 2026-04-20 #}
 
 {# =========================
@@ -47,6 +47,7 @@
 {% set schema = f4.slider_domain_schema if f4 is mapping and f4.slider_domain_schema is defined and f4.slider_domain_schema is mapping else {} %}
 {% set modes = f4.mode_profiles if f4 is mapping and f4.mode_profiles is defined and f4.mode_profiles is mapping else {} %}
 {% set sample_plan = f4.sample_mix_plan if f4 is mapping and f4.sample_mix_plan is defined else {} %}
+{% set dependency = f4.dependency_reference if f4 is mapping and f4.dependency_reference is defined and f4.dependency_reference is mapping else {} %}
 
 {% set route_decision = route_trace.decision if route_trace is mapping and route_trace.decision is defined else '' %}
 {% set contract_valid = contract.valid if contract is mapping and contract.valid is defined else false %}
@@ -66,6 +67,8 @@
 {% set c_modes = checks.mode_profiles_present if checks.mode_profiles_present is defined else (modes | count) > 0 %}
 {% set c_no_auth_expansion = checks.no_authority_expansion if checks.no_authority_expansion is defined else authority_mode == 'legacy' %}
 {% set c_fresh = checks.snapshot_fresh if checks.snapshot_fresh is defined else snapshot_fresh %}
+{% set route_deferred_no_target = route_decision == 'defer_no_target' %}
+{% set only_f4_s02_gate_failing = c_payload and c_contract and c_route and (not c_f4_s02) and c_schema and c_modes and c_no_auth_expansion and c_fresh %}
 
 {% set gate_count = 0 %}
 {% if c_payload %}{% set gate_count = gate_count + 1 %}{% endif %}
@@ -103,6 +106,7 @@
 - Slider schema: **{{ schema }}**
 - Mode profiles: **{{ modes }}**
 - Sample mix plan: **{{ sample_plan }}**
+- Dependency context: **{{ dependency }}**
 
 ### Gate breakdown
 - Payload present: **{{ c_payload }}**
@@ -120,8 +124,13 @@
 - Proceed with bounded implementation evidence capture while preserving legacy authority boundaries.
 {% elif effective_verdict == 'WARN' %}
 - F4-S03 is partially ready in this capture.
-{% if not c_payload %}
-- Pre-implementation baseline detected: `crossfade_balance_validation` payload is not yet emitted; complete F4-S03 diagnostics service/payload wiring, then rerun this template.
+{% if only_f4_s02_gate_failing and route_deferred_no_target %}
+- WARN is dependency-only with no active target (`route_decision=defer_no_target`).
+- Set or confirm an active target, then rerun in order: `run_f4_s01_sequence` → `run_f4_s02_sequence` → `run_f4_s03_sequence` with `mode: legacy`.
+{% elif only_f4_s02_gate_failing %}
+- WARN is dependency-only (`ready_for_f4_s02=false`); rerun `run_f4_s02_sequence` in legacy mode, then rerun F4-S03.
+{% elif not c_payload %}
+- Payload missing; run `run_f4_s03_sequence` in legacy mode and rerender this template.
 {% else %}
 - Resolve WARN gates and rerun before closeout.
 {% endif %}
@@ -133,6 +142,9 @@
 - watcher_checksum: `{{ watcher_checksum }}`
 
 ### Run in legacy authority mode (copy/paste service payload)
-- Step 1 (F4-S03 sequence): Developer Tools → Actions → `spectra_ls.run_f4_s03_sequence`
+- Step 1 (dependency baseline): Developer Tools → Actions → `spectra_ls.run_f4_s02_sequence`
+  - `mode: legacy`
+  - `reason: F4-S03 dependency baseline (legacy authority)`
+- Step 2 (F4-S03 sequence): Developer Tools → Actions → `spectra_ls.run_f4_s03_sequence`
   - `mode: legacy`
   - `reason: F4-S03 diagnostics validation (legacy authority baseline)`

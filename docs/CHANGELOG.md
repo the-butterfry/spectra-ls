@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.20.79 -->
+<!-- Version: 2026.04.20.80 -->
 <!-- Last updated: 2026-04-20 -->
 
 # Changelog
 
 ## 2026-04-20
+
+- Validation/F4-S03 Dependency-WARN Guidance Hardening (`custom_components/spectra_ls/coordinator.py`, `docs/testing/raw/f4_s03_crossfade_balance_validation.jinja`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): harden F4-S03 diagnostics for no-target/deferred-route captures by surfacing explicit dependency context (`active_target_resolved`, `route_decision`, `ready_for_f4_s02`) and adding deterministic rerun guidance (set/confirm active target, rerun F4-S01 → F4-S02 → F4-S03 in legacy mode) when the only failing gate is F4-S02 readiness. README parity: no material repo-state change.
 
 - Custom Component/F4-S03 None-Payload Crash Guard (`custom_components/spectra_ls/coordinator.py`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): fix runtime crash path where `crossfade_balance_validation` attempted `.get(...)` on a `None` `action_catalog_validation` object during snapshot builds (service and state-change callback paths), by normalizing upstream F4 payloads to mapping-safe defaults and hardening event callback snapshot refresh to fail-safe logging rather than uncaught callback exceptions. README parity: no material repo-state change.
 

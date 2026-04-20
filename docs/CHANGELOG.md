@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.19.53 -->
+<!-- Version: 2026.04.19.54 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Changelog
 
 ## 2026-04-19
+
+- Validation/P3 Closure Gate False-Negative Fix (`docs/testing/raw/p3_s01_s02_closure_gate_check.jinja`, `docs/testing/raw/p3_s01_s02_soak_protocol.md`, `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md`): add explicit `evaluation_mode` support so closeout checks can run against recorded soak evidence (`soak_evidence`) instead of transient live runtime context (`runtime`) that may legitimately return `legacy` authority or `defer_not_capable` after the soak window; prevents post-soak false FAIL outcomes while keeping runtime-strict mode available for live checks. README parity: no material repo-state change.
 
 - Validation/P3-S01+S02 Closeout Decision (`docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): apply explicit single-capable-topology waiver for the distinct PASS-target gate (based on sustained 3 PASS cycles with clean route/contract/parity/handoff compatibility signals) and advance P3-S01/P3-S02 from Active/Pending to validated closeout state; P3-S03 remains next in-sequence. README parity: no material repo-state change.
 

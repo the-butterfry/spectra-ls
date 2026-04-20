@@ -1,5 +1,5 @@
 <!-- Description: Copy/paste Home Assistant Dev Tools template diagnostics for Spectra LS System. -->
-<!-- Version: 2026.04.19.28 -->
+<!-- Version: 2026.04.19.29 -->
 <!-- Last updated: 2026-04-19 -->
 
 # Spectra LS System — Dev Tools Template Validation
@@ -1892,6 +1892,7 @@ Unavailable core entities:
 
 - Raw copy/paste file (no markdown fences): `docs/testing/raw/p3_s01_s02_closure_gate_check.jinja`
 - Use this after soak collection to produce one deterministic closure verdict covering route/contract/parity/S01/S02 gates plus the distinct-target (or explicit single-capable waiver) decision.
+- Recommended mode for closure: `evaluation_mode='soak_evidence'`; use `evaluation_mode='runtime'` only for strict live-state checks.
 
 <!-- EOF -->
 

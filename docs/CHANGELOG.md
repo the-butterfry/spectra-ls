@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.20.118 -->
+<!-- Version: 2026.04.20.119 -->
 <!-- Last updated: 2026-04-20 -->
 
 # Changelog
 
 ## 2026-04-20
+
+- Governance/Path-Direction Guardrail (`.github/copilot-instructions.md`, `docs/README.md`): add an explicit active-path note that default main-track ESPHome runtime edits must target `esphome/spectra_ls_system/**` (entrypoint `esphome/spectra_ls_system.yaml`), while `esphome/control-py/**` is treated as the stabilized alternate line and must only be edited when the request explicitly targets that path or requires a documented shared-contract/parity update. P1/P2/P3 impact: no source-of-truth ownership change; process-direction hardening only. README parity: no material repo-state change.
 
 - ESPHome/OLED Active-Path Scope Correction + Generic Source Placeholder Suppression (`esphome/spectra_ls_system/spectra-ls-peripherals.yaml`, `esphome/control-py/spectra-ls-peripherals.yaml`): align runtime edits to the active `spectra_ls_system` OLED peripherals path, suppress generic source placeholders (`NET`/`Network` and `SPECTRA LS`) from now-playing OLED source/title fallback context, and remove the out-of-scope `control-py` placeholder suppression touch so stabilized `control-py` stays unchanged for this track. P1/P2/P3 impact: no source-of-truth ownership change; display-layer scope/placeholder hardening only. README parity: no material repo-state change.
 

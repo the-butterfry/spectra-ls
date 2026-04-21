@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.20.38 -->
+<!-- Version: 2026.04.20.53 -->
 <!-- Last updated: 2026-04-20 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -37,8 +37,9 @@ Each feature slice is only complete when both tracks are dispositioned:
 | 1 | Skeleton + shadow parity | Keep existing contracts stable | Scaffold integration + read-only parity outputs | Implemented |
 | 2 | Registry + route foundation | Keep helper contracts + diagnostics parity | Target registry + adapter router (`linkplay_tcp`) | Implemented |
 | 3 | Guarded dual-write | Add shims and loop guards | Controlled write path with correlation/debounce guards | Validated (Sealed 2026-04-20) |
-| 4 | Functional expansion | Preserve compatibility while exposing new capabilities | Profiles/actions/capability matrix/crossfade-balance services | Active (F4-S03 diagnostics lane; F4-S01/F4-S02 sealed) |
-| 5 | Domain cutover + retirement | Domain-by-domain template retirement | Primary control plane ownership + migration tooling | Planned |
+| 4 | Functional expansion | Preserve compatibility while exposing new capabilities | Profiles/actions/capability matrix/crossfade-balance services | Validated (F4-S01/F4-S02/F4-S03 sealed; diagnostics-only authority boundary retained) |
+| 5 | Domain cutover + retirement | Domain-by-domain template retirement | Primary control plane ownership + migration tooling | In Progress (P5-S01 validated) |
+| 6 | Sidebar control center productization | Runtime compatibility surfaces retained for migration-safe UX rollout | Full HA sidebar Spectra control center (setup/tuning/defaults/overrides/mapped environment) | Planned |
 
 ### Active slice ledger
 
@@ -52,7 +53,10 @@ Each feature slice is only complete when both tracks are dispositioned:
 | P3-S03 | 3 | Validated (metadata ownership explicitly deferred to legacy compatibility mode) | Validated (metadata prep diagnostics + one-shot sequence + listener-safe validation template) | Validated (diagnostics-only) | Medium | Validated |
 | F4-S01 | 4 | Validated (compatibility contracts retained; no ownership cutover) | Validated (capability matrix + profile schema diagnostics scaffolding) | Validated (diagnostics-only) | Medium | Validated |
 | F4-S02 | 4 | Validated (legacy action ownership retained; diagnostics-only) | Validated (programmable action-catalog safety skeleton + dry-run diagnostics) | Validated (diagnostics-only) | Medium | Validated |
-| F4-S03 | 4 | Active (legacy crossfade/balance behavior remains authoritative) | Active (crossfade/balance diagnostics scaffold + validation sequence) | Active (diagnostics-only) | Medium | Active |
+| F4-S03 | 4 | Validated (legacy crossfade/balance behavior remains authoritative) | Validated (crossfade/balance diagnostics scaffold + validation sequence) | Validated (diagnostics-only) | Medium | Validated |
+| P5-S01 | 5 | Validated (legacy retained as rollback authority path; post-window rollback proof captured) | Validated (routing-domain run-window execution completed with VERIFIED in-window proof) | Validated (in-window VERIFIED + post-window legacy rollback) | Medium | Validated |
+| P5-S02 | 5 | Active (legacy metadata ownership retained during gate-prep) | Active (metadata-domain gate-prep/readiness validation execution) | In Progress (process + evidence ramp) | Medium | Active |
+| P6-S01 | 6 | Planned (runtime compatibility remains available during staged UX cutover) | Planned (HA sidebar control center scaffold + read-only mapped-environment overview) | Planned | Medium | Planned |
 
 ### P1/P2 validation snapshot (2026-04-19)
 
@@ -211,7 +215,7 @@ Seal decision:
 - **P3-S01:** sealed.
 - **P3-S02:** sealed.
 - **P3-S03:** sealed (diagnostics-only metadata-prep lane as previously documented).
-- **Phase 3 overall:** sealed; Phase-4 validation now sealed through F4-S02.
+- **Phase 3 overall:** sealed; Phase-4 validation now sealed through F4-S03.
 
 ### Phase 4 bounded slice plan (post-P3)
 
@@ -289,11 +293,119 @@ Hardening pass-4 (2026-04-20):
 
 - Fixed accidental F4 builder split regression where `_build_action_catalog_validation` could return `None` after F4-S03 insertion, which forced false `ready_for_f4_s02=false` dependency WARN outcomes in F4-S03 despite healthy route/target context.
 
-Still required before closing F4-S03:
+F4-S03 closeout evidence (2026-04-20):
 
-- capture runtime PASS/WARN/FAIL evidence from F4-S03 template,
-- verify authority remains `legacy` (`no_authority_expansion=true`) in runtime capture,
-- record closeout decision in roadmap + v-next + changelog.
+- Runtime closure artifact captured with **PASS** (`gate_score=8/8`, timestamp `2026-04-20 03:57:35.874550-07:00`).
+- Authority/safety checks passed: `authority_mode=legacy`, `no_authority_expansion=true`.
+- Dependency and route checks passed: `ready_for_f4_s03_closeout=true`, `f4_s02_ready_reference=true`, `route_decision=route_linkplay_tcp`, `active_target=media_player.spectra_ls_2`, `active_path=linkplay_tcp`.
+- Contract checks passed: `slider_schema_present=true`, `mode_profiles_present=true`, `sample_mix_plan.dry_run_only=true`, `dependency_reference.active_target_resolved=true`.
+
+Seal decision:
+
+- **F4-S03:** sealed/validated.
+- **Phase 4 bounded diagnostics slice set (F4-S01/F4-S02/F4-S03):** sealed/validated.
+
+P1/P2/P3 impact check (required):
+
+- **P1 (shadow parity source-of-truth):** unchanged; parity surfaces remain read-only and stable.
+- **P2 (registry/router foundation):** unchanged; route classification + contract-validation surfaces remain authoritative for diagnostics (`route_linkplay_tcp` confirmed in closeout capture).
+- **P3 (guarded write-path boundary):** unchanged; single-writer authority boundary remains intact (`legacy` retained for F4 diagnostics lane, no ownership cutover).
+
+Phase 5 entry criteria delta note (2026-04-20):
+
+- F4 bounded diagnostics slices are sealed; execution may move to Phase 5 planning/execution only when all entry gates below are satisfied in the active change window.
+- **Gate A (authority baseline):** default authority remains `legacy`; any cutover trial must be explicitly armed and reversible per-slice (no implicit ownership drift).
+- **Gate B (contract parity):** P2 parity/contract templates remain PASS after enabling any Phase 5 domain flag.
+- **Gate C (slice isolation):** execute one domain at a time (`routing` → `metadata` → optional `lighting orchestration`), with no multi-domain cutover in one slice.
+- **Gate D (rollback proof):** each Phase 5 slice must include a verified rollback path and explicit stop conditions (loop/flap, mismatch, missing-compat surfaces).
+- **Gate E (evidence threshold):** each Phase 5 slice requires fresh runtime evidence capture before changing status from Active to Validated.
+
+Current disposition:
+
+- **Phase 5 status remains Planned** pending Gate A–E satisfaction.
+- No P1/P2/P3 source-of-truth or authority changes are introduced by this delta note.
+
+Phase 5 starter slice proposal (P5-S01, routing domain only):
+
+- **Slice scope (in):** bounded routing cutover trial for explicit write-path routing decision surfaces only (no metadata ownership cutover, no lighting-orchestration cutover).
+- **Slice scope (out):** metadata selection/now-playing authority, lighting helper orchestration, naming cleanup/retirement.
+- **Authority mode policy:** default remains `legacy`; slice permits explicit, reversible `component` routing trial windows only.
+- **Track A (runtime):** compatibility-shimmed and retained as rollback authority path.
+- **Track B (component):** active routing cutover trial implementation + diagnostics/evidence capture.
+
+Execution gates for P5-S01 activation:
+
+1. Gate A pass: authority baseline + reversible arm/disarm path present.
+2. Gate B pass: P2 parity/contract templates PASS immediately before trial start.
+3. Gate C pass: no concurrent metadata/lighting cutover toggles enabled.
+4. Gate D pass: rollback script/path validated in same window.
+5. Gate E pass: fresh runtime evidence artifact captured for trial outcome.
+
+Stop conditions (fail-closed):
+
+- loop/flap detection in route writes,
+- contract mismatch on required compatibility surfaces,
+- unresolved active target/control-host route path,
+- stale evidence window (>24h) for closeout decision.
+
+P1/P2/P3 impact check for P5-S01 proposal:
+
+- **P1:** unchanged (shadow parity contracts remain intact).
+- **P2:** authoritative parity gate remains mandatory pre/post trial.
+- **P3:** authority boundary remains single-writer controlled with explicit rollback.
+
+Status update:
+
+- **P5-S01 validated** with bounded-window evidence set complete:
+  - in-window proof captured (`PASS`, `write_proof=VERIFIED`, `last_attempt.status=noop_already_selected`),
+  - post-window rollback proof captured (`authority_mode=legacy`) with healthy route/contract/parity/freshness.
+- **Phase 5 remains in progress overall**; next slice activation remains gated and domain-isolated (metadata cutover planning/activation is separate from this routing-slice validation).
+- **P5-S02 (metadata domain) moved to Active gate-prep** using `docs/testing/raw/p5_s02_metadata_cutover_run_window_checklist.md`; no metadata write-authority takeover is implied until an explicit documented mechanism exists and gates are satisfied.
+
+P5-S02 process depth note (beyond mirroring):
+
+- The roadmap now requires explicit mechanism design and controlled trials, not just parity mirroring:
+  1. contract inventory freeze for metadata surfaces and ownership boundaries,
+  2. define component metadata authority mechanism/service contract,
+  3. run bounded metadata write-path trial window with rollback-first controls,
+  4. capture pre/in/post window evidence and validate fail-closed stop conditions,
+  5. promote to validated only after rollback/authority disposition proof and stable parity.
+
+Latest runtime evidence artifact (2026-04-20):
+
+- Monitor verdict: `Status=PASS`, `Metadata readiness=READY` at `2026-04-20 17:59:21.972073-07:00`.
+- Baseline/route: `authority_mode=legacy`, `route_decision=route_linkplay_tcp`.
+- Contract/metadata: `contract_valid=true`, `missing_required=0`, `metadata_verdict=PASS`, `ready_for_metadata_handoff=true`.
+- Parity/freshness: `unresolved_sources=0`, `mismatches=0`, snapshot freshness within threshold.
+- Post-window proof: final render captured at `2026-04-20 18:08:32.691994-07:00` confirms `authority_mode=legacy` with metadata/contract/parity gates still healthy.
+- Disposition: this bounded run window is closeout-eligible and documented; Phase-5 metadata slice remains Active gate-prep overall until mechanism-definition and broader slice gates are completed.
+
+Run-3 evidence update (2026-04-20 evening):
+
+- Legacy-mode run (`p5s02-run3`) showed expected fail-closed dry-run behavior when metadata lane was not ready (`metadata_trial_last_attempt.status=blocked_metadata_not_ready`) with contracts/parity clean.
+- Same run reached `PASS/READY` (`gate_score=9/9`) under fresh active metadata/title conditions while authority baseline remained `legacy`.
+- Component-mode comparison capture correctly reported policy CAUTION/WARN (`authority_mode_not_legacy`) with metadata ownership still `legacy_contract_surfaces`; this is expected and not a contract/parity regression.
+
+Next execution target (P5-S02-M1):
+
+- Implemented: `spectra_ls.metadata_write_trial` contract path is now wired in `custom_components/spectra_ls` with fail-closed dry-run-first behavior and audit payload surfacing in `write_controls.metadata_trial_last_attempt`.
+- Hardening update: contract validity now fail-closes on unresolved required surfaces (present but `unknown`/`unavailable`), including control-host loss scenarios, and the monitor now exposes `contract_validation.unresolved_required` for explicit diagnostics.
+- Next required execution: capture one fresh dry-run evidence artifact (full audit payload fields present) and keep effective authority baseline at `legacy` until bounded post-window rollback proof is recorded.
+
+Post-Phase destination note (operator UX target):
+
+- After Phase-5 domain cutover gates are complete, the next required track is a full Home Assistant sidebar **Spectra Control Center**.
+- This control center must include, at minimum:
+  1. setup/onboarding pages (discovery status, route eligibility, contract readiness),
+  2. tuning pages (input response/debounce and audio/lighting behavior profiles),
+  3. defaults + override management (safe baseline policy plus per-target exceptions),
+  4. mapped-environment visibility (resolved rooms/targets/control paths/capabilities),
+  5. operator diagnostics/evidence views aligned to existing PASS/WARN/FAIL workflow.
+- Execution ordering remains strict: **P5-S02 continues as the active slice now**; sidebar control-center delivery is a post-Phase-5 productization track and must not weaken current gate-prep/validation discipline.
+
+Run-window execution checklist (required for activation/closeout evidence):
+
+- `docs/testing/raw/p5_s01_routing_cutover_run_window_checklist.md`
 
 Reference specification: `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`.
 

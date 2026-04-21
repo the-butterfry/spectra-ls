@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.20.119 -->
+<!-- Version: 2026.04.20.120 -->
 <!-- Last updated: 2026-04-20 -->
 
 # Changelog
 
 ## 2026-04-20
+
+- ESPHome/OLED First-Boot Idle Title Fail-Closed Hardening (`esphome/spectra_ls_system/spectra-ls-peripherals.yaml`): tighten generic source/device placeholder suppression for now-playing fallback rendering (including normalized `Spectra L/S` variants) and enforce blank title behavior when playback is not active so first-boot idle windows do not display `SPECTRA LS` at the top line. P1/P2/P3 impact: no source-of-truth ownership change; display-layer idle semantics hardening only. README parity: no material repo-state change.
 
 - Governance/Path-Direction Guardrail (`.github/copilot-instructions.md`, `docs/README.md`): add an explicit active-path note that default main-track ESPHome runtime edits must target `esphome/spectra_ls_system/**` (entrypoint `esphome/spectra_ls_system.yaml`), while `esphome/control-py/**` is treated as the stabilized alternate line and must only be edited when the request explicitly targets that path or requires a documented shared-contract/parity update. P1/P2/P3 impact: no source-of-truth ownership change; process-direction hardening only. README parity: no material repo-state change.
 

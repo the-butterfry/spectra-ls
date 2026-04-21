@@ -1,5 +1,5 @@
 # Description: Spectra LS OLED-only peripherals package (no LED rings) for Control Board v2.
-# Version: 2026.04.20.16
+# Version: 2026.04.20.17
 # Last updated: 2026-04-20
 # Update version/date whenever you change this file.
 esphome:
@@ -448,6 +448,14 @@ interval:
             if (value.empty()) return false;
             std::string low = value;
             for (auto &c : low) c = (char) ::tolower(c);
+            std::string compact;
+            compact.reserve(low.size());
+            for (char c : low) {
+              if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')) compact.push_back(c);
+            }
+            if (compact == "net" || compact == "network") return true;
+            if (compact == "spectrals" || compact == "spectralevelsource") return true;
+            if (compact.find("spectra") != std::string::npos && compact.find("ls") != std::string::npos) return true;
             return low == "net" || low == "network" || low == "spectra ls";
           };
           if (is_generic_source_placeholder(source_label)) source_label.clear();
@@ -479,12 +487,23 @@ interval:
             if (is_generic_source_placeholder(source_pill)) source_pill.clear();
             if (is_generic_source_placeholder(src_display)) src_display.clear();
             if (title.empty()) {
-              if (source_label.empty()) {
-                title = playing ? "PLAYING" : "PAUSED";
-              } else {
+              if (playing && !source_label.empty()) {
                 title = source_label;
+              } else if (playing) {
+                title = "PLAYING";
               }
             }
+          }
+
+          if (is_generic_source_placeholder(title)) {
+            title.clear();
+          }
+
+          if (!playing && !has_text_meta) {
+            title.clear();
+            source_label.clear();
+            source_pill.clear();
+            src_display.clear();
           }
 
           std::string log_title = sanitize_ascii(title);

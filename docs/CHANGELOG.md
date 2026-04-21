@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.20.110 -->
+<!-- Version: 2026.04.20.111 -->
 <!-- Last updated: 2026-04-20 -->
 
 # Changelog
 
 ## 2026-04-20
+
+- Custom Component/Metadata Ownership Boundary Visibility Hardening (`custom_components/spectra_ls/coordinator.py`, `docs/testing/raw/p5_s02_metadata_functionality_monitor.jinja`): make metadata cutover posture explicit in component diagnostics by surfacing ownership fields (`metadata_authority_owner`, `metadata_cutover_active`, `cutover_block_reason`) and gating metadata-prep readiness with no-authority-expansion semantics (`legacy` baseline required for closeout-ready metadata gate-prep). This prevents component-mode routing trials from being misread as metadata ownership cutover and keeps P5-S02 fail-closed semantics explicit. P1/P2/P3 impact: no source-of-truth ownership change enacted; diagnostics contract hardening only. README parity: no material repo-state change.
 
 - Governance/Parallel Lock-Step Bugfix Rule (`.github/copilot-instructions.md`): add an explicit requirement that bugfixes touching behavior-visible contracts keep runtime (`packages/` + `esphome/`) and custom-component (`custom_components/spectra_ls`) tracks in lock-step when feasible; when strict lock-step is not feasible in the same slice, required disposition is immediate explicit shim/defer rationale + changelog note in the same change set. P1/P2/P3 impact: no source-of-truth ownership change; process-governance hardening only. README parity: no material repo-state change.
 

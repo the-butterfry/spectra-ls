@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.20.117 -->
+<!-- Version: 2026.04.20.118 -->
 <!-- Last updated: 2026-04-20 -->
 
 # Changelog
 
 ## 2026-04-20
+
+- ESPHome/OLED Active-Path Scope Correction + Generic Source Placeholder Suppression (`esphome/spectra_ls_system/spectra-ls-peripherals.yaml`, `esphome/control-py/spectra-ls-peripherals.yaml`): align runtime edits to the active `spectra_ls_system` OLED peripherals path, suppress generic source placeholders (`NET`/`Network` and `SPECTRA LS`) from now-playing OLED source/title fallback context, and remove the out-of-scope `control-py` placeholder suppression touch so stabilized `control-py` stays unchanged for this track. P1/P2/P3 impact: no source-of-truth ownership change; display-layer scope/placeholder hardening only. README parity: no material repo-state change.
 
 - ESPHome/OLED Source Placeholder Suppression (`esphome/spectra_ls_system/spectra-ls-peripherals.yaml`, `esphome/control-py/spectra-ls-peripherals.yaml`): suppress generic `NET` source placeholders in now-playing OLED rendering so the source field can remain blank instead of displaying `NET`/`SRC` when no meaningful source metadata is available. Includes cache-path sanitization for `playing_no_meta` fallbacks to prevent stale `NET` values from persisting across refresh ticks. P1/P2/P3 impact: no source-of-truth ownership change; display-layer semantics hardening only. README parity: no material repo-state change.
 

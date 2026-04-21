@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.20.121 -->
+<!-- Version: 2026.04.20.122 -->
 <!-- Last updated: 2026-04-20 -->
 
 # Changelog
 
 ## 2026-04-20
+
+- Governance/Build→Upload Enforcement (`.github/copilot-instructions.md`): apply explicit operator directive that successful ESPHome builds in active sessions are deployment-required by default (build must be followed by OTA upload + upload proof) unless the user explicitly requests `build-only`/`no upload`. P1/P2/P3 impact: no source-of-truth ownership change; process enforcement hardening only. README parity: no material repo-state change.
 
 - ESPHome/Control-Target Prompt Retirement (`esphome/spectra_ls_system/packages/spectra-ls-audio-tcp.yaml`, `esphome/spectra_ls_system/packages/spectra-ls-ui.yaml`, `esphome/spectra_ls_system/spectra-ls-peripherals.yaml`, `esphome/spectra_ls_system/substitutions.yaml`): remove legacy control-target prompt UX/flow from active runtime (first-boot popup gating, Gear menu control-select entry, and dedicated CONTROL TARGETS render path), fail-open audio control sends based on host resolution only, and keep metadata popup behavior for non-prompt actions. P1/P2/P3 impact: no source-of-truth ownership change; runtime UX/control-path simplification only. README parity: no material repo-state change.
 

@@ -1,5 +1,5 @@
-# Description: Data coordinator for Spectra LS parity diagnostics, Phase 3 guarded routing write-path controls, and Phase 4 diagnostics scaffolding (F4-S01/F4-S03).
-# Version: 2026.04.20.14
+# Description: Data coordinator for Spectra LS parity diagnostics, Phase 3 guarded routing write-path controls, Phase 4 diagnostics scaffolding (F4-S01/F4-S03), and Phase 5 metadata trial contract auditing with unresolved-contract hardening.
+# Version: 2026.04.20.17
 # Last updated: 2026-04-20
 
 from __future__ import annotations
@@ -68,6 +68,13 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "timestamp": None,
             "reason": "No write attempts yet",
         }
+        self._metadata_trial_in_progress = False
+        self._last_metadata_trial_attempt: dict[str, Any] = {
+            "status": "never_attempted",
+            "requested_at": None,
+            "completed_at": None,
+            "reason": "No metadata trial attempts yet",
+        }
 
     async def async_setup(self) -> None:
         """Initialize data and state listeners."""
@@ -135,6 +142,8 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "debounce_s": self._write_debounce_s,
             "in_progress": self._write_in_progress,
             "last_attempt": self._last_write_attempt,
+            "metadata_trial_in_progress": self._metadata_trial_in_progress,
+            "metadata_trial_last_attempt": self._last_metadata_trial_attempt,
             "target_helper_entity": LEGACY_ACTIVE_TARGET_HELPER,
         }
 
@@ -152,10 +161,23 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         missing_required = [
             key for key, entity_id in required_entities.items() if self.hass.states.get(entity_id) is None
         ]
+        unresolved_required: list[str] = []
+        required_states: dict[str, str] = {}
+        for key, entity_id in required_entities.items():
+            state = self.hass.states.get(entity_id)
+            state_value = state.state if state is not None else "missing"
+            required_states[key] = state_value
+            if state is None:
+                continue
+            if not self._is_resolved_state(state_value):
+                unresolved_required.append(key)
+
         return {
             "required_entities": required_entities,
             "missing_required": missing_required,
-            "valid": len(missing_required) == 0,
+            "unresolved_required": unresolved_required,
+            "required_states": required_states,
+            "valid": len(missing_required) == 0 and len(unresolved_required) == 0,
         }
 
     def _build_selection_handoff_validation(
@@ -323,6 +345,10 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         route_trace_present = route_decision != ""
         contract_valid = bool(contract_validation.get("valid", False))
         candidate_payload_ready = self._metadata_candidate_payload_ready()
+        metadata_authority_owner = "legacy_contract_surfaces"
+        metadata_cutover_active = False
+        cutover_block_reason = "metadata_authority_not_cut_over"
+        no_authority_expansion = self._write_authority_mode == WRITE_AUTH_LEGACY
 
         verdict = "PASS"
         if len(missing_required) > 0 or not contract_valid:
@@ -334,6 +360,8 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             or not route_trace_present
         ):
             verdict = "FAIL"
+        elif not no_authority_expansion:
+            verdict = "WARN"
         elif not now_playing_title_resolved or not candidate_payload_ready:
             verdict = "WARN"
 
@@ -344,6 +372,9 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "missing_required": missing_required,
             "contract_valid": contract_valid,
             "route_decision": route_decision,
+            "metadata_authority_owner": metadata_authority_owner,
+            "metadata_cutover_active": metadata_cutover_active,
+            "cutover_block_reason": cutover_block_reason,
             "checks": {
                 "active_meta_entity_resolved": active_meta_entity_resolved,
                 "now_playing_entity_resolved": now_playing_entity_resolved,
@@ -351,6 +382,7 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "now_playing_title_resolved": now_playing_title_resolved,
                 "candidate_payload_ready": candidate_payload_ready,
                 "route_trace_present": route_trace_present,
+                "no_authority_expansion": no_authority_expansion,
             },
             "values": {
                 "active_meta_entity": active_meta_entity,
@@ -994,6 +1026,149 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         self._last_write_monotonic = monotonic()
         self._last_write_attempt = result
+        self.async_set_updated_data(self._build_snapshot())
+
+    async def async_metadata_write_trial(
+        self,
+        *,
+        mode: str,
+        window_id: str,
+        reason: str,
+        dry_run: bool,
+        expected_target: str | None,
+        expected_route: str | None,
+        correlation_id: str | None,
+    ) -> None:
+        """Run a fail-closed metadata trial contract with audit payload emission."""
+        requested_at = datetime.now(UTC).isoformat()
+        completed_at = requested_at
+        corr = (correlation_id or "").strip() or f"metadata-trial-{uuid4().hex[:12]}"
+        requested_mode = self._normalize_write_authority(mode)
+        effective_mode = self._write_authority_mode
+        window = (window_id or "").strip()
+        operator_reason = (reason or "").strip()
+        expected_target_norm = (expected_target or "").strip()
+        expected_route_norm = (expected_route or "").strip()
+
+        snapshot = self._build_snapshot()
+        route_trace = snapshot.get("route_trace", {}) if isinstance(snapshot.get("route_trace", {}), dict) else {}
+        contract_validation = (
+            snapshot.get("contract_validation", {}) if isinstance(snapshot.get("contract_validation", {}), dict) else {}
+        )
+        metadata_validation = (
+            snapshot.get("metadata_prep_validation", {})
+            if isinstance(snapshot.get("metadata_prep_validation", {}), dict)
+            else {}
+        )
+
+        active_target = str(route_trace.get("active_target", "") or "").strip()
+        route_decision = str(route_trace.get("decision", "") or "").strip()
+        contract_valid = bool(contract_validation.get("valid", False))
+        metadata_ready = bool(metadata_validation.get("ready_for_metadata_handoff", False))
+
+        result: dict[str, Any] = {
+            "requested_at": requested_at,
+            "completed_at": completed_at,
+            "window_id": window,
+            "requested_mode": requested_mode,
+            "effective_mode": effective_mode,
+            "dry_run": bool(dry_run),
+            "reason": operator_reason,
+            "correlation_id": corr,
+            "expected_target": expected_target_norm,
+            "expected_route": expected_route_norm,
+            "active_target": active_target,
+            "route_decision": route_decision,
+            "contract_valid": contract_valid,
+            "metadata_ready": metadata_ready,
+        }
+
+        if not window:
+            result.update(
+                {
+                    "status": "blocked_missing_window_id",
+                    "reason": "window_id is required for bounded metadata trial auditability",
+                }
+            )
+        elif not operator_reason:
+            result.update(
+                {
+                    "status": "blocked_missing_reason",
+                    "reason": "reason is required for metadata trial auditability",
+                }
+            )
+        elif self._metadata_trial_in_progress:
+            result.update(
+                {
+                    "status": "blocked_reentrancy",
+                    "reason": "A prior metadata trial attempt is still in progress",
+                }
+            )
+        elif self._write_authority_mode != WRITE_AUTH_LEGACY:
+            result.update(
+                {
+                    "status": "blocked_authority_not_legacy",
+                    "reason": "Metadata trial contract requires legacy authority baseline",
+                }
+            )
+        elif not contract_valid:
+            result.update(
+                {
+                    "status": "blocked_contract_invalid",
+                    "reason": "Required contract entities are missing; fail-closed",
+                }
+            )
+        elif not metadata_ready:
+            result.update(
+                {
+                    "status": "blocked_metadata_not_ready",
+                    "reason": "Metadata prep validation is not PASS/ready; fail-closed",
+                }
+            )
+        elif expected_route_norm and route_decision != expected_route_norm:
+            result.update(
+                {
+                    "status": "blocked_expected_route_mismatch",
+                    "reason": "Observed route decision does not match expected_route",
+                }
+            )
+        elif expected_target_norm and active_target != expected_target_norm:
+            result.update(
+                {
+                    "status": "blocked_expected_target_mismatch",
+                    "reason": "Observed active target does not match expected_target",
+                }
+            )
+        elif not dry_run and requested_mode != WRITE_AUTH_LEGACY:
+            result.update(
+                {
+                    "status": "blocked_nonlegacy_non_dry_run",
+                    "reason": "Non-dry-run metadata trial is currently restricted to legacy mode",
+                }
+            )
+        else:
+            self._metadata_trial_in_progress = True
+            try:
+                if dry_run:
+                    result.update(
+                        {
+                            "status": "dry_run_ok",
+                            "reason": "Metadata trial contract preflight passed (dry run)",
+                        }
+                    )
+                else:
+                    result.update(
+                        {
+                            "status": "noop_applied",
+                            "reason": "Metadata trial contract executed with no write-side effects",
+                        }
+                    )
+            finally:
+                self._metadata_trial_in_progress = False
+
+        result["effective_mode"] = self._write_authority_mode
+        result["completed_at"] = datetime.now(UTC).isoformat()
+        self._last_metadata_trial_attempt = result
         self.async_set_updated_data(self._build_snapshot())
 
     @callback

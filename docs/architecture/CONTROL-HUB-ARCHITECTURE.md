@@ -1,6 +1,6 @@
 <!-- Description: Retroactive architecture and feature documentation for the MA control hub package split. -->
-<!-- Version: 2026.04.20.6 -->
-<!-- Last updated: 2026-04-20 -->
+<!-- Version: 2026.04.21.7 -->
+<!-- Last updated: 2026-04-21 -->
 
 # MA Control Hub Architecture (Retroactive Baseline)
 
@@ -63,6 +63,7 @@ Defined by `automation.inc`:
 - last-valid target persistence
 - ambiguity lock + stale-unlock handling
 - startup restore of last-valid target
+- user feedback notification path for host capability degradation (`binary_sensor.ma_no_control_capable_hosts` -> persistent notification create/dismiss)
 
 ### 5) Template computation domain
 

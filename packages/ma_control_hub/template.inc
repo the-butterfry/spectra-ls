@@ -1,6 +1,6 @@
 # Description: Template entities for ma_control_hub runtime routing, metadata, and now-playing state surfaces.
-# Version: 2026.04.20.34
-# Last updated: 2026-04-20
+# Version: 2026.04.21.35
+# Last updated: 2026-04-21
 # HUB MUST-READ: Contract parser methodology.
 # - For complex attributes (`rooms`, `candidates_json`, etc.), prefer native sequence/mapping values first.
 # - Only parse string JSON when trimmed payload starts with `[` or `{` and is not unknown/unavailable/none/''.
@@ -1618,6 +1618,38 @@
           {% set cap_l = (cap_hint | string | lower) %}
           {% set path = states('sensor.ma_active_control_path') %}
           {{ (cap_l in ['1','true','yes','on']) if cap_l not in ['','none','unknown','unavailable'] else (path == 'linkplay_tcp') }}
+    - name: MA No Control Capable Hosts
+      state: >-
+        {% set invalid = ['','none','unknown','unavailable'] %}
+        {% set target = states('input_select.ma_active_target') %}
+        {% set target_valid = target not in invalid and states[target] is not none %}
+        {% set hosts = states('sensor.ma_control_hosts') %}
+        {% set hosts_valid = hosts not in invalid %}
+        {% set control_capable = is_state('binary_sensor.ma_active_control_capable','on') %}
+        {% if not target_valid %}
+          {{ false }}
+        {% else %}
+          {{ (not hosts_valid) or (not control_capable) }}
+        {% endif %}
+      attributes:
+        reason: >-
+          {% set invalid = ['','none','unknown','unavailable'] %}
+          {% set target = states('input_select.ma_active_target') %}
+          {% set target_valid = target not in invalid and states[target] is not none %}
+          {% set hosts = states('sensor.ma_control_hosts') %}
+          {% set hosts_valid = hosts not in invalid %}
+          {% set control_capable = is_state('binary_sensor.ma_active_control_capable','on') %}
+          {% if not target_valid %}
+            no_active_target
+          {% elif not hosts_valid and not control_capable %}
+            no_hosts_and_not_control_capable
+          {% elif not hosts_valid %}
+            no_control_hosts
+          {% elif not control_capable %}
+            active_target_not_control_capable
+          {% else %}
+            ok
+          {% endif %}
         {% endif %}
     - name: MA Meta Stale
       state: >-

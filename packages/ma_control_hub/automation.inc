@@ -1,6 +1,6 @@
 # Description: MA control hub automations for startup sync, target selection, and override lifecycle.
-# Version: 2026.04.17.1
-# Last updated: 2026-04-17
+# Version: 2026.04.21.2
+# Last updated: 2026-04-21
 # HUB MUST-READ: Contract parser methodology.
 # - For complex attributes (`rooms`, `candidates_json`, etc.), prefer native sequence/mapping values first.
 # - Only parse string JSON when trimmed payload starts with `[` or `{` and is not unknown/unavailable/none/''.
@@ -133,3 +133,34 @@
               data:
                 entity_id: input_select.ma_active_target
                 option: "{{ states('input_text.ma_last_valid_target') }}"
+
+- id: ma_feedback_no_control_capable_hosts
+  alias: "MA: Feedback no control-capable hosts"
+  trigger:
+    - platform: state
+      entity_id: binary_sensor.ma_no_control_capable_hosts
+      to: "on"
+      for: "00:00:15"
+    - platform: state
+      entity_id: binary_sensor.ma_no_control_capable_hosts
+      to: "off"
+  action:
+    - choose:
+        - conditions: "{{ trigger.to_state is not none and trigger.to_state.state == 'on' }}"
+          sequence:
+            - service: persistent_notification.create
+              data:
+                notification_id: spectra_ls_no_control_capable_hosts
+                title: "Spectra L/S: No control-capable hosts"
+                message: >-
+                  Active target: {{ states('input_select.ma_active_target') }}\n
+                  Control path: {{ states('sensor.ma_active_control_path') }}\n
+                  Control capable: {{ states('binary_sensor.ma_active_control_capable') }}\n
+                  Control hosts: {{ states('sensor.ma_control_hosts') if states('sensor.ma_control_hosts') not in ['','none','unknown','unavailable'] else 'none' }}\n
+                  Reason: {{ state_attr('binary_sensor.ma_no_control_capable_hosts','reason') | default('unknown', true) }}\n
+                  Suggested action: confirm active target eligibility and rerun MA target/options refresh.
+        - conditions: "{{ trigger.to_state is not none and trigger.to_state.state == 'off' }}"
+          sequence:
+            - service: persistent_notification.dismiss
+              data:
+                notification_id: spectra_ls_no_control_capable_hosts

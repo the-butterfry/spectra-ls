@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.21.132 -->
+<!-- Version: 2026.04.21.133 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Changelog
 
 ## 2026-04-21
+
+- HA/Current-Cycle User Feedback — No Control-Capable Hosts Notification (`packages/ma_control_hub/template.inc`, `packages/ma_control_hub/automation.inc`, `docs/architecture/CONTROL-HUB-ARCHITECTURE.md`): add an operator-facing feedback path that raises a persistent Home Assistant notification when an active target is selected but no control-capable host route is available, with auto-dismiss when control-capable host context recovers. This provides immediate basic user guidance instead of silent no-op behavior in host-degraded states. P1/P2/P3 impact: no source-of-truth ownership change enacted; runtime feedback/diagnostics UX hardening only. README parity: no material repo-state change.
 
 - Docs/Deferred H1 Report-Log-Heal Scaffold Publication (`docs/features/H1-report-log-heal-scaffold.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`, `docs/README.md`): publish a detailed implementation-ready H1 blueprint for diagnostics-driven reporting, structured logging, and bounded low-risk auto-heal policy design (deferred execution track) with explicit safety gates, schema contracts, rollout phases, and stop conditions so future implementation can proceed without re-discovery. P1/P2/P3 impact: no source-of-truth ownership change enacted; planning/documentation acceleration only. README parity: material docs-index update included in this change set.
 

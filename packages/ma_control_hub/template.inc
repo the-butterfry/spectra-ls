@@ -1,6 +1,6 @@
 # Description: Template entities for ma_control_hub runtime routing, metadata, and now-playing state surfaces.
-# Version: 2026.04.18.27
-# Last updated: 2026-04-18
+# Version: 2026.04.20.31
+# Last updated: 2026-04-20
 # HUB MUST-READ: Contract parser methodology.
 # - For complex attributes (`rooms`, `candidates_json`, etc.), prefer native sequence/mapping values first.
 # - Only parse string JSON when trimmed payload starts with `[` or `{` and is not unknown/unavailable/none/''.
@@ -129,21 +129,20 @@
         {{ ns.entities | length }}
       attributes:
         candidate_rows_json: >-
-          {% set rows = [] %}
+          {% set ns = namespace(rows=[], ma_ids=[]) %}
           {% set players = state_attr('sensor.ma_players','result') or [] %}
-          {% set ma_ids = [] %}
           {% for p in players %}
             {% set pid = (p.player_id if p.player_id is defined else '') %}
             {% set ent = (p.entity_id if p.entity_id is defined else '') %}
             {% if pid %}
-              {% set ma_ids = ma_ids + [pid] %}
-              {% set ma_ids = ma_ids + ['media_player.' ~ pid] %}
+              {% set ns.ma_ids = ns.ma_ids + [pid] %}
+              {% set ns.ma_ids = ns.ma_ids + ['media_player.' ~ pid] %}
             {% endif %}
             {% if ent %}
-              {% set ma_ids = ma_ids + [ent] %}
+              {% set ns.ma_ids = ns.ma_ids + [ent] %}
             {% endif %}
           {% endfor %}
-          {% set ma_ids_l = ma_ids | map('lower') | list %}
+          {% set ma_ids_l = ns.ma_ids | map('lower') | list %}
           {% set raw_users = states('input_text.plex_allowed_users') | lower %}
           {% set allowed_users = raw_users.split(',') | map('trim') | reject('equalto','') | list %}
           {% set allow_all_users = allowed_users | length == 0 or 'all' in allowed_users %}
@@ -186,7 +185,7 @@
             {% if app_id or app_name %}{% set score = score + 1 %}{% endif %}
             {% if url_like and not title_ok %}{% set score = score - 2 %}{% endif %}
             {% if score > 0 and active and plex_ok %}
-              {% set rows = rows + [{
+              {% set ns.rows = ns.rows + [{
                 'entity': e.entity_id,
                 'name': name,
                 'score': score,
@@ -194,7 +193,7 @@
               }] %}
             {% endif %}
           {% endfor %}
-          {{ rows | tojson }}
+          {{ ns.rows | tojson }}
         candidate_summary_json: >-
           {% set raw = state_attr('sensor.ma_meta_candidates','candidate_rows_json') | default([], true) %}
           {% set rows = [] %}
@@ -1005,7 +1004,7 @@
               {% elif ma_active_title != '' and not ma_active_queue %}
                 {{ ma_active_title }}
               {% else %}
-                {{ (state_attr(t,'app_name') or state_attr(t,'source') or state_attr(t,'friendly_name') or '') | default('', true) }}
+                {{ '' }}
               {% endif %}
               {% endif %}
             {% endif %}
@@ -1074,33 +1073,20 @@
         {% if t in ['','unknown','unavailable',none] %}
           {{ 'idle' }}
         {% else %}
-          {% set pos_updated = state_attr(t,'media_position_updated_at') %}
-          {% set pos_ts = as_timestamp(pos_updated) if pos_updated is not none else 0 %}
-          {% set pos_age = (as_timestamp(now()) - pos_ts) if pos_ts > 0 else 9999 %}
-          {% set pos_recent = pos_age < 30 %}
+          {% set valid_states = ['playing','paused','idle','stopped','off','standby','buffering','on'] %}
           {% set f_raw = state_attr('sensor.now_playing_entity','player_fields_json') | default('{}', true) %}
           {% set f = f_raw if (f_raw is mapping) else ((f_raw | from_json) if (f_raw is string and (f_raw | trim).startswith('{')) else {}) %}
-          {% set ma_state = (f.ma_state if f is mapping and f.ma_state is defined else '') | default('', true) %}
+          {% set ma_state = ((f.ma_state if f is mapping and f.ma_state is defined else '') | default('', true) | lower) %}
           {% set ha_state = states(t) | lower %}
           {% set active_state = states('sensor.ma_active_state') | lower %}
-          {% if ha_state in ['unknown','unavailable','none',''] %}
-            {% if active_state not in ['unknown','unavailable','none',''] %}
-              {{ active_state }}
-            {% elif ma_state and (ma_state | lower) not in ['unknown','unavailable','none',''] %}
-              {{ ma_state | lower }}
-            {% else %}
-              {{ 'idle' }}
-            {% endif %}
-          {% elif ha_state == 'paused' and pos_recent %}
-            {{ 'playing' }}
-          {% elif ma_state and (ma_state | lower) not in ['none','unknown','unavailable',''] %}
-            {{ ma_state | lower }}
+          {% if ha_state in valid_states %}
+            {{ ha_state }}
+          {% elif ma_state in valid_states %}
+            {{ ma_state }}
+          {% elif active_state in valid_states %}
+            {{ active_state }}
           {% else %}
-            {% if ha_state in ['unknown','unavailable','none',''] %}
-              {{ 'idle' }}
-            {% else %}
-              {{ ha_state }}
-            {% endif %}
+            {{ 'idle' }}
           {% endif %}
         {% endif %}
     - name: Now Playing Position
@@ -1154,11 +1140,13 @@
           {% if target_entry is not none and target_entry.tcp_host is defined and target_entry.tcp_host not in ['','unknown','unavailable'] %}
             {% set target_host = target_entry.tcp_host %}
           {% endif %}
-          {% if target_host == '' %}
-            {% set target_ip = state_attr(target,'ip_address') or '' %}
-            {% if target_ip not in ['','none','unknown','unavailable','None', none] %}
-              {% set target_host = target_ip %}
-            {% endif %}
+        {% endif %}
+        {% if target_host == '' and valid_target %}
+          {% set target_ip = state_attr(target,'ip_address') or '' %}
+          {% set target_state = states(target) | lower if states[target] is not none else '' %}
+          {% set target_active = target_state in ['playing','paused'] %}
+          {% if target_ip not in ['','none','unknown','unavailable','None', none] and (control_capable or active_path == 'linkplay_tcp' or target_active) %}
+            {% set target_host = target_ip %}
           {% endif %}
         {% endif %}
         {% if target_host != '' %}
@@ -1469,33 +1457,28 @@
         {% if t in ['none','unknown','unavailable',''] %}
           {{ 'idle' }}
         {% else %}
-          {% set ap_state = (state_attr('sensor.ma_active_player','playback_state') or state_attr('sensor.ma_active_player','result').playback_state if state_attr('sensor.ma_active_player','result') is defined and state_attr('sensor.ma_active_player','result').playback_state is defined else '') | default('', true) %}
-          {% if ap_state not in ['','none','unknown','unavailable'] %}
-            {{ ap_state | lower }}
+          {% set valid_states = ['playing','paused','idle','stopped','off','standby','buffering','on'] %}
+          {% set ap_state = ((state_attr('sensor.ma_active_player','playback_state') or state_attr('sensor.ma_active_player','result').playback_state if state_attr('sensor.ma_active_player','result') is defined and state_attr('sensor.ma_active_player','result').playback_state is defined else '') | default('', true) | lower) %}
+          {% if ap_state in valid_states %}
+            {{ ap_state }}
           {% else %}
+            {% set target_state = states(t) | lower %}
             {% set meta = states('sensor.ma_active_meta_entity') %}
             {% set meta = (meta if meta not in ['','none','unknown','unavailable'] else t) %}
             {% set meta_state = states(meta) | lower %}
-            {% set meta_title = (state_attr(meta,'media_title') or '') %}
-            {% set meta_artist = (state_attr(meta,'media_artist') or '') %}
-            {% set meta_has = meta_title not in ['', 'None', none] or meta_artist not in ['', 'None', none] %}
-            {% set meta_src = (state_attr(meta,'source') or '') | lower %}
-            {% set meta_app = (state_attr(meta,'app_name') or '') | lower %}
-            {% set meta_pos_updated = state_attr(meta,'media_position_updated_at') %}
-            {% set meta_pos_ts = as_timestamp(meta_pos_updated) if meta_pos_updated is not none else 0 %}
-            {% set meta_pos_age = (as_timestamp(now()) - meta_pos_ts) if meta_pos_ts > 0 else 9999 %}
-            {% set meta_recent = meta_pos_age < 30 %}
-            {% set meta_recent_long = meta_pos_age < 300 %}
-            {% set meta_airplay = meta_src == 'airplay' or meta_app == 'airplay' %}
-            {% if meta_has and (meta_recent or (meta_airplay and meta_recent_long)) %}
+            {% set meta_is_playing = state_attr(meta,'is_playing') if meta not in ['','none','unknown','unavailable'] else none %}
+            {% set meta_is_paused = state_attr(meta,'is_paused') if meta not in ['','none','unknown','unavailable'] else none %}
+            {% set meta_play_state = ((state_attr(meta,'play_state') if meta not in ['','none','unknown','unavailable'] else '') | lower) %}
+            {% if target_state in valid_states %}
+              {{ target_state }}
+            {% elif meta_is_playing is true or meta_play_state in ['play','playing'] %}
               {{ 'playing' }}
+            {% elif meta_is_paused is true or meta_play_state in ['pause','paused'] %}
+              {{ 'paused' }}
+            {% elif meta_state in valid_states %}
+              {{ meta_state }}
             {% else %}
-            {% set target_state = states(t) | default('', true) %}
-            {% if target_state not in ['','none','unknown','unavailable'] %}
-              {{ target_state | lower }}
-            {% else %}
-              {{ states(meta) | default('idle', true) }}
-            {% endif %}
+              {{ 'idle' }}
             {% endif %}
           {% endif %}
         {% endif %}

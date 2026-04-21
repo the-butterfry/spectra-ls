@@ -1,6 +1,6 @@
 <!-- Description: Retroactive architecture and feature documentation for the MA control hub package split. -->
-<!-- Version: 2026.04.19.2 -->
-<!-- Last updated: 2026-04-19 -->
+<!-- Version: 2026.04.20.3 -->
+<!-- Last updated: 2026-04-20 -->
 
 # MA Control Hub Architecture (Retroactive Baseline)
 
@@ -71,6 +71,7 @@ Defined by `template.inc`:
 - room payload normalization (`sensor.spectra_ls_rooms_json`)
 - MA/HA candidate scoring and selection (`ma_meta_candidates`, `ma_meta_resolver`)
 - now-playing entity and resolved fields
+- explicit playback-state derivation (`playing/paused/stopped/idle/...`) that prioritizes authoritative state over metadata recency/title presence
 - active control path/capability/host derivation
 - ambiguity/staleness/confidence binary surfaces
 - friendly labels and helper projection sensors

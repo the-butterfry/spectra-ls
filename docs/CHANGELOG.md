@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.20.122 -->
+<!-- Version: 2026.04.20.123 -->
 <!-- Last updated: 2026-04-20 -->
 
 # Changelog
 
 ## 2026-04-20
+
+- ESPHome/OLED False `PLAYING` Idle Header Fail-Closed Fix (`esphome/spectra_ls_system/spectra-ls-peripherals.yaml`): prevent now-playing fallback title from rendering `PLAYING` when playback is only inferred from stale/recent activity signals. The fallback header now requires concrete live transport-playing evidence (HA state playing with fresh activity or active Arylic playing flags) before displaying `PLAYING`; otherwise the title stays blank in idle/no-track windows. P1/P2/P3 impact: no source-of-truth ownership change; display-layer truthfulness hardening only. README parity: no material repo-state change.
 
 - Governance/Build→Upload Enforcement (`.github/copilot-instructions.md`): apply explicit operator directive that successful ESPHome builds in active sessions are deployment-required by default (build must be followed by OTA upload + upload proof) unless the user explicitly requests `build-only`/`no upload`. P1/P2/P3 impact: no source-of-truth ownership change; process enforcement hardening only. README parity: no material repo-state change.
 

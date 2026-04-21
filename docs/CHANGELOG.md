@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.20.127 -->
-<!-- Last updated: 2026-04-20 -->
+<!-- Version: 2026.04.21.128 -->
+<!-- Last updated: 2026-04-21 -->
 
 # Changelog
 
 ## 2026-04-20
+
+- Validation/Phase-5 P5-S02 Checklist Audit-Completeness Alignment (`docs/testing/raw/p5_s02_metadata_cutover_run_window_checklist.md`): align run-window evidence template/examples with monitor-side M1 audit completeness outputs by adding explicit capture fields for trial audit status/completeness and requested/completed timestamps, plus closeout interpretation guidance (`COMPLETE` expected when a trial was executed). P1/P2/P3 impact: no source-of-truth ownership change enacted; documentation/evidence-contract alignment only. README parity: no material repo-state change.
 
 - Validation/Phase-5 P5-S02 Monitor Trial-Audit Completeness Hardening (`docs/testing/raw/p5_s02_metadata_functionality_monitor.jinja`): surface missing M1 audit contract fields (`requested_at`, `completed_at`) and emit a deterministic audit completeness verdict (`N/A`, `COMPLETE`, `PARTIAL`) so dry-run/write-trial evidence can be assessed without cross-referencing coordinator internals. P1/P2/P3 impact: no source-of-truth ownership change enacted; diagnostics-only evidence-quality hardening. README parity: no material repo-state change.
 

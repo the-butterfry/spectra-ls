@@ -1,6 +1,6 @@
 <!-- Description: Documentation index for Spectra L/S technical, onboarding, roadmap, and operations artifacts. -->
-<!-- Version: 2026.04.19.5 -->
-<!-- Last updated: 2026-04-19 -->
+<!-- Version: 2026.04.20.1 -->
+<!-- Last updated: 2026-04-20 -->
 
 # Spectra L/S Documentation Index
 
@@ -11,6 +11,7 @@ Use this folder as the single location for project documentation and notes.
 - Developer onboarding: `docs/developer/DEVELOPER-INSTRUCTIONS.md`
 - Changelog: `docs/CHANGELOG.md`
 - GitHub governance blueprint: `docs/governance/GITHUB-MASTERWORK-BLUEPRINT.md`
+- Active ESPHome runtime path on `main`: `esphome/spectra_ls_system/**` (entrypoint `esphome/spectra_ls_system.yaml`); `esphome/control-py/**` is the stabilized alternate line unless explicitly targeted.
 
 ## Roadmap and program governance
 

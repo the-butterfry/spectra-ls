@@ -3,7 +3,7 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 ---
 
 <!-- Description: Workspace Copilot operating instructions for Home Assistant + ESPHome. -->
-<!-- Version: 2026.04.20.14 -->
+<!-- Version: 2026.04.20.15 -->
 <!-- Last updated: 2026-04-20 -->
 
 # GitHub Copilot Instructions — Home Assistant + ESPHome
@@ -123,6 +123,7 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
   - `esphome/circuitpy/`
   - `packages/`
   - `docs/setup/SPECTRA-HA-CONFIG-PLACEHOLDERS.md`
+- Active-path guardrail (required): for default `main` runtime edits, treat `esphome/spectra_ls_system/**` (entrypoint `esphome/spectra_ls_system.yaml`) as the active implementation path. Treat `esphome/control-py/**` as a stabilized alternate line; do not edit it unless the user explicitly requests `control-py` work or the change is a documented shared-contract parity update.
 - Keep `main` and `menu-only` concurrently operable.
 - For shared contracts (RP events, control API, helper/entity contracts), require either:
   - paired update in both branches, or

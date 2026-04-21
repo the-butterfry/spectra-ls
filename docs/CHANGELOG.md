@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.20.111 -->
+<!-- Version: 2026.04.20.112 -->
 <!-- Last updated: 2026-04-20 -->
 
 # Changelog
 
 ## 2026-04-20
+
+- Validation/Stale-Metadata Root-Cause Diagnostic Template (`docs/testing/raw/stale_meta_root_cause_diagnostic.jinja`): add a copy/paste HA template that identifies which metadata entity is currently winning (`ma_active_meta_entity` vs `now_playing_entity` vs active target), computes freshness/age from position-update timestamps, and emits an explicit stale-hold reason summary so operators can see why old AppleTV metadata remains surfaced. P1/P2/P3 impact: no source-of-truth ownership change; diagnostics-only visibility enhancement. README parity: no material repo-state change.
 
 - Custom Component/Metadata Ownership Boundary Visibility Hardening (`custom_components/spectra_ls/coordinator.py`, `docs/testing/raw/p5_s02_metadata_functionality_monitor.jinja`): make metadata cutover posture explicit in component diagnostics by surfacing ownership fields (`metadata_authority_owner`, `metadata_cutover_active`, `cutover_block_reason`) and gating metadata-prep readiness with no-authority-expansion semantics (`legacy` baseline required for closeout-ready metadata gate-prep). This prevents component-mode routing trials from being misread as metadata ownership cutover and keeps P5-S02 fail-closed semantics explicit. P1/P2/P3 impact: no source-of-truth ownership change enacted; diagnostics contract hardening only. README parity: no material repo-state change.
 

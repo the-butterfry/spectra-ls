@@ -1,0 +1,124 @@
+{# Description: Raw copy/paste Jinja template to diagnose stale now-playing metadata source and cause. #}
+{# Version: 2026.04.20.1 #}
+{# Last updated: 2026-04-20 #}
+
+{# =========================
+  Stale Metadata Root-Cause Diagnostic
+  Purpose: explain exactly where stale metadata is coming from and why it is still being selected.
+  Usage:
+    1) Optional refresh actions:
+       - spectra_ls.validate_metadata_prep
+       - spectra_ls.validate_contracts
+       - spectra_ls.dump_route_trace
+    2) Paste/run in Developer Tools -> Template.
+    3) Capture output when stale title/source is visible.
+  ========================= #}
+
+{% set s_target_primary = 'sensor.shadow_active_target' %}
+{% set s_target_fallback = 'sensor.spectra_ls_shadow_active_target' %}
+{% set primary_has_attrs = state_attr(s_target_primary, 'route_trace') is not none or state_attr(s_target_primary, 'captured_at') is not none %}
+{% set fallback_has_attrs = state_attr(s_target_fallback, 'route_trace') is not none or state_attr(s_target_fallback, 'captured_at') is not none %}
+{% set s_target = s_target_primary if primary_has_attrs else (s_target_fallback if fallback_has_attrs else s_target_primary) %}
+
+{% set active_target = states('sensor.ma_active_target') %}
+{% set active_meta_entity = states('sensor.ma_active_meta_entity') %}
+{% set now_playing_entity = states('sensor.now_playing_entity') %}
+{% set now_playing_state = states('sensor.now_playing_state') | lower %}
+{% set now_playing_title = states('sensor.now_playing_title') %}
+{% set now_playing_source = states('sensor.now_playing_source') %}
+
+{% set invalid = ['', 'none', 'unknown', 'unavailable', none] %}
+{% set candidate_entities = [active_meta_entity, now_playing_entity, active_target] %}
+
+{% set ns = namespace(rows=[]) %}
+{% for ent in candidate_entities %}
+  {% if ent not in invalid and states[ent] is not none %}
+    {% set ent_state = states(ent) | lower %}
+    {% set title = (state_attr(ent, 'media_title') or '') %}
+    {% set artist = (state_attr(ent, 'media_artist') or '') %}
+    {% set app_name = (state_attr(ent, 'app_name') or '') %}
+    {% set source = (state_attr(ent, 'source') or '') %}
+    {% set pos_updated_raw = state_attr(ent, 'media_position_updated_at') %}
+    {% set pos_updated_ts = as_timestamp(pos_updated_raw) if pos_updated_raw not in invalid else none %}
+    {% set pos_age_s = (as_timestamp(now()) - pos_updated_ts) if pos_updated_ts is not none else none %}
+    {% set has_meta = (title not in ['', none]) or (artist not in ['', none]) %}
+    {% set play_state_attr = (state_attr(ent, 'play_state') or '') | lower %}
+    {% set is_playing_attr = state_attr(ent, 'is_playing') %}
+    {% set is_paused_attr = state_attr(ent, 'is_paused') %}
+    {% set active_signal = (ent_state in ['playing', 'paused']) or (play_state_attr in ['play', 'playing', 'pause', 'paused']) or (is_playing_attr is true) or (is_paused_attr is true) %}
+    {% set freshness = 'fresh' if pos_age_s is not none and pos_age_s <= 30 else ('aging' if pos_age_s is not none and pos_age_s <= 300 else 'stale_or_missing') %}
+    {% set stale_risk = (has_meta and freshness == 'stale_or_missing' and ent_state not in ['playing']) %}
+    {% set ns.rows = ns.rows + [{
+      'entity': ent,
+      'state': ent_state,
+      'title': title,
+      'artist': artist,
+      'source': source,
+      'app_name': app_name,
+      'play_state_attr': play_state_attr,
+      'is_playing_attr': is_playing_attr,
+      'is_paused_attr': is_paused_attr,
+      'has_meta': has_meta,
+      'active_signal': active_signal,
+      'pos_age_s': pos_age_s,
+      'freshness': freshness,
+      'stale_risk': stale_risk,
+      'last_changed': states[ent].last_changed if states[ent] is not none else none,
+      'last_updated': states[ent].last_updated if states[ent] is not none else none
+    }] %}
+  {% endif %}
+{% endfor %}
+
+{% set winner = now_playing_entity if now_playing_entity not in invalid else (active_meta_entity if active_meta_entity not in invalid else active_target) %}
+{% set winner_row = (ns.rows | selectattr('entity', 'equalto', winner) | list | first) if winner not in invalid else none %}
+
+{% set stale_reason = 'no_clear_reason' %}
+{% if now_playing_title in invalid and now_playing_state in ['idle', 'stopped', 'off', 'unknown', 'unavailable'] %}
+  {% set stale_reason = 'no_active_media_but_np_surface_still_selected' %}
+{% elif winner_row is mapping and winner_row.stale_risk %}
+  {% set stale_reason = 'winner_has_old_meta_without_fresh_play_signal' %}
+{% elif winner_row is mapping and winner_row.state in ['paused'] and winner_row.freshness != 'fresh' %}
+  {% set stale_reason = 'paused_meta_held_without_recent_progress' %}
+{% elif winner_row is mapping and winner_row.state in ['idle', 'stopped', 'off'] and winner_row.has_meta %}
+  {% set stale_reason = 'idle_or_stopped_entity_still_carries_meta_fields' %}
+{% endif %}
+
+### Stale Metadata Root-Cause Diagnostic
+- Timestamp: **{{ now() }}**
+- Active target: **{{ active_target if active_target not in invalid else 'n/a' }}**
+- Active meta entity: **{{ active_meta_entity if active_meta_entity not in invalid else 'n/a' }}**
+- Now playing entity: **{{ now_playing_entity if now_playing_entity not in invalid else 'n/a' }}**
+- Now playing state/title/source: **{{ now_playing_state }}** / **{{ now_playing_title if now_playing_title not in invalid else 'n/a' }}** / **{{ now_playing_source if now_playing_source not in invalid else 'n/a' }}**
+- Suspected winner entity: **{{ winner if winner not in invalid else 'n/a' }}**
+- Stale reason classification: **{{ stale_reason }}**
+
+### Candidate entity breakdown
+{% if ns.rows | length == 0 %}
+- No candidate entities resolved from `ma_active_meta_entity`, `now_playing_entity`, or `ma_active_target`.
+{% else %}
+{% for row in ns.rows %}
+- `{{ row.entity }}`
+  - state: **{{ row.state }}**
+  - title/artist: **{{ row.title if row.title != '' else 'n/a' }}** / **{{ row.artist if row.artist != '' else 'n/a' }}**
+  - source/app: **{{ row.source if row.source != '' else 'n/a' }}** / **{{ row.app_name if row.app_name != '' else 'n/a' }}**
+  - play attrs: **play_state={{ row.play_state_attr if row.play_state_attr != '' else 'n/a' }} | is_playing={{ row.is_playing_attr }} | is_paused={{ row.is_paused_attr }}**
+  - freshness: **{{ row.freshness }}** (pos_age_s={{ (row.pos_age_s | round(1)) if row.pos_age_s is not none else 'n/a' }})
+  - active signal: **{{ row.active_signal }}**
+  - stale risk: **{{ row.stale_risk }}**
+  - last_changed / last_updated: **{{ row.last_changed }} / {{ row.last_updated }}**
+{% endfor %}
+{% endif %}
+
+### Component metadata gate snapshot
+{% set metadata = state_attr(s_target, 'metadata_prep_validation') or {} %}
+{% set write_controls = state_attr(s_target, 'write_controls') or {} %}
+- `metadata_prep_validation.verdict`: **{{ metadata.verdict if metadata is mapping and metadata.verdict is defined else 'missing' }}**
+- `metadata_prep_validation.ready_for_metadata_handoff`: **{{ metadata.ready_for_metadata_handoff if metadata is mapping and metadata.ready_for_metadata_handoff is defined else false }}**
+- `metadata_prep_validation.metadata_authority_owner`: **{{ metadata.metadata_authority_owner if metadata is mapping and metadata.metadata_authority_owner is defined else 'unknown' }}**
+- `metadata_prep_validation.cutover_block_reason`: **{{ metadata.cutover_block_reason if metadata is mapping and metadata.cutover_block_reason is defined else 'n/a' }}**
+- `write_controls.authority_mode`: **{{ write_controls.authority_mode if write_controls is mapping and write_controls.authority_mode is defined else 'missing' }}**
+
+### Suggested next checks
+- If stale reason is `winner_has_old_meta_without_fresh_play_signal`, inspect the winning entity for stale `media_title/media_artist` retention.
+- If stale reason is `paused_meta_held_without_recent_progress`, verify `media_position_updated_at` and upstream play-state transitions.
+- If stale reason is `idle_or_stopped_entity_still_carries_meta_fields`, clear/normalize source-side metadata or tighten resolver precedence.

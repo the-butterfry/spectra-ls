@@ -1,5 +1,5 @@
 # Description: Template entities for ma_control_hub runtime routing, metadata, and now-playing state surfaces.
-# Version: 2026.04.20.31
+# Version: 2026.04.20.32
 # Last updated: 2026-04-20
 # HUB MUST-READ: Contract parser methodology.
 # - For complex attributes (`rooms`, `candidates_json`, etc.), prefer native sequence/mapping values first.
@@ -337,11 +337,11 @@
           {% if e.entity_id == target %}{% set score = score + 1 %}{% endif %}
           {% if e.entity_id == by_host %}{% set score = score + 2 %}{% endif %}
           {% if url_like and not title_ok %}{% set score = score - 2 %}{% endif %}
-          {% if score > 0 and plex_ok %}
+          {% if score > 0 and plex_ok and (active or recent) %}
             {% set ns.list = ns.list + [{'entity': e.entity_id, 'score': score, 'active': active, 'recent': recent, 'has_meta': (title_ok or artist not in ['','None', none] or album not in ['','None', none]), 'state': st}] %}
             {% set ns.count = ns.count + 1 %}
           {% endif %}
-          {% if score > ns.best_score and plex_ok %}
+          {% if score > ns.best_score and plex_ok and (active or recent) %}
             {% set ns.best_score = score %}
             {% set ns.best = e.entity_id %}
           {% endif %}
@@ -450,7 +450,7 @@
             {% if e.entity_id == target %}{% set score = score + 1 %}{% endif %}
             {% if e.entity_id == by_host %}{% set score = score + 2 %}{% endif %}
             {% if url_like and not title_ok %}{% set score = score - 2 %}{% endif %}
-            {% if score > 0 and plex_ok %}
+            {% if score > 0 and plex_ok and (active or recent) %}
               {% set ns.list = ns.list + [{'entity': e.entity_id, 'score': score, 'active': active, 'recent': recent, 'has_meta': (title_ok or artist not in ['','None', none] or album not in ['','None', none]), 'state': st}] %}
             {% endif %}
           {% endfor %}
@@ -583,8 +583,8 @@
           {% set detected_ok = detected not in ['','none','unknown','unavailable'] and detected_conf >= conf_min %}
           {% set mapped = (entry.meta if entry is not none and entry.meta is defined and entry.meta not in ['','none','unknown','unavailable'] else '') %}
           {% set kitchen_meta = 'media_player.kitchen_wiim' %}
-          {% set kitchen_state = states(kitchen_meta) %}
-          {% set kitchen_active = kitchen_state not in ['','none','unknown','unavailable'] %}
+          {% set kitchen_state = states(kitchen_meta) | lower %}
+          {% set kitchen_active = kitchen_state in ['playing','paused'] %}
           {% set kitchen_title = (state_attr(kitchen_meta,'media_title') or '') %}
           {% set kitchen_artist = (state_attr(kitchen_meta,'media_artist') or '') %}
           {% set kitchen_has_meta = kitchen_title not in ['', 'None', none] or kitchen_artist not in ['', 'None', none] %}
@@ -889,7 +889,7 @@
         {% set pref_active = pref_state in ['playing','paused'] %}
         {% if res_valid %}
           {{ resolver }}
-        {% elif pref_valid and (pref_active or pref_recent or pref_has_meta) %}
+        {% elif pref_valid and (pref_active or pref_recent) %}
           {{ preferred }}
         {% elif t_valid and ma_state == 'playing' and (t_has_meta or ma_title not in ['','unknown','unavailable','none']) %}
           {{ t }}

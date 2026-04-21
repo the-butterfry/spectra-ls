@@ -1,6 +1,6 @@
 <!-- Description: Deterministic operator run-window checklist for Phase 5 Slice-02 metadata-domain cutover readiness and bounded validation (P5-S02). -->
-<!-- Version: 2026.04.20.10 -->
-<!-- Last updated: 2026-04-20 -->
+<!-- Version: 2026.04.21.11 -->
+<!-- Last updated: 2026-04-21 -->
 
 # P5-S02 Metadata Cutover — Run Window Checklist
 
@@ -99,6 +99,12 @@ Current implementation status:
 - one post-window rollback proof capture with `effective_mode=legacy`,
 - no unresolved required entities and no parity mismatches in final snapshot.
 
+Audit-completeness interpretation (from monitor output):
+
+- `N/A`: no trial executed in this record (`status=never_attempted`).
+- `PARTIAL`: trial executed but required audit fields are missing.
+- `COMPLETE`: trial executed and all required audit fields are present.
+
 ## Preflight gates (all required)
 
 1. **Authority baseline gate**
@@ -179,6 +185,10 @@ in_window_snapshot:
    metadata_validation_verdict: PASS|WARN|FAIL
    metadata_ready_for_handoff: true|false
    missing_required_entities_count:
+   metadata_trial_status:
+   metadata_trial_audit_completeness: N/A|PARTIAL|COMPLETE
+   metadata_trial_requested_at:
+   metadata_trial_completed_at:
    captured_at:
 
 stop_conditions:
@@ -309,6 +319,10 @@ Run-1 fill hints (source = `p5_s02_metadata_functionality_monitor.jinja`):
 - `metadata_validation_verdict` ← `metadata_prep_validation.verdict`
 - `metadata_ready_for_handoff` ← `metadata_prep_validation.ready_for_metadata_handoff`
 - `missing_required_entities_count` ← `metadata_prep_validation.missing_required | length`
+- `metadata_trial_status` ← `write_controls.metadata_trial_last_attempt.status`
+- `metadata_trial_audit_completeness` ← `M1 audit payload completeness`
+- `metadata_trial_requested_at` ← `write_controls.metadata_trial_last_attempt.requested_at`
+- `metadata_trial_completed_at` ← `write_controls.metadata_trial_last_attempt.completed_at`
 
 ## Example C — Operator-captured runtime baseline (2026-04-20)
 
@@ -340,6 +354,10 @@ in_window_snapshot:
    metadata_validation_verdict: PASS
    metadata_ready_for_handoff: true
    missing_required_entities_count: 0
+   metadata_trial_status: never_attempted
+   metadata_trial_audit_completeness: N/A
+   metadata_trial_requested_at: n/a
+   metadata_trial_completed_at: n/a
    captured_at: 2026-04-20T17:59:21.972073-07:00
 
 stop_conditions:
@@ -371,6 +389,7 @@ When you are ready to close this run, perform one final monitor render and updat
 Closeout rule for this run remains strict:
 
 - `closeout_eligible=true` only when post-window snapshot confirms safe authority posture (`legacy`) and metadata/contract/parity conditions remain healthy.
+- If a trial was executed in-window (`metadata_trial_status != never_attempted`), treat `metadata_trial_audit_completeness=PARTIAL` as non-closeout (`WARN`) until a complete audit record is captured.
 
 ## Example D — Post-window completion block (fill from final render)
 
@@ -415,6 +434,9 @@ in_window_snapshot:
    metadata_validation_verdict: WARN
    metadata_ready_for_handoff: false
    metadata_trial_status: blocked_metadata_not_ready
+   metadata_trial_audit_completeness: PARTIAL
+   metadata_trial_requested_at: n/a
+   metadata_trial_completed_at: n/a
    metadata_trial_window_id: p5s02-run3
    metadata_trial_dry_run: true
    metadata_trial_reason: Metadata prep validation is not PASS/ready; fail-closed

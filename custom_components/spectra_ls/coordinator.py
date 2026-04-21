@@ -1,5 +1,5 @@
 # Description: Data coordinator for Spectra LS parity diagnostics, Phase 3 guarded routing write-path controls, Phase 4 diagnostics scaffolding (F4-S01/F4-S03), and Phase 5 metadata trial contract auditing with unresolved-contract hardening.
-# Version: 2026.04.21.20
+# Version: 2026.04.21.21
 # Last updated: 2026-04-21
 
 from __future__ import annotations
@@ -77,6 +77,9 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "audit_payload_complete": False,
             "audit_payload_state": "N/A",
             "missing_audit_fields": [],
+            "blocking_reasons": [],
+            "trial_gate_verdict": "N/A",
+            "eligible_for_closeout": False,
         }
 
     @staticmethod
@@ -1247,6 +1250,7 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "route_decision": route_decision,
             "contract_valid": contract_valid,
             "metadata_ready": metadata_ready,
+            "blocking_reasons": [],
         }
 
         if not window:
@@ -1334,11 +1338,31 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         result["effective_mode"] = self._write_authority_mode
         result["completed_at"] = datetime.now(UTC).isoformat()
+
+        status = str(result.get("status", "") or "")
+        blocking_reasons: list[str] = []
+        if status.startswith("blocked_"):
+            blocking_reasons.append(status)
+        result["blocking_reasons"] = blocking_reasons
+
         missing_audit_fields = self._metadata_trial_audit_missing_fields(result)
         audit_payload_complete = len(missing_audit_fields) == 0
         result["audit_payload_complete"] = audit_payload_complete
         result["missing_audit_fields"] = missing_audit_fields
         result["audit_payload_state"] = "COMPLETE" if audit_payload_complete else "PARTIAL"
+
+        if status.startswith("blocked_"):
+            trial_gate_verdict = "FAIL"
+        elif status in {"dry_run_ok", "noop_applied"}:
+            trial_gate_verdict = "PASS"
+        else:
+            trial_gate_verdict = "WARN"
+        result["trial_gate_verdict"] = trial_gate_verdict
+        result["eligible_for_closeout"] = (
+            trial_gate_verdict == "PASS"
+            and audit_payload_complete
+            and self._write_authority_mode == WRITE_AUTH_LEGACY
+        )
         self._last_metadata_trial_attempt = result
         self.async_set_updated_data(self._build_snapshot())
 

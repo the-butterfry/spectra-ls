@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.21.54 -->
+<!-- Version: 2026.04.21.55 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -626,6 +626,7 @@ Mechanism-definition next step (P5-S02-M1):
 - Implemented deliverable: dry-run service contract shape, audit payload fields, and fail-closed stop handling are now wired in `custom_components/spectra_ls` (`metadata_write_trial` + coordinator snapshot surfacing).
 - Hardening update: contract validation now treats unresolved required surfaces as invalid (not only missing entities), closing the gap where metadata could appear healthy while control-host surfaces degraded.
 - Hardening update (audit canonicalization): coordinator now publishes `metadata_trial_last_attempt.audit_payload_state`, `audit_payload_complete`, and `missing_audit_fields` so closeout readiness can be classified from payload-native completeness semantics.
+- Hardening update (trial gate semantics): coordinator now publishes `blocking_reasons`, `trial_gate_verdict`, and `eligible_for_closeout` in `metadata_trial_last_attempt` for deterministic gate-prep classification.
 - Remaining promotion gate: capture fresh dry-run and bounded-window evidence records showing complete audit payload and explicit rollback/disarm proof with `effective_mode=legacy`.
 
 Deferred H1 note (report/log/heal):

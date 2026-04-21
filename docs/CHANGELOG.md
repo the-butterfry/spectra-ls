@@ -1,8 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.21.128 -->
+<!-- Version: 2026.04.21.129 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Changelog
+
+## 2026-04-21
+
+- Validation/Phase-5 P5-S02 Gold-Standard COMPLETE Audit Example (`docs/testing/raw/p5_s02_metadata_cutover_run_window_checklist.md`): add a concrete copy/paste run-window evidence block that demonstrates a fully populated metadata trial audit (`status`, `window_id`, requested/effective mode, dry-run flag, reason, correlation id, `requested_at`, `completed_at`, and `M1 audit payload completeness=COMPLETE`) to reduce operator interpretation drift for closeout-grade captures. P1/P2/P3 impact: no source-of-truth ownership change enacted; documentation/evidence-quality hardening only. README parity: no material repo-state change.
 
 ## 2026-04-20
 

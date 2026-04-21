@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.21.133 -->
+<!-- Version: 2026.04.21.134 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Changelog
 
 ## 2026-04-21
+
+- Custom Component/Phase-5 P5-S02 Metadata Trial Gate Semantics Hardening (`custom_components/spectra_ls/coordinator.py`, `docs/testing/raw/p5_s02_metadata_functionality_monitor.jinja`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): add canonical trial preflight semantics to `metadata_trial_last_attempt` with explicit `blocking_reasons`, `trial_gate_verdict`, and `eligible_for_closeout` fields so dry-run window outcomes classify deterministically without inferring from status text. P1/P2/P3 impact: no source-of-truth ownership change enacted; P5 execution-contract clarity hardening only. README parity: no material repo-state change.
 
 - HA/Current-Cycle User Feedback — No Control-Capable Hosts Notification (`packages/ma_control_hub/template.inc`, `packages/ma_control_hub/automation.inc`, `docs/architecture/CONTROL-HUB-ARCHITECTURE.md`): add an operator-facing feedback path that raises a persistent Home Assistant notification when an active target is selected but no control-capable host route is available, with auto-dismiss when control-capable host context recovers. This provides immediate basic user guidance instead of silent no-op behavior in host-degraded states. P1/P2/P3 impact: no source-of-truth ownership change enacted; runtime feedback/diagnostics UX hardening only. README parity: no material repo-state change.
 

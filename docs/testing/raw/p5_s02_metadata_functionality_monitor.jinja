@@ -1,5 +1,5 @@
 {# Description: Raw copy/paste Jinja monitor template for Spectra LS P5-S02 metadata-domain gate-prep and run-window validation feedback. #}
-{# Version: 2026.04.21.11 #}
+{# Version: 2026.04.21.12 #}
 {# Last updated: 2026-04-21 #}
 
 {# =========================
@@ -55,7 +55,10 @@
 {% set metadata_trial_requested_at = metadata_trial.requested_at if metadata_trial is mapping and metadata_trial.requested_at is defined else '' %}
 {% set metadata_trial_completed_at = metadata_trial.completed_at if metadata_trial is mapping and metadata_trial.completed_at is defined else '' %}
 {% set metadata_trial_missing_audit_fields = metadata_trial.missing_audit_fields if metadata_trial is mapping and metadata_trial.missing_audit_fields is defined and metadata_trial.missing_audit_fields is sequence and metadata_trial.missing_audit_fields is not string else [] %}
+{% set metadata_trial_blocking_reasons = metadata_trial.blocking_reasons if metadata_trial is mapping and metadata_trial.blocking_reasons is defined and metadata_trial.blocking_reasons is sequence and metadata_trial.blocking_reasons is not string else [] %}
 {% set metadata_trial_audit_state_payload = metadata_trial.audit_payload_state if metadata_trial is mapping and metadata_trial.audit_payload_state is defined else '' %}
+{% set metadata_trial_gate_verdict = metadata_trial.trial_gate_verdict if metadata_trial is mapping and metadata_trial.trial_gate_verdict is defined else 'n/a' %}
+{% set metadata_trial_closeout_eligible = metadata_trial.eligible_for_closeout if metadata_trial is mapping and metadata_trial.eligible_for_closeout is defined else none %}
 {% set metadata_trial_audit_complete = metadata_trial_status != 'never_attempted' and metadata_trial_window != '' and metadata_trial_requested_mode != '' and metadata_trial_effective_mode != '' and metadata_trial_dry_run is not none and metadata_trial_reason != '' and metadata_trial_corr != '' and metadata_trial_requested_at != '' and metadata_trial_completed_at != '' %}
 {% set metadata_trial_audit_state = metadata_trial_audit_state_payload if metadata_trial_audit_state_payload in ['N/A', 'COMPLETE', 'PARTIAL'] else ('N/A' if metadata_trial_status == 'never_attempted' else ('COMPLETE' if metadata_trial_audit_complete else 'PARTIAL')) %}
 
@@ -122,7 +125,16 @@
 - `requested_at`: **{{ metadata_trial_requested_at if metadata_trial_requested_at != '' else 'n/a' }}**
 - `completed_at`: **{{ metadata_trial_completed_at if metadata_trial_completed_at != '' else 'n/a' }}**
 - M1 audit payload completeness: **{{ metadata_trial_audit_state }}**
+- `trial_gate_verdict`: **{{ metadata_trial_gate_verdict }}**
+- `eligible_for_closeout`: **{{ metadata_trial_closeout_eligible if metadata_trial_closeout_eligible is not none else 'n/a' }}**
 - `missing_audit_fields`: **{{ metadata_trial_missing_audit_fields | length }}**
+
+{% if (metadata_trial_blocking_reasons | length) > 0 %}
+Metadata trial blocking reasons:
+{% for item in metadata_trial_blocking_reasons %}
+- `{{ item }}`
+{% endfor %}
+{% endif %}
 
 {% if (metadata_trial_missing_audit_fields | length) > 0 %}
 Metadata trial missing audit fields:

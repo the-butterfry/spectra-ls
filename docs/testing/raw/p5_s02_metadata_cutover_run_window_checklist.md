@@ -1,5 +1,5 @@
 <!-- Description: Deterministic operator run-window checklist for Phase 5 Slice-02 metadata-domain cutover readiness and bounded validation (P5-S02). -->
-<!-- Version: 2026.04.21.12 -->
+<!-- Version: 2026.04.21.13 -->
 <!-- Last updated: 2026-04-21 -->
 
 # P5-S02 Metadata Cutover — Run Window Checklist
@@ -187,6 +187,8 @@ in_window_snapshot:
    missing_required_entities_count:
    metadata_trial_status:
    metadata_trial_audit_completeness: N/A|PARTIAL|COMPLETE
+   metadata_trial_missing_audit_fields_count:
+   metadata_trial_missing_audit_fields:
    metadata_trial_requested_at:
    metadata_trial_completed_at:
    captured_at:
@@ -320,7 +322,9 @@ Run-1 fill hints (source = `p5_s02_metadata_functionality_monitor.jinja`):
 - `metadata_ready_for_handoff` ← `metadata_prep_validation.ready_for_metadata_handoff`
 - `missing_required_entities_count` ← `metadata_prep_validation.missing_required | length`
 - `metadata_trial_status` ← `write_controls.metadata_trial_last_attempt.status`
-- `metadata_trial_audit_completeness` ← `M1 audit payload completeness`
+- `metadata_trial_audit_completeness` ← `write_controls.metadata_trial_last_attempt.audit_payload_state` (fallback: monitor line `M1 audit payload completeness`)
+- `metadata_trial_missing_audit_fields_count` ← `write_controls.metadata_trial_last_attempt.missing_audit_fields | length`
+- `metadata_trial_missing_audit_fields` ← `write_controls.metadata_trial_last_attempt.missing_audit_fields`
 - `metadata_trial_requested_at` ← `write_controls.metadata_trial_last_attempt.requested_at`
 - `metadata_trial_completed_at` ← `write_controls.metadata_trial_last_attempt.completed_at`
 
@@ -356,6 +360,8 @@ in_window_snapshot:
    missing_required_entities_count: 0
    metadata_trial_status: never_attempted
    metadata_trial_audit_completeness: N/A
+   metadata_trial_missing_audit_fields_count: 0
+   metadata_trial_missing_audit_fields: []
    metadata_trial_requested_at: n/a
    metadata_trial_completed_at: n/a
    captured_at: 2026-04-20T17:59:21.972073-07:00

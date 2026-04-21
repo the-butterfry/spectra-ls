@@ -1,5 +1,5 @@
 {# Description: Raw copy/paste Jinja monitor template for Spectra LS P5-S02 metadata-domain gate-prep and run-window validation feedback. #}
-{# Version: 2026.04.21.12 #}
+{# Version: 2026.04.21.13 #}
 {# Last updated: 2026-04-21 #}
 
 {# =========================
@@ -205,6 +205,7 @@ Parity mismatches:
 {% endif %}
 
 ### Suggested refresh actions
+- Service: `spectra_ls.run_p5_s02_sequence` (preferred one-shot for bounded window refresh + trial)
 - Service: `spectra_ls.validate_metadata_prep`
 - Service: `spectra_ls.metadata_write_trial` (start with `dry_run=true` and bounded `window_id`)
 - Service: `spectra_ls.run_p3_s03_sequence`

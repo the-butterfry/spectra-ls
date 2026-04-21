@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.21.134 -->
+<!-- Version: 2026.04.21.135 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Changelog
 
 ## 2026-04-21
+
+- Custom Component/Phase-5 P5-S02 One-Shot Sequence Service (`custom_components/spectra_ls/const.py`, `custom_components/spectra_ls/__init__.py`, `custom_components/spectra_ls/services.yaml`, `docs/testing/raw/p5_s02_metadata_functionality_monitor.jinja`, `docs/testing/raw/p5_s02_metadata_cutover_run_window_checklist.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): add `spectra_ls.run_p5_s02_sequence` to execute authority baseline set + registry/contracts/route/metadata refresh + bounded metadata trial in one deterministic call, reducing operator sequencing drift while preserving fail-closed trial semantics and legacy authority boundaries. P1/P2/P3 impact: no source-of-truth ownership change enacted; P5 execution ergonomics/consistency hardening only. README parity: no material repo-state change.
 
 - Custom Component/Phase-5 P5-S02 Metadata Trial Gate Semantics Hardening (`custom_components/spectra_ls/coordinator.py`, `docs/testing/raw/p5_s02_metadata_functionality_monitor.jinja`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): add canonical trial preflight semantics to `metadata_trial_last_attempt` with explicit `blocking_reasons`, `trial_gate_verdict`, and `eligible_for_closeout` fields so dry-run window outcomes classify deterministically without inferring from status text. P1/P2/P3 impact: no source-of-truth ownership change enacted; P5 execution-contract clarity hardening only. README parity: no material repo-state change.
 

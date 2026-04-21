@@ -1,6 +1,6 @@
-# Description: Spectra LS custom integration setup for shadow parity, Phase 3 guarded routing write-path services, and Phase 4 diagnostics scaffolding services (F4-S01/F4-S03).
-# Version: 2026.04.20.10
-# Last updated: 2026-04-20
+# Description: Spectra LS custom integration setup for shadow parity, Phase 3 guarded routing write-path services, Phase 4 diagnostics scaffolding services (F4-S01/F4-S03), and Phase 5 metadata trial contract service wiring.
+# Version: 2026.04.21.12
+# Last updated: 2026-04-21
 
 from __future__ import annotations
 
@@ -16,8 +16,10 @@ from .const import (
     DOMAIN,
     PLATFORMS,
     SERVICE_DUMP_ROUTE_TRACE,
+    SERVICE_METADATA_WRITE_TRIAL,
     SERVICE_RUN_P3_S01_SEQUENCE,
     SERVICE_RUN_P3_S02_SEQUENCE,
+    SERVICE_RUN_P5_S02_SEQUENCE,
     SERVICE_ROUTE_WRITE_TRIAL,
     SERVICE_REBUILD_REGISTRY,
     SERVICE_SET_WRITE_AUTHORITY,
@@ -69,6 +71,25 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         force = bool(call.data.get("force", False))
         await coordinator.async_route_write_trial(correlation_id=correlation_id, force=force)
 
+    async def _service_metadata_write_trial(call: ServiceCall) -> None:
+        mode = str(call.data.get("mode", "legacy"))
+        window_id = str(call.data.get("window_id", "")).strip()
+        reason = str(call.data.get("reason", "")).strip()
+        dry_run = bool(call.data.get("dry_run", True))
+        expected_target = str(call.data.get("expected_target", "")).strip() or None
+        expected_route = str(call.data.get("expected_route", "")).strip() or None
+        correlation_id = str(call.data.get("correlation_id", "")).strip() or None
+
+        await coordinator.async_metadata_write_trial(
+            mode=mode,
+            window_id=window_id,
+            reason=reason,
+            dry_run=dry_run,
+            expected_target=expected_target,
+            expected_route=expected_route,
+            correlation_id=correlation_id,
+        )
+
     async def _service_run_p3_s01_sequence(call: ServiceCall) -> None:
         mode = str(call.data.get("mode", "component"))
         reason = str(call.data.get("reason", ""))
@@ -109,6 +130,46 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await coordinator.async_dump_route_trace()
         await coordinator.async_validate_selection_handoff()
         await coordinator.async_validate_metadata_prep()
+
+    async def _service_run_p5_s02_sequence(call: ServiceCall) -> None:
+        mode = str(call.data.get("mode", "legacy"))
+        reason = str(call.data.get("reason", "P5-S02 one-shot sequence"))
+        window_id = str(call.data.get("window_id", "")).strip()
+        dry_run = bool(call.data.get("dry_run", True))
+        expected_target = str(call.data.get("expected_target", "")).strip() or None
+        expected_route = str(call.data.get("expected_route", "")).strip() or None
+        correlation_id = str(call.data.get("correlation_id", "")).strip() or None
+
+        stages: list[tuple[str, Any, tuple[Any, ...], dict[str, Any]]] = [
+            ("set_write_authority", coordinator.async_set_write_authority, (), {"mode": mode, "reason": reason}),
+            ("rebuild_registry", coordinator.async_rebuild_registry, (), {}),
+            ("validate_contracts", coordinator.async_validate_contracts, (), {}),
+            ("dump_route_trace", coordinator.async_dump_route_trace, (), {}),
+            ("validate_selection_handoff", coordinator.async_validate_selection_handoff, (), {}),
+            ("validate_metadata_prep_pretrial", coordinator.async_validate_metadata_prep, (), {}),
+            (
+                "metadata_write_trial",
+                coordinator.async_metadata_write_trial,
+                (),
+                {
+                    "mode": mode,
+                    "window_id": window_id,
+                    "reason": reason,
+                    "dry_run": dry_run,
+                    "expected_target": expected_target,
+                    "expected_route": expected_route,
+                    "correlation_id": correlation_id,
+                },
+            ),
+            ("validate_metadata_prep_posttrial", coordinator.async_validate_metadata_prep, (), {}),
+        ]
+
+        for stage, op, args, kwargs in stages:
+            try:
+                await op(*args, **kwargs)
+            except Exception as err:
+                _LOGGER.exception("P5-S02 sequence failed at stage '%s'", stage)
+                raise HomeAssistantError(f"P5-S02 sequence failed at stage '{stage}': {err}") from err
 
     async def _service_validate_capability_profile(_call: ServiceCall) -> None:
         await coordinator.async_validate_capability_profile()
@@ -195,6 +256,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.services.async_register(DOMAIN, SERVICE_SET_WRITE_AUTHORITY, _service_set_write_authority)
     if not hass.services.has_service(DOMAIN, SERVICE_ROUTE_WRITE_TRIAL):
         hass.services.async_register(DOMAIN, SERVICE_ROUTE_WRITE_TRIAL, _service_route_write_trial)
+    if not hass.services.has_service(DOMAIN, SERVICE_METADATA_WRITE_TRIAL):
+        hass.services.async_register(DOMAIN, SERVICE_METADATA_WRITE_TRIAL, _service_metadata_write_trial)
     if not hass.services.has_service(DOMAIN, SERVICE_RUN_P3_S01_SEQUENCE):
         hass.services.async_register(DOMAIN, SERVICE_RUN_P3_S01_SEQUENCE, _service_run_p3_s01_sequence)
     if not hass.services.has_service(DOMAIN, SERVICE_RUN_P3_S02_SEQUENCE):
@@ -203,6 +266,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.services.async_register(DOMAIN, SERVICE_VALIDATE_METADATA_PREP, _service_validate_metadata_prep)
     if not hass.services.has_service(DOMAIN, SERVICE_RUN_P3_S03_SEQUENCE):
         hass.services.async_register(DOMAIN, SERVICE_RUN_P3_S03_SEQUENCE, _service_run_p3_s03_sequence)
+    if not hass.services.has_service(DOMAIN, SERVICE_RUN_P5_S02_SEQUENCE):
+        hass.services.async_register(DOMAIN, SERVICE_RUN_P5_S02_SEQUENCE, _service_run_p5_s02_sequence)
     if not hass.services.has_service(DOMAIN, SERVICE_VALIDATE_CAPABILITY_PROFILE):
         hass.services.async_register(DOMAIN, SERVICE_VALIDATE_CAPABILITY_PROFILE, _service_validate_capability_profile)
     if not hass.services.has_service(DOMAIN, SERVICE_RUN_F4_S01_SEQUENCE):
@@ -244,6 +309,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 hass.services.async_remove(DOMAIN, SERVICE_SET_WRITE_AUTHORITY)
             if hass.services.has_service(DOMAIN, SERVICE_ROUTE_WRITE_TRIAL):
                 hass.services.async_remove(DOMAIN, SERVICE_ROUTE_WRITE_TRIAL)
+            if hass.services.has_service(DOMAIN, SERVICE_METADATA_WRITE_TRIAL):
+                hass.services.async_remove(DOMAIN, SERVICE_METADATA_WRITE_TRIAL)
             if hass.services.has_service(DOMAIN, SERVICE_RUN_P3_S01_SEQUENCE):
                 hass.services.async_remove(DOMAIN, SERVICE_RUN_P3_S01_SEQUENCE)
             if hass.services.has_service(DOMAIN, SERVICE_RUN_P3_S02_SEQUENCE):
@@ -252,6 +319,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 hass.services.async_remove(DOMAIN, SERVICE_VALIDATE_METADATA_PREP)
             if hass.services.has_service(DOMAIN, SERVICE_RUN_P3_S03_SEQUENCE):
                 hass.services.async_remove(DOMAIN, SERVICE_RUN_P3_S03_SEQUENCE)
+            if hass.services.has_service(DOMAIN, SERVICE_RUN_P5_S02_SEQUENCE):
+                hass.services.async_remove(DOMAIN, SERVICE_RUN_P5_S02_SEQUENCE)
             if hass.services.has_service(DOMAIN, SERVICE_VALIDATE_CAPABILITY_PROFILE):
                 hass.services.async_remove(DOMAIN, SERVICE_VALIDATE_CAPABILITY_PROFILE)
             if hass.services.has_service(DOMAIN, SERVICE_RUN_F4_S01_SEQUENCE):

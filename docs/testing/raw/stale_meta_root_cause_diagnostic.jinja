@@ -1,5 +1,5 @@
 {# Description: Raw copy/paste Jinja template to diagnose stale now-playing metadata source and cause. #}
-{# Version: 2026.04.20.2 #}
+{# Version: 2026.04.20.3 #}
 {# Last updated: 2026-04-20 #}
 
 {# =========================
@@ -28,7 +28,14 @@
 {% set now_playing_source = states('sensor.now_playing_source') %}
 
 {% set invalid = ['', 'none', 'unknown', 'unavailable', none] %}
-{% set candidate_entities = [active_meta_entity, now_playing_entity, active_target] %}
+{% set candidate_entities_raw = [active_meta_entity, now_playing_entity, active_target] %}
+{% set dedupe = namespace(items=[]) %}
+{% for ent in candidate_entities_raw %}
+  {% if ent not in dedupe.items %}
+    {% set dedupe.items = dedupe.items + [ent] %}
+  {% endif %}
+{% endfor %}
+{% set candidate_entities = dedupe.items %}
 
 {% set ns = namespace(rows=[]) %}
 {% for ent in candidate_entities %}

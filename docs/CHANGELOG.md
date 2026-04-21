@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.20.113 -->
+<!-- Version: 2026.04.20.114 -->
 <!-- Last updated: 2026-04-20 -->
 
 # Changelog
 
 ## 2026-04-20
+
+- Custom Component/Metadata Stale-Paused Gate Parity Hardening (`custom_components/spectra_ls/coordinator.py`, `docs/testing/raw/p5_s02_metadata_functionality_monitor.jinja`, `docs/testing/raw/stale_meta_root_cause_diagnostic.jinja`): align component metadata-prep diagnostics with runtime stale-hold semantics by adding explicit now-playing fresh-playback checks and a paused-without-fresh-signal gate that prevents stale paused metadata from presenting as handoff-ready. Also dedupe stale root-cause diagnostic candidate rows when `ma_active_meta_entity` and `now_playing_entity` resolve to the same entity. P1/P2/P3 impact: no source-of-truth ownership change; lock-step diagnostics/validation hardening only. README parity: no material repo-state change.
 
 - HA/Metadata Resolver Stale-Hold Root-Cause Fix (`packages/ma_control_hub/template.inc`, `docs/architecture/CONTROL-HUB-ARCHITECTURE.md`, `docs/testing/raw/stale_meta_root_cause_diagnostic.jinja`): prevent stale now-playing lock by requiring `ma_meta_resolver` candidates to be active-or-recent (not score-only), removing `pref_has_meta`-only fallback promotion in `sensor.now_playing_entity`, and tightening the kitchen-meta override to active-state/recent-stream evidence rather than generic non-unknown state. Also harden stale diagnostic template winner-row selection to avoid empty-sequence errors. P1/P2/P3 impact: no ownership/source-of-truth change; legacy metadata truthfulness hardening only. README parity: no material repo-state change.
 

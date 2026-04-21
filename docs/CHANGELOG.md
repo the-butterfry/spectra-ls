@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.20.114 -->
+<!-- Version: 2026.04.20.115 -->
 <!-- Last updated: 2026-04-20 -->
 
 # Changelog
 
 ## 2026-04-20
+
+- HA/Paused-Stale Metadata Candidate Guard Hardening (`packages/ma_control_hub/template.inc`, `docs/architecture/CONTROL-HUB-ARCHITECTURE.md`): fix remaining stale metadata hold path by requiring paused metadata candidates to carry recent playback-progress evidence before they can participate in `ma_meta_candidates`, `ma_meta_resolver`, and preferred fallback selection for `now_playing_entity`. This closes the residual path where stale paused entities (for example lingering AppleTV/WiiM metadata) could still win candidate confidence despite missing fresh position updates. P1/P2/P3 impact: no source-of-truth ownership change; legacy runtime truthfulness hardening only. README parity: no material repo-state change.
 
 - Custom Component/Metadata Stale-Paused Gate Parity Hardening (`custom_components/spectra_ls/coordinator.py`, `docs/testing/raw/p5_s02_metadata_functionality_monitor.jinja`, `docs/testing/raw/stale_meta_root_cause_diagnostic.jinja`): align component metadata-prep diagnostics with runtime stale-hold semantics by adding explicit now-playing fresh-playback checks and a paused-without-fresh-signal gate that prevents stale paused metadata from presenting as handoff-ready. Also dedupe stale root-cause diagnostic candidate rows when `ma_active_meta_entity` and `now_playing_entity` resolve to the same entity. P1/P2/P3 impact: no source-of-truth ownership change; lock-step diagnostics/validation hardening only. README parity: no material repo-state change.
 

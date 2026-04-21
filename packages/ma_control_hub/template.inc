@@ -1,5 +1,5 @@
 # Description: Template entities for ma_control_hub runtime routing, metadata, and now-playing state surfaces.
-# Version: 2026.04.20.32
+# Version: 2026.04.20.33
 # Last updated: 2026-04-20
 # HUB MUST-READ: Contract parser methodology.
 # - For complex attributes (`rooms`, `candidates_json`, etc.), prefer native sequence/mapping values first.
@@ -76,6 +76,7 @@
     - name: MA Meta Candidates
       state: >-
         {% set ns = namespace(entities=[], names=[], scores=[], best_score=0, best='') %}
+        {% set stale_s = states('input_number.ma_meta_stale_s') | float(45) %}
         {% set raw_users = states('input_text.plex_allowed_users') | lower %}
         {% set allowed_users = raw_users.split(',') | map('trim') | reject('equalto','') | list %}
         {% set allow_all_users = allowed_users | length == 0 or 'all' in allowed_users %}
@@ -102,6 +103,10 @@
           {% set plex_ok = (not is_plex) or ((allow_all_users and allow_all_players) and plex_session_allowed) or (user_ok and player_ok) %}
           {% set pos = (e.attributes.media_position if e.attributes is defined and e.attributes.media_position is defined else 0) | float(0) %}
           {% set dur = (e.attributes.media_duration if e.attributes is defined and e.attributes.media_duration is defined else 0) | float(0) %}
+          {% set pos_updated = (e.attributes.media_position_updated_at if e.attributes is defined and e.attributes.media_position_updated_at is defined else none) %}
+          {% set pos_ts = as_timestamp(pos_updated) if pos_updated is not none else 0 %}
+          {% set pos_age = (as_timestamp(now()) - pos_ts) if pos_ts > 0 else 9999 %}
+          {% set recent = pos_age < stale_s %}
           {% set content_id = (e.attributes.media_content_id if e.attributes is defined and e.attributes.media_content_id is defined else '') %}
           {% set title_l = title | lower %}
           {% set content_l = content_id | lower %}
@@ -116,12 +121,15 @@
           {% if st == 'playing' %}{% set score = score + 2 %}{% elif st == 'paused' %}{% set score = score + 1 %}{% endif %}
           {% if app_id or app_name %}{% set score = score + 1 %}{% endif %}
           {% if url_like and not title_ok %}{% set score = score - 2 %}{% endif %}
-          {% if score > 0 and active and plex_ok %}
+          {% set playing_signal = st == 'playing' or (e.attributes.play_state if e.attributes is defined and e.attributes.play_state is defined else '') | lower in ['play','playing'] or (e.attributes.is_playing if e.attributes is defined and e.attributes.is_playing is defined else none) is true %}
+          {% set paused_signal = st == 'paused' or (e.attributes.play_state if e.attributes is defined and e.attributes.play_state is defined else '') | lower in ['pause','paused'] or (e.attributes.is_paused if e.attributes is defined and e.attributes.is_paused is defined else none) is true %}
+          {% set active_signal = playing_signal or (paused_signal and recent) %}
+          {% if score > 0 and active_signal and plex_ok %}
             {% set ns.entities = ns.entities + [e.entity_id] %}
             {% set ns.names = ns.names + [(e.attributes.friendly_name if e.attributes is defined and e.attributes.friendly_name is defined else e.entity_id)] %}
             {% set ns.scores = ns.scores + [score] %}
           {% endif %}
-          {% if score > ns.best_score and active and plex_ok %}
+          {% if score > ns.best_score and active_signal and plex_ok %}
             {% set ns.best_score = score %}
             {% set ns.best = e.entity_id %}
           {% endif %}
@@ -144,6 +152,7 @@
           {% endfor %}
           {% set ma_ids_l = ns.ma_ids | map('lower') | list %}
           {% set raw_users = states('input_text.plex_allowed_users') | lower %}
+          {% set stale_s = states('input_number.ma_meta_stale_s') | float(45) %}
           {% set allowed_users = raw_users.split(',') | map('trim') | reject('equalto','') | list %}
           {% set allow_all_users = allowed_users | length == 0 or 'all' in allowed_users %}
           {% set raw_players = states('input_text.plex_allowed_players') | lower %}
@@ -170,6 +179,10 @@
             {% set plex_ok = (not is_plex) or ((allow_all_users and allow_all_players) and plex_session_allowed) or (user_ok and player_ok) %}
             {% set pos = (e.attributes.media_position if e.attributes is defined and e.attributes.media_position is defined else 0) | float(0) %}
             {% set dur = (e.attributes.media_duration if e.attributes is defined and e.attributes.media_duration is defined else 0) | float(0) %}
+            {% set pos_updated = (e.attributes.media_position_updated_at if e.attributes is defined and e.attributes.media_position_updated_at is defined else none) %}
+            {% set pos_ts = as_timestamp(pos_updated) if pos_updated is not none else 0 %}
+            {% set pos_age = (as_timestamp(now()) - pos_ts) if pos_ts > 0 else 9999 %}
+            {% set recent = pos_age < stale_s %}
             {% set content_id = (e.attributes.media_content_id if e.attributes is defined and e.attributes.media_content_id is defined else '') %}
             {% set title_l = title | lower %}
             {% set content_l = content_id | lower %}
@@ -184,7 +197,10 @@
             {% if st == 'playing' %}{% set score = score + 2 %}{% elif st == 'paused' %}{% set score = score + 1 %}{% endif %}
             {% if app_id or app_name %}{% set score = score + 1 %}{% endif %}
             {% if url_like and not title_ok %}{% set score = score - 2 %}{% endif %}
-            {% if score > 0 and active and plex_ok %}
+            {% set playing_signal = st == 'playing' or (e.attributes.play_state if e.attributes is defined and e.attributes.play_state is defined else '') | lower in ['play','playing'] or (e.attributes.is_playing if e.attributes is defined and e.attributes.is_playing is defined else none) is true %}
+            {% set paused_signal = st == 'paused' or (e.attributes.play_state if e.attributes is defined and e.attributes.play_state is defined else '') | lower in ['pause','paused'] or (e.attributes.is_paused if e.attributes is defined and e.attributes.is_paused is defined else none) is true %}
+            {% set active_signal = playing_signal or (paused_signal and recent) %}
+            {% if score > 0 and active_signal and plex_ok %}
               {% set ns.rows = ns.rows + [{
                 'entity': e.entity_id,
                 'name': name,
@@ -322,7 +338,9 @@
           {% set url_like = (('://' in title_l) or title_l.startswith('www.') or title_l.endswith('.mp3') or title_l.endswith('.flac') or title_l.endswith('.wav') or title_l.endswith('.m4a') or title_l.endswith('.aac') or title_l.endswith('.ogg') or
                              (('://' in content_l) or content_l.startswith('www.') or content_l.endswith('.mp3') or content_l.endswith('.flac') or content_l.endswith('.wav') or content_l.endswith('.m4a') or content_l.endswith('.aac') or content_l.endswith('.ogg'))) %}
           {% set title_ok = title not in ['','None', none] and not url_like %}
-          {% set active = st in ['playing','paused'] or play_state in ['playing','paused'] or (is_playing is true) or (is_paused is true) %}
+          {% set playing_signal = st == 'playing' or play_state in ['play','playing'] or (is_playing is true) %}
+          {% set paused_signal = st == 'paused' or play_state in ['pause','paused'] or (is_paused is true) %}
+          {% set active = playing_signal or (paused_signal and recent) %}
           {% set score = 0 %}
           {% if active %}{% set score = score + 4 %}{% endif %}
           {% if is_playing is true %}{% set score = score + 3 %}{% endif %}
@@ -435,7 +453,9 @@
             {% set url_like = (('://' in title_l) or title_l.startswith('www.') or title_l.endswith('.mp3') or title_l.endswith('.flac') or title_l.endswith('.wav') or title_l.endswith('.m4a') or title_l.endswith('.aac') or title_l.endswith('.ogg') or
                                (('://' in content_l) or content_l.startswith('www.') or content_l.endswith('.mp3') or content_l.endswith('.flac') or content_l.endswith('.wav') or content_l.endswith('.m4a') or content_l.endswith('.aac') or content_l.endswith('.ogg'))) %}
             {% set title_ok = title not in ['','None', none] and not url_like %}
-            {% set active = st in ['playing','paused'] or play_state in ['playing','paused'] or (is_playing is true) or (is_paused is true) %}
+            {% set playing_signal = st == 'playing' or play_state in ['play','playing'] or (is_playing is true) %}
+            {% set paused_signal = st == 'paused' or play_state in ['pause','paused'] or (is_paused is true) %}
+            {% set active = playing_signal or (paused_signal and recent) %}
             {% set score = 0 %}
             {% if active %}{% set score = score + 4 %}{% endif %}
             {% if is_playing is true %}{% set score = score + 3 %}{% endif %}
@@ -886,7 +906,7 @@
         {% set pref_pos_age = (as_timestamp(now()) - pref_pos_ts) if pref_pos_ts > 0 else 9999 %}
         {% set pref_recent = pref_pos_age < 30 %}
         {% set pref_has_meta = pref_title not in ['', 'None', none] or pref_artist not in ['', 'None', none] %}
-        {% set pref_active = pref_state in ['playing','paused'] %}
+        {% set pref_active = pref_state == 'playing' or (pref_state == 'paused' and pref_recent) %}
         {% if res_valid %}
           {{ resolver }}
         {% elif pref_valid and (pref_active or pref_recent) %}

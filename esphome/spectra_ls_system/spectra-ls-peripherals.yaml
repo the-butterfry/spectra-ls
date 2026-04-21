@@ -1,5 +1,5 @@
 # Description: Spectra LS OLED-only peripherals package (no LED rings) for Control Board v2.
-# Version: 2026.04.20.20
+# Version: 2026.04.20.21
 # Last updated: 2026-04-20
 # Update version/date whenever you change this file.
 esphome:
@@ -1285,6 +1285,11 @@ display:
 
       auto render_now_playing = [&]() {
         const uint32_t section_start_ms = millis();
+        auto state_is_playing = [](const std::string &s) {
+          std::string low = s;
+          for (auto &c : low) c = (char) ::tolower(c);
+          return low == "playing";
+        };
         int vol = id(np_disp_vol);
         bool vol_from_pot = id(np_disp_vol_from_pot);
         int progress_filled = id(np_disp_progress_filled);
@@ -1332,6 +1337,15 @@ display:
         int artist_scroll_w = text_area_w - 4;
         if (artist_scroll_w < 10) artist_scroll_w = text_area_w;
         const bool artist_scrolls = artist_has && artist_text_w > artist_scroll_w;
+        const bool has_text_payload = title_has || album_has || artist_has;
+        const uint32_t meta_stale_ms = (uint32_t) ${meta_stale_ms};
+        const bool ha_state_playing = id(ha_audio_state).has_state() && state_is_playing(id(ha_audio_state).state.c_str());
+        const bool ha_recent_activity =
+          (id(ha_audio1_last_meta_ms) > 0 && (now - id(ha_audio1_last_meta_ms)) < meta_stale_ms) ||
+          (id(ha_audio_pos_last_ms) > 0 && (now - id(ha_audio_pos_last_ms)) < meta_stale_ms);
+        const bool live_transport_playing =
+          ((id(arylic_playing).has_state() && id(arylic_playing).state) || id(arylic_playing_state) || id(arylic_lr_playing_state)) ||
+          (ha_state_playing && ha_recent_activity);
 
         const int bar_h = 4;
         const int bar_y = h - bar_h;
@@ -1352,6 +1366,23 @@ display:
         const uint32_t t_full = millis();
         it.fill(COLOR_OFF);
         log_np_detail("full_clear", t_full, last_np_detail_log_ms);
+
+        if (!has_text_payload && !live_transport_playing) {
+          title_scroll_offset = 0;
+          title_scroll_last_ms = now;
+          album_scroll_offset = 0;
+          album_scroll_last_ms = now;
+          artist_scroll_offset = 0;
+          artist_scroll_last_ms = now;
+          id(np_last_cache_version) = cache_version;
+          id(np_last_vol_fill) = 0;
+          id(np_last_progress_fill) = -1;
+          id(np_last_playing_drawn) = false;
+          id(np_last_screensaver_drawn) = screensaver_active_now;
+          id(np_last_draw_ms) = now;
+          log_loop_section("now_playing_blank", section_start_ms);
+          return;
+        }
 
         const uint32_t t_title = millis();
         if (title_has) {

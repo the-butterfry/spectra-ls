@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.20.124 -->
+<!-- Version: 2026.04.20.125 -->
 <!-- Last updated: 2026-04-20 -->
 
 # Changelog
 
 ## 2026-04-20
+
+- ESPHome/OLED Idle Chrome Fail-Closed (`esphome/spectra_ls_system/spectra-ls-peripherals.yaml`): suppress lingering now-playing chrome (volume meter/progress) when no title/artist/album payload is present and no live transport-playing signal is active. This prevents idle startup tails from keeping the display visually “alive” via transport overlays after metadata/title fallback has been blanked. P1/P2/P3 impact: no source-of-truth ownership change; display-layer idle truthfulness hardening only. README parity: no material repo-state change.
 
 - ESPHome/OLED Startup No-Text Top-Band Suppression (`esphome/spectra_ls_system/spectra-ls-peripherals.yaml`): when now-playing render is entered without a resolved title, suppress the filled top title band so startup/idle transitions cannot show a solid header stripe with no text. This keeps the OLED fail-closed for no-metadata/no-title windows while preserving normal title-band rendering when a real title is present. P1/P2/P3 impact: no source-of-truth ownership change; display-layer startup polish only. README parity: no material repo-state change.
 

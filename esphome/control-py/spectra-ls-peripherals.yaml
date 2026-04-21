@@ -1,6 +1,6 @@
 # Description: Spectra LS OLED peripherals package for Control Board v2.
-# Version: 2026.04.16.2
-# Last updated: 2026-04-16
+# Version: 2026.04.20.3
+# Last updated: 2026-04-20
 # Update version/date whenever you change this file.
 esphome:
   name: ${device_name}
@@ -425,11 +425,22 @@ interval:
             else if (low.find("bluetooth") != std::string::npos || low == "bt") source_label = "BT";
             else if (low.find("network") != std::string::npos || low.find("net") != std::string::npos) source_label = "NET";
           }
-          const bool source_context = !source_label.empty() || !source_raw.empty() || !src.empty() || !app_label.empty();
+          auto is_generic_net_placeholder = [&](const std::string &value) -> bool {
+            if (value.empty()) return false;
+            std::string low = value;
+            for (auto &c : low) c = (char) ::tolower(c);
+            return low == "net" || low == "network";
+          };
+          if (is_generic_net_placeholder(source_label)) source_label.clear();
+          std::string source_raw_ctx = source_raw;
+          if (is_generic_net_placeholder(source_raw_ctx)) source_raw_ctx.clear();
+          std::string src_ctx = src;
+          if (is_generic_net_placeholder(src_ctx)) src_ctx.clear();
+          const bool source_context = !source_label.empty() || !source_raw_ctx.empty() || !src_ctx.empty() || !app_label.empty();
           if (source_label.empty() && source_context) source_label = "SRC";
           std::string source_pill = source_label;
           if (source_pill.size() > 6) source_pill = source_pill.substr(0, 6);
-          std::string src_display = src;
+          std::string src_display = src_ctx;
           if (src_display.empty()) src_display = source_label;
 
           if (playing_no_meta) {
@@ -439,6 +450,9 @@ interval:
             if (!id(np_raw_source_label).empty()) source_label = id(np_raw_source_label);
             if (!id(np_raw_source_pill).empty()) source_pill = id(np_raw_source_pill);
             if (!id(np_raw_src_display).empty()) src_display = id(np_raw_src_display);
+            if (is_generic_net_placeholder(source_label)) source_label.clear();
+            if (is_generic_net_placeholder(source_pill)) source_pill.clear();
+            if (is_generic_net_placeholder(src_display)) src_display.clear();
             if (title.empty()) {
               if (source_label.empty()) {
                 title = playing ? "PLAYING" : "PAUSED";

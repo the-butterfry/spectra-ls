@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.20.116 -->
+<!-- Version: 2026.04.20.117 -->
 <!-- Last updated: 2026-04-20 -->
 
 # Changelog
 
 ## 2026-04-20
+
+- ESPHome/OLED Source Placeholder Suppression (`esphome/spectra_ls_system/spectra-ls-peripherals.yaml`, `esphome/control-py/spectra-ls-peripherals.yaml`): suppress generic `NET` source placeholders in now-playing OLED rendering so the source field can remain blank instead of displaying `NET`/`SRC` when no meaningful source metadata is available. Includes cache-path sanitization for `playing_no_meta` fallbacks to prevent stale `NET` values from persisting across refresh ticks. P1/P2/P3 impact: no source-of-truth ownership change; display-layer semantics hardening only. README parity: no material repo-state change.
 
 - HA + Custom Component/Metadata Gate-Prep Dual-Track Hardening (`packages/ma_control_hub/template.inc`, `custom_components/spectra_ls/coordinator.py`, `docs/testing/raw/p5_s02_metadata_functionality_monitor.jinja`, `docs/architecture/CONTROL-HUB-ARCHITECTURE.md`): close residual dual-path confusion by (1) requiring mapped room-meta fallback entities in legacy `ma_active_meta_entity` to satisfy active/recent freshness criteria before selection, and (2) surfacing explicit component metadata gate scoring/blocking context (`gate_score`, `gate_max`, `blocking_reasons`) so authority drift or stale paused-now-playing conditions are immediately attributable in P5-S02 monitor output. P1/P2/P3 impact: no source-of-truth ownership change; runtime/component validation truthfulness hardening only. README parity: no material repo-state change.
 

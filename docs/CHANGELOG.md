@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.20.123 -->
+<!-- Version: 2026.04.20.124 -->
 <!-- Last updated: 2026-04-20 -->
 
 # Changelog
 
 ## 2026-04-20
+
+- ESPHome/OLED Startup No-Text Top-Band Suppression (`esphome/spectra_ls_system/spectra-ls-peripherals.yaml`): when now-playing render is entered without a resolved title, suppress the filled top title band so startup/idle transitions cannot show a solid header stripe with no text. This keeps the OLED fail-closed for no-metadata/no-title windows while preserving normal title-band rendering when a real title is present. P1/P2/P3 impact: no source-of-truth ownership change; display-layer startup polish only. README parity: no material repo-state change.
 
 - ESPHome/OLED False `PLAYING` Idle Header Fail-Closed Fix (`esphome/spectra_ls_system/spectra-ls-peripherals.yaml`): prevent now-playing fallback title from rendering `PLAYING` when playback is only inferred from stale/recent activity signals. The fallback header now requires concrete live transport-playing evidence (HA state playing with fresh activity or active Arylic playing flags) before displaying `PLAYING`; otherwise the title stays blank in idle/no-track windows. P1/P2/P3 impact: no source-of-truth ownership change; display-layer truthfulness hardening only. README parity: no material repo-state change.
 

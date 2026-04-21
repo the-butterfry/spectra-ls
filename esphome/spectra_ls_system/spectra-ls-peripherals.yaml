@@ -1,5 +1,5 @@
 # Description: Spectra LS OLED-only peripherals package (no LED rings) for Control Board v2.
-# Version: 2026.04.20.19
+# Version: 2026.04.20.20
 # Last updated: 2026-04-20
 # Update version/date whenever you change this file.
 esphome:
@@ -1320,6 +1320,7 @@ display:
           np_cached_version_for_widths = cache_version;
         }
         const int title_text_w = np_cached_title_text_w;
+        const bool title_has = !title_cached.empty();
         const bool title_scrolls = title_text_w > title_width;
         const bool album_has = !album_cached.empty();
         const int album_width = text_area_w;
@@ -1353,11 +1354,16 @@ display:
         log_np_detail("full_clear", t_full, last_np_detail_log_ms);
 
         const uint32_t t_title = millis();
-        it.filled_rectangle(0, title_y, w, title_band_h, COLOR_ON);
-        if (!title_scrolls) {
-          it.printf(w / 2, title_y, id(font_now), COLOR_OFF, TextAlign::TOP_CENTER, "%s", title_cached.c_str());
+        if (title_has) {
+          it.filled_rectangle(0, title_y, w, title_band_h, COLOR_ON);
+          if (!title_scrolls) {
+            it.printf(w / 2, title_y, id(font_now), COLOR_OFF, TextAlign::TOP_CENTER, "%s", title_cached.c_str());
+          } else {
+            draw_scrolling_text(title_pad, title_y, title_width, title_cached, id(font_now), now, ${scroll_speed_ms}, 8, title_gap, COLOR_OFF, title_scroll_offset, title_scroll_last_ms);
+          }
         } else {
-          draw_scrolling_text(title_pad, title_y, title_width, title_cached, id(font_now), now, ${scroll_speed_ms}, 8, title_gap, COLOR_OFF, title_scroll_offset, title_scroll_last_ms);
+          title_scroll_offset = 0;
+          title_scroll_last_ms = now;
         }
         log_np_detail("title", t_title, last_np_detail_log_ms);
 

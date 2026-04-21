@@ -1,5 +1,5 @@
 <!-- Description: Deterministic operator run-window checklist for Phase 5 Slice-02 metadata-domain cutover readiness and bounded validation (P5-S02). -->
-<!-- Version: 2026.04.21.13 -->
+<!-- Version: 2026.04.21.14 -->
 <!-- Last updated: 2026-04-21 -->
 
 # P5-S02 Metadata Cutover — Run Window Checklist
@@ -129,8 +129,8 @@ Audit-completeness interpretation (from monitor output):
 
 1. Capture pre-window baseline (`authority`, `route_decision`, `contract_valid`, metadata validation summary).
 2. Run metadata validation refresh services:
-   - `spectra_ls.validate_metadata_prep`
-   - `spectra_ls.metadata_write_trial` (start with `dry_run: true`)
+   - `spectra_ls.run_p5_s02_sequence` (preferred one-shot, start with `dry_run: true`)
+   - manual fallback: `spectra_ls.validate_metadata_prep` + `spectra_ls.metadata_write_trial`
    - optional full diagnostics sequence for metadata lane context: `spectra_ls.run_p3_s03_sequence`
 3. Capture in-window metadata readiness evidence.
 4. Confirm post-window authority remains or returns to `legacy`.

@@ -1,6 +1,6 @@
-# Description: Service definitions for Spectra LS Phase 2/3 diagnostics and Phase 4 Slice-01/Slice-03 diagnostics scaffolding.
-# Version: 2026.04.20.8
-# Last updated: 2026-04-20
+# Description: Service definitions for Spectra LS Phase 2/3 diagnostics, Phase 4 Slice-01/Slice-03 diagnostics scaffolding, and Phase 5 metadata trial contract.
+# Version: 2026.04.21.10
+# Last updated: 2026-04-21
 
 rebuild_registry:
   name: Rebuild registry
@@ -51,6 +51,56 @@ route_write_trial:
       required: false
       selector:
         boolean:
+
+metadata_write_trial:
+  name: Metadata write trial
+  description: Execute a guarded P5-S02 metadata trial contract action with dry-run-first fail-closed semantics and audit payload emission.
+  fields:
+    mode:
+      name: Requested mode
+      description: Requested metadata authority mode (`legacy` or `component`) recorded in trial audit fields.
+      required: true
+      selector:
+        select:
+          options:
+            - legacy
+            - component
+    window_id:
+      name: Window ID
+      description: Required bounded-window identifier for audit traceability.
+      required: true
+      selector:
+        text:
+    reason:
+      name: Reason
+      description: Required operator reason for trial request.
+      required: true
+      selector:
+        text:
+    dry_run:
+      name: Dry run
+      description: Keep true for mechanism-definition validation (default true).
+      required: false
+      selector:
+        boolean:
+    expected_target:
+      name: Expected target
+      description: Optional expected active target for fail-closed validation.
+      required: false
+      selector:
+        text:
+    expected_route:
+      name: Expected route
+      description: Optional expected route decision for fail-closed validation.
+      required: false
+      selector:
+        text:
+    correlation_id:
+      name: Correlation ID
+      description: Optional correlation tag for this metadata trial request.
+      required: false
+      selector:
+        text:
 
 run_p3_s01_sequence:
   name: Run P3-S01 sequence
@@ -142,6 +192,56 @@ run_p3_s03_sequence:
     reason:
       name: Reason
       description: Optional operator note captured with authority diagnostics.
+      required: false
+      selector:
+        text:
+
+run_p5_s02_sequence:
+  name: Run P5-S02 sequence
+  description: Run one-shot P5-S02 bounded-window sequence (authority baseline, registry/contracts/route/handoff/metadata refresh, guarded metadata trial, post-trial metadata refresh).
+  fields:
+    mode:
+      name: Authority mode
+      description: Optional authority mode to set for the sequence (`legacy` default; keep legacy for baseline closeout-safe posture).
+      required: false
+      selector:
+        select:
+          options:
+            - legacy
+            - component
+    window_id:
+      name: Window ID
+      description: Required bounded-window identifier for trial audit traceability.
+      required: true
+      selector:
+        text:
+    reason:
+      name: Reason
+      description: Optional operator note reused for authority-change and metadata-trial audit fields.
+      required: false
+      selector:
+        text:
+    dry_run:
+      name: Dry run
+      description: Keep true for mechanism-definition/gate-prep windows (default true).
+      required: false
+      selector:
+        boolean:
+    expected_target:
+      name: Expected target
+      description: Optional expected active target for fail-closed preflight validation.
+      required: false
+      selector:
+        text:
+    expected_route:
+      name: Expected route
+      description: Optional expected route decision for fail-closed preflight validation.
+      required: false
+      selector:
+        text:
+    correlation_id:
+      name: Correlation ID
+      description: Optional correlation tag for the metadata trial action within this sequence.
       required: false
       selector:
         text:

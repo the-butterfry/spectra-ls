@@ -1,6 +1,6 @@
-# Description: Constants for Spectra LS custom integration shadow parity, Phase 3 guarded routing write-path controls, and Phase 4 diagnostics scaffolding (F4-S01/F4-S03).
-# Version: 2026.04.20.9
-# Last updated: 2026-04-20
+# Description: Constants for Spectra LS custom integration shadow parity, Phase 3 guarded routing write-path controls, Phase 4 diagnostics scaffolding (F4-S01/F4-S03), and Phase 5 metadata trial contract service.
+# Version: 2026.04.21.11
+# Last updated: 2026-04-21
 
 from __future__ import annotations
 
@@ -13,9 +13,11 @@ SERVICE_VALIDATE_CONTRACTS = "validate_contracts"
 SERVICE_DUMP_ROUTE_TRACE = "dump_route_trace"
 SERVICE_SET_WRITE_AUTHORITY = "set_write_authority"
 SERVICE_ROUTE_WRITE_TRIAL = "route_write_trial"
+SERVICE_METADATA_WRITE_TRIAL = "metadata_write_trial"
 SERVICE_RUN_P3_S01_SEQUENCE = "run_p3_s01_sequence"
 SERVICE_RUN_P3_S02_SEQUENCE = "run_p3_s02_sequence"
 SERVICE_VALIDATE_METADATA_PREP = "validate_metadata_prep"
+SERVICE_RUN_P5_S02_SEQUENCE = "run_p5_s02_sequence"
 SERVICE_RUN_P3_S03_SEQUENCE = "run_p3_s03_sequence"
 SERVICE_VALIDATE_CAPABILITY_PROFILE = "validate_capability_profile"
 SERVICE_RUN_F4_S01_SEQUENCE = "run_f4_s01_sequence"

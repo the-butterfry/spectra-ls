@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.21.56 -->
+<!-- Version: 2026.04.21.57 -->
 <!-- Last updated: 2026-04-21 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -389,6 +389,7 @@ Run-3 evidence update (2026-04-20 evening):
 Next execution target (P5-S02-M1):
 
 - Implemented: `spectra_ls.metadata_write_trial` contract path is now wired in `custom_components/spectra_ls` with fail-closed dry-run-first behavior and audit payload surfacing in `write_controls.metadata_trial_last_attempt`.
+- Implemented: `spectra_ls.run_p5_s02_sequence` one-shot service now performs bounded-window authority baseline + registry/contracts/route/handoff/metadata refresh + guarded metadata trial + post-trial metadata refresh in one deterministic call path.
 - Hardening update: contract validity now fail-closes on unresolved required surfaces (present but `unknown`/`unavailable`), including control-host loss scenarios, and the monitor now exposes `contract_validation.unresolved_required` for explicit diagnostics.
 - Hardening update (audit canonicalization): coordinator now emits native audit completeness fields (`audit_payload_complete`, `audit_payload_state`, `missing_audit_fields`) in `metadata_trial_last_attempt`, allowing monitor/checklist interpretation to use payload-native `COMPLETE/PARTIAL/N/A` state.
 - Hardening update (trial gate semantics): coordinator now emits explicit trial preflight semantics (`blocking_reasons`, `trial_gate_verdict`, `eligible_for_closeout`) so P5-S02 window outcomes classify deterministically without string-inference.
@@ -413,7 +414,7 @@ Deferred implementation scaffold note (H1):
 
 Run-window execution checklist (required for activation/closeout evidence):
 
-- `docs/testing/raw/p5_s01_routing_cutover_run_window_checklist.md`
+- `docs/testing/raw/p5_s02_metadata_cutover_run_window_checklist.md`
 
 Reference specification: `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`.
 

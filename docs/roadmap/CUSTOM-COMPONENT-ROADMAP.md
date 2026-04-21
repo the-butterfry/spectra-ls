@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.21.55 -->
+<!-- Version: 2026.04.21.56 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -624,6 +624,7 @@ Run-3 evidence update (2026-04-20 evening):
 Mechanism-definition next step (P5-S02-M1):
 
 - Implemented deliverable: dry-run service contract shape, audit payload fields, and fail-closed stop handling are now wired in `custom_components/spectra_ls` (`metadata_write_trial` + coordinator snapshot surfacing).
+- Implemented deliverable: one-shot bounded-window sequence service (`run_p5_s02_sequence`) now executes the required P5-S02 order (authority baseline, registry/contracts/route/handoff/metadata refresh, guarded metadata trial, post-trial metadata refresh) in a single deterministic path.
 - Hardening update: contract validation now treats unresolved required surfaces as invalid (not only missing entities), closing the gap where metadata could appear healthy while control-host surfaces degraded.
 - Hardening update (audit canonicalization): coordinator now publishes `metadata_trial_last_attempt.audit_payload_state`, `audit_payload_complete`, and `missing_audit_fields` so closeout readiness can be classified from payload-native completeness semantics.
 - Hardening update (trial gate semantics): coordinator now publishes `blocking_reasons`, `trial_gate_verdict`, and `eligible_for_closeout` in `metadata_trial_last_attempt` for deterministic gate-prep classification.
@@ -643,7 +644,7 @@ P1/P2/P3 impact check for P5-S02 draft:
 
 Run-window execution checklist (required for activation/closeout evidence):
 
-- `docs/testing/raw/p5_s01_routing_cutover_run_window_checklist.md`
+- `docs/testing/raw/p5_s02_metadata_cutover_run_window_checklist.md`
 
 ### Phase 5 exit criteria
 

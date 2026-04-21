@@ -1,5 +1,5 @@
 {# Description: Raw copy/paste Jinja monitor template for Spectra LS P5-S02 metadata-domain gate-prep and run-window validation feedback. #}
-{# Version: 2026.04.20.8 #}
+{# Version: 2026.04.20.9 #}
 {# Last updated: 2026-04-20 #}
 
 {# =========================
@@ -34,7 +34,9 @@
 {% set metadata_verdict = metadata.verdict if metadata is mapping and metadata.verdict is defined else 'missing' %}
 {% set metadata_ready = metadata.ready_for_metadata_handoff if metadata is mapping and metadata.ready_for_metadata_handoff is defined else false %}
 {% set metadata_score = metadata.gate_score if metadata is mapping and metadata.gate_score is defined else 'n/a' %}
+{% set metadata_gate_max = metadata.gate_max if metadata is mapping and metadata.gate_max is defined else 'n/a' %}
 {% set metadata_missing = metadata.missing_required if metadata is mapping and metadata.missing_required is defined else [] %}
+{% set metadata_blocking_reasons = metadata.blocking_reasons if metadata is mapping and metadata.blocking_reasons is defined else [] %}
 {% set metadata_owner = metadata.metadata_authority_owner if metadata is mapping and metadata.metadata_authority_owner is defined else 'unknown' %}
 {% set metadata_cutover_active = metadata.metadata_cutover_active if metadata is mapping and metadata.metadata_cutover_active is defined else none %}
 {% set metadata_cutover_block_reason = metadata.cutover_block_reason if metadata is mapping and metadata.cutover_block_reason is defined else '' %}
@@ -94,7 +96,7 @@
 ### Metadata gate
 - `metadata_prep_validation.verdict`: **{{ metadata_verdict }}**
 - `metadata_prep_validation.ready_for_metadata_handoff`: **{{ metadata_ready }}**
-- `metadata_prep_validation.gate_score`: **{{ metadata_score }}**
+- `metadata_prep_validation.gate_score`: **{{ metadata_score }}/{{ metadata_gate_max }}**
 - `metadata_prep_validation.missing_required`: **{{ metadata_missing | length }}**
 - `metadata_prep_validation.metadata_authority_owner`: **{{ metadata_owner }}**
 - `metadata_prep_validation.metadata_cutover_active`: **{{ metadata_cutover_active if metadata_cutover_active is not none else 'n/a' }}**
@@ -134,6 +136,13 @@ Contract unresolved required entities (present but unresolved):
 {% if (metadata_missing | length) > 0 %}
 Metadata missing required entities:
 {% for item in metadata_missing %}
+- `{{ item }}`
+{% endfor %}
+{% endif %}
+
+{% if (metadata_blocking_reasons | length) > 0 %}
+Metadata blocking reasons:
+{% for item in metadata_blocking_reasons %}
 - `{{ item }}`
 {% endfor %}
 {% endif %}

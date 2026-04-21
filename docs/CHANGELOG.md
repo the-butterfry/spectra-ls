@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.20.115 -->
+<!-- Version: 2026.04.20.116 -->
 <!-- Last updated: 2026-04-20 -->
 
 # Changelog
 
 ## 2026-04-20
+
+- HA + Custom Component/Metadata Gate-Prep Dual-Track Hardening (`packages/ma_control_hub/template.inc`, `custom_components/spectra_ls/coordinator.py`, `docs/testing/raw/p5_s02_metadata_functionality_monitor.jinja`, `docs/architecture/CONTROL-HUB-ARCHITECTURE.md`): close residual dual-path confusion by (1) requiring mapped room-meta fallback entities in legacy `ma_active_meta_entity` to satisfy active/recent freshness criteria before selection, and (2) surfacing explicit component metadata gate scoring/blocking context (`gate_score`, `gate_max`, `blocking_reasons`) so authority drift or stale paused-now-playing conditions are immediately attributable in P5-S02 monitor output. P1/P2/P3 impact: no source-of-truth ownership change; runtime/component validation truthfulness hardening only. README parity: no material repo-state change.
 
 - HA/Paused-Stale Metadata Candidate Guard Hardening (`packages/ma_control_hub/template.inc`, `docs/architecture/CONTROL-HUB-ARCHITECTURE.md`): fix remaining stale metadata hold path by requiring paused metadata candidates to carry recent playback-progress evidence before they can participate in `ma_meta_candidates`, `ma_meta_resolver`, and preferred fallback selection for `now_playing_entity`. This closes the residual path where stale paused entities (for example lingering AppleTV/WiiM metadata) could still win candidate confidence despite missing fresh position updates. P1/P2/P3 impact: no source-of-truth ownership change; legacy runtime truthfulness hardening only. README parity: no material repo-state change.
 

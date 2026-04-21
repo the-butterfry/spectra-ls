@@ -1,5 +1,5 @@
 # Description: Data coordinator for Spectra LS parity diagnostics, Phase 3 guarded routing write-path controls, Phase 4 diagnostics scaffolding (F4-S01/F4-S03), and Phase 5 metadata trial contract auditing with unresolved-contract hardening.
-# Version: 2026.04.20.17
+# Version: 2026.04.20.18
 # Last updated: 2026-04-20
 
 from __future__ import annotations
@@ -261,6 +261,93 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         normalized = (raw_state or "").strip().lower()
         return normalized not in {"", "none", "unknown", "unavailable", "missing"}
 
+    @staticmethod
+    def _timestamp_age_seconds(raw_value: Any) -> float | None:
+        if raw_value in (None, "", "none", "unknown", "unavailable"):
+            return None
+
+        parsed: datetime | None = None
+        if isinstance(raw_value, datetime):
+            parsed = raw_value
+        elif isinstance(raw_value, str):
+            cleaned = raw_value.strip()
+            if cleaned.endswith("Z"):
+                cleaned = f"{cleaned[:-1]}+00:00"
+            try:
+                parsed = datetime.fromisoformat(cleaned)
+            except ValueError:
+                parsed = None
+
+        if parsed is None:
+            return None
+
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=UTC)
+
+        age_s = (datetime.now(UTC) - parsed.astimezone(UTC)).total_seconds()
+        return max(age_s, 0.0)
+
+    def _build_now_playing_signal(self, entity_id: str) -> dict[str, Any]:
+        if not self._is_resolved_state(entity_id):
+            return {
+                "resolved": False,
+                "state": "missing",
+                "play_state_attr": "",
+                "is_playing_attr": None,
+                "is_paused_attr": None,
+                "position_age_s": None,
+                "recent_progress": False,
+                "fresh_play_signal": False,
+                "paused_without_fresh_signal": False,
+            }
+
+        state = self.hass.states.get(entity_id)
+        if state is None:
+            return {
+                "resolved": False,
+                "state": "missing",
+                "play_state_attr": "",
+                "is_playing_attr": None,
+                "is_paused_attr": None,
+                "position_age_s": None,
+                "recent_progress": False,
+                "fresh_play_signal": False,
+                "paused_without_fresh_signal": False,
+            }
+
+        state_norm = self._normalize_state(state.state)
+        play_state_attr = self._normalize_state(str(state.attributes.get("play_state", "") or ""))
+        is_playing_attr = state.attributes.get("is_playing")
+        is_paused_attr = state.attributes.get("is_paused")
+        pos_age_s = self._timestamp_age_seconds(state.attributes.get("media_position_updated_at"))
+        recent_progress = pos_age_s is not None and pos_age_s <= 300
+
+        playing_signal = (
+            state_norm == "playing"
+            or play_state_attr in {"play", "playing"}
+            or is_playing_attr is True
+        )
+        paused_signal = (
+            state_norm == "paused"
+            or play_state_attr in {"pause", "paused"}
+            or is_paused_attr is True
+        )
+
+        fresh_play_signal = playing_signal or (paused_signal and recent_progress)
+        paused_without_fresh_signal = paused_signal and not recent_progress
+
+        return {
+            "resolved": True,
+            "state": state_norm,
+            "play_state_attr": play_state_attr,
+            "is_playing_attr": is_playing_attr,
+            "is_paused_attr": is_paused_attr,
+            "position_age_s": round(pos_age_s, 1) if isinstance(pos_age_s, float) else None,
+            "recent_progress": recent_progress,
+            "fresh_play_signal": fresh_play_signal,
+            "paused_without_fresh_signal": paused_without_fresh_signal,
+        }
+
     def _metadata_candidate_payload_ready(self) -> bool:
         candidates_state = self.hass.states.get(LEGACY_META_CANDIDATES)
         if candidates_state is None:
@@ -345,6 +432,9 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         route_trace_present = route_decision != ""
         contract_valid = bool(contract_validation.get("valid", False))
         candidate_payload_ready = self._metadata_candidate_payload_ready()
+        now_playing_signal = self._build_now_playing_signal(now_playing_entity)
+        paused_without_fresh_signal = bool(now_playing_signal.get("paused_without_fresh_signal", False))
+        now_playing_fresh_play_signal = bool(now_playing_signal.get("fresh_play_signal", False))
         metadata_authority_owner = "legacy_contract_surfaces"
         metadata_cutover_active = False
         cutover_block_reason = "metadata_authority_not_cut_over"
@@ -361,6 +451,8 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         ):
             verdict = "FAIL"
         elif not no_authority_expansion:
+            verdict = "WARN"
+        elif paused_without_fresh_signal and now_playing_title_resolved:
             verdict = "WARN"
         elif not now_playing_title_resolved or not candidate_payload_ready:
             verdict = "WARN"
@@ -383,12 +475,15 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "candidate_payload_ready": candidate_payload_ready,
                 "route_trace_present": route_trace_present,
                 "no_authority_expansion": no_authority_expansion,
+                "now_playing_fresh_play_signal": now_playing_fresh_play_signal,
+                "now_playing_paused_without_fresh_signal": paused_without_fresh_signal,
             },
             "values": {
                 "active_meta_entity": active_meta_entity,
                 "now_playing_entity": now_playing_entity,
                 "now_playing_state": now_playing_state,
                 "now_playing_title": now_playing_title,
+                "now_playing_position_age_s": now_playing_signal.get("position_age_s"),
             },
         }
 

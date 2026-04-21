@@ -1,5 +1,5 @@
 {# Description: Raw copy/paste Jinja monitor template for Spectra LS P5-S02 metadata-domain gate-prep and run-window validation feedback. #}
-{# Version: 2026.04.20.7 #}
+{# Version: 2026.04.20.8 #}
 {# Last updated: 2026-04-20 #}
 
 {# =========================
@@ -38,6 +38,11 @@
 {% set metadata_owner = metadata.metadata_authority_owner if metadata is mapping and metadata.metadata_authority_owner is defined else 'unknown' %}
 {% set metadata_cutover_active = metadata.metadata_cutover_active if metadata is mapping and metadata.metadata_cutover_active is defined else none %}
 {% set metadata_cutover_block_reason = metadata.cutover_block_reason if metadata is mapping and metadata.cutover_block_reason is defined else '' %}
+{% set metadata_checks = metadata.checks if metadata is mapping and metadata.checks is defined and metadata.checks is mapping else {} %}
+{% set metadata_values = metadata.values if metadata is mapping and metadata.values is defined and metadata.values is mapping else {} %}
+{% set np_fresh_play_signal = metadata_checks.now_playing_fresh_play_signal if metadata_checks.now_playing_fresh_play_signal is defined else 'n/a' %}
+{% set np_paused_without_fresh = metadata_checks.now_playing_paused_without_fresh_signal if metadata_checks.now_playing_paused_without_fresh_signal is defined else 'n/a' %}
+{% set np_position_age_s = metadata_values.now_playing_position_age_s if metadata_values.now_playing_position_age_s is defined else 'n/a' %}
 {% set metadata_trial_status = metadata_trial.status if metadata_trial is mapping and metadata_trial.status is defined else 'never_attempted' %}
 {% set metadata_trial_window = metadata_trial.window_id if metadata_trial is mapping and metadata_trial.window_id is defined else '' %}
 {% set metadata_trial_requested_mode = metadata_trial.requested_mode if metadata_trial is mapping and metadata_trial.requested_mode is defined else '' %}
@@ -94,6 +99,9 @@
 - `metadata_prep_validation.metadata_authority_owner`: **{{ metadata_owner }}**
 - `metadata_prep_validation.metadata_cutover_active`: **{{ metadata_cutover_active if metadata_cutover_active is not none else 'n/a' }}**
 - `metadata_prep_validation.cutover_block_reason`: **{{ metadata_cutover_block_reason if metadata_cutover_block_reason != '' else 'n/a' }}**
+- `metadata_prep_validation.checks.now_playing_fresh_play_signal`: **{{ np_fresh_play_signal }}**
+- `metadata_prep_validation.checks.now_playing_paused_without_fresh_signal`: **{{ np_paused_without_fresh }}**
+- `metadata_prep_validation.values.now_playing_position_age_s`: **{{ np_position_age_s }}**
 
 ### Metadata trial audit (P5-S02-M1)
 - `write_controls.metadata_trial_last_attempt.status`: **{{ metadata_trial_status }}**

@@ -3,8 +3,8 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 ---
 
 <!-- Description: Workspace Copilot operating instructions for Home Assistant + ESPHome. -->
-<!-- Version: 2026.04.19.12 -->
-<!-- Last updated: 2026-04-19 -->
+<!-- Version: 2026.04.20.14 -->
+<!-- Last updated: 2026-04-20 -->
 
 # GitHub Copilot Instructions — Home Assistant + ESPHome
 
@@ -13,6 +13,7 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 - Prefer root-cause fixes over symptom patches; keep changes minimal and reversible.
 - If a request conflicts with safety/contract rules, call it out and offer the safest alternative.
 - If uncertain and blocked by ambiguity, ask one concise question.
+- For active migration slices in this phase (currently Phase-5/P5-S02), continue autonomously end-to-end without routine check-ins; only pause when explicit user intervention is required (runtime action, operator validation capture, missing environment input, or approval-gated decision).
 
 ## Evidence-First / No-Assumption Rule (Critical)
 - No cowboy changes. No assumptions presented as facts.
@@ -38,6 +39,7 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 - Every feature slice must include a two-track disposition:
   1) current runtime implementation/shim/defer note, and
   2) custom-component implementation/shim/defer note.
+- Bugfix lock-step rule: for behavior-visible bugfixes, keep runtime and custom-component tracks in lock-step when feasible in the same slice; if strict lock-step is not feasible, include an explicit shim/defer rationale and changelog divergence note in that same change set.
 - No feature is considered complete unless both tracks are mapped as: implemented, compatibility-shimmed, or explicitly deferred with rationale.
 - Keep migration compatibility first: **shadow mode → parity validation → dual-write → domain cutover → legacy retirement**.
 - Preserve existing helper/entity/script contracts during migration windows unless an approved migration step explicitly changes them.

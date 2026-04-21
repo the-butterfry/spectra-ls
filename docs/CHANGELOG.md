@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.20.109 -->
+<!-- Version: 2026.04.20.110 -->
 <!-- Last updated: 2026-04-20 -->
 
 # Changelog
 
 ## 2026-04-20
+
+- Governance/Parallel Lock-Step Bugfix Rule (`.github/copilot-instructions.md`): add an explicit requirement that bugfixes touching behavior-visible contracts keep runtime (`packages/` + `esphome/`) and custom-component (`custom_components/spectra_ls`) tracks in lock-step when feasible; when strict lock-step is not feasible in the same slice, required disposition is immediate explicit shim/defer rationale + changelog note in the same change set. P1/P2/P3 impact: no source-of-truth ownership change; process-governance hardening only. README parity: no material repo-state change.
 
 - HA/Now-Playing State Truthfulness Hardening (`packages/ma_control_hub/template.inc`, `docs/architecture/CONTROL-HUB-ARCHITECTURE.md`): fix stale AppleTV/metadata hold scenarios by removing metadata-recent/title-present heuristics that could incorrectly promote paused/stopped feeds to `playing`. `sensor.ma_active_state` and `sensor.now_playing_state` now prioritize explicit playback states (`playing/paused/stopped/idle/...`) from active target/MA player/meta surfaces and keep paused/stopped semantics intact even when metadata continues broadcasting. P1/P2/P3 impact: no ownership/source-of-truth change; runtime state-classification correctness fix only. README parity: no material repo-state change.
 

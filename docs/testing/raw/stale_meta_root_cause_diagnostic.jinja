@@ -1,5 +1,5 @@
 {# Description: Raw copy/paste Jinja template to diagnose stale now-playing metadata source and cause. #}
-{# Version: 2026.04.20.1 #}
+{# Version: 2026.04.20.2 #}
 {# Last updated: 2026-04-20 #}
 
 {# =========================
@@ -70,7 +70,15 @@
 {% endfor %}
 
 {% set winner = now_playing_entity if now_playing_entity not in invalid else (active_meta_entity if active_meta_entity not in invalid else active_target) %}
-{% set winner_row = (ns.rows | selectattr('entity', 'equalto', winner) | list | first) if winner not in invalid else none %}
+{% set winner_ns = namespace(row=none) %}
+{% if winner not in invalid %}
+  {% for row in ns.rows %}
+    {% if winner_ns.row is none and row.entity == winner %}
+      {% set winner_ns.row = row %}
+    {% endif %}
+  {% endfor %}
+{% endif %}
+{% set winner_row = winner_ns.row %}
 
 {% set stale_reason = 'no_clear_reason' %}
 {% if now_playing_title in invalid and now_playing_state in ['idle', 'stopped', 'off', 'unknown', 'unavailable'] %}

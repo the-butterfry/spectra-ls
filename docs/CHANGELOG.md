@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.20.112 -->
+<!-- Version: 2026.04.20.113 -->
 <!-- Last updated: 2026-04-20 -->
 
 # Changelog
 
 ## 2026-04-20
+
+- HA/Metadata Resolver Stale-Hold Root-Cause Fix (`packages/ma_control_hub/template.inc`, `docs/architecture/CONTROL-HUB-ARCHITECTURE.md`, `docs/testing/raw/stale_meta_root_cause_diagnostic.jinja`): prevent stale now-playing lock by requiring `ma_meta_resolver` candidates to be active-or-recent (not score-only), removing `pref_has_meta`-only fallback promotion in `sensor.now_playing_entity`, and tightening the kitchen-meta override to active-state/recent-stream evidence rather than generic non-unknown state. Also harden stale diagnostic template winner-row selection to avoid empty-sequence errors. P1/P2/P3 impact: no ownership/source-of-truth change; legacy metadata truthfulness hardening only. README parity: no material repo-state change.
 
 - Validation/Stale-Metadata Root-Cause Diagnostic Template (`docs/testing/raw/stale_meta_root_cause_diagnostic.jinja`): add a copy/paste HA template that identifies which metadata entity is currently winning (`ma_active_meta_entity` vs `now_playing_entity` vs active target), computes freshness/age from position-update timestamps, and emits an explicit stale-hold reason summary so operators can see why old AppleTV metadata remains surfaced. P1/P2/P3 impact: no source-of-truth ownership change; diagnostics-only visibility enhancement. README parity: no material repo-state change.
 

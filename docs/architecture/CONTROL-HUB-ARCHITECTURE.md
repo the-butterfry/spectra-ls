@@ -1,5 +1,5 @@
 <!-- Description: Retroactive architecture and feature documentation for the MA control hub package split. -->
-<!-- Version: 2026.04.20.3 -->
+<!-- Version: 2026.04.20.4 -->
 <!-- Last updated: 2026-04-20 -->
 
 # MA Control Hub Architecture (Retroactive Baseline)
@@ -72,6 +72,7 @@ Defined by `template.inc`:
 - MA/HA candidate scoring and selection (`ma_meta_candidates`, `ma_meta_resolver`)
 - now-playing entity and resolved fields
 - explicit playback-state derivation (`playing/paused/stopped/idle/...`) that prioritizes authoritative state over metadata recency/title presence
+- stale-hold prevention guards: resolver winner eligibility now requires active-or-recent playback evidence, and preferred-meta fallback no longer promotes based on metadata presence alone
 - active control path/capability/host derivation
 - ambiguity/staleness/confidence binary surfaces
 - friendly labels and helper projection sensors

@@ -1,5 +1,5 @@
 # Description: Data coordinator for Spectra LS parity diagnostics, Phase 3 guarded routing write-path controls, Phase 4 diagnostics scaffolding (F4-S01/F4-S03), and Phase 5 metadata trial contract auditing with unresolved-contract hardening.
-# Version: 2026.04.20.18
+# Version: 2026.04.20.19
 # Last updated: 2026-04-20
 
 from __future__ import annotations
@@ -440,6 +440,43 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         cutover_block_reason = "metadata_authority_not_cut_over"
         no_authority_expansion = self._write_authority_mode == WRITE_AUTH_LEGACY
 
+        gate_checks: dict[str, bool] = {
+            "contract_valid": contract_valid,
+            "active_meta_entity_resolved": active_meta_entity_resolved,
+            "now_playing_entity_resolved": now_playing_entity_resolved,
+            "now_playing_state_resolved": now_playing_state_resolved,
+            "now_playing_title_resolved": now_playing_title_resolved,
+            "candidate_payload_ready": candidate_payload_ready,
+            "route_trace_present": route_trace_present,
+            "no_authority_expansion": no_authority_expansion,
+            "now_playing_fresh_play_signal": now_playing_fresh_play_signal,
+        }
+        gate_score = sum(1 for ok in gate_checks.values() if ok)
+        gate_max = len(gate_checks)
+        blocking_reasons: list[str] = []
+        if not contract_valid:
+            blocking_reasons.append("contract_invalid")
+        if len(missing_required) > 0:
+            blocking_reasons.append("missing_required_metadata_entities")
+        if not active_meta_entity_resolved:
+            blocking_reasons.append("active_meta_entity_unresolved")
+        if not now_playing_entity_resolved:
+            blocking_reasons.append("now_playing_entity_unresolved")
+        if not now_playing_state_resolved:
+            blocking_reasons.append("now_playing_state_unresolved")
+        if not now_playing_title_resolved:
+            blocking_reasons.append("now_playing_title_unresolved")
+        if not candidate_payload_ready:
+            blocking_reasons.append("candidate_payload_not_ready")
+        if not route_trace_present:
+            blocking_reasons.append("route_trace_missing")
+        if not no_authority_expansion:
+            blocking_reasons.append("authority_mode_not_legacy")
+        if paused_without_fresh_signal and now_playing_title_resolved:
+            blocking_reasons.append("paused_without_recent_progress")
+        elif not now_playing_fresh_play_signal and now_playing_title_resolved:
+            blocking_reasons.append("no_fresh_play_signal")
+
         verdict = "PASS"
         if len(missing_required) > 0 or not contract_valid:
             verdict = "FAIL"
@@ -464,6 +501,9 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "missing_required": missing_required,
             "contract_valid": contract_valid,
             "route_decision": route_decision,
+            "gate_score": gate_score,
+            "gate_max": gate_max,
+            "blocking_reasons": blocking_reasons,
             "metadata_authority_owner": metadata_authority_owner,
             "metadata_cutover_active": metadata_cutover_active,
             "cutover_block_reason": cutover_block_reason,

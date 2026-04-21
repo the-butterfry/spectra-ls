@@ -1,5 +1,5 @@
 # Description: Template entities for ma_control_hub runtime routing, metadata, and now-playing state surfaces.
-# Version: 2026.04.20.33
+# Version: 2026.04.20.34
 # Last updated: 2026-04-20
 # HUB MUST-READ: Contract parser methodology.
 # - For complex attributes (`rooms`, `candidates_json`, etc.), prefer native sequence/mapping values first.
@@ -602,6 +602,19 @@
           {% set conf_min = states('input_number.ma_meta_confidence_min') | int(4) %}
           {% set detected_ok = detected not in ['','none','unknown','unavailable'] and detected_conf >= conf_min %}
           {% set mapped = (entry.meta if entry is not none and entry.meta is defined and entry.meta not in ['','none','unknown','unavailable'] else '') %}
+          {% set stale_s = states('input_number.ma_meta_stale_s') | float(45) %}
+          {% set mapped_valid = mapped not in ['','none','unknown','unavailable'] and states[mapped] is not none %}
+          {% set mapped_state = (states(mapped) | lower) if mapped_valid else '' %}
+          {% set mapped_play_state = ((state_attr(mapped,'play_state') if mapped_valid else '') | lower) %}
+          {% set mapped_is_playing = (state_attr(mapped,'is_playing') if mapped_valid else none) %}
+          {% set mapped_is_paused = (state_attr(mapped,'is_paused') if mapped_valid else none) %}
+          {% set mapped_pos_updated = (state_attr(mapped,'media_position_updated_at') if mapped_valid else none) %}
+          {% set mapped_pos_ts = as_timestamp(mapped_pos_updated) if mapped_pos_updated is not none else 0 %}
+          {% set mapped_pos_age = (as_timestamp(now()) - mapped_pos_ts) if mapped_pos_ts > 0 else 9999 %}
+          {% set mapped_recent = mapped_pos_age < stale_s %}
+          {% set mapped_playing_signal = mapped_state == 'playing' or mapped_play_state in ['play','playing'] or (mapped_is_playing is true) %}
+          {% set mapped_paused_signal = mapped_state == 'paused' or mapped_play_state in ['pause','paused'] or (mapped_is_paused is true) %}
+          {% set mapped_active = mapped_playing_signal or (mapped_paused_signal and mapped_recent) %}
           {% set kitchen_meta = 'media_player.kitchen_wiim' %}
           {% set kitchen_state = states(kitchen_meta) | lower %}
           {% set kitchen_active = kitchen_state in ['playing','paused'] %}
@@ -618,7 +631,7 @@
             {% set meta_candidate = kitchen_meta %}
           {% elif detected_ok %}
             {% set meta_candidate = detected %}
-          {% elif mapped != '' %}
+          {% elif mapped_active %}
             {% set meta_candidate = mapped %}
           {% else %}
             {% set meta_candidate = t %}

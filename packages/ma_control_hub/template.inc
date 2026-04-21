@@ -1,5 +1,5 @@
 # Description: Template entities for ma_control_hub runtime routing, metadata, and now-playing state surfaces.
-# Version: 2026.04.21.35
+# Version: 2026.04.21.36
 # Last updated: 2026-04-21
 # HUB MUST-READ: Contract parser methodology.
 # - For complex attributes (`rooms`, `candidates_json`, etc.), prefer native sequence/mapping values first.
@@ -1650,7 +1650,6 @@
           {% else %}
             ok
           {% endif %}
-        {% endif %}
     - name: MA Meta Stale
       state: >-
         {% set age = states('sensor.ma_meta_age_s') | float(9999) %}

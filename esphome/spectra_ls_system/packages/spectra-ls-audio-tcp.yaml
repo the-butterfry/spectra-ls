@@ -1,6 +1,6 @@
-# Description: Audio controls package for Spectra LS System (TCP-only).
-# Version: 2026.04.19.6
-# Last updated: 2026-04-19
+# Description: Audio controls package for Spectra LS System (TCP-only) with host-resolved control routing.
+# Version: 2026.04.20.8
+# Last updated: 2026-04-20
 # Update version/date whenever you change this file.
 
 binary_sensor:
@@ -99,7 +99,6 @@ binary_sensor:
           if (x) {
             id(audio_wake_until_ms) = now + ${audio_wake_hold_ms};
           }
-          id(control_target_prompt_grace_until_ms) = now + ${control_target_prompt_grace_ms};
   - platform: template
     name: "HA AirPlay Active"
     id: ha_airplay_active
@@ -236,7 +235,7 @@ sensor:
                            (unsigned) id(arylic_last_vol_sent_ms), (unsigned) now);
                   last_send_log = now;
                 }
-                const bool needs_prompt = id(control_target_needs_prompt);
+                const bool needs_prompt = false;
                 auto pick_hosts = [&]() -> std::string {
                   if (!id(arylic_control_hosts).empty()) return id(arylic_control_hosts);
                   if (!id(arylic_control_host).empty()) return id(arylic_control_host);
@@ -254,11 +253,6 @@ sensor:
                            id(arylic_control_host).c_str(),
                            ambiguous ? 1 : 0);
                 };
-                if (needs_prompt) {
-                  id(audio_wake_until_ms) = now + ${audio_wake_hold_ms};
-                  log_block("prompt");
-                  return;
-                }
                 const std::string hosts = pick_hosts();
                 if (hosts.empty()) {
                   id(audio_wake_until_ms) = now + ${audio_wake_hold_ms};
@@ -502,10 +496,12 @@ number:
           if (target < 0) target = 0;
           if (target > max_vol) target = max_vol;
           const uint32_t now = millis();
-          const bool needs_prompt = id(control_target_needs_prompt);
-          if (needs_prompt) {
-            id(audio_wake_until_ms) = now + ${audio_wake_hold_ms};
-            return;
+          const bool needs_prompt = false;
+          bool playing = id(arylic_playing).has_state() && id(arylic_playing).state;
+          if (!playing && id(ha_audio_state).has_state()) {
+            std::string s = id(ha_audio_state).state.c_str();
+            for (auto &c : s) c = (char) ::tolower(c);
+            if (s == "playing") playing = true;
           }
           if (id(arylic_control_hosts).empty()) {
             id(audio_wake_until_ms) = now + ${audio_wake_hold_ms};
@@ -734,17 +730,6 @@ text_sensor:
           id(arylic_control_host) = hosts;
           id(arylic_control_hosts_last_valid_ms) = now;
           id(control_target_pending_until_ms) = 0;
-          if (id(control_target_prompt_active) && !id(control_target_prompt_manual)) {
-            const bool ambiguous = id(ma_control_ambiguous).has_state() && id(ma_control_ambiguous).state;
-            if (!ambiguous) {
-              id(control_target_prompt_active) = false;
-              id(control_target_prompt_commit) = false;
-              id(control_target_prompt_entity) = "";
-              id(control_target_popup_active) = false;
-              id(meta_popup_label) = "";
-              id(meta_popup_until_ms) = 0;
-            }
-          }
           ESP_LOGI("ma", "control_hosts=%s", hosts.c_str());
   - platform: homeassistant
     id: ma_control_host
@@ -792,17 +777,6 @@ text_sensor:
           }
           id(arylic_control_hosts_last_valid_ms) = now;
           id(control_target_pending_until_ms) = 0;
-          if (id(control_target_prompt_active) && !id(control_target_prompt_manual)) {
-            const bool ambiguous = id(ma_control_ambiguous).has_state() && id(ma_control_ambiguous).state;
-            if (!ambiguous) {
-              id(control_target_prompt_active) = false;
-              id(control_target_prompt_commit) = false;
-              id(control_target_prompt_entity) = "";
-              id(control_target_popup_active) = false;
-              id(meta_popup_label) = "";
-              id(meta_popup_until_ms) = 0;
-            }
-          }
           ESP_LOGI("ma", "control_host=%s", host.c_str());
   - platform: homeassistant
     id: ha_audio_title
@@ -849,8 +823,6 @@ text_sensor:
           const std::string cur = x.c_str();
           if (cur == last) return;
           last = cur;
-          const uint32_t now = millis();
-          id(control_target_prompt_grace_until_ms) = now + ${control_target_prompt_grace_ms};
           if (cur == "unavailable" || cur == "unknown" || cur.empty()) {
             ESP_LOGW("ha_state", "ha_audio_state='%s'", cur.c_str());
           } else {
@@ -860,74 +832,18 @@ interval:
   - interval: ${audio_control_loop_interval_ms}ms
     then:
       - lambda: |-
-          const uint32_t now = millis();
-          auto is_valid = [](const std::string &value) {
-            if (value.empty()) return false;
-            std::string low = value;
-            for (auto &c : low) c = (char) ::tolower(c);
-            return !(low == "unknown" || low == "unavailable" || low == "none");
-          };
-
-          std::string target;
-          if (id(ma_active_target).has_state()) {
-            target = id(ma_active_target).state.c_str();
-          }
-          const bool target_ok = is_valid(target);
-          const bool hosts_ok = !id(arylic_control_hosts).empty();
-          if (target_ok) {
-            id(control_target_source_key) = target;
-          }
-
-          bool ambiguous = (id(ma_control_ambiguous).has_state() && id(ma_control_ambiguous).state) ||
-                           (id(ha_airplay_active).has_state() && id(ha_airplay_active).state);
-          const bool boot_ambiguity_grace = target_ok && hosts_ok &&
-                                            (now < (uint32_t) ${control_target_boot_ambiguous_grace_ms});
-          if (boot_ambiguity_grace && ambiguous) {
-            ambiguous = false;
-          }
-          const bool force = id(control_target_force_until_ms) > now;
-          const bool snooze = id(control_target_prompt_snooze_until_ms) > now;
-          if (target_ok && hosts_ok && !ambiguous) {
-            id(control_target_last_good_ms) = now;
-          }
-          const bool grace = now < id(control_target_prompt_grace_until_ms);
-          const bool recently_good = id(control_target_last_good_ms) > 0 &&
-                                     (now - id(control_target_last_good_ms)) < ${control_target_prompt_grace_ms};
-
-          if (!id(control_target_lock_active) && !id(control_target_prompt_active) && !id(control_target_prompt_manual) &&
-              target_ok && hosts_ok && !ambiguous) {
-            id(control_target_lock_active) = true;
-            id(control_target_lock_source_key) = target;
-          }
-
-          const bool lock_active = id(control_target_lock_active);
-          id(control_target_prompt_blocked) = lock_active;
-          const bool needs_prompt = (!lock_active && !force && (!target_ok || !hosts_ok || ambiguous));
-          id(control_target_needs_prompt) = needs_prompt;
-
-          if (needs_prompt && !snooze && !id(control_target_prompt_active) && !id(control_target_prompt_manual) &&
-              !grace && !recently_good) {
-            id(control_target_prompt_active) = true;
-            id(control_target_prompt_index) = 0;
-            id(meta_popup_label) = "SELECT TARGET";
-            id(meta_popup_until_ms) = now + ${meta_popup_ms};
-            id(control_target_popup_active) = true;
-            id(control_target_prompt_snooze_until_ms) = now + ${control_target_prompt_cooldown_ms};
-            id(audio_wake_until_ms) = now + ${audio_wake_hold_ms};
-          }
-          if (!needs_prompt && id(control_target_prompt_active) && !id(control_target_prompt_manual)) {
-            id(control_target_prompt_active) = false;
-            id(control_target_prompt_commit) = false;
-            id(control_target_prompt_entity) = "";
-            id(control_target_popup_active) = false;
-            id(meta_popup_label) = "";
-            id(meta_popup_until_ms) = 0;
-          }
+          id(control_target_needs_prompt) = false;
+          id(control_target_prompt_blocked) = false;
+          id(control_target_prompt_active) = false;
+          id(control_target_prompt_manual) = false;
+          id(control_target_prompt_commit) = false;
+          id(control_target_prompt_entity) = "";
+          id(control_target_popup_active) = false;
       - lambda: |-
           if (!id(pot_volume_deferred)) return;
           const uint32_t now = millis();
           if (now < id(pot_volume_deferred_until_ms)) return;
-          const bool needs_prompt = id(control_target_needs_prompt);
+          const bool needs_prompt = false;
           auto pick_hosts = [&]() -> std::string {
             if (!id(arylic_control_hosts).empty()) return id(arylic_control_hosts);
             if (!id(arylic_control_host).empty()) return id(arylic_control_host);
@@ -946,9 +862,15 @@ interval:
                      ambiguous ? 1 : 0);
           };
           const std::string hosts = pick_hosts();
-          if (needs_prompt || hosts.empty()) {
+          bool playing = id(arylic_playing).has_state() && id(arylic_playing).state;
+          if (!playing && id(ha_audio_state).has_state()) {
+            std::string s = id(ha_audio_state).state.c_str();
+            for (auto &c : s) c = (char) ::tolower(c);
+            if (s == "playing") playing = true;
+          }
+          if (hosts.empty()) {
             id(audio_wake_until_ms) = now + ${audio_wake_hold_ms};
-            log_block(needs_prompt ? "prompt" : "no_hosts");
+            log_block("no_hosts");
             id(pot_volume_deferred) = false;
             return;
           }
@@ -1208,7 +1130,7 @@ script:
     then:
       - lambda: |-
           const uint32_t now = millis();
-          const bool needs_prompt = id(control_target_needs_prompt);
+          const bool needs_prompt = false;
           auto pick_hosts = [&]() -> std::string {
             if (!id(arylic_control_hosts).empty()) return id(arylic_control_hosts);
             if (!id(arylic_control_host).empty()) return id(arylic_control_host);
@@ -1227,9 +1149,15 @@ script:
                      ambiguous ? 1 : 0);
           };
           const std::string hosts = pick_hosts();
-          if (needs_prompt || hosts.empty()) {
+          bool playing = id(arylic_playing).has_state() && id(arylic_playing).state;
+          if (!playing && id(ha_audio_state).has_state()) {
+            std::string s = id(ha_audio_state).state.c_str();
+            for (auto &c : s) c = (char) ::tolower(c);
+            if (s == "playing") playing = true;
+          }
+          if (hosts.empty()) {
             id(audio_wake_until_ms) = now + ${audio_wake_hold_ms};
-            log_block(needs_prompt ? "prompt" : "no_hosts");
+            log_block("no_hosts");
             return;
           }
           int max_vol = (int) ${audio_max_volume_pct};
@@ -1252,7 +1180,7 @@ script:
     then:
       - lambda: |-
           const uint32_t now = millis();
-          const bool needs_prompt = id(control_target_needs_prompt);
+          const bool needs_prompt = false;
           auto pick_hosts = [&]() -> std::string {
             if (!id(arylic_control_hosts).empty()) return id(arylic_control_hosts);
             if (!id(arylic_control_host).empty()) return id(arylic_control_host);
@@ -1290,9 +1218,15 @@ script:
                      ambiguous ? 1 : 0);
           };
           const std::string hosts = pick_hosts();
-          if (needs_prompt || hosts.empty()) {
+          bool playing = id(arylic_playing).has_state() && id(arylic_playing).state;
+          if (!playing && id(ha_audio_state).has_state()) {
+            std::string s = id(ha_audio_state).state.c_str();
+            for (auto &c : s) c = (char) ::tolower(c);
+            if (s == "playing") playing = true;
+          }
+          if (hosts.empty()) {
             id(audio_wake_until_ms) = now + ${audio_wake_hold_ms};
-            log_block(needs_prompt ? "prompt" : "no_hosts");
+            log_block("no_hosts");
             return;
           }
 
@@ -1522,9 +1456,15 @@ script:
                      ambiguous ? 1 : 0);
           };
           const std::string hosts = pick_hosts();
-          if (needs_prompt || hosts.empty()) {
+          bool playing = id(arylic_playing).has_state() && id(arylic_playing).state;
+          if (!playing && id(ha_audio_state).has_state()) {
+            std::string s = id(ha_audio_state).state.c_str();
+            for (auto &c : s) c = (char) ::tolower(c);
+            if (s == "playing") playing = true;
+          }
+          if (hosts.empty()) {
             id(audio_wake_until_ms) = now + ${audio_wake_hold_ms};
-            log_block(needs_prompt ? "prompt" : "no_hosts");
+            log_block("no_hosts");
             return;
           }
           ESP_LOGI("input", "Encoder Volume delta=%d", delta);
@@ -1560,8 +1500,7 @@ script:
       - lambda: |-
           if (delta == 0) return;
           const uint32_t now = millis();
-          const bool needs_prompt = id(control_target_needs_prompt);
-          if (needs_prompt || id(arylic_control_hosts).empty()) {
+          if (id(arylic_control_hosts).empty()) {
             id(audio_wake_until_ms) = now + ${audio_wake_hold_ms};
             return;
           }
@@ -1590,8 +1529,7 @@ script:
       - lambda: |-
           if (delta == 0) return;
           const uint32_t now = millis();
-          const bool needs_prompt = id(control_target_needs_prompt);
-          if (needs_prompt || id(arylic_control_hosts).empty()) {
+          if (id(arylic_control_hosts).empty()) {
             id(audio_wake_until_ms) = now + ${audio_wake_hold_ms};
             return;
           }
@@ -1617,8 +1555,7 @@ script:
     then:
       - lambda: |-
           const uint32_t now = millis();
-          const bool needs_prompt = id(control_target_needs_prompt);
-          if (needs_prompt || id(arylic_control_hosts).empty()) {
+          if (id(arylic_control_hosts).empty()) {
             id(audio_wake_until_ms) = now + ${audio_wake_hold_ms};
             return;
           }
@@ -1634,8 +1571,7 @@ script:
     then:
       - lambda: |-
           const uint32_t now = millis();
-          const bool needs_prompt = id(control_target_needs_prompt);
-          if (needs_prompt || id(arylic_control_hosts).empty()) {
+          if (id(arylic_control_hosts).empty()) {
             id(audio_wake_until_ms) = now + ${audio_wake_hold_ms};
             return;
           }

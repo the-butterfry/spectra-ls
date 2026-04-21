@@ -1,5 +1,5 @@
 # Description: Spectra LS OLED-only peripherals package (no LED rings) for Control Board v2.
-# Version: 2026.04.20.17
+# Version: 2026.04.20.18
 # Last updated: 2026-04-20
 # Update version/date whenever you change this file.
 esphome:
@@ -33,7 +33,6 @@ interval:
   - interval: ${meta_refresh_tick_ms}ms
     then:
       - lambda: |-
-          int start = (int) id(control_target_prompt_index);
           const uint32_t now = millis();
           const uint32_t refresh_ms = (uint32_t) ${meta_refresh_ms};
           const bool force_refresh = id(meta_refresh_force);
@@ -1077,7 +1076,7 @@ display:
       const int display_state_value = id(display_state);
       const bool menu_active_now = id(menu_active);
 
-      if (id(control_target_prompt_active) || now < id(meta_popup_until_ms)) {
+      if (now < id(meta_popup_until_ms)) {
         const uint32_t section_start_ms = millis();
         std::string label = id(meta_popup_label);
         if (label.empty() && id(meta_override_state).has_state()) {
@@ -1086,69 +1085,13 @@ display:
         if (label.empty()) label = "META";
         it.fill(COLOR_OFF);
         const int line_h = ${menu_line_height_list};
-        if (id(control_target_prompt_active)) {
-          std::vector<std::string> items;
-          if (id(ha_control_target_labels).has_state()) {
-            items = parse_options(id(ha_control_target_labels).state.c_str());
-          }
-          if (items.empty() && id(ha_control_target_entities).has_state()) {
-            items = parse_options(id(ha_control_target_entities).state.c_str());
-          }
-          it.printf(w / 2, 0, id(font_menu), COLOR_ON, TextAlign::TOP_CENTER, "CONTROL TARGETS");
-          const int list_h = ${menu_line_height_list};
-          const int highlight_extra = 3;
-          const int highlight_top_pad = 2;
-          bool needs_wrap = false;
-          for (auto &opt : items) {
-            if (needs_wrap_two_lines(id(font_small), opt, 0)) {
-              needs_wrap = true;
-              break;
-            }
-          }
-          const int row_h = needs_wrap ? ((list_h * 2) + highlight_extra) : (list_h + highlight_extra);
-          const int list_step = row_h;
-          const int list_pad = list_h;
-          const int count = (int) items.size();
-          int idx = id(control_target_prompt_index);
-          if (idx < 0) idx = 0;
-          if (count > 0 && idx >= count) idx = count - 1;
-          int max_visible = (h - list_pad - row_h) / list_step + 1;
-          if (max_visible < 1) max_visible = 1;
-          int start = 0;
-          if (count > max_visible) {
-            if (idx >= start + max_visible) start = idx - max_visible + 1;
-            if (idx < start) start = idx;
-            if (start > (count - max_visible)) start = count - max_visible;
-            if (start < 0) start = 0;
-          }
-          if (count == 0) {
-            const int label_y = list_pad;
-            it.printf(w / 2, label_y, id(font_small), COLOR_ON, TextAlign::TOP_CENTER, "%s", label.c_str());
-          } else {
-            int row = 0;
-            for (int i = start; i < count && row < max_visible; i++, row++) {
-              const int y = list_pad + (row * list_step);
-              std::string line_text = items[i];
-              if (i == idx) {
-                const int highlight_h = row_h - highlight_top_pad;
-                it.filled_rectangle(0, y + highlight_top_pad, w, highlight_h, COLOR_ON);
-                draw_center_wrapped(id(font_small), list_h, y + 1, row_h - 1, line_text, COLOR_OFF, 0);
-              } else {
-                draw_center_wrapped(id(font_small), list_h, y + 1, row_h - 1, line_text, COLOR_ON, 0);
-              }
-            }
-          }
-        } else {
-          const int block_h = line_h * 2;
-          int block_y = (h - block_h) / 2;
-          if (block_y < 0) block_y = 0;
-          const int header_y = block_y;
-          const int label_y = block_y + line_h;
-          const bool control_popup = id(control_target_popup_active) && now < id(meta_popup_until_ms);
-          const char *header = control_popup ? "CONTROL TARGET" : "META";
-          it.printf(w / 2, header_y, id(font_menu), COLOR_ON, TextAlign::TOP_CENTER, "%s", header);
-          draw_center_wrapped(id(font_small), ${menu_line_height_list}, label_y, line_h, label, COLOR_ON, 0);
-        }
+        const int block_h = line_h * 2;
+        int block_y = (h - block_h) / 2;
+        if (block_y < 0) block_y = 0;
+        const int header_y = block_y;
+        const int label_y = block_y + line_h;
+        it.printf(w / 2, header_y, id(font_menu), COLOR_ON, TextAlign::TOP_CENTER, "META");
+        draw_center_wrapped(id(font_small), ${menu_line_height_list}, label_y, line_h, label, COLOR_ON, 0);
         log_loop_section("meta_popup", section_start_ms);
         return;
       }
@@ -1552,7 +1495,6 @@ display:
 
         std::vector<std::string> gear_dynamic;
         gear_dynamic.push_back("Meta Select");
-        gear_dynamic.push_back("Control Select");
         gear_dynamic.push_back("Back");
         const char **items = menu_main;
         int count = ${menu_count_root};

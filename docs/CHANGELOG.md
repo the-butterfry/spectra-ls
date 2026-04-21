@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.21.135 -->
+<!-- Version: 2026.04.21.136 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Changelog
 
 ## 2026-04-21
+
+- HA/Config Parse Recovery — `template.inc` Stray Jinja Token Fix (`packages/ma_control_hub/template.inc`): remove an accidental unmatched `{% endif %}` inside `binary_sensor.ma_no_control_capable_hosts` attributes that caused Home Assistant YAML parsing to fail (`found character '%' that cannot start any token`). This is a syntax recovery fix only; runtime contract behavior for host-capability diagnostics is unchanged. P1/P2/P3 impact: no source-of-truth ownership change enacted; parser-stability hotfix only. README parity: no material repo-state change.
 
 - Custom Component/Phase-5 P5-S02 One-Shot Sequence Service (`custom_components/spectra_ls/const.py`, `custom_components/spectra_ls/__init__.py`, `custom_components/spectra_ls/services.yaml`, `docs/testing/raw/p5_s02_metadata_functionality_monitor.jinja`, `docs/testing/raw/p5_s02_metadata_cutover_run_window_checklist.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): add `spectra_ls.run_p5_s02_sequence` to execute authority baseline set + registry/contracts/route/metadata refresh + bounded metadata trial in one deterministic call, reducing operator sequencing drift while preserving fail-closed trial semantics and legacy authority boundaries. P1/P2/P3 impact: no source-of-truth ownership change enacted; P5 execution ergonomics/consistency hardening only. README parity: no material repo-state change.
 

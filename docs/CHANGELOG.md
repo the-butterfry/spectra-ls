@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.21.131 -->
+<!-- Version: 2026.04.21.132 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Changelog
 
 ## 2026-04-21
+
+- Docs/Deferred H1 Report-Log-Heal Scaffold Publication (`docs/features/H1-report-log-heal-scaffold.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`, `docs/README.md`): publish a detailed implementation-ready H1 blueprint for diagnostics-driven reporting, structured logging, and bounded low-risk auto-heal policy design (deferred execution track) with explicit safety gates, schema contracts, rollout phases, and stop conditions so future implementation can proceed without re-discovery. P1/P2/P3 impact: no source-of-truth ownership change enacted; planning/documentation acceleration only. README parity: material docs-index update included in this change set.
 
 - Validation/Phase-5 P5-S02 Checklist Source-of-Truth Alignment (`docs/testing/raw/p5_s02_metadata_cutover_run_window_checklist.md`): update operator fill hints/examples to prefer payload-native audit fields from `write_controls.metadata_trial_last_attempt` (`audit_payload_state`, `missing_audit_fields`) over display-derived labels, ensuring evidence capture remains deterministic if monitor formatting changes. P1/P2/P3 impact: no source-of-truth ownership change enacted; documentation-consistency hardening only. README parity: no material repo-state change.
 

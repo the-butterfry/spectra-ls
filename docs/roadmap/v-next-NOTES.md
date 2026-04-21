@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.21.54 -->
+<!-- Version: 2026.04.21.55 -->
 <!-- Last updated: 2026-04-21 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -403,6 +403,12 @@ Post-Phase destination note (operator UX target):
   4. mapped-environment visibility (resolved rooms/targets/control paths/capabilities),
   5. operator diagnostics/evidence views aligned to existing PASS/WARN/FAIL workflow.
 - Execution ordering remains strict: **P5-S02 continues as the active slice now**; sidebar control-center delivery is a post-Phase-5 productization track and must not weaken current gate-prep/validation discipline.
+
+Deferred implementation scaffold note (H1):
+
+- A detailed deferred H1 blueprint for diagnostics-driven report/log/heal flow is now published at `docs/features/H1-report-log-heal-scaffold.md`.
+- This is planning-only in the current slice: no runtime behavior/authority ownership changes are enacted.
+- H1 remains queued for later pickup after active P5-S02 mechanism/evidence priorities.
 
 Run-window execution checklist (required for activation/closeout evidence):
 

@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.21.53 -->
+<!-- Version: 2026.04.21.54 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -627,6 +627,12 @@ Mechanism-definition next step (P5-S02-M1):
 - Hardening update: contract validation now treats unresolved required surfaces as invalid (not only missing entities), closing the gap where metadata could appear healthy while control-host surfaces degraded.
 - Hardening update (audit canonicalization): coordinator now publishes `metadata_trial_last_attempt.audit_payload_state`, `audit_payload_complete`, and `missing_audit_fields` so closeout readiness can be classified from payload-native completeness semantics.
 - Remaining promotion gate: capture fresh dry-run and bounded-window evidence records showing complete audit payload and explicit rollback/disarm proof with `effective_mode=legacy`.
+
+Deferred H1 note (report/log/heal):
+
+- Detailed implementation scaffold is published at `docs/features/H1-report-log-heal-scaffold.md`.
+- H1 is intentionally deferred while P5-S02 remains the active execution lane.
+- Scope is planning + runbook readiness only in this slice (no authority/control-path ownership change).
 
 P1/P2/P3 impact check for P5-S02 draft:
 

@@ -1,5 +1,5 @@
 {# Description: Raw copy/paste Jinja monitor template for Spectra LS P5-S02 metadata-domain gate-prep and run-window validation feedback. #}
-{# Version: 2026.04.20.9 #}
+{# Version: 2026.04.20.10 #}
 {# Last updated: 2026-04-20 #}
 
 {# =========================
@@ -52,6 +52,10 @@
 {% set metadata_trial_dry_run = metadata_trial.dry_run if metadata_trial is mapping and metadata_trial.dry_run is defined else none %}
 {% set metadata_trial_reason = metadata_trial.reason if metadata_trial is mapping and metadata_trial.reason is defined else '' %}
 {% set metadata_trial_corr = metadata_trial.correlation_id if metadata_trial is mapping and metadata_trial.correlation_id is defined else '' %}
+{% set metadata_trial_requested_at = metadata_trial.requested_at if metadata_trial is mapping and metadata_trial.requested_at is defined else '' %}
+{% set metadata_trial_completed_at = metadata_trial.completed_at if metadata_trial is mapping and metadata_trial.completed_at is defined else '' %}
+{% set metadata_trial_audit_complete = metadata_trial_status != 'never_attempted' and metadata_trial_window != '' and metadata_trial_requested_mode != '' and metadata_trial_effective_mode != '' and metadata_trial_dry_run is not none and metadata_trial_reason != '' and metadata_trial_corr != '' and metadata_trial_requested_at != '' and metadata_trial_completed_at != '' %}
+{% set metadata_trial_audit_state = 'N/A' if metadata_trial_status == 'never_attempted' else ('COMPLETE' if metadata_trial_audit_complete else 'PARTIAL') %}
 
 {% set unresolved = state_attr(s_target, 'unresolved_sources') or [] %}
 {% set mismatches = state_attr(s_target, 'mismatches') or [] %}
@@ -113,6 +117,9 @@
 - `dry_run`: **{{ metadata_trial_dry_run if metadata_trial_dry_run is not none else 'n/a' }}**
 - `reason`: **{{ metadata_trial_reason if metadata_trial_reason != '' else 'n/a' }}**
 - `correlation_id`: **{{ metadata_trial_corr if metadata_trial_corr != '' else 'n/a' }}**
+- `requested_at`: **{{ metadata_trial_requested_at if metadata_trial_requested_at != '' else 'n/a' }}**
+- `completed_at`: **{{ metadata_trial_completed_at if metadata_trial_completed_at != '' else 'n/a' }}**
+- M1 audit payload completeness: **{{ metadata_trial_audit_state }}**
 
 ### Parity + freshness
 - `unresolved_sources`: **{{ unresolved | length }}**

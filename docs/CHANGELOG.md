@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.20.126 -->
+<!-- Version: 2026.04.20.127 -->
 <!-- Last updated: 2026-04-20 -->
 
 # Changelog
 
 ## 2026-04-20
+
+- Validation/Phase-5 P5-S02 Monitor Trial-Audit Completeness Hardening (`docs/testing/raw/p5_s02_metadata_functionality_monitor.jinja`): surface missing M1 audit contract fields (`requested_at`, `completed_at`) and emit a deterministic audit completeness verdict (`N/A`, `COMPLETE`, `PARTIAL`) so dry-run/write-trial evidence can be assessed without cross-referencing coordinator internals. P1/P2/P3 impact: no source-of-truth ownership change enacted; diagnostics-only evidence-quality hardening. README parity: no material repo-state change.
 
 - Validation/Phase-5 P5-S02 Run-3 Evidence Consolidation (`docs/testing/raw/p5_s02_metadata_cutover_run_window_checklist.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): record bounded run-window progression showing (a) legacy baseline PASS/CAUTION with fail-closed dry-run trial block when metadata lane is not ready, (b) replayed PASS/READY (`9/9`) under fresh active-title metadata conditions, and (c) expected component-mode CAUTION/WARN policy posture (`authority_mode_not_legacy`) while metadata ownership remains legacy. P1/P2/P3 impact: no source-of-truth ownership change enacted; evidence + policy interpretation sync only. README parity: no material repo-state change.
 

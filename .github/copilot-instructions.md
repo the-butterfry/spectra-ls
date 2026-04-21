@@ -3,7 +3,7 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 ---
 
 <!-- Description: Workspace Copilot operating instructions for Home Assistant + ESPHome. -->
-<!-- Version: 2026.04.20.15 -->
+<!-- Version: 2026.04.20.16 -->
 <!-- Last updated: 2026-04-20 -->
 
 # GitHub Copilot Instructions — Home Assistant + ESPHome
@@ -106,6 +106,7 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 
 ### Deployment Gate (OTA/Flash)
 - When user asks to “build/upload to ESP/device” (or request implies deployment), OTA/flash is required to complete the task.
+- User directive override (active): treat every successful ESPHome build in-session as deployment-required by default; run OTA upload immediately after build unless the user explicitly requests `build-only` / `no upload`.
 - For Spectra OTA flows, use upload helper with explicit device target (for example `--device <ip>`) and require `OTA successful` confirmation.
 - If upload prerequisites are missing (device IP, connectivity, auth), surface the exact blocker and the next command needed.
 

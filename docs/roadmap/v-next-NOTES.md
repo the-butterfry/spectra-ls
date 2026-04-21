@@ -1,6 +1,6 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.20.53 -->
-<!-- Last updated: 2026-04-20 -->
+<!-- Version: 2026.04.21.54 -->
+<!-- Last updated: 2026-04-21 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
 
@@ -390,6 +390,7 @@ Next execution target (P5-S02-M1):
 
 - Implemented: `spectra_ls.metadata_write_trial` contract path is now wired in `custom_components/spectra_ls` with fail-closed dry-run-first behavior and audit payload surfacing in `write_controls.metadata_trial_last_attempt`.
 - Hardening update: contract validity now fail-closes on unresolved required surfaces (present but `unknown`/`unavailable`), including control-host loss scenarios, and the monitor now exposes `contract_validation.unresolved_required` for explicit diagnostics.
+- Hardening update (audit canonicalization): coordinator now emits native audit completeness fields (`audit_payload_complete`, `audit_payload_state`, `missing_audit_fields`) in `metadata_trial_last_attempt`, allowing monitor/checklist interpretation to use payload-native `COMPLETE/PARTIAL/N/A` state.
 - Next required execution: capture one fresh dry-run evidence artifact (full audit payload fields present) and keep effective authority baseline at `legacy` until bounded post-window rollback proof is recorded.
 
 Post-Phase destination note (operator UX target):

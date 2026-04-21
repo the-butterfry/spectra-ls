@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.21.129 -->
+<!-- Version: 2026.04.21.130 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Changelog
 
 ## 2026-04-21
+
+- Custom Component/Phase-5 P5-S02 Native Trial-Audit Completeness Contract (`custom_components/spectra_ls/coordinator.py`, `docs/testing/raw/p5_s02_metadata_functionality_monitor.jinja`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): emit canonical metadata-trial audit completeness fields directly from coordinator payload (`audit_payload_complete`, `audit_payload_state`, `missing_audit_fields`) so run-window evidence uses a single source-of-truth for `COMPLETE/PARTIAL/N/A` interpretation instead of template-only inference. P1/P2/P3 impact: no source-of-truth ownership change enacted; diagnostics contract hardening only. README parity: no material repo-state change.
 
 - Validation/Phase-5 P5-S02 Gold-Standard COMPLETE Audit Example (`docs/testing/raw/p5_s02_metadata_cutover_run_window_checklist.md`): add a concrete copy/paste run-window evidence block that demonstrates a fully populated metadata trial audit (`status`, `window_id`, requested/effective mode, dry-run flag, reason, correlation id, `requested_at`, `completed_at`, and `M1 audit payload completeness=COMPLETE`) to reduce operator interpretation drift for closeout-grade captures. P1/P2/P3 impact: no source-of-truth ownership change enacted; documentation/evidence-quality hardening only. README parity: no material repo-state change.
 

@@ -1,6 +1,6 @@
 # Description: Data coordinator for Spectra LS parity diagnostics, Phase 3 guarded routing write-path controls, Phase 4 diagnostics scaffolding (F4-S01/F4-S03), and Phase 5 metadata trial contract auditing with unresolved-contract hardening.
-# Version: 2026.04.20.19
-# Last updated: 2026-04-20
+# Version: 2026.04.21.20
+# Last updated: 2026-04-21
 
 from __future__ import annotations
 
@@ -74,7 +74,38 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "requested_at": None,
             "completed_at": None,
             "reason": "No metadata trial attempts yet",
+            "audit_payload_complete": False,
+            "audit_payload_state": "N/A",
+            "missing_audit_fields": [],
         }
+
+    @staticmethod
+    def _metadata_trial_audit_missing_fields(payload: dict[str, Any]) -> list[str]:
+        required_fields = {
+            "status": payload.get("status"),
+            "window_id": payload.get("window_id"),
+            "requested_mode": payload.get("requested_mode"),
+            "effective_mode": payload.get("effective_mode"),
+            "dry_run": payload.get("dry_run"),
+            "reason": payload.get("reason"),
+            "correlation_id": payload.get("correlation_id"),
+            "requested_at": payload.get("requested_at"),
+            "completed_at": payload.get("completed_at"),
+        }
+
+        missing: list[str] = []
+        for field, value in required_fields.items():
+            if field == "dry_run":
+                if value is None:
+                    missing.append(field)
+                continue
+            if value is None:
+                missing.append(field)
+                continue
+            if isinstance(value, str) and value.strip() == "":
+                missing.append(field)
+
+        return missing
 
     async def async_setup(self) -> None:
         """Initialize data and state listeners."""
@@ -1303,6 +1334,11 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         result["effective_mode"] = self._write_authority_mode
         result["completed_at"] = datetime.now(UTC).isoformat()
+        missing_audit_fields = self._metadata_trial_audit_missing_fields(result)
+        audit_payload_complete = len(missing_audit_fields) == 0
+        result["audit_payload_complete"] = audit_payload_complete
+        result["missing_audit_fields"] = missing_audit_fields
+        result["audit_payload_state"] = "COMPLETE" if audit_payload_complete else "PARTIAL"
         self._last_metadata_trial_attempt = result
         self.async_set_updated_data(self._build_snapshot())
 

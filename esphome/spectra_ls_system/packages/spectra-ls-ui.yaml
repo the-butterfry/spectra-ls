@@ -1,6 +1,6 @@
 # Description: Spectra LS UI/menu input handling + UI fonts + now-playing helper sensors.
-# Version: 2026.04.18.13
-# Last updated: 2026-04-18
+# Version: 2026.04.20.1
+# Last updated: 2026-04-20
 # Update version/date whenever you change this file.
 #
 # Sections:
@@ -201,95 +201,10 @@ script:
             }
           }
           if (id(control_target_prompt_active)) {
-            id(menu_active) = false;
-            id(menu_level) = 0;
-            id(menu_index) = 0;
-            auto trim_ascii = [](std::string &value) {
-              size_t start = value.find_first_not_of(" \t\n\r");
-              size_t end = value.find_last_not_of(" \t\n\r");
-              if (start == std::string::npos || end == std::string::npos) {
-                value.clear();
-                return;
-              }
-              value = value.substr(start, end - start + 1);
-            };
-            auto parse_options = [&](const std::string &raw) -> std::vector<std::string> {
-              std::vector<std::string> out;
-              if (raw.empty()) return out;
-              std::string token;
-              bool in_quote = false;
-              char quote_char = 0;
-              for (char ch : raw) {
-                if (ch == '\\') continue;
-                if ((ch == '\'' || ch == '"')) {
-                  if (!in_quote) { in_quote = true; quote_char = ch; continue; }
-                  if (quote_char == ch) { in_quote = false; continue; }
-                }
-                if (!in_quote && (ch == '[' || ch == ']')) continue;
-                if (!in_quote && ch == ',') {
-                  trim_ascii(token);
-                  if (!token.empty()) out.push_back(token);
-                  token.clear();
-                  continue;
-                }
-                token.push_back(ch);
-              }
-              trim_ascii(token);
-              if (!token.empty()) out.push_back(token);
-              return out;
-            };
-            std::string entities_raw;
-            if (id(ha_control_target_entities).has_state()) {
-              entities_raw = id(ha_control_target_entities).state.c_str();
-            }
-            std::vector<std::string> entities = parse_options(entities_raw);
-            if (entities.empty()) {
-              ESP_LOGW("target_prompt", "no targets (raw='%s')", entities_raw.c_str());
-              id(control_target_prompt_active) = false;
-              id(control_target_prompt_manual) = false;
-              id(meta_popup_label) = "NO TARGETS";
-              id(meta_popup_until_ms) = now + ${meta_popup_ms};
-              id(control_target_popup_active) = true;
-              id(control_target_prompt_snooze_until_ms) = now + ${meta_popup_ms};
-              return;
-            }
-            if (!entities.empty()) {
-              int pick = id(control_target_prompt_index);
-              if (pick < 0) pick = 0;
-              if (pick >= (int) entities.size()) pick = (int) entities.size() - 1;
-              const std::string entity = entities[pick];
-              if (!entity.empty()) {
-                ESP_LOGI("target_prompt", "select idx=%d entity='%s'", pick, entity.c_str());
-                id(control_target_prompt_active) = false;
-                id(control_target_prompt_manual) = false;
-                id(control_target_prompt_entity) = entity;
-                id(control_target_prompt_commit) = true;
-                id(control_target_lock_active) = true;
-                id(control_target_lock_source_key) = entity;
-                id(control_target_prompt_blocked) = true;
-                id(menu_active) = false;
-                id(menu_level) = 0;
-                id(menu_index) = 0;
-                id(meta_popup_label) = entity;
-                id(meta_popup_until_ms) = now + ${meta_popup_ms};
-                id(control_target_popup_active) = true;
-                id(control_target_prompt_snooze_until_ms) = now + ${control_target_prompt_cooldown_ms};
-                id(control_target_force_until_ms) = now + 30000;
-                id(audio_wake_until_ms) = now + ${audio_wake_hold_ms};
-                auto label_from_idx = [&](int idx) -> std::string {
-                  if (!id(ha_control_target_labels).has_state()) return std::string();
-                  std::vector<std::string> labels = parse_options(id(ha_control_target_labels).state.c_str());
-                  if (idx >= 0 && idx < (int) labels.size()) return labels[idx];
-                  return std::string();
-                };
-                const std::string label = label_from_idx(pick);
-                if (!label.empty()) {
-                  id(meta_popup_label) = label;
-                }
-                id(apply_control_target_selection).execute();
-              }
-            }
-            return;
+            id(control_target_prompt_active) = false;
+            id(control_target_prompt_manual) = false;
+            id(control_target_prompt_commit) = false;
+            id(control_target_prompt_entity) = "";
           }
           int room_count = id(menu_room_count);
           if (room_count <= 0) room_count = ${menu_room_fallback_count};
@@ -360,16 +275,6 @@ script:
           if (id(menu_level) == LV_GEAR) {
             if (id(menu_index) == 0) {
               id(menu_level) = LV_META;
-              id(menu_index) = 0;
-            } else if (id(menu_index) == 1) {
-              id(control_target_lock_active) = false;
-              id(control_target_lock_source_key) = "";
-              id(control_target_prompt_blocked) = false;
-              id(control_target_prompt_active) = true;
-              id(control_target_prompt_manual) = true;
-              id(control_target_prompt_index) = 0;
-              id(menu_active) = false;
-              id(menu_level) = 0;
               id(menu_index) = 0;
             } else {
               id(menu_level) = LV_MAIN;
@@ -559,18 +464,9 @@ binary_sensor:
           const int LV_META = ${menu_level_meta_select};
           if (id(control_target_prompt_active)) {
             id(control_target_prompt_active) = false;
-          id(control_target_prompt_manual) = false;
+            id(control_target_prompt_manual) = false;
             id(control_target_prompt_commit) = false;
             id(control_target_prompt_entity) = "";
-            id(menu_active) = false;
-            id(menu_level) = 0;
-            id(menu_index) = 0;
-            const uint32_t now = millis();
-            id(meta_popup_label) = "CANCELLED";
-            id(meta_popup_until_ms) = now + ${meta_popup_ms};
-            id(control_target_popup_active) = true;
-            id(control_target_prompt_snooze_until_ms) = now + ${meta_popup_ms};
-            return;
           }
           if (!id(menu_active)) return;
           if (id(menu_level) == LV_GEAR) {
@@ -672,51 +568,10 @@ sensor:
           if (delta == 0) return;
           ESP_LOGI("input", "Encoder Menu delta raw=%d mapped=%d", raw_delta, delta);
           if (id(control_target_prompt_active)) {
-            auto trim_ascii = [](std::string &value) {
-              size_t start = value.find_first_not_of(" \t\n\r");
-              size_t end = value.find_last_not_of(" \t\n\r");
-              if (start == std::string::npos || end == std::string::npos) {
-                value.clear();
-                return;
-              }
-              value = value.substr(start, end - start + 1);
-            };
-            auto parse_options = [&](const std::string &raw) -> std::vector<std::string> {
-              std::vector<std::string> out;
-              if (raw.empty()) return out;
-              std::string token;
-              bool in_quote = false;
-              char quote_char = 0;
-              for (char ch : raw) {
-                if (ch == '\\') continue;
-                if ((ch == '\'' || ch == '"')) {
-                  if (!in_quote) { in_quote = true; quote_char = ch; continue; }
-                  if (quote_char == ch) { in_quote = false; continue; }
-                }
-                if (!in_quote && (ch == '[' || ch == ']')) continue;
-                if (!in_quote && ch == ',') {
-                  trim_ascii(token);
-                  if (!token.empty()) out.push_back(token);
-                  token.clear();
-                  continue;
-                }
-                token.push_back(ch);
-              }
-              trim_ascii(token);
-              if (!token.empty()) out.push_back(token);
-              return out;
-            };
-            std::vector<std::string> items;
-            if (id(ha_control_target_labels).has_state()) {
-              items = parse_options(id(ha_control_target_labels).state.c_str());
-            }
-            if (items.empty() && id(ha_control_target_entities).has_state()) {
-              items = parse_options(id(ha_control_target_entities).state.c_str());
-            }
-            const int count = (int) items.size();
-            if (count <= 0) return;
-            id(control_target_prompt_index) = sls_menu_nav::step_index(id(control_target_prompt_index), delta, count);
-            return;
+            id(control_target_prompt_active) = false;
+            id(control_target_prompt_manual) = false;
+            id(control_target_prompt_commit) = false;
+            id(control_target_prompt_entity) = "";
           }
           int room_count = id(menu_room_count);
           if (room_count <= 0) room_count = ${menu_room_fallback_count};

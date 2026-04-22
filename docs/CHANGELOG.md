@@ -1,12 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.21.151 -->
+<!-- Version: 2026.04.21.152 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Changelog
 
 ## 2026-04-21
 
-- ESPHome/Lighting Hold Debug Telemetry (`esphome/spectra_ls_system/packages/spectra-ls-lighting.yaml`): add internal diagnostics-only sensors to expose hold timing behavior in HA Developer Tools (`binary_sensor` hold-active state and `sensor` hold-remaining-ms) so post-adjust UI timing can be validated without log parsing. No control-path behavior or authority ownership changes. P1/P2/P3 impact: no source-of-truth ownership change; diagnostics visibility enhancement only. README parity: no material repo-state change.
+- ESPHome/Lighting Hold Debug Telemetry (`esphome/spectra_ls_system/packages/spectra-ls-lighting.yaml`): add diagnostics-category sensors to expose hold timing behavior in HA Developer Tools (`binary_sensor` hold-active state and `sensor` hold-remaining-ms) so post-adjust UI timing can be validated without log parsing. No control-path behavior or authority ownership changes. P1/P2/P3 impact: no source-of-truth ownership change; diagnostics visibility enhancement only. README parity: no material repo-state change.
 
 - ESPHome/OLED Lighting Hold Render Continuity Fix (`esphome/spectra_ls_system/spectra-ls-peripherals.yaml`): prevent the observed post-adjustment visual artifact where the OLED could briefly blank before transitioning to Now Playing by treating the active lighting hold window (`lighting_return_to_audio_ms`) as an explicit lighting-render window in display-state computation and lighting-screen rendering guards. This keeps UI continuity after the last lighting adjustment input while preserving normal handoff to Now Playing when hold expires. P1/P2/P3 impact: no source-of-truth ownership change; display-state timing correctness hardening only. README parity: no material repo-state change.
 

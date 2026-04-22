@@ -1,5 +1,5 @@
 <!-- Description: Deterministic operator run-window checklist for Phase 5 Slice-03 lighting-orchestration gate-prep and bounded validation (P5-S03). -->
-<!-- Version: 2026.04.21.4 -->
+<!-- Version: 2026.04.21.5 -->
 <!-- Last updated: 2026-04-21 -->
 
 # P5-S03 Lighting Orchestration — Run Window Checklist
@@ -182,6 +182,56 @@ Freshness interpretation note (P5-S03):
 
 - `Control snapshot freshness` is contextual visibility from the shared shadow snapshot.
 - Do **not** classify `WARN/CAUTION` from control-snapshot age alone when authority/contract/selector/parity gates are healthy.
+
+Run-1 live evidence capture (pre-window recorded):
+
+```text
+P5-S03 Run Window Evidence Record
+---------------------------------
+run_id: p5s03-2026-04-21-run1
+captured_at: 2026-04-21 17:41:12.841574-07:00
+operator: local
+window_scope: lighting-domain only
+
+preflight:
+   gate_a_p5_s02_closeout_recorded: PASS
+   gate_b_authority_baseline: PASS
+   gate_c_lighting_contracts: PASS
+   gate_d_isolation: PASS
+   gate_e_fresh_evidence: IN_PROGRESS (pre-window captured; in/post pending)
+
+pre_window_snapshot:
+   authority_mode: legacy
+   lighting_room_selector_state: Living Room
+   lighting_target_selector_state: All
+   lighting_target_entity_id: n/a (valid for target=All)
+   selector_options_ready: true
+   parity_mismatches_count: 0
+   unresolved_sources_count: 0
+   lighting_behavior_verdict: PASS/READY
+   captured_at: 2026-04-21 17:41:12.841574-07:00
+
+in_window_snapshot:
+   authority_mode: pending_capture
+   lighting_behavior_verdict: pending_capture
+   parity_mismatches_count: pending_capture
+   unresolved_sources_count: pending_capture
+   captured_at: pending_capture
+
+stop_conditions:
+   triggered: false (as of pre-window)
+   reason: none
+
+post_window_snapshot:
+   authority_mode: pending_capture
+   lighting_behavior_verdict: pending_capture
+   captured_at: pending_capture
+
+verdict:
+   outcome: IN_PROGRESS
+   rationale: Pre-window PASS/READY baseline captured; in-window and post-window artifacts required for closeout classification.
+   closeout_eligible: false
+```
 
 ## Artifact linkage
 

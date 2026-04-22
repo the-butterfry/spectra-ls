@@ -1,5 +1,5 @@
 <!-- Description: Deterministic operator run-window checklist for Phase 5 Slice-03 lighting-orchestration gate-prep and bounded validation (P5-S03). -->
-<!-- Version: 2026.04.21.2 -->
+<!-- Version: 2026.04.21.3 -->
 <!-- Last updated: 2026-04-21 -->
 
 # P5-S03 Lighting Orchestration — Run Window Checklist
@@ -116,6 +116,67 @@ verdict:
 - `PASS` closeout-eligible only when all preflight gates pass, stop conditions are not triggered, and post-window authority disposition is explicit/safe (`legacy` unless an approved extension is documented).
 - `WARN` for incomplete or inconclusive evidence.
 - `FAIL` for stop-condition triggers or unsafe authority drift.
+
+## Immediate next action — Run-1 lighting evidence packet
+
+Use this as the first real capture block for the active P5-S03 slice.
+
+```text
+P5-S03 Run Window Evidence Record
+---------------------------------
+run_id: p5s03-2026-04-21-run1
+captured_at:
+operator: local
+window_scope: lighting-domain only
+
+preflight:
+   gate_a_p5_s02_closeout_recorded: PASS
+   gate_b_authority_baseline:
+   gate_c_lighting_contracts:
+   gate_d_isolation:
+   gate_e_fresh_evidence:
+
+pre_window_snapshot:
+   authority_mode:
+   lighting_room_selector_state:
+   lighting_target_selector_state:
+   lighting_target_entity_id:
+   selector_options_ready:
+   captured_at:
+
+in_window_snapshot:
+   authority_mode:
+   lighting_behavior_verdict:
+   parity_mismatches_count:
+   unresolved_sources_count:
+   captured_at:
+
+stop_conditions:
+   triggered:
+   reason:
+
+post_window_snapshot:
+   authority_mode:
+   lighting_behavior_verdict:
+   captured_at:
+
+verdict:
+   outcome:
+   rationale:
+   closeout_eligible:
+```
+
+Run-1 fill hints (source = `p5_s03_lighting_functionality_monitor.jinja`):
+
+- `authority_mode` ← `write_controls.authority_mode`
+- `lighting_room_selector_state` ← `input_select.control_board_room`
+- `lighting_target_selector_state` ← `input_select.control_board_target`
+- `lighting_target_entity_id` ← `sensor.control_board_target_entity_id`
+- `selector_options_ready` ← monitor line `Selector options ready`
+- `lighting_behavior_verdict` ← monitor `Status`/`Lighting readiness` interpretation
+- `parity_mismatches_count` ← `mismatches`
+- `unresolved_sources_count` ← `unresolved_sources`
+- `captured_at` ← monitor timestamp and snapshot freshness block
 
 ## Artifact linkage
 

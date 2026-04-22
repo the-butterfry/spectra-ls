@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.21.145 -->
+<!-- Version: 2026.04.21.146 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Changelog
 
 ## 2026-04-21
+
+- Validation/Phase-5 P5-S03 Run-1 Evidence Packet Wiring (`docs/testing/raw/p5_s03_lighting_orchestration_run_window_checklist.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): add an operator-ready first-run packet and monitor-to-record field mapping for the active lighting slice so the first bounded P5-S03 evidence capture can be executed and classified deterministically from `p5_s03_lighting_functionality_monitor.jinja`. P1/P2/P3 impact: no source-of-truth ownership change; this is execution-readiness/evidence-capture hardening only. README parity: no material repo-state change.
 
 - Validation/Phase-5 P5-S03 Lighting Functionality Monitor Template (`docs/testing/raw/p5_s03_lighting_functionality_monitor.jinja`, `docs/testing/raw/p5_s03_lighting_orchestration_run_window_checklist.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): publish a deterministic raw monitor template for lighting-domain gate-prep evidence (authority/route/contract/parity/freshness + room/target selector/options/entity mapping health) and wire it into the active P5-S03 run-window checklist as the primary live capture surface. P1/P2/P3 impact: no source-of-truth ownership change; this is diagnostics/evidence tooling for the active lighting slice. README parity: no material repo-state change.
 

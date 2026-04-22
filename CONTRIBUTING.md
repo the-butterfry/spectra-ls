@@ -1,10 +1,12 @@
-<!-- Description: Contributor guide for Spectra L/S development, scope, workflow, and quality expectations. -->
-<!-- Version: 2026.04.21.5 -->
+<!-- Description: Contributor workflow guide for Spectra L/S with clear branch boundaries, quality gates, and PR expectations. -->
+<!-- Version: 2026.04.21.6 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Contributing to Spectra L/S
 
-Thank you for contributing.
+Thanks for helping build Spectra.
+
+This guide tells you where to work, how to scope changes, and what proof is required before merge.
 
 ## Before opening work
 
@@ -15,23 +17,25 @@ Thank you for contributing.
 ## Scope and branch model
 
 - Active development branch: `main`
-- `menu-only` is legacy/stabilized historical branch context and is not an active implementation/run target for current work.
-- `control-py` is archived legacy exploration history and is not a development/run target on `main`.
+- `menu-only` is legacy/stabilized historical branch context, not an active implementation lane.
+- `control-py` is archived exploration history, not an active implementation lane.
 - Shared-contract changes must follow `.github/SHARED-CONTRACT-CHECKLIST.md`.
 
 ## Contribution standards
 
-- Keep PRs focused and small.
-- One logical change set per PR.
-- Root-cause fixes over symptom patches.
-- No secrets or environment-local artifacts.
-- Respect migration posture: legacy runtime path is sealed for compatibility/rollback; net-new ownership/features should target `custom_components/spectra_ls` unless a bounded legacy exception is explicitly documented.
+- Keep PRs focused: one logical change set per PR.
+- Prefer root-cause fixes over symptom patches.
+- Do not commit secrets or environment-local artifacts.
+- Respect migration posture:
+  - runtime (`packages/` + `esphome/`) is sealed for compatibility/rollback,
+  - net-new ownership/features belong in `custom_components/spectra_ls`,
+  - legacy expansion requires an explicit bounded exception with evidence.
 
 ## Required for functional changes
 
 - Update `docs/CHANGELOG.md` before or with code changes.
-- Update affected docs/contracts in same change set.
-- Provide verification evidence (build/tests/templates) in PR description.
+- Update affected docs/contracts in the same change set.
+- Include verification evidence in the PR description (build/tests/templates as applicable).
 
 ## Pull request checklist (minimum)
 

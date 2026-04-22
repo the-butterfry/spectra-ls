@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.21.193 -->
+<!-- Version: 2026.04.21.194 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Changelog
 
 ## 2026-04-21
+
+- Documentation Polish — Top-Level Contributor Guide Run-1 (`CONTRIBUTING.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): rewrite contributor guidance in direct, native-English style with stronger action language and clearer branch/migration boundaries, while preserving policy constraints (sealed legacy runtime posture, component-primary net-new lane, no active `menu-only`/`control-py` development on `main`). Two-track disposition: runtime track unchanged/sealed; component track unchanged/primary growth lane. P1/P2/P3 impact: no source-of-truth ownership change; contributor UX clarity only.
 
 - Dual-Track Execution — Sidebar Usability + Documentation Polish Run-1 (`custom_components/spectra_ls/sensor.py`, `docs/wiki/Getting-Started.md`, `docs/wiki/Install-on-Your-Own-HA.md`, `docs/wiki/User-Setup-Deploy-and-HA-Integration.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`):
   - Sidebar/component track: add a dedicated Control Center last-attempt status sensor so operators can see mapped input execution outcomes (`dry_run_ok`, `blocked_*`, `applied_scene_turn_on`, etc.) directly without digging through large shadow attributes.

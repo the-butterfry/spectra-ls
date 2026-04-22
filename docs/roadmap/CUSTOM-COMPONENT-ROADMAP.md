@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.21.98 -->
+<!-- Version: 2026.04.21.99 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -1004,6 +1004,11 @@ Run-1 execution update (2026-04-21):
 - Sidebar/component lane: added `Control Center Last Attempt Status` diagnostic sensor in `custom_components/spectra_ls/sensor.py` so mapped-input outcomes are visible as first-class state instead of only deep attributes.
 - Documentation/wiki lane: rewrote high-traffic operator onboarding/install/setup pages (`docs/wiki/Getting-Started.md`, `docs/wiki/Install-on-Your-Own-HA.md`, `docs/wiki/User-Setup-Deploy-and-HA-Integration.md`) into direct, task-first native-English format with explicit expected outcomes and failure actions.
 - Execution disposition: run-1 packet accepted; remaining wiki/page sweep continues in subsequent packets.
+
+Run-2 execution update (2026-04-21):
+
+- Top-level docs lane: rewrote `CONTRIBUTING.md` in direct, native-English workflow language with clearer branch boundaries and migration posture expectations.
+- Execution disposition: run-2 contributor-doc polish accepted; additional repo/docs and wiki passes remain queued.
 
 GitHub/developer declaration (policy mirror):
 

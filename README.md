@@ -1,5 +1,5 @@
 <!-- Description: End-user overview for the Spectra L/S Home Assistant + ESPHome system. -->
-<!-- Version: 2026.04.21.15 -->
+<!-- Version: 2026.04.21.16 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Spectra L/S
@@ -18,6 +18,7 @@ Plain-English status today:
 
 - The legacy runtime path (`packages/` + `esphome/`) is now treated as a **sealed rollback-safe baseline**.
 - The custom integration (`custom_components/spectra_ls`) is the **primary path for net-new control-plane and feature growth**.
+- The legacy `control-py` path is **archived exploration history** on `main` and is no longer a development or run target.
 - Legacy path changes are still allowed for compatibility, safety, and rollback integrity — but not for unbounded new ownership behavior.
 
 This keeps migration reversible while making forward development direction explicit.
@@ -79,7 +80,7 @@ Common entry points:
 
 Roadmap direction:
 
-- After current migration gates complete, Spectra L/S is planned to include a dedicated Home Assistant sidebar **Spectra Control Center** for setup, tuning, defaults, overrides, and mapped-environment visibility.
-- Early P6 foundation is now available in the custom integration as a configurable control-center settings contract (encoder mappings + button scene bindings) via integration options and `spectra_ls.set_control_center_settings` service.
-- P6 execution bring-up is now available via `spectra_ls.execute_control_center_input` with dry-run-first safety and read-only-mode enforcement for staged control mapping validation.
-- P6 execution validation artifacts are now available for operator evidence capture: `docs/testing/raw/p6_s04_control_input_execution_monitor.jinja` and `docs/testing/raw/p6_s04_control_input_execution_checklist.md`.
+- We are actively building the Home Assistant sidebar **Spectra Control Center** in `custom_components/spectra_ls` as the primary product surface.
+- Current active direction is Control Center depth: setup/onboarding, mapped-environment visibility, tuning/defaults/overrides, and bounded input-to-action execution with evidence-first gates.
+- Control Center settings + execution contracts are already live and operator-verifiable via `spectra_ls.set_control_center_settings` and `spectra_ls.execute_control_center_input`.
+- Operator-grade validation artifacts remain the execution truth surface: `docs/testing/raw/*` checklists/monitors and synchronized roadmap ledgers.

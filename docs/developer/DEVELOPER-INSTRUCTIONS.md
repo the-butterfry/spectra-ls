@@ -1,5 +1,5 @@
 <!-- Description: Contributor/developer workflow for Spectra L/S implementation, preflight, instrumentation, and documentation/code parity. -->
-<!-- Version: 2026.04.21.3 -->
+<!-- Version: 2026.04.21.4 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Spectra L/S Developer Instructions
@@ -13,7 +13,8 @@ Authoritative policy still lives in `.github/copilot-instructions.md`; this file
 Run this checklist before coding any feature slice:
 
 1. **Branch + scope check**
-   - Confirm target branch (`main` for active runtime work, `menu-only` only for stabilized v2/control-py).
+   - Confirm target branch (`main` for active development work).
+   - Treat `control-py` as archived legacy exploration path (not an active implementation target on `main`).
    - Confirm authoritative workspace path is `/mnt/homeassistant`.
 
 2. **Roadmap parity check**

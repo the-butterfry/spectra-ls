@@ -1,5 +1,5 @@
 <!-- Description: Deterministic operator checklist for Phase 8 Slice-01 legacy-seal readiness gate after Phase-7 closeout. -->
-<!-- Version: 2026.04.21.2 -->
+<!-- Version: 2026.04.21.3 -->
 <!-- Last updated: 2026-04-21 -->
 
 # P8-S01 Legacy-Seal Readiness — Checklist
@@ -117,4 +117,85 @@ verdict:
 Execution disposition:
 
 - Pre-window evidence accepted for `P8-S01` with no stop-condition triggers.
-- Slice remains **Active** pending required in-window and post-window captures.
+- Slice remained **Active** pending required in-window and post-window captures.
+
+## Run-2 evidence record (captured 2026-04-21)
+
+```text
+P8-S01 Legacy-Seal Readiness Record
+-----------------------------------
+run_id: p8s01-2026-04-21-run2
+phase_window: in
+captured_at: 2026-04-21 21:22:08.276673-07:00
+operator: cory
+
+gate_checks:
+   baseline_gate: PASS
+   entry_gate: PASS
+   safety_gate: PASS
+   governance_gate: PASS
+
+snapshot:
+   monitor_source_sensor: sensor.shadow_active_target
+   authority_mode: legacy
+   route_decision: route_linkplay_tcp
+   contract_valid: true
+   missing_required: 0
+   unresolved_required: 0
+   unresolved_sources: 0
+   mismatches: 0
+   freshness_age_s: 171.6
+
+stop_conditions:
+   triggered: false
+   reason: none
+
+verdict:
+   outcome: PASS
+   p8_s01_closeout_eligible: false
+   p8_s01_promoted_validated: false
+   rationale: In-window capture remains clean with no drift/regression; post-window capture still required before closeout eligibility.
+```
+
+## Run-3 evidence record (captured 2026-04-21)
+
+```text
+P8-S01 Legacy-Seal Readiness Record
+-----------------------------------
+run_id: p8s01-2026-04-21-run3
+phase_window: post
+captured_at: 2026-04-21 21:22:20.668596-07:00
+operator: cory
+
+gate_checks:
+   baseline_gate: PASS
+   entry_gate: PASS
+   safety_gate: PASS
+   governance_gate: PASS
+
+snapshot:
+   monitor_source_sensor: sensor.shadow_active_target
+   authority_mode: legacy
+   route_decision: route_linkplay_tcp
+   contract_valid: true
+   missing_required: 0
+   unresolved_required: 0
+   unresolved_sources: 0
+   mismatches: 0
+   freshness_age_s: 184.0
+
+stop_conditions:
+   triggered: false
+   reason: none
+
+verdict:
+   outcome: PASS
+   p8_s01_closeout_eligible: true
+   p8_s01_promoted_validated: true
+   rationale: Post-window capture is clean and completes pre/in/post packet; promotion to validated is authorized.
+```
+
+Execution disposition:
+
+- In-window and post-window evidence accepted for `P8-S01` with no stop-condition triggers.
+- `P8-S01` promoted to **Validated** (pre/in/post packet complete).

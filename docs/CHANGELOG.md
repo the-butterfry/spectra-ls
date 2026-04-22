@@ -1,10 +1,14 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.21.142 -->
+<!-- Version: 2026.04.21.143 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Changelog
 
 ## 2026-04-21
+
+- Validation/Phase-5 P5-S02 Closeout Packet Preparation (`docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`, `docs/testing/raw/p5_s02_metadata_cutover_run_window_checklist.md`): publish a consolidated closeout packet candidate that references bounded Run-1 and Run-2 PASS/READY evidence, complete trial-audit payloads, and explicit legacy post-window authority disposition, while keeping slice status `Active` until final promotion decision is explicitly recorded. P1/P2/P3 impact: no source-of-truth ownership change; this is evidence-packaging and closeout-readiness documentation hardening only. README parity: no material repo-state change.
+
+- Roadmap/Phase-5 P5-S03 Lighting Slice Activation Packet (`docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`, `docs/testing/raw/p5_s03_lighting_orchestration_run_window_checklist.md`): add a domain-isolated next-slice card and operator run-window checklist for optional lighting-orchestration cutover validation after P5-S02 closeout, including strict isolation/rollback/evidence gates and fail-closed stop conditions. P1/P2/P3 impact: no source-of-truth ownership change enacted by this planning publication. README parity: no material repo-state change.
 
 - Validation/Phase-5 P5-S02 Run-2 PASS/READY Evidence Capture (`docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`, `docs/testing/raw/p5_s02_metadata_cutover_run_window_checklist.md`): record operator-captured Run-2 monitor artifact (`2026-04-21 17:25:39.987075-07:00`) with `authority_mode=legacy`, `route_decision=route_linkplay_tcp`, contract clean (`missing_required=0`, `unresolved_required=0`), metadata gate `PASS` (`9/9`), and metadata trial audit `status=dry_run_ok`, `window_id=p5s02-2026-04-21-run2`, `audit_payload_state=COMPLETE`, `trial_gate_verdict=PASS`, `eligible_for_closeout=true`, `missing_audit_fields=0`. P1/P2/P3 impact: no source-of-truth ownership change; this extends P5-S02 bounded-window evidence depth with fresh strict-comparator-grade run data while metadata ownership remains legacy. README parity: no material repo-state change.
 

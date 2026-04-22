@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.21.66 -->
+<!-- Version: 2026.04.21.67 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -126,7 +126,7 @@ Execution playbook reference: `docs/program/PARALLEL-PROGRAM-PLAYBOOK.md`.
 | F4-S03 | 4 | Validated (legacy crossfade/balance behavior remains authoritative) | Validated (crossfade/balance diagnostics scaffold + validation sequence) | Validated (diagnostics-only) | Medium | Validated |
 | P5-S01 | 5 | Validated (legacy retained as rollback authority path; post-window rollback proof captured) | Validated (routing-domain run-window execution with VERIFIED in-window proof) | Validated (in-window VERIFIED + post-window legacy rollback) | Medium | Validated |
 | P5-S02 | 5 | Validated (legacy metadata ownership retained; bounded closeout evidence accepted) | Validated (metadata-domain gate-prep/readiness validation execution completed with consolidated PASS evidence) | Validated (Run-1 + Run-2 closeout packet) | Medium | Validated |
-| P5-S03 | 5 | Active (legacy lighting orchestration retained during gate-prep) | Active (lighting-domain gate-prep checklist execution lane) | In Progress (activation window) | Medium | Active |
+| P5-S03 | 5 | Validated (legacy lighting orchestration retained with safe post-window authority proof) | Validated (lighting-domain run-window checklist execution completed with PASS closeout evidence) | Validated (Run-1 pre/in/post packet) | Medium | Validated |
 | P6-S01 | 6 | Planned (legacy/runtime contracts preserved during UX staging) | Planned (HA sidebar control center scaffold with read-only mapped-environment baseline) | Planned | Medium | Planned |
 
 ## P1/P2 validation snapshot (2026-04-19)
@@ -644,7 +644,7 @@ Mechanism-definition next step (P5-S02-M1):
 
 ### Phase 5 next-slice card — P5-S03 (lighting orchestration domain)
 
-Status: **Active (gate-prep)**
+Status: **Validated**
 
 Scope:
 
@@ -663,9 +663,12 @@ Execution checklist:
 
 - `docs/testing/raw/p5_s03_lighting_orchestration_run_window_checklist.md`
 - Primary live monitor: `docs/testing/raw/p5_s03_lighting_functionality_monitor.jinja`
-- Next required runtime action: execute first bounded Run-1 lighting capture and classify verdict from monitor-backed evidence block.
 - Freshness semantics correction: monitor-side control snapshot age is now contextual (informational) and does not by itself downgrade lighting verdicts when authority/contract/selector/parity gates pass.
-- Run-1 pre-window artifact captured (`2026-04-21 17:41:12.841574-07:00`) with `PASS/READY` and clean selector/contract/parity posture under `legacy` authority; next capture targets are in-window behavior and post-window confirmation.
+- Run-1 completed and closed out with full pre/in/post evidence:
+  - pre-window `PASS/READY` (`2026-04-21 17:41:12.841574-07:00`),
+  - in-window `PASS/READY` (`2026-04-21 17:44:00.229390-07:00`),
+  - post-window `PASS/READY` (`2026-04-21 17:44:45.600796-07:00`).
+- Closeout posture confirmed: `authority_mode=legacy`, contract/parity clean (`missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`), stop conditions not triggered.
 
 Deferred H1 note (report/log/heal):
 

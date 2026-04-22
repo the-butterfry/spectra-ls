@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.21.68 -->
+<!-- Version: 2026.04.21.69 -->
 <!-- Last updated: 2026-04-21 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -505,6 +505,7 @@ Activation gates (required):
 Execution checklist:
 
 - `docs/testing/raw/p5_s04_phase_exit_closeout_checklist.md`
+- Primary live monitor: `docs/testing/raw/p5_s04_phase_exit_functionality_monitor.jinja`
 
 Reference specification: `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`.
 

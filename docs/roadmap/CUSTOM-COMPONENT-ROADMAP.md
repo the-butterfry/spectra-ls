@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.21.68 -->
+<!-- Version: 2026.04.21.69 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -690,6 +690,7 @@ Activation gates (required):
 Execution checklist:
 
 - `docs/testing/raw/p5_s04_phase_exit_closeout_checklist.md`
+- Primary live monitor: `docs/testing/raw/p5_s04_phase_exit_functionality_monitor.jinja`
 
 Deferred H1 note (report/log/heal):
 

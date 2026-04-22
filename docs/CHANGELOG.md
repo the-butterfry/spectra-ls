@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.21.154 -->
+<!-- Version: 2026.04.21.155 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Changelog
 
 ## 2026-04-21
+
+- Validation/Phase-5 P5-S04 Phase-Exit Functionality Monitor Template (`docs/testing/raw/p5_s04_phase_exit_functionality_monitor.jinja`, `docs/testing/raw/p5_s04_phase_exit_closeout_checklist.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): publish a deterministic copy/paste monitor template for Phase-5 closeout gate classification (authority/parity/freshness + explicit phase-exit governance gates) and wire it into active P5-S04 checklist/roadmap execution references. P1/P2/P3 impact: no source-of-truth ownership change; diagnostics/evidence tooling hardening only. README parity: no material repo-state change.
 
 - Roadmap/Phase-5 P5-S04 Phase-Exit Slice Activation (`docs/testing/raw/p5_s04_phase_exit_closeout_checklist.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): activate a dedicated Phase-5 closeout slice to consolidate cross-domain evidence from P5-S01/P5-S02/P5-S03, enforce final phase-exit gates (authority baseline, parity stability, rollback posture, and retirement-readiness disposition), and document the explicit handoff gate to Phase-6 control-center foundation work. P1/P2/P3 impact: no source-of-truth ownership change; governance/evidence progression only. README parity: no material repo-state change.
 

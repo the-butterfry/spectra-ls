@@ -1,5 +1,5 @@
 <!-- Description: Deterministic operator checklist for Phase 8 Slice-01 legacy-seal readiness gate after Phase-7 closeout. -->
-<!-- Version: 2026.04.21.1 -->
+<!-- Version: 2026.04.21.2 -->
 <!-- Last updated: 2026-04-21 -->
 
 # P8-S01 Legacy-Seal Readiness — Checklist
@@ -75,3 +75,46 @@ verdict:
 - `docs/roadmap/v-next-NOTES.md`
 - `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`
 - `docs/CHANGELOG.md`
+
+## Run-1 evidence record (captured 2026-04-21)
+
+```text
+P8-S01 Legacy-Seal Readiness Record
+-----------------------------------
+run_id: p8s01-2026-04-21-run1
+phase_window: pre
+captured_at: 2026-04-21 21:18:39.504385-07:00
+operator: cory
+
+gate_checks:
+   baseline_gate: PASS
+   entry_gate: PASS
+   safety_gate: PASS
+   governance_gate: PASS
+
+snapshot:
+   monitor_source_sensor: sensor.shadow_active_target
+   authority_mode: legacy
+   route_decision: route_linkplay_tcp
+   contract_valid: true
+   missing_required: 0
+   unresolved_required: 0
+   unresolved_sources: 0
+   mismatches: 0
+   freshness_age_s: 157.6
+
+stop_conditions:
+   triggered: false
+   reason: none
+
+verdict:
+   outcome: PASS
+   p8_s01_closeout_eligible: false
+   p8_s01_promoted_validated: false
+   rationale: Pre-window gate capture is PASS/READY (4/4) and authorizes bounded in-window + post-window evidence collection; promotion remains blocked until full window packet is complete.
+```
+
+Execution disposition:
+
+- Pre-window evidence accepted for `P8-S01` with no stop-condition triggers.
+- Slice remains **Active** pending required in-window and post-window captures.

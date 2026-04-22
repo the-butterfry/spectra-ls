@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.21.186 -->
+<!-- Version: 2026.04.21.187 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Changelog
 
 ## 2026-04-21
+
+- Validation/Phase-8 P8-S01 Run-1 Pre-Window PASS Evidence Capture (`docs/testing/raw/p8_s01_legacy_seal_readiness_checklist.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): record first post-Phase-7 stabilization pre-window monitor artifact as `Status=PASS`, `P8-S01 readiness=READY`, `gate_score=4/4` (`2026-04-21 21:18:39.504385-07:00`) with rollback-safe baseline and clean contract/parity snapshot (`monitor_source_sensor=sensor.shadow_active_target`, `authority_mode=legacy`, `route_decision=route_linkplay_tcp`, `contract_valid=true`, `missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`, freshness age `157.6s`). Two-track disposition: runtime track remains sealed rollback-safe baseline with no net-new ownership growth; component track remains active in governance/readiness lane. P1/P2/P3 impact: no source-of-truth ownership change; bounded evidence progression only. README/wiki parity: no material repo-state change.
 
 - Program/Phase-8 P8-S01 Legacy-Seal Readiness Activation (`docs/testing/raw/p8_s01_legacy_seal_readiness_monitor.jinja`, `docs/testing/raw/p8_s01_legacy_seal_readiness_checklist.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): activate the first post-Phase-7 stabilization/governance lane as a fail-closed readiness gate with explicit rollback-safe baseline requirements (`authority_mode=legacy`), contract/parity cleanliness, rollback + single-writer verification, and legacy growth-freeze posture. Two-track disposition: runtime track remains sealed rollback-safe baseline with no net-new ownership growth; component track is active for governance/readiness execution with pre-window evidence pending. P1/P2/P3 impact: no source-of-truth ownership change; activation/evidence tooling and status-lane progression only. README/wiki parity: no material repo-state change.
 

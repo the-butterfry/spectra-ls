@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.21.152 -->
+<!-- Version: 2026.04.21.153 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Changelog
 
 ## 2026-04-21
+
+- ESPHome/Lighting Hold Debug Telemetry Retirement (`esphome/spectra_ls_system/packages/spectra-ls-lighting.yaml`): remove temporary diagnostics entities (`Lighting Hold Active`, `Lighting Hold Remaining Ms`) after timing validation evidence confirmed 3s hold behavior is stable. This restores a cleaner runtime entity surface while preserving the underlying lighting hold logic. P1/P2/P3 impact: no source-of-truth ownership change; diagnostics-only cleanup. README parity: no material repo-state change.
 
 - ESPHome/Lighting Hold Debug Telemetry (`esphome/spectra_ls_system/packages/spectra-ls-lighting.yaml`): add diagnostics-category sensors to expose hold timing behavior in HA Developer Tools (`binary_sensor` hold-active state and `sensor` hold-remaining-ms) so post-adjust UI timing can be validated without log parsing. No control-path behavior or authority ownership changes. P1/P2/P3 impact: no source-of-truth ownership change; diagnostics visibility enhancement only. README parity: no material repo-state change.
 

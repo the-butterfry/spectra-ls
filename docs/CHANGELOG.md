@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.21.144 -->
+<!-- Version: 2026.04.21.145 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Changelog
 
 ## 2026-04-21
+
+- Validation/Phase-5 P5-S03 Lighting Functionality Monitor Template (`docs/testing/raw/p5_s03_lighting_functionality_monitor.jinja`, `docs/testing/raw/p5_s03_lighting_orchestration_run_window_checklist.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): publish a deterministic raw monitor template for lighting-domain gate-prep evidence (authority/route/contract/parity/freshness + room/target selector/options/entity mapping health) and wire it into the active P5-S03 run-window checklist as the primary live capture surface. P1/P2/P3 impact: no source-of-truth ownership change; this is diagnostics/evidence tooling for the active lighting slice. README parity: no material repo-state change.
 
 - Roadmap/Phase-5 P5-S02 Promotion Decision + P5-S03 Activation (`docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`, `docs/testing/raw/p5_s02_metadata_cutover_run_window_checklist.md`, `docs/testing/raw/p5_s03_lighting_orchestration_run_window_checklist.md`): record explicit status-lane promotion of `P5-S02` from `Active` to `Validated` based on consolidated Run-1/Run-2 closeout packet evidence, and activate `P5-S03` (lighting orchestration domain) as the next domain-isolated gate-prep slice with published operator run-window checklist. P1/P2/P3 impact: no source-of-truth ownership change; this is phased status progression with legacy authority boundaries retained by default. README parity: no material repo-state change.
 

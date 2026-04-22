@@ -1,10 +1,14 @@
 <!-- Description: Deterministic operator run-window checklist for Phase 5 Slice-03 lighting-orchestration gate-prep and bounded validation (P5-S03). -->
-<!-- Version: 2026.04.21.1 -->
+<!-- Version: 2026.04.21.2 -->
 <!-- Last updated: 2026-04-21 -->
 
 # P5-S03 Lighting Orchestration — Run Window Checklist
 
 Use this checklist to run one bounded **lighting-domain** validation window after P5-S02 closeout decision recording.
+
+Primary live monitor template for this slice:
+
+- `docs/testing/raw/p5_s03_lighting_functionality_monitor.jinja`
 
 ## Scope guard (must hold)
 
@@ -38,6 +42,18 @@ Use this checklist to run one bounded **lighting-domain** validation window afte
 3. Capture in-window behavior evidence and parity/contract health.
 4. Confirm/restore explicit post-window authority disposition (`legacy`).
 5. Record verdict (`PASS` / `WARN` / `FAIL`) with rationale and closeout eligibility.
+
+## Quick-start execution flow (operator-grade)
+
+1. Render `docs/testing/raw/p5_s03_lighting_functionality_monitor.jinja`.
+2. Capture **pre-window** output block.
+3. Perform bounded lighting interactions only:
+   - browse `input_select.control_board_room`,
+   - browse `input_select.control_board_target`,
+   - apply lighting slider adjustments in the active lighting mode.
+4. Re-render monitor and capture **in-window** block.
+5. Confirm/restore `authority_mode=legacy`, rerender monitor, and capture **post-window** block.
+6. Fill the evidence template and classify verdict.
 
 ## Stop conditions (fail-closed)
 

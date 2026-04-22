@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.21.63 -->
+<!-- Version: 2026.04.21.64 -->
 <!-- Last updated: 2026-04-21 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -477,6 +477,7 @@ Stop conditions (fail-closed):
 Execution checklist (new):
 
 - `docs/testing/raw/p5_s03_lighting_orchestration_run_window_checklist.md`
+- Primary live monitor: `docs/testing/raw/p5_s03_lighting_functionality_monitor.jinja`
 
 Reference specification: `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`.
 

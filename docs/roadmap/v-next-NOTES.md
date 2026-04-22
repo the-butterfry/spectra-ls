@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.21.95 -->
+<!-- Version: 2026.04.21.96 -->
 <!-- Last updated: 2026-04-21 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -879,7 +879,7 @@ Promotion disposition:
 
 ### Phase 8 starter slice card — P8-S01 (legacy-seal readiness gate)
 
-Status: **Active**
+Status: **Validated**
 
 Scope:
 
@@ -915,10 +915,22 @@ Run-1 pre-window evidence (2026-04-21):
 - baseline/gates clean: `monitor_source_sensor=sensor.shadow_active_target`, `authority_mode=legacy`, `route_decision=route_linkplay_tcp`, `contract_valid=true`, `missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`, freshness within threshold (`age_s=157.6`),
 - execution disposition: pre-window authorization accepted; in-window and post-window captures remain required before closeout eligibility.
 
+Run-2 in-window evidence (2026-04-21):
+
+- monitor verdict: `Status=PASS`, `P8-S01 readiness=READY`, `gate_score=4/4` (`2026-04-21 21:22:08.276673-07:00`),
+- baseline/gates clean: `monitor_source_sensor=sensor.shadow_active_target`, `authority_mode=legacy`, `route_decision=route_linkplay_tcp`, `contract_valid=true`, `missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`, freshness within threshold (`age_s=171.6`),
+- execution disposition: in-window capture accepted; post-window capture remained required before closeout eligibility.
+
+Run-3 post-window evidence (2026-04-21):
+
+- monitor verdict: `Status=PASS`, `P8-S01 readiness=READY`, `gate_score=4/4` (`2026-04-21 21:22:20.668596-07:00`),
+- baseline/gates clean: `monitor_source_sensor=sensor.shadow_active_target`, `authority_mode=legacy`, `route_decision=route_linkplay_tcp`, `contract_valid=true`, `missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`, freshness within threshold (`age_s=184.0`),
+- execution disposition: post-window capture accepted; pre/in/post packet complete with no stop-condition triggers.
+
 Activation disposition:
 
-- `P8-S01` activation packet is published and pre-window evidence is accepted.
-- Slice remains **Active** pending in-window + post-window packet completion.
+- `P8-S01` activation packet is published with full pre/in/post PASS packet captured.
+- `P8-S01` promoted to **Validated**.
 
 GitHub/developer declaration (policy mirror):
 

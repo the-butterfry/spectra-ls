@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.21.95 -->
+<!-- Version: 2026.04.21.96 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -915,7 +915,7 @@ Promotion disposition:
 
 ### Phase 8 starter slice card — P8-S01 (legacy-seal readiness gate)
 
-Status: **Active**
+Status: **Validated**
 
 Scope:
 
@@ -941,13 +941,26 @@ Two-track disposition:
 
 Activation disposition:
 
-- `P8-S01` activated with monitor/checklist artifacts.
+- `P8-S01` activated with monitor/checklist artifacts and completed with full pre/in/post PASS evidence packet.
+- `P8-S01` promoted to **Validated**.
 
 Run-1 pre-window evidence (2026-04-21):
 
 - monitor verdict: `Status=PASS`, `P8-S01 readiness=READY`, `gate_score=4/4` (`2026-04-21 21:18:39.504385-07:00`),
 - baseline/gates clean: `monitor_source_sensor=sensor.shadow_active_target`, `authority_mode=legacy`, `route_decision=route_linkplay_tcp`, `contract_valid=true`, `missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`, freshness within threshold (`age_s=157.6`),
 - execution disposition: pre-window authorization accepted; in-window and post-window captures remain required before closeout eligibility.
+
+Run-2 in-window evidence (2026-04-21):
+
+- monitor verdict: `Status=PASS`, `P8-S01 readiness=READY`, `gate_score=4/4` (`2026-04-21 21:22:08.276673-07:00`),
+- baseline/gates clean: `monitor_source_sensor=sensor.shadow_active_target`, `authority_mode=legacy`, `route_decision=route_linkplay_tcp`, `contract_valid=true`, `missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`, freshness within threshold (`age_s=171.6`),
+- execution disposition: in-window capture accepted; post-window capture remained required before closeout eligibility.
+
+Run-3 post-window evidence (2026-04-21):
+
+- monitor verdict: `Status=PASS`, `P8-S01 readiness=READY`, `gate_score=4/4` (`2026-04-21 21:22:20.668596-07:00`),
+- baseline/gates clean: `monitor_source_sensor=sensor.shadow_active_target`, `authority_mode=legacy`, `route_decision=route_linkplay_tcp`, `contract_valid=true`, `missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`, freshness within threshold (`age_s=184.0`),
+- execution disposition: post-window capture accepted; pre/in/post packet complete with no stop-condition triggers.
 
 GitHub/developer declaration (policy mirror):
 

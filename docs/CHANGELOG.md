@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.21.155 -->
+<!-- Version: 2026.04.21.156 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Changelog
 
 ## 2026-04-21
+
+- Validation/Phase-5 P5-S04 Phase Exit Closeout + Promotion (`docs/testing/raw/p5_s04_phase_exit_closeout_checklist.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): record operator-captured P5-S04 monitor evidence (`2026-04-21 19:04:03.253466-07:00`) with `Status=PASS`, `Phase-5 closeout readiness=READY`, `gate_score=7/7`, safe authority baseline (`authority_mode=legacy`), clean parity/contracts (`missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`), and all governance gates true; promote `P5-S04` from `Active` to `Validated` in phase ledgers and mark Phase-5 closeout packet as accepted with P6 planning handoff readiness. P1/P2/P3 impact: no source-of-truth ownership change; evidence-backed phase closeout governance only. README parity: no material repo-state change.
 
 - Validation/Phase-5 P5-S04 Phase-Exit Functionality Monitor Template (`docs/testing/raw/p5_s04_phase_exit_functionality_monitor.jinja`, `docs/testing/raw/p5_s04_phase_exit_closeout_checklist.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): publish a deterministic copy/paste monitor template for Phase-5 closeout gate classification (authority/parity/freshness + explicit phase-exit governance gates) and wire it into active P5-S04 checklist/roadmap execution references. P1/P2/P3 impact: no source-of-truth ownership change; diagnostics/evidence tooling hardening only. README parity: no material repo-state change.
 

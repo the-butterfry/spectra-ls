@@ -1,5 +1,5 @@
 <!-- Description: Deterministic operator checklist for Phase 5 Slice-04 phase-exit closeout and handoff readiness (P5-S04). -->
-<!-- Version: 2026.04.21.2 -->
+<!-- Version: 2026.04.21.3 -->
 <!-- Last updated: 2026-04-21 -->
 
 # P5-S04 Phase Exit — Closeout Checklist
@@ -103,6 +103,53 @@ verdict:
 - `PASS`: all gates pass, no stop conditions, and fresh parity/authority snapshot is safe.
 - `WARN`: partial evidence or inconclusive gate state; keep Phase 5 open.
 - `FAIL`: any stop condition triggered or any critical gate failed.
+
+## P5-S04 closeout packet (accepted)
+
+This section records the accepted Active→Validated decision packet.
+
+```text
+P5-S04 Closeout Packet (Accepted)
+---------------------------------
+run_id: p5s04-2026-04-21-run1
+captured_at: 2026-04-21 19:04:03.253466-07:00
+operator: cory
+
+gate_checks:
+   authority_baseline_gate: PASS
+   parity_stability_gate: PASS
+   domain_closure_gate: PASS
+   rollback_posture_gate: PASS
+   retirement_readiness_gate: PASS
+   handoff_gate: PASS
+
+domain_evidence_links:
+   p5_s01: docs/testing/raw/p5_s01_routing_cutover_run_window_checklist.md (Validated)
+   p5_s02: docs/testing/raw/p5_s02_metadata_cutover_run_window_checklist.md (Validated)
+   p5_s03: docs/testing/raw/p5_s03_lighting_orchestration_run_window_checklist.md (Validated)
+
+fresh_snapshot:
+   authority_mode: legacy
+   route_decision: route_linkplay_tcp
+   contract_valid: true
+   missing_required: 0
+   unresolved_required: 0
+   unresolved_sources: 0
+   mismatches: 0
+   age_s: 55.1
+
+stop_conditions:
+   triggered: false
+   reason: none
+
+verdict:
+   outcome: PASS
+   phase5_closeout_eligible: true
+   p6_planning_handoff_ready: true
+   rationale: all runtime safety and governance gates pass with explicit legacy-safe authority posture and clean parity/contracts.
+```
+
+Disposition: `P5-S04` is promoted to `Validated`; Phase-5 closeout packet is accepted and P6 planning handoff is ready.
 
 ## Artifact linkage
 

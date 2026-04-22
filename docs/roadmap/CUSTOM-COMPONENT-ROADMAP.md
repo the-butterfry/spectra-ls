@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.21.69 -->
+<!-- Version: 2026.04.21.70 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -127,7 +127,7 @@ Execution playbook reference: `docs/program/PARALLEL-PROGRAM-PLAYBOOK.md`.
 | P5-S01 | 5 | Validated (legacy retained as rollback authority path; post-window rollback proof captured) | Validated (routing-domain run-window execution with VERIFIED in-window proof) | Validated (in-window VERIFIED + post-window legacy rollback) | Medium | Validated |
 | P5-S02 | 5 | Validated (legacy metadata ownership retained; bounded closeout evidence accepted) | Validated (metadata-domain gate-prep/readiness validation execution completed with consolidated PASS evidence) | Validated (Run-1 + Run-2 closeout packet) | Medium | Validated |
 | P5-S03 | 5 | Validated (legacy lighting orchestration retained with safe post-window authority proof) | Validated (lighting-domain run-window checklist execution completed with PASS closeout evidence) | Validated (Run-1 pre/in/post packet) | Medium | Validated |
-| P5-S04 | 5 | Active (phase-exit closeout governance; no runtime ownership expansion) | Active (cross-slice evidence consolidation + Phase-6 handoff gating) | In Progress (phase-exit packet) | Medium | Active |
+| P5-S04 | 5 | Validated (phase-exit closeout governance completed; no runtime ownership expansion) | Validated (cross-slice evidence packet accepted + Phase-6 handoff gating complete) | Validated (PASS/READY 7/7 closeout packet) | Medium | Validated |
 | P6-S01 | 6 | Planned (legacy/runtime contracts preserved during UX staging) | Planned (HA sidebar control center scaffold with read-only mapped-environment baseline) | Planned | Medium | Planned |
 
 ## P1/P2 validation snapshot (2026-04-19)
@@ -673,7 +673,7 @@ Execution checklist:
 
 ### Phase 5 next-slice card — P5-S04 (phase-exit closeout)
 
-Status: **Active**
+Status: **Validated**
 
 Scope:
 
@@ -691,6 +691,17 @@ Execution checklist:
 
 - `docs/testing/raw/p5_s04_phase_exit_closeout_checklist.md`
 - Primary live monitor: `docs/testing/raw/p5_s04_phase_exit_functionality_monitor.jinja`
+
+Closeout evidence (2026-04-21):
+
+- monitor verdict: `Status=PASS`, `Phase-5 closeout readiness=READY`, `gate_score=7/7` (`2026-04-21 19:04:03.253466-07:00`),
+- runtime safety gates all pass with safe baseline (`authority_mode=legacy`) and clean route/contract/parity/freshness,
+- governance gates all pass with explicit P5-S01/S02/S03 closure linkage and planning-only P6 handoff stance.
+
+Disposition:
+
+- `P5-S04` promoted to **Validated**.
+- Phase-5 closeout packet accepted; progression is now planning-ready for P6.
 
 Deferred H1 note (report/log/heal):
 

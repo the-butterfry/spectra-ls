@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.21.69 -->
+<!-- Version: 2026.04.21.70 -->
 <!-- Last updated: 2026-04-21 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -38,7 +38,7 @@ Each feature slice is only complete when both tracks are dispositioned:
 | 2 | Registry + route foundation | Keep helper contracts + diagnostics parity | Target registry + adapter router (`linkplay_tcp`) | Implemented |
 | 3 | Guarded dual-write | Add shims and loop guards | Controlled write path with correlation/debounce guards | Validated (Sealed 2026-04-20) |
 | 4 | Functional expansion | Preserve compatibility while exposing new capabilities | Profiles/actions/capability matrix/crossfade-balance services | Validated (F4-S01/F4-S02/F4-S03 sealed; diagnostics-only authority boundary retained) |
-| 5 | Domain cutover + retirement | Domain-by-domain template retirement | Primary control plane ownership + migration tooling | In Progress (P5-S01/P5-S02/P5-S03 validated; P5-S04 active) |
+| 5 | Domain cutover + retirement | Domain-by-domain template retirement | Primary control plane ownership + migration tooling | Validated (P5-S01/P5-S02/P5-S03/P5-S04 sealed; P6 planning handoff ready) |
 | 6 | Sidebar control center productization | Runtime compatibility surfaces retained for migration-safe UX rollout | Full HA sidebar Spectra control center (setup/tuning/defaults/overrides/mapped environment) | Planned |
 
 ### Active slice ledger
@@ -57,7 +57,7 @@ Each feature slice is only complete when both tracks are dispositioned:
 | P5-S01 | 5 | Validated (legacy retained as rollback authority path; post-window rollback proof captured) | Validated (routing-domain run-window execution completed with VERIFIED in-window proof) | Validated (in-window VERIFIED + post-window legacy rollback) | Medium | Validated |
 | P5-S02 | 5 | Validated (legacy metadata ownership retained; bounded run-window closeout packet accepted) | Validated (metadata-domain gate-prep/readiness validation execution completed with consolidated PASS evidence) | Validated (Run-1 + Run-2 closeout packet) | Medium | Validated |
 | P5-S03 | 5 | Validated (legacy lighting orchestration retained with safe post-window authority proof) | Validated (lighting-domain run-window checklist execution completed with PASS closeout evidence) | Validated (Run-1 pre/in/post packet) | Medium | Validated |
-| P5-S04 | 5 | Active (phase-exit closeout governance; no runtime ownership expansion) | Active (cross-slice evidence consolidation + Phase-6 handoff gating) | In Progress (phase-exit packet) | Medium | Active |
+| P5-S04 | 5 | Validated (phase-exit closeout governance completed; no runtime ownership expansion) | Validated (cross-slice evidence packet accepted + Phase-6 handoff gating complete) | Validated (PASS/READY 7/7 closeout packet) | Medium | Validated |
 | P6-S01 | 6 | Planned (runtime compatibility remains available during staged UX cutover) | Planned (HA sidebar control center scaffold + read-only mapped-environment overview) | Planned | Medium | Planned |
 
 ### P1/P2 validation snapshot (2026-04-19)
@@ -488,7 +488,7 @@ Execution checklist (new):
 
 ### Phase 5 next slice card — P5-S04 (phase-exit closeout)
 
-Status: **Active**
+Status: **Validated**
 
 Scope:
 
@@ -506,6 +506,17 @@ Execution checklist:
 
 - `docs/testing/raw/p5_s04_phase_exit_closeout_checklist.md`
 - Primary live monitor: `docs/testing/raw/p5_s04_phase_exit_functionality_monitor.jinja`
+
+Closeout evidence (2026-04-21):
+
+- monitor verdict: `Status=PASS`, `Phase-5 closeout readiness=READY`, `gate_score=7/7` (`2026-04-21 19:04:03.253466-07:00`),
+- runtime safety gates all pass: `authority_mode=legacy`, `route_decision=route_linkplay_tcp`, `contract_valid=true`, `missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`, freshness within threshold,
+- governance gates all pass: domain closure linkage confirmed for P5-S01/S02/S03, rollback posture documented, retirement explicitly deferred, and P6 handoff planning posture explicit.
+
+Disposition:
+
+- `P5-S04` promoted to **Validated**.
+- Phase-5 closeout packet accepted; P6 planning handoff is ready.
 
 Reference specification: `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`.
 

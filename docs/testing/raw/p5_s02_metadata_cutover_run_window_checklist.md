@@ -1,5 +1,5 @@
 <!-- Description: Deterministic operator run-window checklist for Phase 5 Slice-02 metadata-domain cutover readiness and bounded validation (P5-S02). -->
-<!-- Version: 2026.04.21.18 -->
+<!-- Version: 2026.04.21.19 -->
 <!-- Last updated: 2026-04-21 -->
 
 # P5-S02 Metadata Cutover — Run Window Checklist
@@ -669,6 +669,49 @@ verdict:
    rationale: strict packet run passes with complete audit payload, clean parity/contracts, and retained legacy authority baseline.
    closeout_eligible: true
 ```
+
+## P5-S02 closeout packet candidate (consolidated)
+
+Use this section to finalize the Active→Validated decision packet.
+
+```text
+P5-S02 Closeout Packet (Candidate)
+----------------------------------
+prepared_at: 2026-04-21T17:30:00-07:00
+slice: P5-S02 (metadata domain)
+authority_policy: legacy baseline retained
+
+evidence_records:
+   - run_id: p5s02-2026-04-21-run1
+      status: PASS
+      metadata_readiness: READY
+      trial_status: dry_run_ok
+      audit_payload_completeness: COMPLETE
+      trial_gate_verdict: PASS
+      eligible_for_closeout: true
+   - run_id: p5s02-2026-04-21-run2
+      status: PASS
+      metadata_readiness: READY
+      trial_status: dry_run_ok
+      audit_payload_completeness: COMPLETE
+      trial_gate_verdict: PASS
+      eligible_for_closeout: true
+
+stability_summary:
+   authority_mode: legacy
+   route_decision: route_linkplay_tcp
+   contract_missing_required: 0
+   contract_unresolved_required: 0
+   unresolved_sources: 0
+   mismatches: 0
+
+closeout_recommendation:
+   status_lane: ready_for_promotion
+   proposed_status_change: Active -> Validated
+   note: metadata ownership remains legacy (`metadata_authority_owner=legacy_contract_surfaces`, `metadata_cutover_active=false`)
+```
+
+If accepted, update roadmap status tables for `P5-S02` and activate the next isolated slice (`P5-S03` lighting domain).
 
 ## Artifact linkage
 

@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.21.60 -->
+<!-- Version: 2026.04.21.61 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -126,6 +126,7 @@ Execution playbook reference: `docs/program/PARALLEL-PROGRAM-PLAYBOOK.md`.
 | F4-S03 | 4 | Validated (legacy crossfade/balance behavior remains authoritative) | Validated (crossfade/balance diagnostics scaffold + validation sequence) | Validated (diagnostics-only) | Medium | Validated |
 | P5-S01 | 5 | Validated (legacy retained as rollback authority path; post-window rollback proof captured) | Validated (routing-domain run-window execution with VERIFIED in-window proof) | Validated (in-window VERIFIED + post-window legacy rollback) | Medium | Validated |
 | P5-S02 | 5 | Active (legacy metadata ownership retained during gate-prep) | Active (metadata-domain gate-prep/readiness validation execution) | In Progress (process + evidence ramp) | Medium | Active |
+| P5-S03 | 5 | Planned (legacy lighting orchestration remains authoritative pre-activation) | Planned (lighting-domain gate-prep checklist and slice card published) | Planned | Medium | Planned |
 | P6-S01 | 6 | Planned (legacy/runtime contracts preserved during UX staging) | Planned (HA sidebar control center scaffold with read-only mapped-environment baseline) | Planned | Medium | Planned |
 
 ## P1/P2 validation snapshot (2026-04-19)
@@ -639,6 +640,28 @@ Mechanism-definition next step (P5-S02-M1):
 - Run-2 success criteria: monitor outputs remain `PASS/READY`, trial audit remains `COMPLETE` with `missing_audit_fields=0`, and trial semantics report `trial_gate_verdict=PASS`, `eligible_for_closeout=true`, with explicit post-window authority disposition `legacy`.
 - Run-2 evidence captured (`p5s02-2026-04-21-run2`): monitor output at `2026-04-21 17:25:39.987075-07:00` confirms `Status=PASS`, `Metadata readiness=READY`, safe baseline (`authority_mode=legacy`, `route_decision=route_linkplay_tcp`), contract clean (`missing_required=0`, `unresolved_required=0`), metadata gate `PASS` (`9/9`), and complete trial audit (`status=dry_run_ok`, `audit_payload_state=COMPLETE`, `trial_gate_verdict=PASS`, `eligible_for_closeout=true`, `missing_audit_fields=0`).
 - Disposition update: Run-2 strict comparator expectations are satisfied with fresh evidence; slice remains **Active (gate-prep)** pending broader Phase-5 metadata closeout sequencing.
+- Closeout packet candidate: bounded Run-1 and Run-2 evidence now forms a consolidated closeout packet with explicit legacy authority retention, clean contract/parity signals, and complete trial-audit payloads; promotion recommendation is evidence-supported while awaiting explicit status-lane promotion recording.
+
+### Phase 5 next-slice card — P5-S03 (lighting orchestration domain)
+
+Status: **Planned (ready-to-activate after P5-S02 closeout decision)**
+
+Scope:
+
+- **In:** lighting-domain orchestration gate-prep and bounded run-window validation.
+- **Out:** routing ownership, metadata ownership cutover, naming retirement.
+
+Activation gates (required):
+
+1. P5-S02 closeout decision captured in status ledger.
+2. Authority baseline remains `legacy` at lighting-window start.
+3. Lighting parity/contract checks PASS in active window.
+4. Domain isolation enforced (no concurrent metadata/routing cutover).
+5. Rollback/disarm evidence captured in the same window.
+
+Execution checklist:
+
+- `docs/testing/raw/p5_s03_lighting_orchestration_run_window_checklist.md`
 
 Deferred H1 note (report/log/heal):
 

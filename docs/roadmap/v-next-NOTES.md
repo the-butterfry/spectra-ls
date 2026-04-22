@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.21.61 -->
+<!-- Version: 2026.04.21.62 -->
 <!-- Last updated: 2026-04-21 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -56,6 +56,7 @@ Each feature slice is only complete when both tracks are dispositioned:
 | F4-S03 | 4 | Validated (legacy crossfade/balance behavior remains authoritative) | Validated (crossfade/balance diagnostics scaffold + validation sequence) | Validated (diagnostics-only) | Medium | Validated |
 | P5-S01 | 5 | Validated (legacy retained as rollback authority path; post-window rollback proof captured) | Validated (routing-domain run-window execution completed with VERIFIED in-window proof) | Validated (in-window VERIFIED + post-window legacy rollback) | Medium | Validated |
 | P5-S02 | 5 | Active (legacy metadata ownership retained during gate-prep) | Active (metadata-domain gate-prep/readiness validation execution) | In Progress (process + evidence ramp) | Medium | Active |
+| P5-S03 | 5 | Planned (legacy lighting orchestration remains authoritative pre-activation) | Planned (lighting-domain gate-prep/run-window checklist published) | Planned | Medium | Planned |
 | P6-S01 | 6 | Planned (runtime compatibility remains available during staged UX cutover) | Planned (HA sidebar control center scaffold + read-only mapped-environment overview) | Planned | Medium | Planned |
 
 ### P1/P2 validation snapshot (2026-04-19)
@@ -422,6 +423,11 @@ Next execution target (P5-S02-M1):
   - metadata gate healthy: `verdict=PASS`, `gate_score=9/9`,
   - trial audit complete: `status=dry_run_ok`, `window_id=p5s02-2026-04-21-run2`, `audit_payload_state=COMPLETE`, `trial_gate_verdict=PASS`, `eligible_for_closeout=true`, `missing_audit_fields=0`.
 - Run-2 disposition: strict-comparator packet expectations are met with fresh bounded-window evidence; metadata ownership remains legacy (`metadata_authority_owner=legacy_contract_surfaces`, `metadata_cutover_active=false`).
+- Closeout packet candidate (prepared):
+  - bounded evidence set includes Run-1 and Run-2 PASS/READY captures with complete trial-audit payloads,
+  - authority boundary remains explicit/safe (`legacy` baseline retained across snapshots),
+  - no contract/parity drift observed in captured windows (`missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`),
+  - promotion recommendation: `Active -> Validated` is now evidence-supported for P5-S02, pending explicit closeout decision recording in roadmap status ledger.
 
 Post-Phase destination note (operator UX target):
 
@@ -443,6 +449,34 @@ Deferred implementation scaffold note (H1):
 Run-window execution checklist (required for activation/closeout evidence):
 
 - `docs/testing/raw/p5_s02_metadata_cutover_run_window_checklist.md`
+
+### Phase 5 next slice card — P5-S03 (lighting orchestration domain)
+
+Status: **Planned (ready-to-activate after P5-S02 closeout decision)**
+
+Scope:
+
+- **In:** lighting-domain orchestration gate-prep and bounded run-window validation only.
+- **Out:** routing-domain ownership (already validated), metadata-domain ownership changes (P5-S02 lane), naming retirement.
+
+Activation gates (all required):
+
+1. P5-S02 closeout decision recorded (`Validated` or explicit defer rationale).
+2. Authority baseline `legacy` confirmed at lighting-window start.
+3. Lighting contract/parity precheck PASS in active window.
+4. Domain isolation enforced (no concurrent metadata/routing cutover execution).
+5. Rollback/disarm path validated and timestamped in-window.
+
+Stop conditions (fail-closed):
+
+- lighting contract drift or unresolved required lighting surfaces,
+- route/authority drift outside declared window posture,
+- stale/missing evidence artifacts for pre/in/post window sequence,
+- unexpected cross-domain side effects during lighting validation interactions.
+
+Execution checklist (new):
+
+- `docs/testing/raw/p5_s03_lighting_orchestration_run_window_checklist.md`
 
 Reference specification: `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`.
 

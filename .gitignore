@@ -1,6 +1,6 @@
 # Description: Top-level ignore rules for Home Assistant monorepo.
-# Version: 2026.04.19.3
-# Last updated: 2026-04-19
+# Version: 2026.04.21.4
+# Last updated: 2026-04-21
 
 # Secrets / credentials
 secrets.yaml
@@ -78,6 +78,10 @@ packages/dst_tuya_ac.yaml
 # Re-ignore archived previous folders after broad re-include rules above
 esphome/control-py/previous/**
 esphome/spectra_ls_system/previous/**
+
+# Legacy control-py path retired from main tracking
+esphome/control-py/**
+esphome/control-board-esp32-tcp.yaml
 
 # Guardrail: prevent accidental reintroduction of split package YAML fragments
 # under ma_control_hub (only .inc files are valid in that folder).

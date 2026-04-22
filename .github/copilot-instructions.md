@@ -3,8 +3,8 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 ---
 
 <!-- Description: Workspace Copilot operating instructions for Home Assistant + ESPHome. -->
-<!-- Version: 2026.04.20.16 -->
-<!-- Last updated: 2026-04-20 -->
+<!-- Version: 2026.04.21.17 -->
+<!-- Last updated: 2026-04-21 -->
 
 # GitHub Copilot Instructions — Home Assistant + ESPHome
 
@@ -24,7 +24,6 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 
 ## Mandatory Workflow
 - For `esphome/spectra_ls_system/**`, read `docs/roadmap/v-next-NOTES.md` before changes.
-- For `esphome/control-py/**`, read `docs/control-py/NOTES-control-board-2.md` before changes.
 - For any functional change, update `docs/CHANGELOG.md` **before** code edits.
 - For roadmap/migration changes, include a P1/P2/P3 impact check (what remains source-of-truth, what is parity-validated, what is deferred).
 - For any functionality or feature change, update or create the corresponding architecture/feature documentation in the same change set (for example runtime docs, control-hub docs, and cleanup/deprecation notes when relevant).
@@ -120,22 +119,16 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 ## Scope + Branch Model
 - Active repo scope:
   - `esphome/spectra_ls_system/`, `esphome/spectra_ls_system.yaml`
-  - `esphome/control-py/`, `esphome/control-board-esp32-tcp.yaml`
   - `esphome/circuitpy/`
   - `packages/`
   - `docs/setup/SPECTRA-HA-CONFIG-PLACEHOLDERS.md`
-- Active-path guardrail (required): for default `main` runtime edits, treat `esphome/spectra_ls_system/**` (entrypoint `esphome/spectra_ls_system.yaml`) as the active implementation path. Treat `esphome/control-py/**` as a stabilized alternate line; do not edit it unless the user explicitly requests `control-py` work or the change is a documented shared-contract parity update.
-- Keep `main` and `menu-only` concurrently operable.
-- For shared contracts (RP events, control API, helper/entity contracts), require either:
-  - paired update in both branches, or
-  - explicit divergence note in `docs/CHANGELOG.md`.
-- Complete `.github/SHARED-CONTRACT-CHECKLIST.md` before shared-contract merge.
+- Active-path guardrail (required): for default `main` runtime edits, treat `esphome/spectra_ls_system/**` (entrypoint `esphome/spectra_ls_system.yaml`) as the active implementation path.
+- `esphome/control-py/**` and `esphome/control-board-esp32-tcp.yaml` are retired from `main` Git tracking and ignored by default.
 
 ## Path + Source-of-Truth Rules
 - Authoritative workspace path is `/mnt/homeassistant` (avoid SMB mirror path unless explicitly requested).
 - RP2040 firmware source of truth is live `CIRCUITPY/`; mirror is `esphome/circuitpy/`.
 - Any RP2040 firmware change must update both live and mirror in same change set.
-- Treat `esphome/control-py/previous/circuitpy/` as archived (do not edit/reference).
 
 ## Git + Productization Rules
 - Never commit secrets or environment-local artifacts.

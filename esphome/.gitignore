@@ -1,18 +1,13 @@
 # Description: ESPHome subtree ignore policy for tracked project files.
-# Version: 2026.04.18.1
-# Last updated: 2026-04-18
+# Version: 2026.04.21.2
+# Last updated: 2026-04-21
 #
-# Repo policy: track ONLY control-py/, spectra_ls_system/, circuitpy/, packages/, and entrypoints.
+# Repo policy: on main, track active spectra_ls_system + shared sources only.
 # Ignore everything else by default.
 *
 !.gitignore
-!control-board-esp32-tcp.yaml
 !spectra_ls_system.yaml
 !secrets.example
-!control-py/
-!control-py/**
-control-py/previous/
-control-py/previous/**
 !spectra_ls_system/
 !spectra_ls_system/**
 spectra_ls_system/previous/
@@ -25,12 +20,9 @@ spectra_ls_system/previous/**
 # Extra safety ignores (redundant with * but kept for clarity)
 /.esphome/
 /secrets.yaml
-/control-py/secrets.yaml
 /spectra_ls_system/secrets.yaml
 /spectra_ls_system/.env
 /spectra_ls_system/.esphome/
-/control-py/.esphome/
-control-py/previous/circuitpy/
 .fseventsd/
 .Trash-*/
 .Trash-*

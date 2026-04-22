@@ -1,5 +1,5 @@
 # Description: Lighting controls package for Spectra LS System.
-# Version: 2026.04.21.3
+# Version: 2026.04.21.4
 # Last updated: 2026-04-21
 # Update version/date whenever you change this file.
 
@@ -60,7 +60,7 @@ binary_sensor:
   - platform: template
     name: "Lighting Hold Active"
     id: lighting_hold_active_state
-    internal: true
+    entity_category: diagnostic
     lambda: |-
       const uint32_t hold_until = id(lighting_return_to_audio_ms);
       return hold_until > 0 && millis() < hold_until;
@@ -207,7 +207,7 @@ sensor:
   - platform: template
     name: "Lighting Hold Remaining Ms"
     id: lighting_hold_remaining_ms
-    internal: true
+    entity_category: diagnostic
     unit_of_measurement: "ms"
     accuracy_decimals: 0
     update_interval: 250ms

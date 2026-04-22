@@ -1,10 +1,17 @@
-<!-- Description: User-focused setup, deploy, and Home Assistant integration guide with manual prerequisites and token/API steps. -->
-<!-- Version: 2026.04.19.2 -->
-<!-- Last updated: 2026-04-19 -->
+<!-- Description: Practical setup/deploy/integration guide for Spectra on Home Assistant with clear operator outcomes and failure actions. -->
+<!-- Version: 2026.04.21.6 -->
+<!-- Last updated: 2026-04-21 -->
 
 # User Setup, Deploy, and HA Integration
 
-This is a first-pass setup stub for current runtime + parallel custom-component direction.
+Use this page to deploy Spectra and verify that control paths are actually usable.
+
+Target outcome:
+
+- runtime deploy completes,
+- audio + lighting routes work,
+- room/target menus are populated,
+- you have enough evidence to debug or file a high-quality bug if needed.
 
 ## Current setup model (today)
 
@@ -55,6 +62,27 @@ This is a first-pass setup stub for current runtime + parallel custom-component 
 - At least one valid audio target and one valid lighting target discovered.
 - Room/target navigation menus populated with concrete options.
 
+## Control-center settings (P6 early availability)
+
+You can now stage core control-center mappings from the Spectra integration itself:
+
+- Integration options (Configure on `Spectra LS`) now include:
+  - encoder turn action,
+  - encoder press action,
+  - encoder long-press action,
+  - button 1–4 scene bindings,
+  - read-only mode toggle for rollout safety.
+- Service path is also available for automation/operator workflows:
+  - `spectra_ls.set_control_center_settings`
+  - `spectra_ls.execute_control_center_input` (dry-run-first)
+
+This is additive and migration-safe: runtime/source-of-truth ownership remains unchanged while Control Center settings are staged.
+
+For P6 execution-lane validation evidence, use:
+
+- `docs/testing/raw/p6_s04_control_input_execution_monitor.jinja`
+- `docs/testing/raw/p6_s04_control_input_execution_checklist.md`
+
 ## Step-by-step runtime setup (operator flow)
 
 1. Copy/setup required package and ESPHome config references for your install.
@@ -64,6 +92,12 @@ This is a first-pass setup stub for current runtime + parallel custom-component 
 5. Compile ESPHome configuration.
 6. Deploy OTA/flash and confirm success.
 7. Verify routing, room/target options, and core controls in HA UI.
+
+Expected result after Step 7:
+
+- no placeholder-only room/target menus,
+- control-path metadata is present,
+- at least one audio and one lighting action succeed and reflect state.
 
 ## Integration checks with your own HA
 
@@ -100,6 +134,14 @@ Attach these when possible:
 - concise repro timeline,
 - redacted config snippets,
 - affected area + impact statement.
+
+## Fast failure triage
+
+| If you see this | Check this first | Then do this |
+| --- | --- | --- |
+| Empty room/target options | Placeholder resolution and helper entities | Re-apply local values, reload templates/helpers, rerun checks |
+| Route keeps deferring/no target | Active target/helper state + route metadata | Set a known-good target and revalidate `control_path` + `control_capable` |
+| Scene/input mapping does nothing | Control Center mapping + read-only mode | Check integration options, confirm mapping exists, and verify `read_only_mode` behavior |
 
 ## Custom component setup roadmap (stub)
 

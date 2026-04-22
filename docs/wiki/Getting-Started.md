@@ -1,59 +1,67 @@
-<!-- Description: Quick onboarding and first-contribution flow for Spectra L/S operators and contributors. -->
-<!-- Version: 2026.04.19.3 -->
-<!-- Last updated: 2026-04-19 -->
+<!-- Description: Fast, practical onboarding guide for Spectra L/S operators and contributors with direct task paths. -->
+<!-- Version: 2026.04.21.4 -->
+<!-- Last updated: 2026-04-21 -->
 
 # Getting Started
 
-## What Spectra L/S is
+Use this page to get moving fast.
 
-Spectra L/S is an analog tactile control surface for Home Assistant with flagship audio/lighting depth and general mappable control actions.
+If you are installing Spectra, this tells you where to start.
+If you are contributing, this tells you exactly which docs define workflow and quality gates.
 
-## First 30 minutes
+## 15-minute orientation
 
-1. Read `README.md` for product-level orientation.
-2. Read `docs/wiki/Welcome-README-and-Bug-Workflow.md` for support and bug workflow routing.
-3. Read `docs/wiki/User-Setup-Deploy-and-HA-Integration.md` for installation and integration steps.
-4. Read `docs/wiki/Custom-Component-Setup-Roadmap-Stub.md` for phased setup evolution.
-5. If contributing code/docs, then read `CONTRIBUTING.md` and `docs/developer/DEVELOPER-INSTRUCTIONS.md`.
+1. Read `README.md` to understand product direction and current migration status.
+2. Read `docs/wiki/Install-on-Your-Own-HA.md` if you are setting up a real instance.
+3. Read `docs/wiki/User-Setup-Deploy-and-HA-Integration.md` for detailed integration and validation.
+4. Read `docs/wiki/Welcome-README-and-Bug-Workflow.md` so you use the right intake path when something fails.
 
-## Choose your path
+Expected result:
 
-### I am an operator (installing/using Spectra)
+- You know whether you are on an operator path, bug-reporting path, or contributor path.
+
+## Pick your path
+
+### Operator path (install and run Spectra)
 
 1. `Install-on-Your-Own-HA.md`
 2. `User-Setup-Deploy-and-HA-Integration.md`
 3. `Operations-Runbooks.md`
 
-### I am reporting a problem
+### Bug-reporting path (something broke)
 
 1. `Welcome-README-and-Bug-Workflow.md`
 2. `.github/ISSUE_TEMPLATE/bug_report.yml`
 3. `Discussions-and-Projects-Workflow.md`
 
-### I am contributing changes
+### Contributor path (code/docs changes)
 
 1. `CONTRIBUTING.md`
-2. `.github/pull_request_template.md`
-3. `Release-and-Changelog-Process.md`
+2. `docs/developer/DEVELOPER-INSTRUCTIONS.md`
+3. `.github/pull_request_template.md`
+4. `Release-and-Changelog-Process.md`
 
-## Core docs map
+## Source-of-truth map
 
-- Technical docs index: `docs/README.md`
+- Docs index: `docs/README.md`
 - Runtime architecture: `docs/architecture/CODEBASE-RUNTIME-ARCHITECTURE.md`
 - Control-hub architecture: `docs/architecture/CONTROL-HUB-ARCHITECTURE.md`
 - Wiring protocol: `docs/hardware/WIRING-LAYOUT-PROTOCOL.md`
+- Active roadmap ledger: `docs/roadmap/v-next-NOTES.md`
 - Changelog: `docs/CHANGELOG.md`
 
-## Contribution quick rules
+## If you are contributing today
 
-- Root-cause fixes over symptom patches.
-- Keep changes small and reversible.
+Non-negotiables:
+
+- Keep fixes root-cause and reversible.
+- Keep runtime path sealed unless a bounded exception is explicitly approved.
 - Update docs parity in the same change set.
-- Provide concrete validation evidence.
+- Include verification evidence in your PR.
 
-## First-day success checklist
+## First-day checklist
 
-- [ ] You can identify whether your work belongs in Discussions, Issues, or PRs.
-- [ ] You know the current install path is runtime-first.
-- [ ] You know where to report bugs with reproducible evidence.
-- [ ] You can locate architecture/roadmap sources for deeper detail.
+- [ ] I know which path I am on (operator, bug report, contributor).
+- [ ] I know where install steps live.
+- [ ] I know where to file a reproducible bug.
+- [ ] I know which roadmap/changelog docs are authoritative.

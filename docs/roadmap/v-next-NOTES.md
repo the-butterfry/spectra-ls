@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.21.97 -->
+<!-- Version: 2026.04.21.98 -->
 <!-- Last updated: 2026-04-21 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -968,7 +968,12 @@ P1/P2/P3 impact check:
 Initial execution disposition:
 
 - P8-S02 activated with writing-standard scaffolding and wiki-navigation updates.
-- Full page-by-page rewrite pass is queued as the next execution packet.
+
+Run-1 execution update (2026-04-21):
+
+- Sidebar/component lane: added `Control Center Last Attempt Status` diagnostic sensor in `custom_components/spectra_ls/sensor.py` so mapped-input outcomes are visible as first-class state instead of only deep attributes.
+- Documentation/wiki lane: rewrote high-traffic operator onboarding/install/setup pages (`docs/wiki/Getting-Started.md`, `docs/wiki/Install-on-Your-Own-HA.md`, `docs/wiki/User-Setup-Deploy-and-HA-Integration.md`) into direct, task-first native-English format with explicit expected outcomes and failure actions.
+- Execution disposition: run-1 packet accepted; remaining wiki/page sweep continues in subsequent packets.
 
 GitHub/developer declaration (policy mirror):
 

@@ -1,5 +1,5 @@
 <!-- Description: Contributor/developer workflow for Spectra L/S implementation, preflight, instrumentation, and documentation/code parity. -->
-<!-- Version: 2026.04.21.4 -->
+<!-- Version: 2026.04.21.5 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Spectra L/S Developer Instructions
@@ -14,6 +14,7 @@ Run this checklist before coding any feature slice:
 
 1. **Branch + scope check**
    - Confirm target branch (`main` for active development work).
+   - Treat `menu-only` as legacy/stabilized historical branch context (not an active implementation lane for current work).
    - Treat `control-py` as archived legacy exploration path (not an active implementation target on `main`).
    - Confirm authoritative workspace path is `/mnt/homeassistant`.
 

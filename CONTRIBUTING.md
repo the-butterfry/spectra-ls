@@ -1,5 +1,5 @@
 <!-- Description: Contributor guide for Spectra L/S development, scope, workflow, and quality expectations. -->
-<!-- Version: 2026.04.21.4 -->
+<!-- Version: 2026.04.21.5 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Contributing to Spectra L/S
@@ -15,6 +15,7 @@ Thank you for contributing.
 ## Scope and branch model
 
 - Active development branch: `main`
+- `menu-only` is legacy/stabilized historical branch context and is not an active implementation/run target for current work.
 - `control-py` is archived legacy exploration history and is not a development/run target on `main`.
 - Shared-contract changes must follow `.github/SHARED-CONTRACT-CHECKLIST.md`.
 

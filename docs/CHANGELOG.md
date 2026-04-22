@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.21.190 -->
+<!-- Version: 2026.04.21.191 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Changelog
 
 ## 2026-04-21
+
+- Branch-Policy Clarification — `menu-only` Legacy Status (`CONTRIBUTING.md`, `docs/developer/DEVELOPER-INSTRUCTIONS.md`): explicitly document that `menu-only` is a legacy/stabilized historical branch context and not an active implementation/run target for current work on `main`. This aligns branch guidance with the existing `control-py` legacy posture and prevents contributors from treating `menu-only` as a current development lane. Two-track disposition: runtime track remains sealed compatibility baseline; component track remains primary growth lane. P1/P2/P3 impact: no source-of-truth ownership change; contributor workflow clarity only. README/wiki parity: no material operator workflow change.
 
 - README Ecosystem + Roadmap Clarity Refresh (`README.md`): expand audio ecosystem wording to include Sendspin-class endpoints as a roadmap target and introduce a dedicated README roadmap section for the active Spectra Control Center build direction (instead of burying roadmap bullets under documentation links). Two-track disposition: runtime track remains sealed compatibility baseline; component track remains primary growth lane and roadmap execution focus. P1/P2/P3 impact: no source-of-truth ownership change; end-user direction clarity only. README/wiki parity: README updated in same change set.
 

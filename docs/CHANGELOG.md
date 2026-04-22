@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.21.147 -->
+<!-- Version: 2026.04.21.148 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Changelog
 
 ## 2026-04-21
+
+- Validation/Phase-5 P5-S03 Run-1 Pre-Window PASS Evidence Capture (`docs/testing/raw/p5_s03_lighting_orchestration_run_window_checklist.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): record first live lighting-domain monitor artifact (`2026-04-21 17:41:12.841574-07:00`) with `Status=PASS`, `Lighting readiness=READY`, `authority_mode=legacy`, `route_decision=route_linkplay_tcp`, clean contract/parity (`missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`), and healthy selector posture (`room=Living Room`, `target=All`, options ready). Control snapshot age remains informational only per corrected monitor semantics. P1/P2/P3 impact: no source-of-truth ownership change; bounded evidence capture progression only. README parity: no material repo-state change.
 
 - Validation/Phase-5 P5-S03 Freshness Semantics Correction (`docs/testing/raw/p5_s03_lighting_functionality_monitor.jinja`, `docs/testing/raw/p5_s03_lighting_orchestration_run_window_checklist.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): fix a false-warning path where lighting verdicts were hard-gated by shared shadow snapshot `captured_at` age even when lighting selectors/contracts were healthy, which could misclassify bounded lighting interactions as stale/non-ready. Freshness is now rendered as control-plane context only (informational) and no longer blocks `Status`/`Lighting readiness` classification for P5-S03 gate-prep evidence. P1/P2/P3 impact: no source-of-truth ownership change; diagnostics semantics correction only. README parity: no material repo-state change.
 

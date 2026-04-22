@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.21.92 -->
+<!-- Version: 2026.04.21.93 -->
 <!-- Last updated: 2026-04-21 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -41,6 +41,7 @@ Each feature slice is only complete when both tracks are dispositioned:
 | 5 | Domain cutover + retirement | Domain-by-domain template retirement | Primary control plane ownership + migration tooling | Validated (P5-S01/P5-S02/P5-S03/P5-S04 sealed; P6 planning handoff ready) |
 | 6 | Sidebar control center productization | Runtime compatibility surfaces retained for migration-safe UX rollout | Full HA sidebar Spectra control center (setup/tuning/defaults/overrides/mapped environment) | Validated (P6-S01/P6-S02/P6-S03/P6-S04 validated) |
 | 7 | Component-first authority cutover + legacy sealing | Legacy runtime transitions to compatibility/rollback baseline, then sealed from normal write ownership | Component becomes default primary control plane for net-new sidebar/beyond features | Validated (P7-S01/P7-S02/P7-S03/P7-S04 validated; phase-exit packet accepted) |
+| 8 | Post-cutover stabilization + legacy-seal governance | Runtime retained as rollback-safe sealed baseline with no net-new growth | Component continues as primary feature/control plane under strict governance gates | Active (P8-S01 active) |
 
 ### Active slice ledger
 
@@ -67,6 +68,7 @@ Each feature slice is only complete when both tracks are dispositioned:
 | P7-S02 | 7 | Validated (legacy retained as bounded rollback authority with post-window rollback-safe proof accepted) | Validated (first bounded authority-flip execution lane complete) | Completed (Run-1 pre/in/post PASS) | High | Validated |
 | P7-S03 | 7 | Validated (legacy retained as rollback-safe metadata authority baseline with post-window proof accepted) | Validated (bounded metadata-domain authority-flip execution lane complete) | Completed (Run-1 pre/in PASS + Run-2 post PASS) | High | Validated |
 | P7-S04 | 7 | Validated (rollback-safe legacy authority baseline preserved at closeout capture) | Validated (phase-exit closeout packet completed and accepted) | Completed (Run-1 closeout PASS/READY 4/4) | High | Validated |
+| P8-S01 | 8 | Active (legacy sealed baseline readiness gate; no ownership expansion) | Active (post-cutover governance/readiness lane) | In Progress (activation packet published; pre-window capture pending) | High | Active |
 
 ### P1/P2 validation snapshot (2026-04-19)
 
@@ -874,6 +876,42 @@ Run-1 closeout evidence (2026-04-21):
 Promotion disposition:
 
 - `P7-S04` promoted to **Validated**.
+
+### Phase 8 starter slice card — P8-S01 (legacy-seal readiness gate)
+
+Status: **Active**
+
+Scope:
+
+- **In:** post-cutover legacy-seal readiness gating, rollback-safe baseline verification, and governance continuity checks.
+- **Out:** runtime ownership expansion, irreversible legacy retirement actions, and net-new write-path cutover behavior.
+
+Activation gates (required):
+
+1. Phase-7 closeout packet is validated.
+2. Runtime baseline remains rollback-safe (`authority_mode=legacy`) with clean contract/parity.
+3. Rollback + single-writer controls remain explicit and verifiable.
+4. Legacy net-new growth freeze and component-primary posture remain explicit.
+
+Execution checklist:
+
+- `docs/testing/raw/p8_s01_legacy_seal_readiness_checklist.md`
+- Primary live monitor: `docs/testing/raw/p8_s01_legacy_seal_readiness_monitor.jinja`
+
+Two-track disposition:
+
+- **Track A (runtime):** sealed rollback-safe baseline with no net-new ownership growth.
+- **Track B (component):** active governance/readiness lane for post-cutover operation.
+
+P1/P2/P3 impact check:
+
+- **P1:** unchanged read-only parity contract surfaces.
+- **P2:** unchanged registry/router diagnostics ownership.
+- **P3:** unchanged single-writer boundary and rollback discipline.
+
+Activation disposition:
+
+- `P8-S01` activated with monitor/checklist artifacts; pre-window evidence capture is now pending.
 
 Reference specification: `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`.
 

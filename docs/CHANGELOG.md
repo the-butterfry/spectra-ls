@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.21.141 -->
+<!-- Version: 2026.04.21.142 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Changelog
 
 ## 2026-04-21
+
+- Validation/Phase-5 P5-S02 Run-2 PASS/READY Evidence Capture (`docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`, `docs/testing/raw/p5_s02_metadata_cutover_run_window_checklist.md`): record operator-captured Run-2 monitor artifact (`2026-04-21 17:25:39.987075-07:00`) with `authority_mode=legacy`, `route_decision=route_linkplay_tcp`, contract clean (`missing_required=0`, `unresolved_required=0`), metadata gate `PASS` (`9/9`), and metadata trial audit `status=dry_run_ok`, `window_id=p5s02-2026-04-21-run2`, `audit_payload_state=COMPLETE`, `trial_gate_verdict=PASS`, `eligible_for_closeout=true`, `missing_audit_fields=0`. P1/P2/P3 impact: no source-of-truth ownership change; this extends P5-S02 bounded-window evidence depth with fresh strict-comparator-grade run data while metadata ownership remains legacy. README parity: no material repo-state change.
 
 - Validation/Phase-5 P5-S02 Run-2 Targeting Correction (Discovery-First) (`docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`, `docs/testing/raw/p5_s02_metadata_cutover_run_window_checklist.md`): remove install-specific `expected_target=media_player.spectra_ls_2` from Run-2 strict packet guidance and replace with dynamic monitor-derived targeting (`route_trace.active_target` from pre-window snapshot) plus optional omission when active target churn is expected. P1/P2/P3 impact: no source-of-truth ownership change; this restores anonymized/discovery-first execution posture while preserving strict fail-closed comparator semantics. README parity: no material repo-state change.
 

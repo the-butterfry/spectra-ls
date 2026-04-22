@@ -1,5 +1,5 @@
 # Description: Lighting controls package for Spectra LS System.
-# Version: 2026.04.21.4
+# Version: 2026.04.21.5
 # Last updated: 2026-04-21
 # Update version/date whenever you change this file.
 
@@ -56,14 +56,6 @@ binary_sensor:
     name: "Target On (Dynamic)"
     entity_id: binary_sensor.control_board_target_on
     internal: true
-
-  - platform: template
-    name: "Lighting Hold Active"
-    id: lighting_hold_active_state
-    entity_category: diagnostic
-    lambda: |-
-      const uint32_t hold_until = id(lighting_return_to_audio_ms);
-      return hold_until > 0 && millis() < hold_until;
 
 sensor:
   - platform: rp2040_uart
@@ -203,21 +195,6 @@ sensor:
             id(lighting_brightness_pending) = true;
             id(lighting_brightness_pending_until_ms) = now + ${brightness_send_interval_ms};
           }
-
-  - platform: template
-    name: "Lighting Hold Remaining Ms"
-    id: lighting_hold_remaining_ms
-    entity_category: diagnostic
-    unit_of_measurement: "ms"
-    accuracy_decimals: 0
-    update_interval: 250ms
-    lambda: |-
-      const uint32_t now = millis();
-      const uint32_t hold_until = id(lighting_return_to_audio_ms);
-      if (hold_until == 0 || now >= hold_until) {
-        return 0.0f;
-      }
-      return (float) (hold_until - now);
 
 interval:
   - interval: 250ms

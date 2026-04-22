@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.21.57 -->
+<!-- Version: 2026.04.21.58 -->
 <!-- Last updated: 2026-04-21 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -393,7 +393,13 @@ Next execution target (P5-S02-M1):
 - Hardening update: contract validity now fail-closes on unresolved required surfaces (present but `unknown`/`unavailable`), including control-host loss scenarios, and the monitor now exposes `contract_validation.unresolved_required` for explicit diagnostics.
 - Hardening update (audit canonicalization): coordinator now emits native audit completeness fields (`audit_payload_complete`, `audit_payload_state`, `missing_audit_fields`) in `metadata_trial_last_attempt`, allowing monitor/checklist interpretation to use payload-native `COMPLETE/PARTIAL/N/A` state.
 - Hardening update (trial gate semantics): coordinator now emits explicit trial preflight semantics (`blocking_reasons`, `trial_gate_verdict`, `eligible_for_closeout`) so P5-S02 window outcomes classify deterministically without string-inference.
-- Next required execution: capture one fresh dry-run evidence artifact (full audit payload fields present) and keep effective authority baseline at `legacy` until bounded post-window rollback proof is recorded.
+- Fresh dry-run promotion evidence captured (`p5s02-2026-04-21-run1`):
+  - monitor verdict `PASS/READY` at `2026-04-21 17:18:18.431382-07:00`,
+  - `authority_mode=legacy`, `route_decision=route_linkplay_tcp`,
+  - contract clean (`missing_required=0`, `unresolved_required=0`),
+  - metadata gate `9/9`,
+  - metadata trial audit `status=dry_run_ok`, `audit_payload_state=COMPLETE`, `trial_gate_verdict=PASS`, `eligible_for_closeout=true`, `missing_audit_fields=0`.
+- Promotion-gate status: the documented “fresh dry-run + complete audit payload” requirement for P5-S02-M1 is now satisfied; metadata ownership remains intentionally legacy (`metadata_authority_owner=legacy_contract_surfaces`, `metadata_cutover_active=false`).
 
 Post-Phase destination note (operator UX target):
 

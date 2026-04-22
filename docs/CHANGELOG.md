@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.21.138 -->
+<!-- Version: 2026.04.21.139 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Changelog
 
 ## 2026-04-21
+
+- Validation/Phase-5 P5-S02-M1 Fresh COMPLETE Dry-Run Evidence Capture (`docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`, `docs/testing/raw/p5_s02_metadata_cutover_run_window_checklist.md`): record operator-captured monitor evidence (`2026-04-21 17:18:18.431382-07:00`) showing `Status=PASS`, `Metadata readiness=READY`, `authority_mode=legacy`, `route_linkplay_tcp`, contract clean (`missing_required=0`, `unresolved_required=0`), metadata gate `9/9`, and metadata-trial audit `dry_run_ok` with `M1 audit payload completeness=COMPLETE`, `trial_gate_verdict=PASS`, `eligible_for_closeout=true`. P1/P2/P3 impact: no source-of-truth ownership change; this satisfies the documented fresh dry-run promotion evidence gate for P5-S02-M1 while metadata ownership remains legacy. README parity: no material repo-state change.
 
 - Repo/Main Legacy Path Retirement (`esphome/control-py/**`, `esphome/control-board-esp32-tcp.yaml`, `.gitignore`, `.github/copilot-instructions.md`, `.github/BRANCH-OPERATIONS.md`, `.github/SHARED-CONTRACT-CHECKLIST.md`, `docs/README.md`): remove legacy `control-py` and `control-board-esp32-tcp.yaml` from `main` Git tracking and add explicit ignore guards so these paths stay out of GitHub on `main`. Backup path used before untracking: `/mnt/homeassistant/_backup_2026-04-21/control-py-main-removal/`. Restore command: `cp -a /mnt/homeassistant/_backup_2026-04-21/control-py-main-removal/control-py /mnt/homeassistant/esphome/ && cp -a /mnt/homeassistant/_backup_2026-04-21/control-py-main-removal/control-board-esp32-tcp.yaml /mnt/homeassistant/esphome/`. P1/P2/P3 impact: no runtime source-of-truth change (active path remains `esphome/spectra_ls_system/**`); governance/process/docs updated to stop enforcing control-py parity on `main`. README parity: material repo-state change captured in docs index and workspace instructions.
 

@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.21.71 -->
+<!-- Version: 2026.04.21.72 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -757,6 +757,16 @@ Execution checklist:
 
 - `docs/testing/raw/p6_s01_control_center_foundation_checklist.md`
 - Primary live monitor: `docs/testing/raw/p6_s01_control_center_foundation_monitor.jinja`
+
+Baseline evidence (2026-04-21):
+
+- monitor verdict: `Status=PASS`, `P6-S01 readiness=READY`, `gate_score=6/6` (`2026-04-21 19:18:22.634239-07:00`),
+- runtime baseline remains safe (`authority_mode=legacy`) with clean route/contract/parity and fresh snapshot,
+- foundation governance gates all pass (read-only-first, compatibility, rollback, bounded authority).
+
+Disposition:
+
+- P6-S01 remains **Active** while bounded foundation work continues; baseline evidence packet is accepted.
 
 P1/P2/P3 impact check:
 

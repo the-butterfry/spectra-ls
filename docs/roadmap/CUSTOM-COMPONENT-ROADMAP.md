@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.21.64 -->
+<!-- Version: 2026.04.21.65 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -664,6 +664,7 @@ Execution checklist:
 - `docs/testing/raw/p5_s03_lighting_orchestration_run_window_checklist.md`
 - Primary live monitor: `docs/testing/raw/p5_s03_lighting_functionality_monitor.jinja`
 - Next required runtime action: execute first bounded Run-1 lighting capture and classify verdict from monitor-backed evidence block.
+- Freshness semantics correction: monitor-side control snapshot age is now contextual (informational) and does not by itself downgrade lighting verdicts when authority/contract/selector/parity gates pass.
 
 Deferred H1 note (report/log/heal):
 

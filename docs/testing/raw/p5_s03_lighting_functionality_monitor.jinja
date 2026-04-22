@@ -1,5 +1,5 @@
 {# Description: Raw copy/paste Jinja monitor template for Spectra LS P5-S03 lighting-domain gate-prep and run-window validation feedback. #}
-{# Version: 2026.04.21.1 #}
+{# Version: 2026.04.21.2 #}
 {# Last updated: 2026-04-21 #}
 
 {# =========================
@@ -47,7 +47,7 @@
 {% set captured_at = state_attr(s_target, 'captured_at') | default('', true) %}
 {% set captured_ts = as_timestamp(captured_at) if captured_at not in ['', 'unknown', 'unavailable', 'none', none] else none %}
 {% set age_s = (as_timestamp(now()) - captured_ts) if captured_ts is not none else none %}
-{% set fresh = age_s is not none and age_s <= 300 %}
+{% set control_snapshot_fresh = age_s is not none and age_s <= 300 %}
 
 {% set status = 'PASS' %}
 {% if authority_mode != 'legacy' %}
@@ -55,16 +55,16 @@
 {% endif %}
 {% if not contract_valid or (missing_required | length) > 0 or (unresolved_required | length) > 0 %}
   {% set status = 'FAIL' %}
-{% elif not selector_options_ready or not room_selected_valid or not target_selected_valid or not target_entity_valid or not fresh or (unresolved | length) > 0 or (mismatches | length) > 0 %}
+{% elif not selector_options_ready or not room_selected_valid or not target_selected_valid or not target_entity_valid or (unresolved | length) > 0 or (mismatches | length) > 0 %}
   {% set status = 'WARN' %}
 {% endif %}
 
 {% set readiness = 'NOT_READY' %}
-{% if contract_valid and (missing_required | length) == 0 and (unresolved_required | length) == 0 and selector_options_ready and room_selected_valid and target_selected_valid and target_entity_valid and fresh and authority_mode == 'legacy' %}
+{% if contract_valid and (missing_required | length) == 0 and (unresolved_required | length) == 0 and selector_options_ready and room_selected_valid and target_selected_valid and target_entity_valid and authority_mode == 'legacy' %}
   {% set readiness = 'READY' %}
 {% elif not contract_valid or (missing_required | length) > 0 or (unresolved_required | length) > 0 %}
   {% set readiness = 'BLOCKED' %}
-{% elif authority_mode != 'legacy' or not fresh or not selector_options_ready or not room_selected_valid or not target_selected_valid or not target_entity_valid %}
+{% elif authority_mode != 'legacy' or not selector_options_ready or not room_selected_valid or not target_selected_valid or not target_entity_valid %}
   {% set readiness = 'CAUTION' %}
 {% endif %}
 
@@ -98,7 +98,7 @@
 ### Parity + freshness
 - `unresolved_sources`: **{{ unresolved | length }}**
 - `mismatches`: **{{ mismatches | length }}**
-- Snapshot freshness (<=300s): **{{ fresh }}** (age_s={{ (age_s | round(1)) if age_s is not none else 'n/a' }})
+- Control snapshot freshness (context only, <=300s): **{{ control_snapshot_fresh }}** (age_s={{ (age_s | round(1)) if age_s is not none else 'n/a' }})
 
 {% if (missing_required | length) > 0 %}
 Contract missing required entities:
@@ -132,14 +132,19 @@ Parity mismatches:
 {% if readiness == 'READY' %}
 - P5-S03 lighting lane is healthy for bounded-window evidence capture.
 {% elif readiness == 'CAUTION' %}
-- Lighting lane is partially healthy; normalize selector/authority/freshness posture before closeout interpretation.
+- Lighting lane is partially healthy; normalize selector/authority posture before closeout interpretation.
 {% elif readiness == 'BLOCKED' %}
 - Lighting lane is blocked by contract failures; resolve FAIL conditions before continuing window execution.
 {% else %}
 - Lighting lane is not yet closeout-ready; capture additional bounded evidence and re-check.
 {% endif %}
 
+{% if not control_snapshot_fresh %}
+- Note: control snapshot context is older than 300s. This is informational for P5-S03 and does not by itself downgrade lighting verdicts.
+{% endif %}
+
 ### Suggested refresh actions
 - Re-render this monitor before and after bounded lighting interactions.
 - Keep `authority_mode=legacy` for gate-prep captures.
 - If selector options are stale/missing, allow room/target sync automations to settle and rerender.
+- Treat control snapshot age as context only; classify P5-S03 verdict from authority + contract + selector + parity signals.

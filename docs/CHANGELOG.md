@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.21.191 -->
+<!-- Version: 2026.04.21.192 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Changelog
 
 ## 2026-04-21
+
+- Program/Phase-8 P8-S02 Documentation + Wiki Quality Overhaul Activation (`docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`, `docs/wiki/README.md`, `docs/wiki/Home.md`, `docs/wiki/_Sidebar.md`, `docs/wiki/DOCUMENTATION-WRITING-STANDARD.md`): activate a bounded documentation-quality lane to rewrite operator/contributor docs in direct, native-English style, reduce AI-sounding phrasing, and make wiki pages task-oriented with clear outcomes, decision paths, and practical troubleshooting steps. Adds a reusable writing standard + page pattern so edits are consistent across the wiki and repo docs. Two-track disposition: runtime track unchanged and sealed for compatibility/rollback; component track unchanged as primary product-growth lane. P1/P2/P3 impact: no source-of-truth ownership change; documentation clarity/usability hardening only. README/wiki parity: wiki sources updated in same change set.
 
 - Branch-Policy Clarification — `menu-only` Legacy Status (`CONTRIBUTING.md`, `docs/developer/DEVELOPER-INSTRUCTIONS.md`): explicitly document that `menu-only` is a legacy/stabilized historical branch context and not an active implementation/run target for current work on `main`. This aligns branch guidance with the existing `control-py` legacy posture and prevents contributors from treating `menu-only` as a current development lane. Two-track disposition: runtime track remains sealed compatibility baseline; component track remains primary growth lane. P1/P2/P3 impact: no source-of-truth ownership change; contributor workflow clarity only. README/wiki parity: no material operator workflow change.
 

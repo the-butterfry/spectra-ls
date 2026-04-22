@@ -1,6 +1,6 @@
 <!-- Description: Sidebar navigation for Spectra L/S GitHub Wiki pages published from docs/wiki sources. -->
-<!-- Version: 2026.04.19.4 -->
-<!-- Last updated: 2026-04-19 -->
+<!-- Version: 2026.04.21.5 -->
+<!-- Last updated: 2026-04-21 -->
 
 # Spectra L/S Wiki
 
@@ -17,4 +17,5 @@
 - [Discussions and Projects Workflow](Discussions-and-Projects-Workflow)
 - [Release and Changelog Process](Release-and-Changelog-Process)
 - [Contributing Workflow](Contributing-Workflow)
+- [Documentation Writing Standard](DOCUMENTATION-WRITING-STANDARD)
 - [Wiki Content Scope Policy](Wiki-Content-Scope-Policy)

@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.21.96 -->
+<!-- Version: 2026.04.21.97 -->
 <!-- Last updated: 2026-04-21 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -931,6 +931,44 @@ Activation disposition:
 
 - `P8-S01` activation packet is published with full pre/in/post PASS packet captured.
 - `P8-S01` promoted to **Validated**.
+
+### Phase 8 follow-on slice card — P8-S02 (docs + wiki native-English overhaul)
+
+Status: **Active**
+
+Scope:
+
+- **In:** rewrite user/operator/developer-facing documentation to use direct, native-English, task-oriented language; remove AI-sounding phrasing; improve wiki utility with clear outcomes, decision paths, and troubleshooting flow.
+- **Out:** runtime/component behavior changes, contract ownership changes, or migration gate policy changes.
+
+Activation gates (required):
+
+1. P8-S01 is validated and closed.
+2. A reusable writing standard is published for wiki/repo docs consistency.
+3. Wiki navigation and page intent are updated to prioritize operator usefulness.
+4. Documentation changes remain parity-synchronized through changelog + roadmap ledgers.
+
+Execution checklist:
+
+- Writing standard: `docs/wiki/DOCUMENTATION-WRITING-STANDARD.md`
+- Wiki source index: `docs/wiki/README.md`
+- Wiki home/navigation: `docs/wiki/Home.md`, `docs/wiki/_Sidebar.md`
+
+Two-track disposition:
+
+- **Track A (runtime):** unchanged sealed compatibility baseline.
+- **Track B (component):** unchanged primary product-growth lane while docs quality lane executes.
+
+P1/P2/P3 impact check:
+
+- **P1:** unchanged read-only parity contract surfaces.
+- **P2:** unchanged registry/router diagnostics ownership.
+- **P3:** unchanged single-writer boundary and rollback discipline.
+
+Initial execution disposition:
+
+- P8-S02 activated with writing-standard scaffolding and wiki-navigation updates.
+- Full page-by-page rewrite pass is queued as the next execution packet.
 
 GitHub/developer declaration (policy mirror):
 

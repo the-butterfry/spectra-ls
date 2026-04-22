@@ -1,6 +1,6 @@
 <!-- Description: Wiki source and synchronization instructions for Spectra documentation pages. -->
-<!-- Version: 2026.04.19.8 -->
-<!-- Last updated: 2026-04-19 -->
+<!-- Version: 2026.04.21.9 -->
+<!-- Last updated: 2026-04-21 -->
 
 # Wiki Source + Sync
 
@@ -26,11 +26,14 @@ This folder stores the source pages for GitHub Wiki publishing.
 - `Control-Surface-Inputs-and-Expanders.md`
 - `Control-Contracts-and-Scope-Paths.md`
 - `Wiki-Content-Scope-Policy.md`
+- `DOCUMENTATION-WRITING-STANDARD.md`
 - `Custom-Component-Setup-Roadmap-Stub.md`
 
 ## Content scope policy
 
 Use `Wiki-Content-Scope-Policy.md` to decide what belongs in wiki versus deep docs under `docs/architecture`, `docs/roadmap`, and `docs/program`.
+
+Use `DOCUMENTATION-WRITING-STANDARD.md` to enforce direct, native-English, task-oriented page quality across all wiki pages.
 
 ## One-time enablement checklist
 

@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.22.101 -->
+<!-- Version: 2026.04.22.102 -->
 <!-- Last updated: 2026-04-22 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -985,6 +985,11 @@ Run-3 execution update (2026-04-22):
 - Top-level docs lane: polished `README.md` and `docs/README.md` with more directive, task-first language and clearer “what to read next” guidance.
 - Validation lane: completed local wiki sync dry-run (`dry_run_ok`) with clone/read sync success and 17 staged wiki-file deltas in temp workspace (no push), confirming publish-ready source changes.
 - Execution disposition: run-3 packet accepted; continue remaining page-by-page wiki cleanup passes.
+
+Run-4 execution update (2026-04-22):
+
+- Wiki docs lane: rewrote remaining core workflow/architecture contributor pages (`docs/wiki/Operations-Runbooks.md`, `docs/wiki/System-Architecture.md`, `docs/wiki/Contributing-Workflow.md`) into direct, task-first native-English guidance with explicit outcomes and parity/ownership reminders.
+- Execution disposition: run-4 packet accepted; continue remaining lower-traffic wiki cleanup pages and consistency passes.
 
 GitHub/developer declaration (policy mirror):
 

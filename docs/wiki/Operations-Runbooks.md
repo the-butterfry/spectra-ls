@@ -1,37 +1,60 @@
-<!-- Description: Operations runbooks for docs parity, runtime validation, deployment proof, and rollback readiness. -->
-<!-- Version: 2026.04.19.2 -->
-<!-- Last updated: 2026-04-19 -->
+<!-- Description: Practical operations runbooks for docs parity, runtime validation, deployment proof, and rollback readiness. -->
+<!-- Version: 2026.04.22.1 -->
+<!-- Last updated: 2026-04-22 -->
 
 # Operations Runbooks
 
-## Runbook: Documentation parity change
+Use this page when you need the exact “what do I do next?” steps.
+
+## Documentation parity runbook
 
 1. Update `docs/CHANGELOG.md` first.
-2. Update affected architecture/roadmap/governance docs.
-3. Update `README.md` when operator-facing behavior changes.
-4. Validate markdown lint/consistency checks.
+2. Update the affected roadmap docs:
+   - `docs/roadmap/v-next-NOTES.md`
+   - `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`
+3. Update any changed wiki source pages under `docs/wiki/`.
+4. Update `README.md` only when user-facing behavior or workflow changed.
+5. Validate markdown and file diagnostics.
+6. Commit and push with a clear slice label.
 
-## Runbook: Runtime-impacting change
+Expected result:
+
+- changelog + roadmap + docs stay in sync,
+- no “mystery” documentation drift between pages.
+
+## Runtime-impacting change runbook
 
 1. Edit runtime/package files.
-2. Compile/build successfully before commit.
-3. Fix root cause of failures, rebuild.
+2. Build/compile before commit.
+3. If build fails, fix root cause and rebuild.
 4. Commit and push checkpoint.
-5. If deployment requested: OTA upload + post-upload proof.
+5. If deployment is requested or implied, run OTA upload.
+6. Capture and report proof lines.
 
-## Runbook: Wiki sync failed (`Wiki Sync`)
+Required proof lines:
+
+- build summary (pass/fail),
+- upload summary (`OTA successful` or exact error),
+- git sync summary (`HEAD` and `origin/main` short SHAs).
+
+## Wiki sync failed (`Wiki Sync`) runbook
 
 1. Check failing step in Actions run details.
-2. If failure is preflight wiki access:
-   - Confirm wiki is enabled.
-   - Confirm wiki was initialized with first `Home` save.
-   - Confirm `WIKI_FINE_GRAINED_PAT` exists and has repository `Contents: Read and write`.
-3. If failure is sync/push:
-   - Confirm PAT repository selection includes this repo.
-   - Re-run workflow after a small `docs/wiki/*` change.
-4. Confirm `Sync docs/wiki to GitHub Wiki` step is green.
+2. If failure is **preflight wiki access**:
+   - verify wiki is enabled,
+   - verify wiki was initialized once from GitHub UI,
+   - verify `WIKI_FINE_GRAINED_PAT` exists and has `Contents: Read and write`.
+3. If failure is **sync/push**:
+   - verify PAT repository selection includes this repo,
+   - push a small `docs/wiki/*` change and rerun.
+4. Confirm the `Sync docs/wiki to GitHub Wiki` step is green.
 
-## Runbook: Bug intake to execution
+Quick triage checklist:
+
+- If clone of `<repo>.wiki.git` fails: wiki is disabled/uninitialized or token cannot read it.
+- If push fails with auth error: token scope/target repo is wrong.
+
+## Bug intake to execution runbook
 
 1. Validate issue has deterministic repro + impact.
 2. Apply labels (`type`, `area`, `priority`).
@@ -44,6 +67,8 @@
 - Build result (success/failure summary)
 - OTA result (`OTA successful` or exact failure)
 - Git sync evidence (`HEAD` and `origin/main` SHAs)
+
+If one is missing, the slice is not complete.
 
 ## Recovery and rollback expectations
 

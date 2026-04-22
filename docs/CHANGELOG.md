@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.22.197 -->
+<!-- Version: 2026.04.22.198 -->
 <!-- Last updated: 2026-04-22 -->
 
 # Changelog
 
 ## 2026-04-22
+
+- P8-S02 Documentation Polish — Wiki Core Pages Run-4 (`docs/wiki/Operations-Runbooks.md`, `docs/wiki/System-Architecture.md`, `docs/wiki/Contributing-Workflow.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): rewrite remaining core wiki workflow/architecture/contributor pages in direct native-English, task-first style with explicit expected outcomes, parity requirements, and branch/track posture clarity. Two-track disposition: runtime track unchanged/sealed compatibility baseline; component track unchanged/primary growth lane. P1/P2/P3 impact: no source-of-truth ownership change; documentation usability and execution clarity hardening only.
 
 - P8 Ledger Consistency Correction (`docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): update summary-table row for `P8-S01` from stale `Active / In Progress` wording to validated closeout wording that matches captured pre/in/post PASS evidence and promotion state. Two-track disposition unchanged: runtime sealed compatibility baseline, component primary growth lane.
 

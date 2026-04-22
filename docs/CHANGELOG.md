@@ -1,10 +1,15 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.21.192 -->
+<!-- Version: 2026.04.21.193 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Changelog
 
 ## 2026-04-21
+
+- Dual-Track Execution — Sidebar Usability + Documentation Polish Run-1 (`custom_components/spectra_ls/sensor.py`, `docs/wiki/Getting-Started.md`, `docs/wiki/Install-on-Your-Own-HA.md`, `docs/wiki/User-Setup-Deploy-and-HA-Integration.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`):
+  - Sidebar/component track: add a dedicated Control Center last-attempt status sensor so operators can see mapped input execution outcomes (`dry_run_ok`, `blocked_*`, `applied_scene_turn_on`, etc.) directly without digging through large shadow attributes.
+  - Documentation/wiki track: rewrite high-traffic onboarding/install/setup pages into direct, native-English, task-first structure with explicit expected outcomes and practical failure actions.
+  Two-track disposition: runtime track unchanged/sealed compatibility baseline; component track receives additive operator visibility improvement while docs/wiki quality lane executes. P1/P2/P3 impact: no source-of-truth ownership change; UX and documentation clarity hardening only.
 
 - Program/Phase-8 P8-S02 Documentation + Wiki Quality Overhaul Activation (`docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`, `docs/wiki/README.md`, `docs/wiki/Home.md`, `docs/wiki/_Sidebar.md`, `docs/wiki/DOCUMENTATION-WRITING-STANDARD.md`): activate a bounded documentation-quality lane to rewrite operator/contributor docs in direct, native-English style, reduce AI-sounding phrasing, and make wiki pages task-oriented with clear outcomes, decision paths, and practical troubleshooting steps. Adds a reusable writing standard + page pattern so edits are consistent across the wiki and repo docs. Two-track disposition: runtime track unchanged and sealed for compatibility/rollback; component track unchanged as primary product-growth lane. P1/P2/P3 impact: no source-of-truth ownership change; documentation clarity/usability hardening only. README/wiki parity: wiki sources updated in same change set.
 

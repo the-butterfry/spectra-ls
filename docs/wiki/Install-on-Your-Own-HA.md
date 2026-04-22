@@ -1,14 +1,16 @@
-<!-- Description: Strict operator checklist for installing Spectra on a user-owned Home Assistant instance with runtime and custom-component tracks. -->
-<!-- Version: 2026.04.19.3 -->
-<!-- Last updated: 2026-04-19 -->
+<!-- Description: Operator runbook for installing Spectra on a user-owned Home Assistant instance with explicit pass/fail checkpoints. -->
+<!-- Version: 2026.04.21.4 -->
+<!-- Last updated: 2026-04-21 -->
 
 # Install on Your Own Home Assistant
 
-Use this as a strict checklist.
+Use this page when you want a clean, reproducible install on your own HA instance.
+
+Goal: finish with working audio + lighting control, populated room/target menus, and rollback-safe evidence.
 
 ## Track A (current path): Runtime-first install
 
-### 0) Prerequisites
+### 0) Before you start
 
 - [ ] Home Assistant is running and reachable.
 - [ ] ESPHome integration/add-on is installed.
@@ -27,7 +29,7 @@ Use this as a strict checklist.
 - [ ] Apply ESPHome runtime configuration.
 - [ ] Ensure route/target helpers are present.
 
-Expected result:
+Expected result after Step 2:
 
 - [ ] Required entities/helpers appear in Home Assistant with valid states.
 
@@ -63,9 +65,9 @@ Failure indicators (stop and investigate):
 - [ ] Include logs, repro steps, affected area, and impact.
 - [ ] Link to `Welcome-README-and-Bug-Workflow` for triage flow.
 
-## Track B (upcoming): Custom component install flow (stub)
+## Track B (evolving): Custom component install flow
 
-This will become the preferred install path as `custom_components/spectra_ls` matures.
+This becomes the preferred path as `custom_components/spectra_ls` matures through active roadmap slices.
 
 Current required discovery note (applies now):
 
@@ -97,3 +99,11 @@ This is **not** needed to run Spectra in your home.
 - [ ] Keep known-good config backup before changing runtime files.
 - [ ] If deploy fails, restore prior known-good config snapshot.
 - [ ] Re-validate baseline controls before attempting incremental changes.
+
+## Quick troubleshooting map
+
+| Symptom | Likely cause | Action |
+| --- | --- | --- |
+| Room/target menus are empty | unresolved placeholders or helper bootstrap failure | Re-check `docs/setup/SPECTRA-HA-CONFIG-PLACEHOLDERS.md`, reload helpers, and revalidate template entities |
+| Controls trigger but state never changes | route metadata unresolved or wrong target path | Verify `control_path` and `control_capable` surfaces, then confirm active target selection is valid |
+| OTA/build succeeds but behavior is wrong | stale runtime state after deploy | Restart HA + integration path, then rerun integration verification checklist |

@@ -1,6 +1,6 @@
 # Description: Main ESPHome config for Spectra LS System main ESPHome config (ESP32-S3 + RP2040 UART + Arylic TCP).
-# Version: 2026.04.18.11
-# Last updated: 2026-04-18
+# Version: 2026.04.20.12
+# Last updated: 2026-04-20
 # Update version/date whenever you change this file.
 #
 # Setup checklist:
@@ -9,7 +9,7 @@
 #   3) Set Arylic hosts (arylic_*_host) to the physical LinkPlay/WiiM IPs.
 #   4) Update HA helpers (ha_light_script, input_select_room, input_select_target) if renamed.
 #   5) (Optional) Adjust fallback labels (room_label_*, target_label_*, meta_source_label_*).
-#   7) Verify packages include the correct peripherals file (no-rings vs rings).
+#   7) Verify packages include the active peripherals package (`spectra-ls-peripherals.yaml`).
 #   8) Recompile & upload ESPHome after changing substitutions.
 substitutions:
   <<: !include /config/esphome/spectra_ls_system/substitutions.yaml
@@ -23,7 +23,6 @@ substitutions:
 #  - spectra-ls-audio-tcp.yaml: audio controls + metadata (TCP-only)
 #  - spectra-ls-lighting.yaml: lighting controls + HA sync
 packages:
-  # peripherals: !include /config/esphome/spectra_ls_system/control-board-peripherals.yaml
   peripherals: !include /config/esphome/spectra_ls_system/spectra-ls-peripherals.yaml
   hardware: !include /config/esphome/spectra_ls_system/packages/spectra-ls-hardware.yaml
   ui: !include /config/esphome/spectra_ls_system/packages/spectra-ls-ui.yaml

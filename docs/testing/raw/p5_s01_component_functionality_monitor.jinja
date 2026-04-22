@@ -1,0 +1,136 @@
+{# Description: Raw copy/paste Jinja monitor template for Spectra LS P5-S01 component functionality feedback. #}
+{# Version: 2026.04.20.2 #}
+{# Last updated: 2026-04-20 #}
+
+{# =========================
+  P5-S01 Component Functionality Monitor (custom_components/spectra_ls)
+  Purpose: quick live feedback that component-mode routing is actually active/healthy.
+  Usage:
+    1) Optional refresh actions:
+       - spectra_ls.rebuild_registry
+       - spectra_ls.validate_contracts
+       - spectra_ls.dump_route_trace
+    2) Paste/run this in Developer Tools -> Template.
+    3) Change pots/encoders/target interactions and watch status/last_attempt update.
+  ========================= #}
+
+{% set s_target = 'sensor.shadow_active_target' if states['sensor.shadow_active_target'] is not none else 'sensor.spectra_ls_shadow_active_target' %}
+{% set s_path = 'sensor.shadow_active_control_path' if states['sensor.shadow_active_control_path'] is not none else 'sensor.spectra_ls_shadow_active_control_path' %}
+{% set s_hosts = 'sensor.shadow_control_hosts' if states['sensor.shadow_control_hosts'] is not none else 'sensor.spectra_ls_shadow_control_hosts' %}
+{% set b_capable = 'binary_sensor.shadow_active_control_capable' if states['binary_sensor.shadow_active_control_capable'] is not none else 'binary_sensor.spectra_ls_shadow_active_control_capable' %}
+
+{% set active_target = states(s_target) %}
+{% set active_path = states(s_path) %}
+{% set control_hosts = states(s_hosts) %}
+{% set control_capable = is_state(b_capable, 'on') %}
+
+{% set route_trace = state_attr(s_target, 'route_trace') or {} %}
+{% set contract = state_attr(s_target, 'contract_validation') or {} %}
+{% set write_controls = state_attr(s_target, 'write_controls') or {} %}
+{% set captured_at = state_attr(s_target, 'captured_at') | default('', true) %}
+
+{% set authority_mode = write_controls.authority_mode if write_controls is mapping and write_controls.authority_mode is defined else 'missing' %}
+{% set in_progress = write_controls.in_progress if write_controls is mapping and write_controls.in_progress is defined else false %}
+{% set last_attempt = write_controls.last_attempt if write_controls is mapping and write_controls.last_attempt is defined and write_controls.last_attempt is mapping else {} %}
+{% set last_status = last_attempt.status if last_attempt is mapping and last_attempt.status is defined else 'missing' %}
+{% set last_reason = last_attempt.reason if last_attempt is mapping and last_attempt.reason is defined else '' %}
+{% set last_corr = last_attempt.correlation_id if last_attempt is mapping and last_attempt.correlation_id is defined else '' %}
+{% set last_ts = last_attempt.timestamp if last_attempt is mapping and last_attempt.timestamp is defined else '' %}
+
+{% set route_decision = route_trace.decision if route_trace is mapping and route_trace.decision is defined else '' %}
+{% set route_reason = route_trace.reason if route_trace is mapping and route_trace.reason is defined else '' %}
+
+{% set contract_valid = contract.valid if contract is mapping and contract.valid is defined else false %}
+{% set missing_required = contract.missing_required if contract is mapping and contract.missing_required is defined else [] %}
+
+{% set unresolved = state_attr(s_target, 'unresolved_sources') or [] %}
+{% set mismatches = state_attr(s_target, 'mismatches') or [] %}
+
+{% set captured_ts = as_timestamp(captured_at) if captured_at not in ['', 'unknown', 'unavailable', 'none', none] else none %}
+{% set age_s = (as_timestamp(now()) - captured_ts) if captured_ts is not none else none %}
+{% set fresh = age_s is not none and age_s <= 300 %}
+
+{% set write_proof = 'READY' %}
+{% if last_status in ['write_applied', 'noop_already_selected'] %}
+  {% set write_proof = 'VERIFIED' %}
+{% elif last_status is string and last_status.startswith('blocked_') %}
+  {% set write_proof = 'BLOCKED' %}
+{% endif %}
+
+{% set status = 'PASS' %}
+{% if authority_mode != 'component' %}
+  {% set status = 'WARN' %}
+{% endif %}
+{% if route_decision != 'route_linkplay_tcp' or not contract_valid or (missing_required | length) > 0 %}
+  {% set status = 'FAIL' %}
+{% elif (unresolved | length) > 0 or (mismatches | length) > 0 or not fresh or write_proof == 'BLOCKED' %}
+  {% set status = 'WARN' %}
+{% endif %}
+
+### P5-S01 Component Functionality Monitor (`spectra_ls`)
+- Status: **{{ status }}**
+- Write proof: **{{ write_proof }}**
+- Timestamp: **{{ now() }}**
+
+### Is component mode active?
+- `write_controls.authority_mode`: **{{ authority_mode }}**
+- `write_controls.in_progress`: **{{ in_progress }}**
+
+### Last component write feedback
+- `last_attempt.status`: **{{ last_status }}**
+- `last_attempt.reason`: **{{ last_reason if last_reason != '' else 'n/a' }}**
+- `last_attempt.correlation_id`: **{{ last_corr if last_corr != '' else 'n/a' }}**
+- `last_attempt.timestamp`: **{{ last_ts if last_ts != '' else 'n/a' }}**
+
+### Routing state
+- Active target (`{{ s_target }}`): **{{ active_target }}**
+- Active path (`{{ s_path }}`): **{{ active_path }}**
+- Control capable (`{{ b_capable }}`): **{{ control_capable }}**
+- Control hosts (`{{ s_hosts }}`): **{{ control_hosts }}**
+- Route decision/reason: **{{ route_decision if route_decision != '' else 'n/a' }}** / **{{ route_reason if route_reason != '' else 'n/a' }}**
+
+### Contract + parity health
+- Contract valid: **{{ contract_valid }}**
+- Missing required entities: **{{ missing_required | length }}**
+- Parity unresolved count: **{{ unresolved | length }}**
+- Parity mismatch count: **{{ mismatches | length }}**
+- Snapshot freshness (<=300s): **{{ fresh }}** (age_s={{ (age_s | round(1)) if age_s is not none else 'n/a' }})
+
+{% if (missing_required | length) > 0 %}
+Missing required entities:
+{% for item in missing_required %}
+- `{{ item }}`
+{% endfor %}
+{% endif %}
+
+{% if (unresolved | length) > 0 %}
+Unresolved parity sources:
+{% for item in unresolved %}
+- `{{ item }}`
+{% endfor %}
+{% endif %}
+
+{% if (mismatches | length) > 0 %}
+Parity mismatches:
+{% for item in mismatches %}
+- `{{ item }}`
+{% endfor %}
+{% endif %}
+
+### Quick interpretation
+{% if status == 'PASS' and write_proof == 'VERIFIED' %}
+- Component mode is active and a component write has been observed for P5-S01 routing checks.
+{% elif status == 'PASS' and write_proof == 'READY' %}
+- Component mode is healthy and ready; perform one interaction to verify an applied/no-op write attempt.
+{% elif status == 'WARN' and write_proof == 'BLOCKED' %}
+- Component mode is partially healthy, but the last write attempt was blocked; inspect `last_attempt.reason` and rerun after stabilization.
+{% elif status == 'WARN' %}
+- Component path is partially healthy; check authority mode/freshness/parity details above.
+{% else %}
+- Component path is not healthy for cutover validation yet; resolve FAIL conditions first.
+{% endif %}
+
+### Suggested refresh actions
+- Service: `spectra_ls.rebuild_registry`
+- Service: `spectra_ls.validate_contracts`
+- Service: `spectra_ls.dump_route_trace`

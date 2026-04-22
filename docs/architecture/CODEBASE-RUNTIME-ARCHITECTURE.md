@@ -1,6 +1,6 @@
 <!-- Description: Retroactive architecture and feature documentation for the active Spectra LS ESPHome runtime codebase. -->
-<!-- Version: 2026.04.19.1 -->
-<!-- Last updated: 2026-04-19 -->
+<!-- Version: 2026.04.20.2 -->
+<!-- Last updated: 2026-04-20 -->
 
 # Spectra LS Runtime Architecture (Retroactive Baseline)
 
@@ -79,6 +79,7 @@ Owned in `packages/spectra-ls-audio-tcp.yaml`:
 - transport controls (play/pause/next/prev/source/meta select)
 - volume + EQ ingest from RP2040 analog/encoder
 - guarded send paths via `arylic_tcp` (prompt/host gating)
+- active-playback volume unblock: volume paths may proceed during prompt state when playback is active and hosts are resolvable (still fail-closed when hosts are unresolved)
 - host/port intake from HA (`sensor.ma_control_hosts`, `sensor.ma_control_port`)
 - now-playing/meta resolver feed inputs
 - control-target prompt lifecycle

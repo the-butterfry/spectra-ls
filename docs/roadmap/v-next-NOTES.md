@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.21.62 -->
+<!-- Version: 2026.04.21.63 -->
 <!-- Last updated: 2026-04-21 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -55,8 +55,8 @@ Each feature slice is only complete when both tracks are dispositioned:
 | F4-S02 | 4 | Validated (legacy action ownership retained; diagnostics-only) | Validated (programmable action-catalog safety skeleton + dry-run diagnostics) | Validated (diagnostics-only) | Medium | Validated |
 | F4-S03 | 4 | Validated (legacy crossfade/balance behavior remains authoritative) | Validated (crossfade/balance diagnostics scaffold + validation sequence) | Validated (diagnostics-only) | Medium | Validated |
 | P5-S01 | 5 | Validated (legacy retained as rollback authority path; post-window rollback proof captured) | Validated (routing-domain run-window execution completed with VERIFIED in-window proof) | Validated (in-window VERIFIED + post-window legacy rollback) | Medium | Validated |
-| P5-S02 | 5 | Active (legacy metadata ownership retained during gate-prep) | Active (metadata-domain gate-prep/readiness validation execution) | In Progress (process + evidence ramp) | Medium | Active |
-| P5-S03 | 5 | Planned (legacy lighting orchestration remains authoritative pre-activation) | Planned (lighting-domain gate-prep/run-window checklist published) | Planned | Medium | Planned |
+| P5-S02 | 5 | Validated (legacy metadata ownership retained; bounded run-window closeout packet accepted) | Validated (metadata-domain gate-prep/readiness validation execution completed with consolidated PASS evidence) | Validated (Run-1 + Run-2 closeout packet) | Medium | Validated |
+| P5-S03 | 5 | Active (legacy lighting orchestration retained during gate-prep) | Active (lighting-domain gate-prep/run-window checklist execution lane) | In Progress (activation window) | Medium | Active |
 | P6-S01 | 6 | Planned (runtime compatibility remains available during staged UX cutover) | Planned (HA sidebar control center scaffold + read-only mapped-environment overview) | Planned | Medium | Planned |
 
 ### P1/P2 validation snapshot (2026-04-19)
@@ -427,7 +427,7 @@ Next execution target (P5-S02-M1):
   - bounded evidence set includes Run-1 and Run-2 PASS/READY captures with complete trial-audit payloads,
   - authority boundary remains explicit/safe (`legacy` baseline retained across snapshots),
   - no contract/parity drift observed in captured windows (`missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`),
-  - promotion recommendation: `Active -> Validated` is now evidence-supported for P5-S02, pending explicit closeout decision recording in roadmap status ledger.
+  - promotion recommendation accepted: `P5-S02` status is recorded as `Validated` in the active slice ledger.
 
 Post-Phase destination note (operator UX target):
 
@@ -438,13 +438,13 @@ Post-Phase destination note (operator UX target):
   3. defaults + override management (safe baseline policy plus per-target exceptions),
   4. mapped-environment visibility (resolved rooms/targets/control paths/capabilities),
   5. operator diagnostics/evidence views aligned to existing PASS/WARN/FAIL workflow.
-- Execution ordering remains strict: **P5-S02 continues as the active slice now**; sidebar control-center delivery is a post-Phase-5 productization track and must not weaken current gate-prep/validation discipline.
+- Execution ordering remains strict: **P5-S03 (lighting orchestration) is now the active slice**; sidebar control-center delivery remains post-Phase-5 and must not weaken gate-prep/validation discipline.
 
 Deferred implementation scaffold note (H1):
 
 - A detailed deferred H1 blueprint for diagnostics-driven report/log/heal flow is now published at `docs/features/H1-report-log-heal-scaffold.md`.
 - This is planning-only in the current slice: no runtime behavior/authority ownership changes are enacted.
-- H1 remains queued for later pickup after active P5-S02 mechanism/evidence priorities.
+- H1 remains queued for later pickup after active P5 slice priorities.
 
 Run-window execution checklist (required for activation/closeout evidence):
 
@@ -452,7 +452,7 @@ Run-window execution checklist (required for activation/closeout evidence):
 
 ### Phase 5 next slice card — P5-S03 (lighting orchestration domain)
 
-Status: **Planned (ready-to-activate after P5-S02 closeout decision)**
+Status: **Active (gate-prep)**
 
 Scope:
 
@@ -461,7 +461,7 @@ Scope:
 
 Activation gates (all required):
 
-1. P5-S02 closeout decision recorded (`Validated` or explicit defer rationale).
+1. P5-S02 closeout decision recorded (`Validated`) and linked in status ledger.
 2. Authority baseline `legacy` confirmed at lighting-window start.
 3. Lighting contract/parity precheck PASS in active window.
 4. Domain isolation enforced (no concurrent metadata/routing cutover execution).

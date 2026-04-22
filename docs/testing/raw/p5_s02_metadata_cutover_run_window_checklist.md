@@ -1,5 +1,5 @@
 <!-- Description: Deterministic operator run-window checklist for Phase 5 Slice-02 metadata-domain cutover readiness and bounded validation (P5-S02). -->
-<!-- Version: 2026.04.21.19 -->
+<!-- Version: 2026.04.21.20 -->
 <!-- Last updated: 2026-04-21 -->
 
 # P5-S02 Metadata Cutover — Run Window Checklist
@@ -670,14 +670,15 @@ verdict:
    closeout_eligible: true
 ```
 
-## P5-S02 closeout packet candidate (consolidated)
+## P5-S02 closeout packet (accepted)
 
-Use this section to finalize the Active→Validated decision packet.
+This section records the accepted Active→Validated decision packet.
 
 ```text
-P5-S02 Closeout Packet (Candidate)
-----------------------------------
+P5-S02 Closeout Packet (Accepted)
+---------------------------------
 prepared_at: 2026-04-21T17:30:00-07:00
+accepted_at: 2026-04-21T17:40:00-07:00
 slice: P5-S02 (metadata domain)
 authority_policy: legacy baseline retained
 
@@ -706,12 +707,12 @@ stability_summary:
    mismatches: 0
 
 closeout_recommendation:
-   status_lane: ready_for_promotion
-   proposed_status_change: Active -> Validated
+   status_lane: promoted
+   proposed_status_change: Active -> Validated (accepted)
    note: metadata ownership remains legacy (`metadata_authority_owner=legacy_contract_surfaces`, `metadata_cutover_active=false`)
 ```
 
-If accepted, update roadmap status tables for `P5-S02` and activate the next isolated slice (`P5-S03` lighting domain).
+Roadmap status tables are updated with `P5-S02=Validated`; next isolated slice is `P5-S03` (lighting domain).
 
 ## Artifact linkage
 

@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.21.143 -->
+<!-- Version: 2026.04.21.144 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Changelog
 
 ## 2026-04-21
+
+- Roadmap/Phase-5 P5-S02 Promotion Decision + P5-S03 Activation (`docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`, `docs/testing/raw/p5_s02_metadata_cutover_run_window_checklist.md`, `docs/testing/raw/p5_s03_lighting_orchestration_run_window_checklist.md`): record explicit status-lane promotion of `P5-S02` from `Active` to `Validated` based on consolidated Run-1/Run-2 closeout packet evidence, and activate `P5-S03` (lighting orchestration domain) as the next domain-isolated gate-prep slice with published operator run-window checklist. P1/P2/P3 impact: no source-of-truth ownership change; this is phased status progression with legacy authority boundaries retained by default. README parity: no material repo-state change.
 
 - Validation/Phase-5 P5-S02 Closeout Packet Preparation (`docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`, `docs/testing/raw/p5_s02_metadata_cutover_run_window_checklist.md`): publish a consolidated closeout packet candidate that references bounded Run-1 and Run-2 PASS/READY evidence, complete trial-audit payloads, and explicit legacy post-window authority disposition, while keeping slice status `Active` until final promotion decision is explicitly recorded. P1/P2/P3 impact: no source-of-truth ownership change; this is evidence-packaging and closeout-readiness documentation hardening only. README parity: no material repo-state change.
 

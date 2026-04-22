@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.22.100 -->
+<!-- Version: 2026.04.22.101 -->
 <!-- Last updated: 2026-04-22 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -68,7 +68,7 @@ Each feature slice is only complete when both tracks are dispositioned:
 | P7-S02 | 7 | Validated (legacy retained as bounded rollback authority with post-window rollback-safe proof accepted) | Validated (first bounded authority-flip execution lane complete) | Completed (Run-1 pre/in/post PASS) | High | Validated |
 | P7-S03 | 7 | Validated (legacy retained as rollback-safe metadata authority baseline with post-window proof accepted) | Validated (bounded metadata-domain authority-flip execution lane complete) | Completed (Run-1 pre/in PASS + Run-2 post PASS) | High | Validated |
 | P7-S04 | 7 | Validated (rollback-safe legacy authority baseline preserved at closeout capture) | Validated (phase-exit closeout packet completed and accepted) | Completed (Run-1 closeout PASS/READY 4/4) | High | Validated |
-| P8-S01 | 8 | Active (legacy sealed baseline readiness gate; no ownership expansion) | Active (post-cutover governance/readiness lane) | In Progress (Run-1 pre-window PASS/READY 4/4 captured; in/post pending) | High | Active |
+| P8-S01 | 8 | Validated (legacy sealed baseline readiness gate completed with pre/in/post PASS packet) | Validated (post-cutover governance/readiness lane completed for starter gate) | Completed (Run-1/Run-2/Run-3 PASS; promoted) | High | Validated |
 
 ### P1/P2 validation snapshot (2026-04-19)
 

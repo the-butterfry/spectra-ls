@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.22.196 -->
+<!-- Version: 2026.04.22.197 -->
 <!-- Last updated: 2026-04-22 -->
 
 # Changelog
 
 ## 2026-04-22
+
+- P8 Ledger Consistency Correction (`docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): update summary-table row for `P8-S01` from stale `Active / In Progress` wording to validated closeout wording that matches captured pre/in/post PASS evidence and promotion state. Two-track disposition unchanged: runtime sealed compatibility baseline, component primary growth lane.
 
 - P8-S02 Documentation Polish — Top-Level Docs Run-2 (`README.md`, `docs/README.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): continue native-English, directive documentation pass on top-level repo docs by tightening action language, clarifying what to read first, and making roadmap/operator guidance more task-oriented. Two-track disposition: runtime track unchanged/sealed compatibility baseline; component track unchanged/primary growth lane. P1/P2/P3 impact: no source-of-truth ownership change; documentation usability hardening only.
 

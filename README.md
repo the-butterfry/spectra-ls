@@ -1,5 +1,5 @@
 <!-- Description: End-user overview for the Spectra L/S Home Assistant + ESPHome system. -->
-<!-- Version: 2026.04.21.16 -->
+<!-- Version: 2026.04.21.17 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Spectra L/S
@@ -63,8 +63,17 @@ Inspired by modern physical-control craftsmanship from [Condesa Electronics — 
 - Home Assistant media players
 - WiiM-based rooms
 - Arylic/LinkPlay-class endpoints
+- Sendspin-class endpoints (roadmap target)
 - AirPlay / Apple TV style sources
 - Plex sessions/players (optional)
+
+## Roadmap (Current Build Direction)
+
+- We are actively building the Home Assistant sidebar **Spectra Control Center** in `custom_components/spectra_ls` as the primary product surface.
+- Current execution focus is Control Center depth: setup/onboarding, mapped-environment visibility, tuning/defaults/overrides, and bounded input-to-action execution with evidence-first gates.
+- Control Center settings + execution contracts are already live and operator-verifiable via `spectra_ls.set_control_center_settings` and `spectra_ls.execute_control_center_input`.
+- Ecosystem expansion remains capability-mapped and discovery-first; Sendspin-class and adjacent endpoint families are treated as roadmap integrations under the same safety/rollback gate discipline.
+- Operator-grade validation artifacts remain the execution truth surface: `docs/testing/raw/*` checklists/monitors and synchronized roadmap ledgers.
 
 ## Documentation
 
@@ -78,9 +87,7 @@ Common entry points:
 - Latest project changes: `docs/CHANGELOG.md`
 - Developer onboarding/runbook: `docs/developer/DEVELOPER-INSTRUCTIONS.md`
 
-Roadmap direction:
+For active phase/slice status and migration details, use `docs/roadmap/v-next-NOTES.md` as the execution ledger.
 
-- We are actively building the Home Assistant sidebar **Spectra Control Center** in `custom_components/spectra_ls` as the primary product surface.
-- Current active direction is Control Center depth: setup/onboarding, mapped-environment visibility, tuning/defaults/overrides, and bounded input-to-action execution with evidence-first gates.
-- Control Center settings + execution contracts are already live and operator-verifiable via `spectra_ls.set_control_center_settings` and `spectra_ls.execute_control_center_input`.
-- Operator-grade validation artifacts remain the execution truth surface: `docs/testing/raw/*` checklists/monitors and synchronized roadmap ledgers.
+For deep migration mechanics and slice-level evidence packets, use the roadmap and raw checklist artifacts under `docs/`.
+

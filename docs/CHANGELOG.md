@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.21.189 -->
+<!-- Version: 2026.04.21.190 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Changelog
 
 ## 2026-04-21
+
+- README Ecosystem + Roadmap Clarity Refresh (`README.md`): expand audio ecosystem wording to include Sendspin-class endpoints as a roadmap target and introduce a dedicated README roadmap section for the active Spectra Control Center build direction (instead of burying roadmap bullets under documentation links). Two-track disposition: runtime track remains sealed compatibility baseline; component track remains primary growth lane and roadmap execution focus. P1/P2/P3 impact: no source-of-truth ownership change; end-user direction clarity only. README/wiki parity: README updated in same change set.
 
 - Validation/Phase-8 P8-S01 Run-2 In-Window PASS + Run-3 Post-Window PASS + Promotion (`docs/testing/raw/p8_s01_legacy_seal_readiness_checklist.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): record completed in/post evidence packet with `Status=PASS`, `P8-S01 readiness=READY`, `gate_score=4/4` for in-window (`2026-04-21 21:22:08.276673-07:00`) and post-window (`2026-04-21 21:22:20.668596-07:00`) captures, both with rollback-safe clean baseline (`monitor_source_sensor=sensor.shadow_active_target`, `authority_mode=legacy`, `route_decision=route_linkplay_tcp`, `contract_valid=true`, `missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`, freshness within threshold). Promote `P8-S01` to **Validated** with pre/in/post packet complete and no stop-condition triggers. Two-track disposition: runtime track remains sealed rollback-safe compatibility baseline with no net-new ownership growth; component track completes the legacy-seal governance/readiness lane and remains primary for forward control-plane growth. P1/P2/P3 impact: no source-of-truth ownership flip in this closeout packet; evidence-backed promotion only. README/wiki parity: no material operator workflow change.
 

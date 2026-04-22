@@ -1,5 +1,5 @@
 <!-- Description: Deterministic operator run-window checklist for Phase 5 Slice-02 metadata-domain cutover readiness and bounded validation (P5-S02). -->
-<!-- Version: 2026.04.21.14 -->
+<!-- Version: 2026.04.21.15 -->
 <!-- Last updated: 2026-04-21 -->
 
 # P5-S02 Metadata Cutover — Run Window Checklist
@@ -525,6 +525,64 @@ post_window_snapshot:
 verdict:
    outcome: PASS
    rationale: trial executed with full M1 audit payload completeness and safe legacy authority disposition retained across window.
+   closeout_eligible: true
+```
+
+## Example G — Operator-captured fresh COMPLETE dry-run evidence (2026-04-21)
+
+```text
+P5-S02 Run Window Evidence Record
+---------------------------------
+run_id: p5s02-2026-04-21-run1
+captured_at: 2026-04-21T17:18:18.431382-07:00
+operator: local
+window_scope: metadata-domain only
+
+preflight:
+   gate_a_authority_baseline: PASS
+   gate_b_parity_precheck: PASS
+   gate_c_metadata_readiness: PASS
+   gate_d_isolation: PASS
+   gate_e_fresh_evidence: PASS
+
+pre_window_snapshot:
+   authority_mode: legacy
+   route_decision: route_linkplay_tcp
+   contract_valid: true
+   metadata_validation_verdict: PASS
+   metadata_ready_for_handoff: true
+   captured_at: 2026-04-21T17:18:18.431382-07:00
+
+in_window_snapshot:
+   authority_mode: legacy
+   metadata_validation_verdict: PASS
+   metadata_ready_for_handoff: true
+   missing_required_entities_count: 0
+   metadata_trial_status: dry_run_ok
+   metadata_trial_audit_completeness: COMPLETE
+   metadata_trial_requested_at: 2026-04-22T00:18:12.996047+00:00
+   metadata_trial_completed_at: 2026-04-22T00:18:12.996555+00:00
+   metadata_trial_window_id: p5s02-2026-04-21-run1
+   metadata_trial_requested_mode: legacy
+   metadata_trial_effective_mode: legacy
+   metadata_trial_dry_run: true
+   metadata_trial_reason: Metadata trial contract preflight passed (dry run)
+   metadata_trial_correlation_id: metadata-trial-487b3198a949
+   captured_at: 2026-04-21T17:18:18.431382-07:00
+
+stop_conditions:
+   triggered: false
+   reason: none
+
+post_window_snapshot:
+   authority_mode: legacy
+   metadata_validation_verdict: PASS
+   metadata_ready_for_handoff: true
+   captured_at: 2026-04-21T17:18:18.431382-07:00
+
+verdict:
+   outcome: PASS
+   rationale: PASS/READY with complete dry-run audit payload, no parity/contract drift, and explicit legacy authority baseline.
    closeout_eligible: true
 ```
 

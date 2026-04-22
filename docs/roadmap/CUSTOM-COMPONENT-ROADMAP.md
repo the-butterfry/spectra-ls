@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.21.56 -->
+<!-- Version: 2026.04.21.57 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -628,7 +628,13 @@ Mechanism-definition next step (P5-S02-M1):
 - Hardening update: contract validation now treats unresolved required surfaces as invalid (not only missing entities), closing the gap where metadata could appear healthy while control-host surfaces degraded.
 - Hardening update (audit canonicalization): coordinator now publishes `metadata_trial_last_attempt.audit_payload_state`, `audit_payload_complete`, and `missing_audit_fields` so closeout readiness can be classified from payload-native completeness semantics.
 - Hardening update (trial gate semantics): coordinator now publishes `blocking_reasons`, `trial_gate_verdict`, and `eligible_for_closeout` in `metadata_trial_last_attempt` for deterministic gate-prep classification.
-- Remaining promotion gate: capture fresh dry-run and bounded-window evidence records showing complete audit payload and explicit rollback/disarm proof with `effective_mode=legacy`.
+- Fresh promotion evidence captured (`p5s02-2026-04-21-run1`):
+  - monitor output at `2026-04-21 17:18:18.431382-07:00` reports `Status=PASS`, `Metadata readiness=READY`,
+  - baseline safe: `authority_mode=legacy`, `route_decision=route_linkplay_tcp`,
+  - contract clean: `valid=true`, missing/unresolved required counts `0`,
+  - metadata gate healthy: `verdict=PASS`, `gate_score=9/9`,
+  - trial audit complete: `status=dry_run_ok`, `audit_payload_state=COMPLETE`, `trial_gate_verdict=PASS`, `eligible_for_closeout=true`, `missing_audit_fields=0`.
+- Promotion-gate status: the “fresh dry-run + COMPLETE audit payload” gate is satisfied for P5-S02-M1. Slice remains **Active (gate-prep)** pending broader bounded-window/post-window evidence progression for full P5-S02 validation.
 
 Deferred H1 note (report/log/heal):
 

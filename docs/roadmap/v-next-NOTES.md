@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.21.70 -->
+<!-- Version: 2026.04.21.71 -->
 <!-- Last updated: 2026-04-21 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -39,7 +39,7 @@ Each feature slice is only complete when both tracks are dispositioned:
 | 3 | Guarded dual-write | Add shims and loop guards | Controlled write path with correlation/debounce guards | Validated (Sealed 2026-04-20) |
 | 4 | Functional expansion | Preserve compatibility while exposing new capabilities | Profiles/actions/capability matrix/crossfade-balance services | Validated (F4-S01/F4-S02/F4-S03 sealed; diagnostics-only authority boundary retained) |
 | 5 | Domain cutover + retirement | Domain-by-domain template retirement | Primary control plane ownership + migration tooling | Validated (P5-S01/P5-S02/P5-S03/P5-S04 sealed; P6 planning handoff ready) |
-| 6 | Sidebar control center productization | Runtime compatibility surfaces retained for migration-safe UX rollout | Full HA sidebar Spectra control center (setup/tuning/defaults/overrides/mapped environment) | Planned |
+| 6 | Sidebar control center productization | Runtime compatibility surfaces retained for migration-safe UX rollout | Full HA sidebar Spectra control center (setup/tuning/defaults/overrides/mapped environment) | In Progress (P6-S01 active foundation slice) |
 
 ### Active slice ledger
 
@@ -58,7 +58,7 @@ Each feature slice is only complete when both tracks are dispositioned:
 | P5-S02 | 5 | Validated (legacy metadata ownership retained; bounded run-window closeout packet accepted) | Validated (metadata-domain gate-prep/readiness validation execution completed with consolidated PASS evidence) | Validated (Run-1 + Run-2 closeout packet) | Medium | Validated |
 | P5-S03 | 5 | Validated (legacy lighting orchestration retained with safe post-window authority proof) | Validated (lighting-domain run-window checklist execution completed with PASS closeout evidence) | Validated (Run-1 pre/in/post packet) | Medium | Validated |
 | P5-S04 | 5 | Validated (phase-exit closeout governance completed; no runtime ownership expansion) | Validated (cross-slice evidence packet accepted + Phase-6 handoff gating complete) | Validated (PASS/READY 7/7 closeout packet) | Medium | Validated |
-| P6-S01 | 6 | Planned (runtime compatibility remains available during staged UX cutover) | Planned (HA sidebar control center scaffold + read-only mapped-environment overview) | Planned | Medium | Planned |
+| P6-S01 | 6 | Active (runtime compatibility retained during foundation staging) | Active (HA sidebar control center scaffold + read-only mapped-environment baseline) | In Progress (foundation kickoff) | Medium | Active |
 
 ### P1/P2 validation snapshot (2026-04-19)
 
@@ -517,6 +517,33 @@ Disposition:
 
 - `P5-S04` promoted to **Validated**.
 - Phase-5 closeout packet accepted; P6 planning handoff is ready.
+
+### Phase 6 starter slice card — P6-S01 (control-center foundation)
+
+Status: **Active**
+
+Scope:
+
+- **In:** control-center foundation scaffold (setup/tuning/defaults/overrides/mapped-environment views), diagnostics/evidence linkage, and read-only-first launch posture.
+- **Out:** unbounded authority expansion, breaking helper/entity renames, and legacy retirement execution.
+
+Activation gates (required):
+
+1. P5-S04 closeout validated and linked as handoff prerequisite.
+2. Runtime baseline remains safe (`authority_mode=legacy`) with clean route/contract/parity context.
+3. Read-only-first UX posture is explicit for foundation rollout.
+4. Backward compatibility + rollback posture are documented for any introduced P6 surfaces.
+
+Execution checklist:
+
+- `docs/testing/raw/p6_s01_control_center_foundation_checklist.md`
+- Primary live monitor: `docs/testing/raw/p6_s01_control_center_foundation_monitor.jinja`
+
+P1/P2/P3 impact check:
+
+- **P1:** unchanged (shadow parity contracts remain read-only/stable).
+- **P2:** unchanged (registry/router diagnostics remain authoritative).
+- **P3:** unchanged (single-writer authority boundary remains explicit and bounded).
 
 Reference specification: `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`.
 

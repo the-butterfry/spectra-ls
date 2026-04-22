@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.21.156 -->
+<!-- Version: 2026.04.21.157 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Changelog
 
 ## 2026-04-21
+
+- Roadmap/Phase-6 P6-S01 Control-Center Foundation Activation (`docs/testing/raw/p6_s01_control_center_foundation_checklist.md`, `docs/testing/raw/p6_s01_control_center_foundation_monitor.jinja`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): activate the first Phase-6 slice for sidebar control-center foundation work with a deterministic operator checklist + readiness monitor template, explicit read-only-first launch posture, and bounded rollback/compatibility gates linked from both phase ledgers. P1/P2/P3 impact: no source-of-truth ownership change; post-Phase-5 planning/execution governance progression only. README parity: no material repo-state change.
 
 - Validation/Phase-5 P5-S04 Phase Exit Closeout + Promotion (`docs/testing/raw/p5_s04_phase_exit_closeout_checklist.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): record operator-captured P5-S04 monitor evidence (`2026-04-21 19:04:03.253466-07:00`) with `Status=PASS`, `Phase-5 closeout readiness=READY`, `gate_score=7/7`, safe authority baseline (`authority_mode=legacy`), clean parity/contracts (`missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`), and all governance gates true; promote `P5-S04` from `Active` to `Validated` in phase ledgers and mark Phase-5 closeout packet as accepted with P6 planning handoff readiness. P1/P2/P3 impact: no source-of-truth ownership change; evidence-backed phase closeout governance only. README parity: no material repo-state change.
 

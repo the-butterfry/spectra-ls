@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.21.70 -->
+<!-- Version: 2026.04.21.71 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -128,7 +128,7 @@ Execution playbook reference: `docs/program/PARALLEL-PROGRAM-PLAYBOOK.md`.
 | P5-S02 | 5 | Validated (legacy metadata ownership retained; bounded closeout evidence accepted) | Validated (metadata-domain gate-prep/readiness validation execution completed with consolidated PASS evidence) | Validated (Run-1 + Run-2 closeout packet) | Medium | Validated |
 | P5-S03 | 5 | Validated (legacy lighting orchestration retained with safe post-window authority proof) | Validated (lighting-domain run-window checklist execution completed with PASS closeout evidence) | Validated (Run-1 pre/in/post packet) | Medium | Validated |
 | P5-S04 | 5 | Validated (phase-exit closeout governance completed; no runtime ownership expansion) | Validated (cross-slice evidence packet accepted + Phase-6 handoff gating complete) | Validated (PASS/READY 7/7 closeout packet) | Medium | Validated |
-| P6-S01 | 6 | Planned (legacy/runtime contracts preserved during UX staging) | Planned (HA sidebar control center scaffold with read-only mapped-environment baseline) | Planned | Medium | Planned |
+| P6-S01 | 6 | Active (legacy/runtime contracts preserved during foundation staging) | Active (HA sidebar control center scaffold with read-only mapped-environment baseline) | In Progress (foundation kickoff) | Medium | Active |
 
 ## P1/P2 validation snapshot (2026-04-19)
 
@@ -730,7 +730,7 @@ Run-window execution checklist (required for activation/closeout evidence):
 
 ### Phase 6 starter slice card — P6-S01 (control-center foundation)
 
-Status: **Planned**
+Status: **Active**
 
 Scope:
 
@@ -752,6 +752,17 @@ Activation gates (required):
 2. P2/P3 parity and authority guardrails remain stable under current runtime evidence.
 3. UX surfaces initially launch in read-only-safe mode where needed.
 4. Rollback path is explicit for any newly writable control-center action.
+
+Execution checklist:
+
+- `docs/testing/raw/p6_s01_control_center_foundation_checklist.md`
+- Primary live monitor: `docs/testing/raw/p6_s01_control_center_foundation_monitor.jinja`
+
+P1/P2/P3 impact check:
+
+- **P1:** unchanged (shadow parity contracts remain read-only/stable).
+- **P2:** unchanged (registry/router diagnostics remain authoritative).
+- **P3:** unchanged (single-writer authority boundary remains explicit and bounded).
 
 Acceptance criteria:
 

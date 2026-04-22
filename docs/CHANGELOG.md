@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.21.153 -->
+<!-- Version: 2026.04.21.154 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Changelog
 
 ## 2026-04-21
+
+- Roadmap/Phase-5 P5-S04 Phase-Exit Slice Activation (`docs/testing/raw/p5_s04_phase_exit_closeout_checklist.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): activate a dedicated Phase-5 closeout slice to consolidate cross-domain evidence from P5-S01/P5-S02/P5-S03, enforce final phase-exit gates (authority baseline, parity stability, rollback posture, and retirement-readiness disposition), and document the explicit handoff gate to Phase-6 control-center foundation work. P1/P2/P3 impact: no source-of-truth ownership change; governance/evidence progression only. README parity: no material repo-state change.
 
 - ESPHome/Lighting Hold Debug Telemetry Retirement (`esphome/spectra_ls_system/packages/spectra-ls-lighting.yaml`): remove temporary diagnostics entities (`Lighting Hold Active`, `Lighting Hold Remaining Ms`) after timing validation evidence confirmed 3s hold behavior is stable. This restores a cleaner runtime entity surface while preserving the underlying lighting hold logic. P1/P2/P3 impact: no source-of-truth ownership change; diagnostics-only cleanup. README parity: no material repo-state change.
 

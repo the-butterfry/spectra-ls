@@ -1,6 +1,6 @@
 <!-- Description: Scope-path contracts and ownership map for Spectra L/S implementation and operations. -->
-<!-- Version: 2026.04.19.1 -->
-<!-- Last updated: 2026-04-19 -->
+<!-- Version: 2026.04.22.1 -->
+<!-- Last updated: 2026-04-22 -->
 
 # Control Contracts and Scope Paths
 
@@ -26,3 +26,12 @@ Use this page as the routing map for work intake, review ownership, and project 
 
 - Build gate and deployment gate policies: `.github/copilot-instructions.md`
 - Contribution workflow: `CONTRIBUTING.md`
+
+## Linked reference map
+
+- Runtime architecture: `docs/architecture/CODEBASE-RUNTIME-ARCHITECTURE.md`
+- Control-hub architecture: `docs/architecture/CONTROL-HUB-ARCHITECTURE.md`
+- Parallel program execution: `docs/program/PARALLEL-PROGRAM-PLAYBOOK.md`
+- Runtime roadmap ledger: `docs/roadmap/v-next-NOTES.md`
+- Component roadmap ledger: `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`
+- Shared contract checklist: `.github/SHARED-CONTRACT-CHECKLIST.md`

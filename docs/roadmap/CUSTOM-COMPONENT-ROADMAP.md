@@ -968,7 +968,7 @@ Status: **Active**
 
 Scope:
 
-- **In:** rewrite user/operator/developer-facing documentation to use direct, native-English, task-oriented language; remove AI-sounding phrasing; improve wiki utility with clear outcomes, decision paths, and troubleshooting flow.
+- **In:** improve user/operator/developer-facing documentation with direct, native-English, task-oriented language; remove AI-sounding phrasing; improve wiki utility with clear outcomes, decision paths, and troubleshooting flow.
 - **Out:** runtime/component behavior changes, contract ownership changes, or migration gate policy changes.
 
 Activation gates (required):
@@ -1002,12 +1002,12 @@ Initial execution disposition:
 Run-1 execution update (2026-04-21):
 
 - Sidebar/component lane: added `Control Center Last Attempt Status` diagnostic sensor in `custom_components/spectra_ls/sensor.py` so mapped-input outcomes are visible as first-class state instead of only deep attributes.
-- Documentation/wiki lane: rewrote high-traffic operator onboarding/install/setup pages (`docs/wiki/Getting-Started.md`, `docs/wiki/Install-on-Your-Own-HA.md`, `docs/wiki/User-Setup-Deploy-and-HA-Integration.md`) into direct, task-first native-English format with explicit expected outcomes and failure actions.
+- Documentation/wiki lane: improved high-traffic operator onboarding/install/setup pages (`docs/wiki/Getting-Started.md`, `docs/wiki/Install-on-Your-Own-HA.md`, `docs/wiki/User-Setup-Deploy-and-HA-Integration.md`) with task-first structure, explicit expected outcomes, and failure actions.
 - Execution disposition: run-1 packet accepted; remaining wiki/page sweep continues in subsequent packets.
 
 Run-2 execution update (2026-04-21):
 
-- Top-level docs lane: rewrote `CONTRIBUTING.md` in direct, native-English workflow language with clearer branch boundaries and migration posture expectations.
+- Top-level docs lane: improved `CONTRIBUTING.md` with clearer workflow language, branch boundaries, and migration posture expectations.
 - Execution disposition: run-2 contributor-doc polish accepted; additional repo/docs and wiki passes remain queued.
 
 Run-3 execution update (2026-04-22):
@@ -1018,7 +1018,7 @@ Run-3 execution update (2026-04-22):
 
 Run-4 execution update (2026-04-22):
 
-- Wiki docs lane: rewrote remaining core workflow/architecture contributor pages (`docs/wiki/Operations-Runbooks.md`, `docs/wiki/System-Architecture.md`, `docs/wiki/Contributing-Workflow.md`) into direct, task-first native-English guidance with explicit outcomes and parity/ownership reminders.
+- Wiki docs lane: improved remaining core workflow/architecture contributor pages (`docs/wiki/Operations-Runbooks.md`, `docs/wiki/System-Architecture.md`, `docs/wiki/Contributing-Workflow.md`) with direct task flow, explicit outcomes, and parity/ownership reminders.
 - Execution disposition: run-4 packet accepted; continue remaining lower-traffic wiki cleanup pages and consistency passes.
 
 GitHub/developer declaration (policy mirror):

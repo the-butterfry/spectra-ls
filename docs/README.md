@@ -1,10 +1,10 @@
 <!-- Description: Documentation index for Spectra L/S technical, onboarding, roadmap, and operations artifacts. -->
-<!-- Version: 2026.04.21.4 -->
-<!-- Last updated: 2026-04-21 -->
+<!-- Version: 2026.04.22.5 -->
+<!-- Last updated: 2026-04-22 -->
 
 # Spectra L/S Documentation Index
 
-Use this folder as the single location for project documentation and notes.
+Use this folder as the source of truth for project documentation and notes.
 
 ## Start here
 
@@ -17,6 +17,8 @@ Legacy-seal status (current):
 
 - Runtime path (`packages/` + `esphome/`) is sealed as compatibility + rollback baseline.
 - Custom integration path (`custom_components/spectra_ls/`) is primary for net-new control-plane/feature growth.
+
+If you are new: read `README.md` first, then this file, then `docs/roadmap/v-next-NOTES.md`.
 
 ## Roadmap and program governance
 
@@ -54,7 +56,7 @@ Legacy-seal status (current):
 - Auto-sync script (fallback): `bin/sync_docs_to_wiki.sh`
 - Wiki setup runbook: `docs/wiki/README.md`
 - Welcome + bug workflow: `docs/wiki/Welcome-README-and-Bug-Workflow.md`
-- User setup/deploy/integration guide (stub): `docs/wiki/User-Setup-Deploy-and-HA-Integration.md`
+- User setup/deploy/integration guide: `docs/wiki/User-Setup-Deploy-and-HA-Integration.md`
 - Wiki content policy: `docs/wiki/Wiki-Content-Scope-Policy.md`
 - Custom component setup roadmap stub: `docs/wiki/Custom-Component-Setup-Roadmap-Stub.md`
 

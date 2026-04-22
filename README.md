@@ -1,6 +1,6 @@
 <!-- Description: End-user overview for the Spectra L/S Home Assistant + ESPHome system. -->
-<!-- Version: 2026.04.21.17 -->
-<!-- Last updated: 2026-04-21 -->
+<!-- Version: 2026.04.22.18 -->
+<!-- Last updated: 2026-04-22 -->
 
 # Spectra L/S
 
@@ -14,14 +14,14 @@ Audio and lighting are the deepest focus areas today, but the model is broader: 
 
 ## Program Status — Legacy Sealed, Component Primary
 
-Plain-English status today:
+Current operating posture:
 
 - The legacy runtime path (`packages/` + `esphome/`) is now treated as a **sealed rollback-safe baseline**.
 - The custom integration (`custom_components/spectra_ls`) is the **primary path for net-new control-plane and feature growth**.
 - The legacy `control-py` path is **archived exploration history** on `main` and is no longer a development or run target.
 - Legacy path changes are still allowed for compatibility, safety, and rollback integrity — but not for unbounded new ownership behavior.
 
-This keeps migration reversible while making forward development direction explicit.
+This keeps migration reversible while keeping forward development focused.
 
 ## Hardware-First Context (Important)
 
@@ -70,14 +70,14 @@ Inspired by modern physical-control craftsmanship from [Condesa Electronics — 
 ## Roadmap (Current Build Direction)
 
 - We are actively building the Home Assistant sidebar **Spectra Control Center** in `custom_components/spectra_ls` as the primary product surface.
-- Current execution focus is Control Center depth: setup/onboarding, mapped-environment visibility, tuning/defaults/overrides, and bounded input-to-action execution with evidence-first gates.
+- Current execution focus: setup/onboarding, mapped-environment visibility, tuning/defaults/overrides, and bounded input-to-action execution under evidence-first gates.
 - Control Center settings + execution contracts are already live and operator-verifiable via `spectra_ls.set_control_center_settings` and `spectra_ls.execute_control_center_input`.
 - Ecosystem expansion remains capability-mapped and discovery-first; Sendspin-class and adjacent endpoint families are treated as roadmap integrations under the same safety/rollback gate discipline.
 - Operator-grade validation artifacts remain the execution truth surface: `docs/testing/raw/*` checklists/monitors and synchronized roadmap ledgers.
 
 ## Documentation
 
-For setup, operations, developer onboarding, architecture notes, and deep technical references, start here:
+Start here for setup, operations, and development workflow:
 
 - `docs/README.md`
 
@@ -87,7 +87,7 @@ Common entry points:
 - Latest project changes: `docs/CHANGELOG.md`
 - Developer onboarding/runbook: `docs/developer/DEVELOPER-INSTRUCTIONS.md`
 
-For active phase/slice status and migration details, use `docs/roadmap/v-next-NOTES.md` as the execution ledger.
-
-For deep migration mechanics and slice-level evidence packets, use the roadmap and raw checklist artifacts under `docs/`.
+Need current execution status? Use `docs/roadmap/v-next-NOTES.md`.
+Need migration mechanics and slice evidence? Use roadmap docs + raw checklists under `docs/`.
+Need wiki navigation? Start at `docs/wiki/Home.md`.
 

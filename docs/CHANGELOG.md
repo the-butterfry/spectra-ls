@@ -1,8 +1,14 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.21.194 -->
-<!-- Last updated: 2026-04-21 -->
+<!-- Version: 2026.04.22.196 -->
+<!-- Last updated: 2026-04-22 -->
 
 # Changelog
+
+## 2026-04-22
+
+- P8-S02 Documentation Polish — Top-Level Docs Run-2 (`README.md`, `docs/README.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): continue native-English, directive documentation pass on top-level repo docs by tightening action language, clarifying what to read first, and making roadmap/operator guidance more task-oriented. Two-track disposition: runtime track unchanged/sealed compatibility baseline; component track unchanged/primary growth lane. P1/P2/P3 impact: no source-of-truth ownership change; documentation usability hardening only.
+
+- P8-S02 Validation — Wiki Sync Dry-Run Pass (`docs/wiki/**`, `.github/workflows/wiki-sync.yml` process): completed local no-push wiki sync dry-run by cloning wiki repo and staging `docs/wiki/` content into a temp workspace; result `dry_run_ok` with 17 staged wiki-page deltas relative to current wiki branch state, confirming publish-ready source updates and no clone/sync blocker.
 
 ## 2026-04-21
 

@@ -1,6 +1,6 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.21.99 -->
-<!-- Last updated: 2026-04-21 -->
+<!-- Version: 2026.04.22.100 -->
+<!-- Last updated: 2026-04-22 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
 
@@ -1009,6 +1009,12 @@ Run-2 execution update (2026-04-21):
 
 - Top-level docs lane: rewrote `CONTRIBUTING.md` in direct, native-English workflow language with clearer branch boundaries and migration posture expectations.
 - Execution disposition: run-2 contributor-doc polish accepted; additional repo/docs and wiki passes remain queued.
+
+Run-3 execution update (2026-04-22):
+
+- Top-level docs lane: polished `README.md` and `docs/README.md` with more directive, task-first language and clearer “what to read next” guidance.
+- Validation lane: completed local wiki sync dry-run (`dry_run_ok`) with clone/read sync success and 17 staged wiki-file deltas in temp workspace (no push), confirming publish-ready source changes.
+- Execution disposition: run-3 packet accepted; continue remaining page-by-page wiki cleanup passes.
 
 GitHub/developer declaration (policy mirror):
 

@@ -1,5 +1,5 @@
 <!-- Description: Deterministic operator run-window checklist for Phase 5 Slice-03 lighting-orchestration gate-prep and bounded validation (P5-S03). -->
-<!-- Version: 2026.04.21.5 -->
+<!-- Version: 2026.04.21.6 -->
 <!-- Last updated: 2026-04-21 -->
 
 # P5-S03 Lighting Orchestration — Run Window Checklist
@@ -189,7 +189,7 @@ Run-1 live evidence capture (pre-window recorded):
 P5-S03 Run Window Evidence Record
 ---------------------------------
 run_id: p5s03-2026-04-21-run1
-captured_at: 2026-04-21 17:41:12.841574-07:00
+captured_at: 2026-04-21 17:44:45.600796-07:00
 operator: local
 window_scope: lighting-domain only
 
@@ -198,7 +198,7 @@ preflight:
    gate_b_authority_baseline: PASS
    gate_c_lighting_contracts: PASS
    gate_d_isolation: PASS
-   gate_e_fresh_evidence: IN_PROGRESS (pre-window captured; in/post pending)
+   gate_e_fresh_evidence: PASS (pre/in/post captured in-window)
 
 pre_window_snapshot:
    authority_mode: legacy
@@ -212,25 +212,25 @@ pre_window_snapshot:
    captured_at: 2026-04-21 17:41:12.841574-07:00
 
 in_window_snapshot:
-   authority_mode: pending_capture
-   lighting_behavior_verdict: pending_capture
-   parity_mismatches_count: pending_capture
-   unresolved_sources_count: pending_capture
-   captured_at: pending_capture
+   authority_mode: legacy
+   lighting_behavior_verdict: PASS/READY
+   parity_mismatches_count: 0
+   unresolved_sources_count: 0
+   captured_at: 2026-04-21 17:44:00.229390-07:00
 
 stop_conditions:
-   triggered: false (as of pre-window)
+   triggered: false
    reason: none
 
 post_window_snapshot:
-   authority_mode: pending_capture
-   lighting_behavior_verdict: pending_capture
-   captured_at: pending_capture
+   authority_mode: legacy
+   lighting_behavior_verdict: PASS/READY
+   captured_at: 2026-04-21 17:44:45.600796-07:00
 
 verdict:
-   outcome: IN_PROGRESS
-   rationale: Pre-window PASS/READY baseline captured; in-window and post-window artifacts required for closeout classification.
-   closeout_eligible: false
+   outcome: PASS
+   rationale: All preflight gates passed with complete pre/in/post evidence, no stop-condition triggers, and explicit safe post-window authority posture (`legacy`) under clean contract/parity signals.
+   closeout_eligible: true
 ```
 
 ## Artifact linkage

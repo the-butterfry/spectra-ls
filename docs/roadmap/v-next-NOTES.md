@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.21.58 -->
+<!-- Version: 2026.04.21.59 -->
 <!-- Last updated: 2026-04-21 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -400,6 +400,20 @@ Next execution target (P5-S02-M1):
   - metadata gate `9/9`,
   - metadata trial audit `status=dry_run_ok`, `audit_payload_state=COMPLETE`, `trial_gate_verdict=PASS`, `eligible_for_closeout=true`, `missing_audit_fields=0`.
 - Promotion-gate status: the documented “fresh dry-run + complete audit payload” requirement for P5-S02-M1 is now satisfied; metadata ownership remains intentionally legacy (`metadata_authority_owner=legacy_contract_surfaces`, `metadata_cutover_active=false`).
+- Immediate next execution packet (P5-S02 Run-2 strict comparator):
+  - run one fresh bounded sequence via `spectra_ls.run_p5_s02_sequence` with:
+    - `mode=legacy`
+    - `dry_run=true`
+    - unique `window_id` (new value)
+    - non-empty `reason`
+    - `expected_target=media_player.spectra_ls_2`
+    - `expected_route=route_linkplay_tcp`
+  - capture one fresh monitor artifact and verify:
+    - `status=PASS`, `metadata_readiness=READY`
+    - `metadata_trial_last_attempt.status in {dry_run_ok, applied, noop}`
+    - `trial_gate_verdict=PASS`, `eligible_for_closeout=true`
+    - `missing_audit_fields=0`, `audit_payload_state=COMPLETE`
+  - keep explicit post-window authority disposition at `legacy`.
 
 Post-Phase destination note (operator UX target):
 

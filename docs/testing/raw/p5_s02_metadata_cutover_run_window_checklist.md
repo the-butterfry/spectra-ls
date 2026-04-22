@@ -1,5 +1,5 @@
 <!-- Description: Deterministic operator run-window checklist for Phase 5 Slice-02 metadata-domain cutover readiness and bounded validation (P5-S02). -->
-<!-- Version: 2026.04.21.15 -->
+<!-- Version: 2026.04.21.16 -->
 <!-- Last updated: 2026-04-21 -->
 
 # P5-S02 Metadata Cutover — Run Window Checklist
@@ -585,6 +585,35 @@ verdict:
    rationale: PASS/READY with complete dry-run audit payload, no parity/contract drift, and explicit legacy authority baseline.
    closeout_eligible: true
 ```
+
+## Immediate next action — Run-2 strict comparator packet
+
+Execute one new bounded window immediately after Example G with stricter comparator fields.
+
+Service: `spectra_ls.run_p5_s02_sequence`
+
+Suggested data payload:
+
+```yaml
+mode: legacy
+dry_run: true
+window_id: p5s02-2026-04-21-run2
+reason: P5-S02 Run-2 strict target/route comparator capture
+expected_target: media_player.spectra_ls_2
+expected_route: route_linkplay_tcp
+```
+
+Run-2 pass checklist:
+
+- monitor reports `Status=PASS` and `Metadata readiness=READY`
+- `write_controls.metadata_trial_last_attempt.status` is `dry_run_ok` (or equivalent non-failure pass status)
+- `trial_gate_verdict=PASS`
+- `eligible_for_closeout=true`
+- `M1 audit payload completeness=COMPLETE`
+- `missing_audit_fields=0`
+- post-window `authority_mode=legacy`
+
+If any strict comparator mismatch appears (`blocked_expected_target_mismatch` or `blocked_expected_route_mismatch`), classify run as `WARN` and capture full blocking reason list before rerun.
 
 ## Artifact linkage
 

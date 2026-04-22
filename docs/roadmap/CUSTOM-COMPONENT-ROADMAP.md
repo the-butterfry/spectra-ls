@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.21.67 -->
+<!-- Version: 2026.04.21.68 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -127,6 +127,7 @@ Execution playbook reference: `docs/program/PARALLEL-PROGRAM-PLAYBOOK.md`.
 | P5-S01 | 5 | Validated (legacy retained as rollback authority path; post-window rollback proof captured) | Validated (routing-domain run-window execution with VERIFIED in-window proof) | Validated (in-window VERIFIED + post-window legacy rollback) | Medium | Validated |
 | P5-S02 | 5 | Validated (legacy metadata ownership retained; bounded closeout evidence accepted) | Validated (metadata-domain gate-prep/readiness validation execution completed with consolidated PASS evidence) | Validated (Run-1 + Run-2 closeout packet) | Medium | Validated |
 | P5-S03 | 5 | Validated (legacy lighting orchestration retained with safe post-window authority proof) | Validated (lighting-domain run-window checklist execution completed with PASS closeout evidence) | Validated (Run-1 pre/in/post packet) | Medium | Validated |
+| P5-S04 | 5 | Active (phase-exit closeout governance; no runtime ownership expansion) | Active (cross-slice evidence consolidation + Phase-6 handoff gating) | In Progress (phase-exit packet) | Medium | Active |
 | P6-S01 | 6 | Planned (legacy/runtime contracts preserved during UX staging) | Planned (HA sidebar control center scaffold with read-only mapped-environment baseline) | Planned | Medium | Planned |
 
 ## P1/P2 validation snapshot (2026-04-19)
@@ -669,6 +670,26 @@ Execution checklist:
   - in-window `PASS/READY` (`2026-04-21 17:44:00.229390-07:00`),
   - post-window `PASS/READY` (`2026-04-21 17:44:45.600796-07:00`).
 - Closeout posture confirmed: `authority_mode=legacy`, contract/parity clean (`missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`), stop conditions not triggered.
+
+### Phase 5 next-slice card — P5-S04 (phase-exit closeout)
+
+Status: **Active**
+
+Scope:
+
+- **In:** Phase-5 closeout packet consolidation, final authority/parity safety snapshot, and P6 planning handoff gate.
+- **Out:** new write-path ownership behavior changes in routing/metadata/lighting domains.
+
+Activation gates (required):
+
+1. P5-S01, P5-S02, and P5-S03 are `Validated` with linked evidence artifacts.
+2. Fresh closeout snapshot confirms safe authority posture and clean contract/parity state.
+3. Legacy retirement remains explicitly deferred (no implicit retirement action in this slice).
+4. P6 handoff stance is planning-only unless a separate bounded slice explicitly changes authority behavior.
+
+Execution checklist:
+
+- `docs/testing/raw/p5_s04_phase_exit_closeout_checklist.md`
 
 Deferred H1 note (report/log/heal):
 

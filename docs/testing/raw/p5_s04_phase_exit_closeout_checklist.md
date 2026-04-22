@@ -1,10 +1,14 @@
 <!-- Description: Deterministic operator checklist for Phase 5 Slice-04 phase-exit closeout and handoff readiness (P5-S04). -->
-<!-- Version: 2026.04.21.1 -->
+<!-- Version: 2026.04.21.2 -->
 <!-- Last updated: 2026-04-21 -->
 
 # P5-S04 Phase Exit — Closeout Checklist
 
 Use this checklist to close Phase 5 with explicit cross-slice evidence and a safe handoff posture into Phase 6 planning/execution.
+
+Primary live monitor template for this slice:
+
+- `docs/testing/raw/p5_s04_phase_exit_functionality_monitor.jinja`
 
 ## Scope guard (must hold)
 
@@ -18,6 +22,14 @@ Use this checklist to close Phase 5 with explicit cross-slice evidence and a saf
 - P5-S02 evidence packet + status marked `Validated`.
 - P5-S03 evidence packet + status marked `Validated`.
 - Current route/contract/parity monitor evidence (fresh capture in this window).
+
+## Quick-start execution flow (operator-grade)
+
+1. Render `docs/testing/raw/p5_s04_phase_exit_functionality_monitor.jinja`.
+2. Confirm operator governance booleans in the template match current roadmap/checklist evidence.
+3. Capture monitor output for a pre-closeout block.
+4. Confirm/restore explicit safe authority posture (`legacy`) and rerender for final-closeout block.
+5. Fill the evidence template below and classify `PASS` / `WARN` / `FAIL`.
 
 ## Phase-exit gates (all required)
 

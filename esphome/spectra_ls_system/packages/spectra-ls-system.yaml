@@ -1,6 +1,6 @@
 # Description: Spectra LS core state + globals + system intervals + shared scripts.
-# Version: 2026.04.17.5
-# Last updated: 2026-04-17
+# Version: 2026.04.21.1
+# Last updated: 2026-04-21
 # Update version/date whenever you change this file.
 #
 # Sections:
@@ -195,6 +195,22 @@ globals:
     type: uint32_t
     restore_value: no
     initial_value: "0"
+  - id: arylic_http_scheme_active
+    type: std::string
+    restore_value: no
+    initial_value: '"${arylic_http_scheme}"'
+  - id: arylic_http_port_active
+    type: int
+    restore_value: no
+    initial_value: "${arylic_http_port}"
+  - id: arylic_lr_http_scheme_active
+    type: std::string
+    restore_value: no
+    initial_value: '"${arylic_lr_http_scheme}"'
+  - id: arylic_lr_http_port_active
+    type: int
+    restore_value: no
+    initial_value: "${arylic_lr_http_port}"
   - id: arylic_mute_state
     type: bool
     restore_value: no
@@ -1097,7 +1113,13 @@ interval:
                     return true;
                 then:
                   - http_request.get:
-                      url: "${arylic_http_scheme}://${arylic_http_host}:${arylic_http_port}/httpapi.asp?command=getPlayerStatus"
+                      url: !lambda |-
+                        if (id(arylic_http_scheme_active).empty()) id(arylic_http_scheme_active) = "${arylic_http_scheme}";
+                        if (id(arylic_http_port_active) <= 0) id(arylic_http_port_active) = ${arylic_http_port};
+                        const std::string url = id(arylic_http_scheme_active) + "://${arylic_http_host}:" +
+                                                std::to_string(id(arylic_http_port_active)) +
+                                                "/httpapi.asp?command=getPlayerStatus";
+                        return url;
                       capture_response: true
                       on_response:
                         then:
@@ -1108,9 +1130,21 @@ interval:
                                 id(arylic_http_fail_count) = fails;
                                 const uint32_t backoff_ms = (fails >= 6) ? 60000 : (fails >= 4) ? 30000 : (fails >= 2) ? 15000 : 5000;
                                 id(arylic_http_pause_until_ms) = millis() + backoff_ms;
+                                if (fails >= 2) {
+                                  const bool use_https = id(arylic_http_scheme_active) == "https";
+                                  id(arylic_http_scheme_active) = use_https ? "http" : "https";
+                                  id(arylic_http_port_active) = use_https ? 80 : 443;
+                                  id(arylic_http_fail_count) = 0;
+                                  id(arylic_http_pause_until_ms) = millis() + 1000;
+                                  ESP_LOGW("arylic_http", "probe fallback switch host=%s -> %s:%d",
+                                           "${arylic_http_host}",
+                                           id(arylic_http_scheme_active).c_str(),
+                                           id(arylic_http_port_active));
+                                  return;
+                                }
                                 ESP_LOGW("arylic_http", "getPlayerStatus http=%d host=%s scheme=%s port=%s (backoff %ums, fail=%d)",
                                          response->status_code,
-                                         "${arylic_http_host}", "${arylic_http_scheme}", "${arylic_http_port}",
+                                         "${arylic_http_host}", id(arylic_http_scheme_active).c_str(), std::to_string(id(arylic_http_port_active)).c_str(),
                                          (unsigned) backoff_ms, fails);
                                 return;
                               }
@@ -1289,8 +1323,20 @@ interval:
                               id(arylic_http_fail_count) = fails;
                               const uint32_t backoff_ms = (fails >= 6) ? 60000 : (fails >= 4) ? 30000 : (fails >= 2) ? 15000 : 5000;
                               id(arylic_http_pause_until_ms) = millis() + backoff_ms;
+                              if (fails >= 2) {
+                                const bool use_https = id(arylic_http_scheme_active) == "https";
+                                id(arylic_http_scheme_active) = use_https ? "http" : "https";
+                                id(arylic_http_port_active) = use_https ? 80 : 443;
+                                id(arylic_http_fail_count) = 0;
+                                id(arylic_http_pause_until_ms) = millis() + 1000;
+                                ESP_LOGW("arylic_http", "probe fallback switch host=%s -> %s:%d",
+                                         "${arylic_http_host}",
+                                         id(arylic_http_scheme_active).c_str(),
+                                         id(arylic_http_port_active));
+                                return;
+                              }
                               ESP_LOGW("arylic_http", "getPlayerStatus error host=%s scheme=%s port=%s (backoff %ums, fail=%d)",
-                                       "${arylic_http_host}", "${arylic_http_scheme}", "${arylic_http_port}",
+                                       "${arylic_http_host}", id(arylic_http_scheme_active).c_str(), std::to_string(id(arylic_http_port_active)).c_str(),
                                        (unsigned) backoff_ms, fails);
 
   - interval: ${arylic_lr_http_poll_ms}ms
@@ -1311,16 +1357,30 @@ interval:
                     return true;
                 then:
                   - http_request.get:
-                      url: "${arylic_lr_http_scheme}://${arylic_lr_http_host}:${arylic_lr_http_port}/httpapi.asp?command=getPlayerStatus"
+                      url: !lambda |-
+                        if (id(arylic_lr_http_scheme_active).empty()) id(arylic_lr_http_scheme_active) = "${arylic_lr_http_scheme}";
+                        if (id(arylic_lr_http_port_active) <= 0) id(arylic_lr_http_port_active) = ${arylic_lr_http_port};
+                        const std::string url = id(arylic_lr_http_scheme_active) + "://${arylic_lr_http_host}:" +
+                                                std::to_string(id(arylic_lr_http_port_active)) +
+                                                "/httpapi.asp?command=getPlayerStatus";
+                        return url;
                       capture_response: true
                       on_response:
                         then:
                           - lambda: |-
                               id(arylic_lr_http_inflight) = false;
                               if (response->status_code < 200 || response->status_code >= 300) {
+                                const bool use_https = id(arylic_lr_http_scheme_active) == "https";
+                                id(arylic_lr_http_scheme_active) = use_https ? "http" : "https";
+                                id(arylic_lr_http_port_active) = use_https ? 80 : 443;
+                                ESP_LOGW("arylic_lr", "probe fallback switch host=%s -> %s:%d (http=%d)",
+                                         "${arylic_lr_http_host}",
+                                         id(arylic_lr_http_scheme_active).c_str(),
+                                         id(arylic_lr_http_port_active),
+                                         response->status_code);
                                 ESP_LOGW("arylic_lr", "getPlayerStatus http=%d host=%s scheme=%s port=%s",
                                          response->status_code,
-                                         "${arylic_lr_http_host}", "${arylic_lr_http_scheme}", "${arylic_lr_http_port}");
+                                         "${arylic_lr_http_host}", id(arylic_lr_http_scheme_active).c_str(), std::to_string(id(arylic_lr_http_port_active)).c_str());
                                 return;
                               }
                               const std::string &payload = body;
@@ -1469,8 +1529,15 @@ interval:
                         then:
                           - lambda: |-
                               id(arylic_lr_http_inflight) = false;
+                              const bool use_https = id(arylic_lr_http_scheme_active) == "https";
+                              id(arylic_lr_http_scheme_active) = use_https ? "http" : "https";
+                              id(arylic_lr_http_port_active) = use_https ? 80 : 443;
+                              ESP_LOGW("arylic_lr", "probe fallback switch host=%s -> %s:%d",
+                                       "${arylic_lr_http_host}",
+                                       id(arylic_lr_http_scheme_active).c_str(),
+                                       id(arylic_lr_http_port_active));
                               ESP_LOGW("arylic_lr", "getPlayerStatus error host=%s scheme=%s port=%s",
-                                       "${arylic_lr_http_host}", "${arylic_lr_http_scheme}", "${arylic_lr_http_port}");
+                                       "${arylic_lr_http_host}", id(arylic_lr_http_scheme_active).c_str(), std::to_string(id(arylic_lr_http_port_active)).c_str());
   - interval: ${heartbeat_interval_ms}ms
     then:
       - script.execute: log_status_burst

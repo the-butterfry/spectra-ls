@@ -1,5 +1,5 @@
 <!-- Description: Deterministic operator run-window checklist for Phase 5 Slice-03 lighting-orchestration gate-prep and bounded validation (P5-S03). -->
-<!-- Version: 2026.04.21.3 -->
+<!-- Version: 2026.04.21.4 -->
 <!-- Last updated: 2026-04-21 -->
 
 # P5-S03 Lighting Orchestration — Run Window Checklist
@@ -33,7 +33,7 @@ Primary live monitor template for this slice:
 4. **Isolation gate**
    - No metadata/routing cutover sequence is running in parallel.
 5. **Evidence freshness gate**
-   - Pre/in/post snapshots are all captured in this run window.
+   - Pre/in/post monitor renders are all captured in this run window.
 
 ## Recommended bounded sequence
 
@@ -176,7 +176,12 @@ Run-1 fill hints (source = `p5_s03_lighting_functionality_monitor.jinja`):
 - `lighting_behavior_verdict` ← monitor `Status`/`Lighting readiness` interpretation
 - `parity_mismatches_count` ← `mismatches`
 - `unresolved_sources_count` ← `unresolved_sources`
-- `captured_at` ← monitor timestamp and snapshot freshness block
+- `captured_at` ← monitor timestamp (`Timestamp`) and control-snapshot context line
+
+Freshness interpretation note (P5-S03):
+
+- `Control snapshot freshness` is contextual visibility from the shared shadow snapshot.
+- Do **not** classify `WARN/CAUTION` from control-snapshot age alone when authority/contract/selector/parity gates are healthy.
 
 ## Artifact linkage
 

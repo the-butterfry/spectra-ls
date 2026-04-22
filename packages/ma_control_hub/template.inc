@@ -1,5 +1,5 @@
 # Description: Template entities for ma_control_hub runtime routing, metadata, and now-playing state surfaces.
-# Version: 2026.04.21.36
+# Version: 2026.04.21.37
 # Last updated: 2026-04-21
 # HUB MUST-READ: Contract parser methodology.
 # - For complex attributes (`rooms`, `candidates_json`, etc.), prefer native sequence/mapping values first.
@@ -1618,6 +1618,7 @@
           {% set cap_l = (cap_hint | string | lower) %}
           {% set path = states('sensor.ma_active_control_path') %}
           {{ (cap_l in ['1','true','yes','on']) if cap_l not in ['','none','unknown','unavailable'] else (path == 'linkplay_tcp') }}
+        {% endif %}
     - name: MA No Control Capable Hosts
       state: >-
         {% set invalid = ['','none','unknown','unavailable'] %}

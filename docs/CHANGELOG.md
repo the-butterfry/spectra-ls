@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.21.136 -->
+<!-- Version: 2026.04.21.137 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Changelog
 
 ## 2026-04-21
+
+- HA + ESPHome/LinkPlay Parser + Mixed-Protocol Hardening (`packages/ma_control_hub/template.inc`, `esphome/spectra_ls_system/packages/spectra-ls-system.yaml`, `esphome/control-py/packages/spectra-ls-system.yaml`): fix a remaining Jinja block-closure error in `MA Active Control Capable` (`missing endif`) that could still break template parsing, and add adaptive LinkPlay status polling fallback between HTTPS and HTTP in both active and control-py runtime tracks so mixed Arylic/Up2Stream transports can self-correct when a target only responds on one scheme. P1/P2/P3 impact: no source-of-truth ownership change enacted; parser stability + transport resilience hardening only. README parity: no material repo-state change.
 
 - HA/Config Parse Recovery — `template.inc` Stray Jinja Token Fix (`packages/ma_control_hub/template.inc`): remove an accidental unmatched `{% endif %}` inside `binary_sensor.ma_no_control_capable_hosts` attributes that caused Home Assistant YAML parsing to fail (`found character '%' that cannot start any token`). This is a syntax recovery fix only; runtime contract behavior for host-capability diagnostics is unchanged. P1/P2/P3 impact: no source-of-truth ownership change enacted; parser-stability hotfix only. README parity: no material repo-state change.
 

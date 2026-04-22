@@ -1,6 +1,6 @@
 <!-- Description: Wiki home page for Spectra L/S operations, architecture, contribution flow, and runbooks. -->
-<!-- Version: 2026.04.19.8 -->
-<!-- Last updated: 2026-04-19 -->
+<!-- Version: 2026.04.21.9 -->
+<!-- Last updated: 2026-04-21 -->
 
 # Spectra L/S Wiki
 
@@ -20,8 +20,24 @@ This wiki mirrors curated content from `docs/wiki/` in the main repository and i
 - [Operations Runbooks](Operations-Runbooks)
 - [Discussions and Projects Workflow](Discussions-and-Projects-Workflow)
 - [Release and Changelog Process](Release-and-Changelog-Process)
+- [Documentation Writing Standard](DOCUMENTATION-WRITING-STANDARD)
 - [Wiki Content Scope Policy](Wiki-Content-Scope-Policy)
 - [Custom Component Setup Roadmap Stub](Custom-Component-Setup-Roadmap-Stub)
+
+## Current documentation objective
+
+We are actively rewriting wiki and repository docs to be more direct, practical, and operator-useful.
+
+What that means in practice:
+
+- clearer action-first instructions,
+- explicit expected outcomes,
+- concrete troubleshooting paths,
+- less generic/AI-sounding language.
+
+Writing quality standard:
+
+- `docs/wiki/DOCUMENTATION-WRITING-STANDARD.md`
 
 ## Operator quick paths
 

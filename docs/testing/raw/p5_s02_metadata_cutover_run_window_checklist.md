@@ -1,5 +1,5 @@
 <!-- Description: Deterministic operator run-window checklist for Phase 5 Slice-02 metadata-domain cutover readiness and bounded validation (P5-S02). -->
-<!-- Version: 2026.04.21.17 -->
+<!-- Version: 2026.04.21.18 -->
 <!-- Last updated: 2026-04-21 -->
 
 # P5-S02 Metadata Cutover — Run Window Checklist
@@ -618,6 +618,57 @@ Run-2 pass checklist:
 If any strict comparator mismatch appears (`blocked_expected_target_mismatch` or `blocked_expected_route_mismatch`), classify run as `WARN` and capture full blocking reason list before rerun.
 
 If target churn is expected during the run window, omit `expected_target` and keep `expected_route` strict.
+
+## Example H — Operator-captured Run-2 strict packet evidence (2026-04-21)
+
+```text
+P5-S02 Run Window Evidence Record
+---------------------------------
+run_id: p5s02-2026-04-21-run2
+captured_at: 2026-04-21T17:25:39.987075-07:00
+operator: local
+window_scope: metadata-domain only
+
+pre_window_snapshot:
+   authority_mode: legacy
+   route_decision: route_linkplay_tcp
+   contract_valid: true
+   metadata_validation_verdict: PASS
+   metadata_ready_for_handoff: true
+   captured_at: 2026-04-21T17:25:39.987075-07:00
+
+in_window_snapshot:
+   authority_mode: legacy
+   metadata_validation_verdict: PASS
+   metadata_ready_for_handoff: true
+   missing_required_entities_count: 0
+   metadata_trial_status: dry_run_ok
+   metadata_trial_audit_completeness: COMPLETE
+   metadata_trial_requested_at: 2026-04-22T00:25:38.224772+00:00
+   metadata_trial_completed_at: 2026-04-22T00:25:38.225280+00:00
+   metadata_trial_window_id: p5s02-2026-04-21-run2
+   metadata_trial_requested_mode: legacy
+   metadata_trial_effective_mode: legacy
+   metadata_trial_dry_run: true
+   metadata_trial_reason: Metadata trial contract preflight passed (dry run)
+   metadata_trial_correlation_id: metadata-trial-e03d58bfca08
+   captured_at: 2026-04-21T17:25:39.987075-07:00
+
+stop_conditions:
+   triggered: false
+   reason: none
+
+post_window_snapshot:
+   authority_mode: legacy
+   metadata_validation_verdict: PASS
+   metadata_ready_for_handoff: true
+   captured_at: 2026-04-21T17:25:39.987075-07:00
+
+verdict:
+   outcome: PASS
+   rationale: strict packet run passes with complete audit payload, clean parity/contracts, and retained legacy authority baseline.
+   closeout_eligible: true
+```
 
 ## Artifact linkage
 

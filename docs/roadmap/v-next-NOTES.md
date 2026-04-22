@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.21.60 -->
+<!-- Version: 2026.04.21.61 -->
 <!-- Last updated: 2026-04-21 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -415,6 +415,13 @@ Next execution target (P5-S02-M1):
     - `missing_audit_fields=0`, `audit_payload_state=COMPLETE`
   - keep explicit post-window authority disposition at `legacy`.
   - if active target is intentionally churning during the window, omit `expected_target` and keep `expected_route` strict to avoid false mismatch blocks.
+- Run-2 evidence captured (`p5s02-2026-04-21-run2`):
+  - monitor verdict `PASS/READY` at `2026-04-21 17:25:39.987075-07:00`,
+  - safe baseline retained: `authority_mode=legacy`, `route_decision=route_linkplay_tcp`,
+  - contract clean: `missing_required=0`, `unresolved_required=0`,
+  - metadata gate healthy: `verdict=PASS`, `gate_score=9/9`,
+  - trial audit complete: `status=dry_run_ok`, `window_id=p5s02-2026-04-21-run2`, `audit_payload_state=COMPLETE`, `trial_gate_verdict=PASS`, `eligible_for_closeout=true`, `missing_audit_fields=0`.
+- Run-2 disposition: strict-comparator packet expectations are met with fresh bounded-window evidence; metadata ownership remains legacy (`metadata_authority_owner=legacy_contract_surfaces`, `metadata_cutover_active=false`).
 
 Post-Phase destination note (operator UX target):
 

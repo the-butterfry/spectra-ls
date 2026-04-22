@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.21.59 -->
+<!-- Version: 2026.04.21.60 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -637,6 +637,8 @@ Mechanism-definition next step (P5-S02-M1):
 - Promotion-gate status: the “fresh dry-run + COMPLETE audit payload” gate is satisfied for P5-S02-M1. Slice remains **Active (gate-prep)** pending broader bounded-window/post-window evidence progression for full P5-S02 validation.
 - Immediate next run target (Run-2 strict comparator): execute one fresh bounded sequence with `mode=legacy`, `dry_run=true`, and a new `window_id`; set comparator guards from the pre-window snapshot (`expected_target=<route_trace.active_target>`, `expected_route=<route_trace.decision>`) to preserve discovery-first portability while still proving deterministic alignment in the audit payload.
 - Run-2 success criteria: monitor outputs remain `PASS/READY`, trial audit remains `COMPLETE` with `missing_audit_fields=0`, and trial semantics report `trial_gate_verdict=PASS`, `eligible_for_closeout=true`, with explicit post-window authority disposition `legacy`.
+- Run-2 evidence captured (`p5s02-2026-04-21-run2`): monitor output at `2026-04-21 17:25:39.987075-07:00` confirms `Status=PASS`, `Metadata readiness=READY`, safe baseline (`authority_mode=legacy`, `route_decision=route_linkplay_tcp`), contract clean (`missing_required=0`, `unresolved_required=0`), metadata gate `PASS` (`9/9`), and complete trial audit (`status=dry_run_ok`, `audit_payload_state=COMPLETE`, `trial_gate_verdict=PASS`, `eligible_for_closeout=true`, `missing_audit_fields=0`).
+- Disposition update: Run-2 strict comparator expectations are satisfied with fresh evidence; slice remains **Active (gate-prep)** pending broader Phase-5 metadata closeout sequencing.
 
 Deferred H1 note (report/log/heal):
 

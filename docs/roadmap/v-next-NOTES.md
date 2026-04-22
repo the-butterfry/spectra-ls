@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.21.94 -->
+<!-- Version: 2026.04.21.95 -->
 <!-- Last updated: 2026-04-21 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -919,6 +919,11 @@ Activation disposition:
 
 - `P8-S01` activation packet is published and pre-window evidence is accepted.
 - Slice remains **Active** pending in-window + post-window packet completion.
+
+GitHub/developer declaration (policy mirror):
+
+- Legacy runtime path is sealed as rollback-safe compatibility baseline.
+- Custom component path is primary for net-new feature/control-plane growth.
 
 Reference specification: `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`.
 

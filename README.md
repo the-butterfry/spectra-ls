@@ -1,5 +1,5 @@
 <!-- Description: End-user overview for the Spectra L/S Home Assistant + ESPHome system. -->
-<!-- Version: 2026.04.21.11 -->
+<!-- Version: 2026.04.21.15 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Spectra L/S
@@ -11,6 +11,16 @@ Spectra Level / Source (Spectra L/S) is the tactile control surface for Home Ass
 Instead of digging through apps and dashboards, you can touch real controls for transport, lighting, volume, tone, scenes, and automations. The goal is simple: make everyday home control feel immediate, shared, and human.
 
 Audio and lighting are the deepest focus areas today, but the model is broader: if Home Assistant can run it, Spectra L/S is designed to make it feel physical.
+
+## Program Status — Legacy Sealed, Component Primary
+
+Plain-English status today:
+
+- The legacy runtime path (`packages/` + `esphome/`) is now treated as a **sealed rollback-safe baseline**.
+- The custom integration (`custom_components/spectra_ls`) is the **primary path for net-new control-plane and feature growth**.
+- Legacy path changes are still allowed for compatibility, safety, and rollback integrity — but not for unbounded new ownership behavior.
+
+This keeps migration reversible while making forward development direction explicit.
 
 ## Hardware-First Context (Important)
 
@@ -70,3 +80,6 @@ Common entry points:
 Roadmap direction:
 
 - After current migration gates complete, Spectra L/S is planned to include a dedicated Home Assistant sidebar **Spectra Control Center** for setup, tuning, defaults, overrides, and mapped-environment visibility.
+- Early P6 foundation is now available in the custom integration as a configurable control-center settings contract (encoder mappings + button scene bindings) via integration options and `spectra_ls.set_control_center_settings` service.
+- P6 execution bring-up is now available via `spectra_ls.execute_control_center_input` with dry-run-first safety and read-only-mode enforcement for staged control mapping validation.
+- P6 execution validation artifacts are now available for operator evidence capture: `docs/testing/raw/p6_s04_control_input_execution_monitor.jinja` and `docs/testing/raw/p6_s04_control_input_execution_checklist.md`.

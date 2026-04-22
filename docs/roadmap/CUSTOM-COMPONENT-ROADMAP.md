@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.21.72 -->
+<!-- Version: 2026.04.21.92 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -128,7 +128,14 @@ Execution playbook reference: `docs/program/PARALLEL-PROGRAM-PLAYBOOK.md`.
 | P5-S02 | 5 | Validated (legacy metadata ownership retained; bounded closeout evidence accepted) | Validated (metadata-domain gate-prep/readiness validation execution completed with consolidated PASS evidence) | Validated (Run-1 + Run-2 closeout packet) | Medium | Validated |
 | P5-S03 | 5 | Validated (legacy lighting orchestration retained with safe post-window authority proof) | Validated (lighting-domain run-window checklist execution completed with PASS closeout evidence) | Validated (Run-1 pre/in/post packet) | Medium | Validated |
 | P5-S04 | 5 | Validated (phase-exit closeout governance completed; no runtime ownership expansion) | Validated (cross-slice evidence packet accepted + Phase-6 handoff gating complete) | Validated (PASS/READY 7/7 closeout packet) | Medium | Validated |
-| P6-S01 | 6 | Active (legacy/runtime contracts preserved during foundation staging) | Active (HA sidebar control center scaffold with read-only mapped-environment baseline) | In Progress (foundation kickoff) | Medium | Active |
+| P6-S01 | 6 | Validated (legacy/runtime contracts preserved; no authority expansion) | Validated (HA sidebar control center foundation with read-only mapped-environment baseline proven) | Validated (PASS/READY 6/6 closeout packet) | Medium | Validated |
+| P6-S02 | 6 | Validated (legacy/runtime contracts preserved; no ownership cutover) | Validated (control-center settings contract via options flow, service path, and diagnostics visibility proven) | Validated (PASS/READY 4/4 settings packet) | Medium | Validated |
+| P6-S03 | 6 | Validated (legacy/runtime contracts preserved; no authority expansion) | Validated (control-input execution skeleton with dry-run-first safety + attempt diagnostics proven) | Validated (execution-lane dry-run proof accepted) | Medium | Validated |
+| P6-S04 | 6 | Validated (legacy/runtime contracts preserved; no ownership cutover) | Validated (execution-lane validation monitor/checklist with accepted closeout packet) | Validated (PASS/READY 5/5 dry-run-first packet) | Medium | Validated |
+| P7-S01 | 7 | Validated (legacy compatibility/rollback baseline confirmed at pre-flip gate) | Validated (component-first cutover-readiness gate accepted) | Validated (Run-2 PASS/READY 4/4) | High | Validated |
+| P7-S02 | 7 | Validated (legacy retained as bounded rollback authority with post-window rollback-safe proof accepted) | Validated (first bounded authority-flip execution lane complete) | Completed (Run-1 pre/in/post PASS) | High | Validated |
+| P7-S03 | 7 | Validated (legacy retained as rollback-safe metadata authority baseline with post-window proof accepted) | Validated (bounded metadata-domain authority-flip execution lane complete) | Completed (Run-1 pre/in PASS + Run-2 post PASS) | High | Validated |
+| P7-S04 | 7 | Validated (rollback-safe legacy authority baseline preserved at closeout capture) | Validated (phase-exit closeout packet completed and accepted) | Completed (Run-1 closeout PASS/READY 4/4) | High | Validated |
 
 ## P1/P2 validation snapshot (2026-04-19)
 
@@ -701,7 +708,209 @@ Closeout evidence (2026-04-21):
 Disposition:
 
 - `P5-S04` promoted to **Validated**.
-- Phase-5 closeout packet accepted; progression is now planning-ready for P6.
+
+## Phase 7 — Component-first cutover and legacy sealing
+
+Program intent:
+
+- Component becomes the default primary control plane for net-new sidebar and beyond features.
+- Legacy runtime remains trusted, stable, and respected as compatibility + rollback baseline during bounded cutover gates.
+- Legacy exits normal feature-growth ownership once cutover readiness and domain flip proofs are accepted.
+
+### Phase 7 starter slice card — P7-S01 (component-first cutover readiness gate)
+
+Status: **Validated**
+
+Scope:
+
+- **In:** cutover-readiness gate activation, sustained parity criteria, rollback proof criteria, and legacy-seal publication.
+- **Out:** immediate cross-domain authority cutover and irreversible legacy retirement actions.
+
+Activation gates (required):
+
+1. `P6-S01..P6-S04` validated with accepted evidence packets.
+2. Runtime baseline remains safe at activation (`authority_mode=legacy`, clean contract/parity).
+3. Explicit rollback posture and proof fields are published for each follow-on domain flip slice.
+4. Component-first ownership direction is explicit for net-new features.
+
+Execution checklist:
+
+- `docs/testing/raw/p7_s01_cutover_readiness_checklist.md`
+- Primary live monitor: `docs/testing/raw/p7_s01_cutover_readiness_monitor.jinja`
+
+Two-track disposition:
+
+- **Track A (current runtime):** compatibility/rollback baseline, net-new feature growth deferred.
+- **Track B (custom component):** active primary ownership readiness lane.
+
+P1/P2/P3 impact check:
+
+- **P1:** unchanged read-only parity contracts.
+- **P2:** unchanged registry/router diagnostics ownership.
+- **P3:** unchanged single-writer boundary in this slice (authority flips deferred to follow-on P7 slices).
+Run-1 evidence (2026-04-21):
+
+- monitor verdict: `Status=FAIL`, `P7-S01 readiness=BLOCKED`, `gate_score=3/4` (`2026-04-21 20:33:32.373259-07:00`),
+- baseline failure details: `route_decision=defer_no_target`, `unresolved_required=4`, `unresolved_sources=3`, `mismatches=2`.
+
+Run-2 closeout evidence (2026-04-21):
+
+- monitor verdict: `Status=PASS`, `P7-S01 readiness=READY`, `gate_score=4/4` (`2026-04-21 20:34:32.639010-07:00`),
+- baseline restored: `authority_mode=legacy`, `route_decision=route_linkplay_tcp`, `missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`, freshness within threshold.
+
+Promotion disposition:
+
+- `P7-S01` promoted to **Validated**.
+
+### Phase 7 follow-on slice checkpoint — P7-S02 (first bounded authority-flip execution lane)
+
+Status: **Validated**
+
+Scope:
+
+- **In:** first bounded authority-flip execution lane (routing/selection domain), strict single-writer enforcement, rollback-safe activation controls, and run-window evidence capture.
+- **Out:** cross-domain ownership flips, unbounded legacy retirement actions, and irreversible helper/entity contract removal.
+
+Activation gates (required):
+
+1. `P7-S01` validated with accepted closeout evidence.
+2. Runtime baseline remains clean at activation (`authority_mode=legacy`, contract/parity clean).
+3. Domain-flip rollback path and stop conditions are explicit before first write-window attempt.
+4. Component lane remains net-new feature primary while flip windows are bounded and reversible.
+
+Execution checklist:
+
+- `docs/testing/raw/p7_s02_domain_flip_readiness_checklist.md`
+- Primary live monitor: `docs/testing/raw/p7_s02_domain_flip_readiness_monitor.jinja`
+
+Two-track disposition:
+
+- **Track A (current runtime):** rollback-safe authority baseline retained outside bounded flip windows.
+- **Track B (custom component):** active first authority-flip execution lane.
+
+P1/P2/P3 impact check:
+
+- **P1:** unchanged read-only parity contract surfaces.
+- **P2:** unchanged registry/router diagnostics ownership.
+- **P3:** single-writer controls remain mandatory and explicitly audited in this slice.
+
+Run-1 pre-window evidence (2026-04-21):
+
+- monitor verdict: `Status=PASS`, `P7-S02 readiness=READY`, `gate_score=4/4` (`2026-04-21 20:38:00.223973-07:00`),
+- baseline/gates clean: `authority_mode=legacy`, `route_decision=route_linkplay_tcp`, `missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`, freshness within threshold,
+- execution disposition: pre-window authorization granted; in-window and post-window captures are required before closeout eligibility.
+
+Run-1 in-window evidence (2026-04-21):
+
+- monitor verdict: `Status=PASS`, `P7-S02 readiness=READY`, `gate_score=4/4` (`2026-04-21 20:55:41.000516-07:00`),
+- in-window probe remained clean: `monitor_source_sensor=sensor.shadow_active_target`, `authority_mode=legacy`, `route_decision=route_linkplay_tcp`, `missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`, freshness within threshold,
+- execution disposition: in-window gate accepted; post-window capture remains required before closeout eligibility.
+
+Run-1 post-window evidence (2026-04-21):
+
+- monitor verdict: `Status=PASS`, `P7-S02 readiness=READY`, `gate_score=4/4` (`2026-04-21 20:57:00.162663-07:00`),
+- post-window rollback-safe baseline verified: `monitor_source_sensor=sensor.shadow_active_target`, `authority_mode=legacy`, `route_decision=route_linkplay_tcp`, `missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`, freshness within threshold,
+- execution disposition: post-window gate accepted with no stop-condition triggers; slice is closeout eligible.
+
+Promotion disposition:
+
+- `P7-S02` promoted to **Validated**.
+
+### Phase 7 follow-on slice checkpoint — P7-S03 (bounded metadata-domain authority-flip execution lane)
+
+Status: **Validated**
+
+Scope:
+
+- **In:** bounded metadata-domain authority-flip execution lane, metadata trial service-path probe (`metadata_write_trial`) with dry-run-first semantics, strict single-writer enforcement, rollback-safe activation controls, and pre/in/post run-window evidence capture.
+- **Out:** routing-domain revalidation, lighting-domain ownership flips, unbounded legacy retirement actions, and irreversible helper/entity contract removal.
+
+Activation gates (required):
+
+1. `P7-S02` validated with accepted closeout evidence.
+2. Runtime baseline remains clean at activation (`authority_mode=legacy`, contract/parity clean).
+3. Metadata readiness is PASS/ready (`metadata_prep_validation.verdict=PASS`, `ready_for_metadata_handoff=true`) with route eligibility present.
+4. Metadata-domain rollback path and stop conditions are explicit before first in-window metadata trial attempt.
+
+Execution checklist:
+
+- `docs/testing/raw/p7_s03_metadata_domain_flip_readiness_checklist.md`
+- Primary live monitor: `docs/testing/raw/p7_s03_metadata_domain_flip_readiness_monitor.jinja`
+
+Two-track disposition:
+
+- **Track A (current runtime):** rollback-safe metadata authority baseline retained outside bounded P7-S03 windows.
+- **Track B (custom component):** active bounded metadata-domain authority-flip execution lane.
+
+P1/P2/P3 impact check:
+
+- **P1:** unchanged read-only parity contract surfaces.
+- **P2:** unchanged registry/router diagnostics ownership.
+- **P3:** single-writer controls remain mandatory and explicitly audited in this slice.
+
+Run-1 pre-window evidence (2026-04-21):
+
+- monitor verdict: `Status=PASS`, `P7-S03 readiness=READY`, `gate_score=4/4` (`2026-04-21 21:03:00.345491-07:00`),
+- baseline/metadata gates clean: `monitor_source_sensor=sensor.shadow_active_target`, `authority_mode=legacy`, `route_decision=route_linkplay_tcp`, `metadata_prep_validation.verdict=PASS`, `ready_for_metadata_handoff=true`, `metadata_prep_validation.missing_required=0`, contract/parity clean (`missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`), freshness within threshold,
+- execution disposition: pre-window authorization granted; in-window and post-window captures are required for closeout eligibility.
+
+Run-1 in-window evidence (2026-04-21):
+
+- monitor verdict: `Status=PASS`, `P7-S03 readiness=READY`, `gate_score=4/4` (`2026-04-21 21:05:29.978417-07:00`),
+- in-window probe remained clean: `monitor_source_sensor=sensor.shadow_active_target`, `authority_mode=legacy`, `route_decision=route_linkplay_tcp`, `metadata_prep_validation.verdict=PASS`, `ready_for_metadata_handoff=true`, `metadata_prep_validation.missing_required=0`, `metadata_trial_last_attempt.status=dry_run_ok`, `metadata_trial_last_attempt.trial_gate_verdict=PASS`, contract/parity clean (`missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`), freshness within threshold,
+- execution disposition: in-window gate accepted; post-window capture remained required before closeout eligibility.
+
+Run-2 post-window evidence (2026-04-21):
+
+- monitor verdict: `Status=PASS`, `P7-S03 readiness=READY`, `gate_score=4/4` (`2026-04-21 21:07:08.345292-07:00`),
+- post-window rollback-safe baseline remained clean: `monitor_source_sensor=sensor.shadow_active_target`, `authority_mode=legacy`, `route_decision=route_linkplay_tcp`, `metadata_prep_validation.verdict=PASS`, `ready_for_metadata_handoff=true`, `metadata_prep_validation.missing_required=0`, `metadata_trial_last_attempt.status=dry_run_ok`, `metadata_trial_last_attempt.window_id=window_id: p7s03-2026-04-21-run2`, `metadata_trial_last_attempt.trial_gate_verdict=PASS`, contract/parity clean (`missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`), freshness within threshold,
+- execution disposition: post-window gate accepted with no stop-condition triggers; slice is closeout eligible.
+
+Promotion disposition:
+
+- `P7-S03` promoted to **Validated**.
+
+### Phase 7 follow-on slice checkpoint — P7-S04 (phase-exit closeout packet)
+
+Status: **Validated**
+
+Scope:
+
+- **In:** Phase-7 closeout packet consolidation, final rollback-safe baseline evidence capture, and promotion gating.
+- **Out:** new domain authority expansion, additional write-path cutover trials, and immediate legacy retirement execution.
+
+Activation gates (required):
+
+1. `P7-S01`, `P7-S02`, and `P7-S03` are validated with linked evidence packets.
+2. Runtime baseline remains rollback-safe at closeout capture (`authority_mode=legacy`, contract/parity clean).
+3. Rollback path and single-writer boundary remain explicit and operator-verifiable.
+4. Component-primary posture and legacy-seal scope are documented for closeout governance.
+
+Execution checklist:
+
+- `docs/testing/raw/p7_s04_phase_exit_closeout_checklist.md`
+- Primary live monitor: `docs/testing/raw/p7_s04_phase_exit_functionality_monitor.jinja`
+
+Two-track disposition:
+
+- **Track A (current runtime):** rollback-safe compatibility baseline retained for closeout capture.
+- **Track B (custom component):** active phase-exit closeout packet lane.
+
+P1/P2/P3 impact check:
+
+- **P1:** unchanged read-only parity contract surfaces.
+- **P2:** unchanged registry/router diagnostics ownership.
+- **P3:** unchanged single-writer boundary and rollback discipline.
+
+Run-1 closeout evidence (2026-04-21):
+
+- monitor verdict: `Status=PASS`, `P7-S04 readiness=READY`, `gate_score=4/4` (`2026-04-21 21:13:00.468462-07:00`),
+- baseline remained rollback-safe and clean: `monitor_source_sensor=sensor.shadow_active_target`, `authority_mode=legacy`, `route_decision=route_linkplay_tcp`, `contract_valid=true`, `missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`, freshness within threshold (`age_s=60.0`),
+- closeout disposition: no stop-condition triggers; phase-exit packet is complete and promotion-eligible.
+
+Promotion disposition:
+
+- `P7-S04` promoted to **Validated**.
 
 Deferred H1 note (report/log/heal):
 
@@ -730,7 +939,7 @@ Run-window execution checklist (required for activation/closeout evidence):
 
 ### Phase 6 starter slice card — P6-S01 (control-center foundation)
 
-Status: **Active**
+Status: **Validated**
 
 Scope:
 
@@ -766,7 +975,127 @@ Baseline evidence (2026-04-21):
 
 Disposition:
 
-- P6-S01 remains **Active** while bounded foundation work continues; baseline evidence packet is accepted.
+- `P6-S01` promoted to **Validated** with baseline + closeout packet evidence accepted.
+
+Closeout evidence (2026-04-21):
+
+- monitor verdict: `Status=PASS`, `P6-S01 readiness=READY`, `gate_score=6/6` (`2026-04-21 20:17:21.077121-07:00`),
+- runtime baseline clean: `authority_mode=legacy`, `route_decision=route_linkplay_tcp`, `contract_valid=true`, `missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`, freshness within threshold,
+- foundation governance gates all true: read-only-first launch, compatibility posture, rollback posture, and bounded-authority posture.
+
+### Phase 6 follow-on slice checkpoint — P6-S02 (control-center settings contract)
+
+Status: **Validated**
+
+Scope:
+
+- **In:** initial functional customization contract for control-center inputs (encoder turn/press/long-press mappings + button scene bindings), operator-updatable settings path, and diagnostics visibility for mapped values.
+- **Out:** write-authority expansion, runtime ownership cutover, breaking helper/entity contract renames, and legacy retirement.
+
+Implemented surfaces:
+
+- options-flow settings form in `custom_components/spectra_ls/config_flow.py`,
+- normalized settings/defaults contract in `custom_components/spectra_ls/const.py`,
+- service path `spectra_ls.set_control_center_settings` in `custom_components/spectra_ls/__init__.py` + `services.yaml`,
+- coordinator snapshot diagnostics `control_center_validation` + `write_controls.control_center_settings` in `custom_components/spectra_ls/coordinator.py` with shadow/diagnostics export visibility.
+
+Two-track disposition:
+
+- **Track A (current runtime):** compatibility-preserved (unchanged runtime ownership and rollback baseline).
+- **Track B (custom component):** validated P6 settings contract foundation for sidebar/control-center customization workflow.
+
+P1/P2/P3 impact check:
+
+- **P1:** unchanged read-only parity contracts.
+- **P2:** unchanged registry/router diagnostics contract surfaces.
+- **P3:** unchanged single-writer authority boundary (`legacy` remains baseline).
+
+Execution checklist:
+
+- `docs/testing/raw/p6_s02_control_center_settings_checklist.md`
+- Primary live monitor: `docs/testing/raw/p6_s02_control_center_settings_monitor.jinja`
+
+Closeout evidence (2026-04-21):
+
+- monitor verdict: `Status=PASS`, `P6-S02 readiness=READY`, `gate_score=4/4` (`2026-04-21 20:15:35.644673-07:00`),
+- settings-contract readiness proven: `schema_version=p6_s02.v1`, `settings_present=true`, `ready_for_customization=true`, `required_keys=8`,
+- safe baseline retained: `authority_mode=legacy`, `route_decision=route_linkplay_tcp`, clean contract/parity (`missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`).
+
+Promotion disposition:
+
+- `P6-S02` promoted to **Validated**.
+
+### Phase 6 follow-on slice checkpoint — P6-S03 (control-input execution skeleton)
+
+Status: **Validated**
+
+Scope:
+
+- **In:** first bounded execution lane for mapped control-center input events (encoder/button), dry-run-first operation, read-only enforcement, and explicit action-attempt diagnostics.
+- **Out:** authority expansion, broad domain service dispatch beyond staged mappings, helper/entity contract breakage, and legacy retirement.
+
+Implemented surfaces:
+
+- `execute_control_center_input` service contract (`custom_components/spectra_ls/services.yaml` + `__init__.py`),
+- coordinator action-attempt engine with explicit fail-closed status semantics and correlation IDs,
+- scene execution path only when mapping resolves to `scene.*` and read-only mode is disabled,
+- diagnostics visibility of latest action attempt in `write_controls.control_center_last_attempt`.
+
+Two-track disposition:
+
+- **Track A (current runtime):** compatibility-preserved (runtime/source-of-truth unchanged).
+- **Track B (custom component):** validated bounded execution skeleton for control-center mappings.
+
+Closeout evidence linkage (2026-04-21):
+
+- accepted execution proof via P6-S04 closeout packet (`Status=PASS`, `P6-S04 readiness=READY`, `gate_score=5/5` at `2026-04-21 20:07:51.471030-07:00`),
+- deterministic dry-run semantics observed: `last_attempt.status=dry_run_ok`, `input_event=encoder_press`, `mapped_action=play_pause`, `last_attempt.dry_run=true`,
+- safety baseline preserved: `authority_mode=legacy`, `route_decision=route_linkplay_tcp`, clean contract/parity (`missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`).
+
+Promotion disposition:
+
+- `P6-S03` promoted to **Validated**.
+
+P1/P2/P3 impact check:
+
+- **P1:** unchanged read-only parity contracts.
+- **P2:** unchanged registry/router diagnostics ownership.
+- **P3:** unchanged authority boundary; `legacy` remains baseline owner.
+
+### Phase 6 follow-on slice checkpoint — P6-S04 (control-input execution validation artifacts)
+
+Status: **Validated**
+
+Scope:
+
+- **In:** operator-grade validation and closeout artifacts for `spectra_ls.execute_control_center_input` lane.
+- **Out:** authority ownership changes, broad execution-surface refactors, or legacy retirement.
+
+Implemented surfaces:
+
+- `docs/testing/raw/p6_s04_control_input_execution_monitor.jinja`
+- `docs/testing/raw/p6_s04_control_input_execution_checklist.md`
+
+Two-track disposition:
+
+- **Track A (current runtime):** compatibility-preserved (legacy authority baseline unchanged).
+- **Track B (custom component/docs):** validated evidence-capture/closeout classification artifacts for execution readiness.
+
+Closeout evidence (2026-04-21):
+
+- monitor verdict: `Status=PASS`, `P6-S04 readiness=READY`, `gate_score=5/5` (`2026-04-21 20:07:51.471030-07:00`),
+- deterministic dry-run-first semantics proven: `last_attempt.status=dry_run_ok`, `input_event=encoder_press`, `mapped_action=play_pause`, `last_attempt.dry_run=true`,
+- safe baseline retained: `authority_mode=legacy`, `route_decision=route_linkplay_tcp`, clean contract/parity (`missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`).
+
+Promotion disposition:
+
+- `P6-S04` promoted to **Validated**.
+
+P1/P2/P3 impact check:
+
+- **P1:** unchanged read-only parity contracts.
+- **P2:** unchanged registry/router validation ownership.
+- **P3:** unchanged single-writer authority boundary.
 
 P1/P2/P3 impact check:
 

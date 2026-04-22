@@ -1,0 +1,145 @@
+{# Description: Raw copy/paste Jinja monitor template for Spectra LS P5-S03 lighting-domain gate-prep and run-window validation feedback. #}
+{# Version: 2026.04.21.1 #}
+{# Last updated: 2026-04-21 #}
+
+{# =========================
+  P5-S03 Lighting Functionality Monitor (gate-prep safe)
+  Purpose: fast live signal for lighting-domain readiness during bounded P5-S03 windows.
+  Usage:
+    1) Paste/run in Developer Tools -> Template.
+    2) Capture output for pre-window / in-window / post-window records.
+  ========================= #}
+
+{% set s_target_primary = 'sensor.shadow_active_target' %}
+{% set s_target_fallback = 'sensor.spectra_ls_shadow_active_target' %}
+{% set primary_has_attrs = state_attr(s_target_primary, 'route_trace') is not none or state_attr(s_target_primary, 'captured_at') is not none %}
+{% set fallback_has_attrs = state_attr(s_target_fallback, 'route_trace') is not none or state_attr(s_target_fallback, 'captured_at') is not none %}
+{% set s_target = s_target_primary if primary_has_attrs else (s_target_fallback if fallback_has_attrs else s_target_primary) %}
+
+{% set route_trace = state_attr(s_target, 'route_trace') or {} %}
+{% set contract = state_attr(s_target, 'contract_validation') or {} %}
+{% set write_controls = state_attr(s_target, 'write_controls') or {} %}
+{% set unresolved = state_attr(s_target, 'unresolved_sources') or [] %}
+{% set mismatches = state_attr(s_target, 'mismatches') or [] %}
+
+{% set authority_mode = write_controls.authority_mode if write_controls is mapping and write_controls.authority_mode is defined else 'missing' %}
+{% set route_decision = route_trace.decision if route_trace is mapping and route_trace.decision is defined else '' %}
+{% set contract_valid = contract.valid if contract is mapping and contract.valid is defined else false %}
+{% set missing_required = contract.missing_required if contract is mapping and contract.missing_required is defined else [] %}
+{% set unresolved_required = contract.unresolved_required if contract is mapping and contract.unresolved_required is defined else [] %}
+
+{% set room = states('input_select.control_board_room') %}
+{% set target = states('input_select.control_board_target') %}
+{% set target_entity = states('sensor.control_board_target_entity_id') %}
+{% set room_on = states('binary_sensor.control_board_room_on') %}
+{% set target_on = states('binary_sensor.control_board_target_on') %}
+
+{% set room_options_raw = states('sensor.control_board_room_options') %}
+{% set target_options_raw = states('sensor.control_board_target_options') %}
+{% set room_options = (room_options_raw | trim | from_json(default=[])) if (room_options_raw is string and (room_options_raw | trim)[0:1] == '[') else [] %}
+{% set target_options = (target_options_raw | trim | from_json(default=[])) if (target_options_raw is string and (target_options_raw | trim)[0:1] == '[') else [] %}
+
+{% set room_selected_valid = room not in ['', 'unknown', 'unavailable', 'none', none] and (room_options | length) > 0 and room in room_options %}
+{% set target_selected_valid = target not in ['', 'unknown', 'unavailable', 'none', none] and (target_options | length) > 0 and target in target_options %}
+{% set target_entity_valid = (target == 'All') or (target_entity not in ['', 'unknown', 'unavailable', 'none', none]) %}
+{% set selector_options_ready = (room_options | length) > 0 and (target_options | length) > 0 %}
+
+{% set captured_at = state_attr(s_target, 'captured_at') | default('', true) %}
+{% set captured_ts = as_timestamp(captured_at) if captured_at not in ['', 'unknown', 'unavailable', 'none', none] else none %}
+{% set age_s = (as_timestamp(now()) - captured_ts) if captured_ts is not none else none %}
+{% set fresh = age_s is not none and age_s <= 300 %}
+
+{% set status = 'PASS' %}
+{% if authority_mode != 'legacy' %}
+  {% set status = 'WARN' %}
+{% endif %}
+{% if not contract_valid or (missing_required | length) > 0 or (unresolved_required | length) > 0 %}
+  {% set status = 'FAIL' %}
+{% elif not selector_options_ready or not room_selected_valid or not target_selected_valid or not target_entity_valid or not fresh or (unresolved | length) > 0 or (mismatches | length) > 0 %}
+  {% set status = 'WARN' %}
+{% endif %}
+
+{% set readiness = 'NOT_READY' %}
+{% if contract_valid and (missing_required | length) == 0 and (unresolved_required | length) == 0 and selector_options_ready and room_selected_valid and target_selected_valid and target_entity_valid and fresh and authority_mode == 'legacy' %}
+  {% set readiness = 'READY' %}
+{% elif not contract_valid or (missing_required | length) > 0 or (unresolved_required | length) > 0 %}
+  {% set readiness = 'BLOCKED' %}
+{% elif authority_mode != 'legacy' or not fresh or not selector_options_ready or not room_selected_valid or not target_selected_valid or not target_entity_valid %}
+  {% set readiness = 'CAUTION' %}
+{% endif %}
+
+### P5-S03 Lighting Functionality Monitor (`spectra_ls`)
+- Status: **{{ status }}**
+- Lighting readiness: **{{ readiness }}**
+- Timestamp: **{{ now() }}**
+
+### Authority + route baseline
+- `write_controls.authority_mode`: **{{ authority_mode }}**
+- `route_trace.decision`: **{{ route_decision if route_decision != '' else 'n/a' }}**
+
+### Contract gate
+- `contract_validation.valid`: **{{ contract_valid }}**
+- `contract_validation.missing_required`: **{{ missing_required | length }}**
+- `contract_validation.unresolved_required`: **{{ unresolved_required | length }}**
+
+### Lighting selector gate
+- `input_select.control_board_room`: **{{ room }}**
+- `input_select.control_board_target`: **{{ target }}**
+- `sensor.control_board_target_entity_id`: **{{ target_entity if target_entity not in ['', none] else 'n/a' }}**
+- `sensor.control_board_room_options` count: **{{ room_options | length }}**
+- `sensor.control_board_target_options` count: **{{ target_options | length }}**
+- Selector options ready: **{{ selector_options_ready }}**
+- Room selected valid: **{{ room_selected_valid }}**
+- Target selected valid: **{{ target_selected_valid }}**
+- Target entity valid: **{{ target_entity_valid }}**
+- `binary_sensor.control_board_room_on`: **{{ room_on }}**
+- `binary_sensor.control_board_target_on`: **{{ target_on }}**
+
+### Parity + freshness
+- `unresolved_sources`: **{{ unresolved | length }}**
+- `mismatches`: **{{ mismatches | length }}**
+- Snapshot freshness (<=300s): **{{ fresh }}** (age_s={{ (age_s | round(1)) if age_s is not none else 'n/a' }})
+
+{% if (missing_required | length) > 0 %}
+Contract missing required entities:
+{% for item in missing_required %}
+- `{{ item }}`
+{% endfor %}
+{% endif %}
+
+{% if (unresolved_required | length) > 0 %}
+Contract unresolved required entities (present but unresolved):
+{% for item in unresolved_required %}
+- `{{ item }}`
+{% endfor %}
+{% endif %}
+
+{% if (unresolved | length) > 0 %}
+Unresolved parity sources:
+{% for item in unresolved %}
+- `{{ item }}`
+{% endfor %}
+{% endif %}
+
+{% if (mismatches | length) > 0 %}
+Parity mismatches:
+{% for item in mismatches %}
+- `{{ item }}`
+{% endfor %}
+{% endif %}
+
+### Quick interpretation
+{% if readiness == 'READY' %}
+- P5-S03 lighting lane is healthy for bounded-window evidence capture.
+{% elif readiness == 'CAUTION' %}
+- Lighting lane is partially healthy; normalize selector/authority/freshness posture before closeout interpretation.
+{% elif readiness == 'BLOCKED' %}
+- Lighting lane is blocked by contract failures; resolve FAIL conditions before continuing window execution.
+{% else %}
+- Lighting lane is not yet closeout-ready; capture additional bounded evidence and re-check.
+{% endif %}
+
+### Suggested refresh actions
+- Re-render this monitor before and after bounded lighting interactions.
+- Keep `authority_mode=legacy` for gate-prep captures.
+- If selector options are stale/missing, allow room/target sync automations to settle and rerender.

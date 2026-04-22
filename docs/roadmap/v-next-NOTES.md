@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.21.93 -->
+<!-- Version: 2026.04.21.94 -->
 <!-- Last updated: 2026-04-21 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -68,7 +68,7 @@ Each feature slice is only complete when both tracks are dispositioned:
 | P7-S02 | 7 | Validated (legacy retained as bounded rollback authority with post-window rollback-safe proof accepted) | Validated (first bounded authority-flip execution lane complete) | Completed (Run-1 pre/in/post PASS) | High | Validated |
 | P7-S03 | 7 | Validated (legacy retained as rollback-safe metadata authority baseline with post-window proof accepted) | Validated (bounded metadata-domain authority-flip execution lane complete) | Completed (Run-1 pre/in PASS + Run-2 post PASS) | High | Validated |
 | P7-S04 | 7 | Validated (rollback-safe legacy authority baseline preserved at closeout capture) | Validated (phase-exit closeout packet completed and accepted) | Completed (Run-1 closeout PASS/READY 4/4) | High | Validated |
-| P8-S01 | 8 | Active (legacy sealed baseline readiness gate; no ownership expansion) | Active (post-cutover governance/readiness lane) | In Progress (activation packet published; pre-window capture pending) | High | Active |
+| P8-S01 | 8 | Active (legacy sealed baseline readiness gate; no ownership expansion) | Active (post-cutover governance/readiness lane) | In Progress (Run-1 pre-window PASS/READY 4/4 captured; in/post pending) | High | Active |
 
 ### P1/P2 validation snapshot (2026-04-19)
 
@@ -909,9 +909,16 @@ P1/P2/P3 impact check:
 - **P2:** unchanged registry/router diagnostics ownership.
 - **P3:** unchanged single-writer boundary and rollback discipline.
 
+Run-1 pre-window evidence (2026-04-21):
+
+- monitor verdict: `Status=PASS`, `P8-S01 readiness=READY`, `gate_score=4/4` (`2026-04-21 21:18:39.504385-07:00`),
+- baseline/gates clean: `monitor_source_sensor=sensor.shadow_active_target`, `authority_mode=legacy`, `route_decision=route_linkplay_tcp`, `contract_valid=true`, `missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`, freshness within threshold (`age_s=157.6`),
+- execution disposition: pre-window authorization accepted; in-window and post-window captures remain required before closeout eligibility.
+
 Activation disposition:
 
-- `P8-S01` activated with monitor/checklist artifacts; pre-window evidence capture is now pending.
+- `P8-S01` activation packet is published and pre-window evidence is accepted.
+- Slice remains **Active** pending in-window + post-window packet completion.
 
 Reference specification: `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`.
 

@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.21.93 -->
+<!-- Version: 2026.04.21.94 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -136,7 +136,7 @@ Execution playbook reference: `docs/program/PARALLEL-PROGRAM-PLAYBOOK.md`.
 | P7-S02 | 7 | Validated (legacy retained as bounded rollback authority with post-window rollback-safe proof accepted) | Validated (first bounded authority-flip execution lane complete) | Completed (Run-1 pre/in/post PASS) | High | Validated |
 | P7-S03 | 7 | Validated (legacy retained as rollback-safe metadata authority baseline with post-window proof accepted) | Validated (bounded metadata-domain authority-flip execution lane complete) | Completed (Run-1 pre/in PASS + Run-2 post PASS) | High | Validated |
 | P7-S04 | 7 | Validated (rollback-safe legacy authority baseline preserved at closeout capture) | Validated (phase-exit closeout packet completed and accepted) | Completed (Run-1 closeout PASS/READY 4/4) | High | Validated |
-| P8-S01 | 8 | Active (legacy sealed baseline readiness gate; no ownership expansion) | Active (post-cutover governance/readiness lane) | In Progress (activation packet published; pre-window capture pending) | High | Active |
+| P8-S01 | 8 | Active (legacy sealed baseline readiness gate; no ownership expansion) | Active (post-cutover governance/readiness lane) | In Progress (Run-1 pre-window PASS/READY 4/4 captured; in/post pending) | High | Active |
 
 ## P1/P2 validation snapshot (2026-04-19)
 
@@ -941,7 +941,13 @@ Two-track disposition:
 
 Activation disposition:
 
-- `P8-S01` activated with monitor/checklist artifacts; pre-window evidence capture is now pending.
+- `P8-S01` activated with monitor/checklist artifacts.
+
+Run-1 pre-window evidence (2026-04-21):
+
+- monitor verdict: `Status=PASS`, `P8-S01 readiness=READY`, `gate_score=4/4` (`2026-04-21 21:18:39.504385-07:00`),
+- baseline/gates clean: `monitor_source_sensor=sensor.shadow_active_target`, `authority_mode=legacy`, `route_decision=route_linkplay_tcp`, `contract_valid=true`, `missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`, freshness within threshold (`age_s=157.6`),
+- execution disposition: pre-window authorization accepted; in-window and post-window captures remain required before closeout eligibility.
 
 Deferred H1 note (report/log/heal):
 

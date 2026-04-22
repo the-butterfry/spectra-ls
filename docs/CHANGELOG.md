@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.21.140 -->
+<!-- Version: 2026.04.21.141 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Changelog
 
 ## 2026-04-21
+
+- Validation/Phase-5 P5-S02 Run-2 Targeting Correction (Discovery-First) (`docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`, `docs/testing/raw/p5_s02_metadata_cutover_run_window_checklist.md`): remove install-specific `expected_target=media_player.spectra_ls_2` from Run-2 strict packet guidance and replace with dynamic monitor-derived targeting (`route_trace.active_target` from pre-window snapshot) plus optional omission when active target churn is expected. P1/P2/P3 impact: no source-of-truth ownership change; this restores anonymized/discovery-first execution posture while preserving strict fail-closed comparator semantics. README parity: no material repo-state change.
 
 - Validation/Phase-5 P5-S02 Run-2 Strict Evidence Packet (`docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`, `docs/testing/raw/p5_s02_metadata_cutover_run_window_checklist.md`): publish the immediate next bounded-window execution packet after M1 promotion-gate satisfaction, including strict expected-target/route comparator guidance, deterministic run-id/correlation capture, and explicit pass criteria for the next fresh metadata trial record while preserving `legacy` authority baseline policy. P1/P2/P3 impact: no source-of-truth ownership change; this is execution-discipline hardening for continued P5-S02 gate-prep evidence. README parity: no material repo-state change.
 

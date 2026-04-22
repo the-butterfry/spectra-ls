@@ -1,5 +1,5 @@
 <!-- Description: Deterministic operator run-window checklist for Phase 5 Slice-02 metadata-domain cutover readiness and bounded validation (P5-S02). -->
-<!-- Version: 2026.04.21.16 -->
+<!-- Version: 2026.04.21.17 -->
 <!-- Last updated: 2026-04-21 -->
 
 # P5-S02 Metadata Cutover — Run Window Checklist
@@ -599,9 +599,11 @@ mode: legacy
 dry_run: true
 window_id: p5s02-2026-04-21-run2
 reason: P5-S02 Run-2 strict target/route comparator capture
-expected_target: media_player.spectra_ls_2
-expected_route: route_linkplay_tcp
+expected_target: <use pre-window route_trace.active_target>
+expected_route: <use pre-window route_trace.decision>
 ```
+
+Comparator fill rule (required): render the monitor first, then copy comparator values from the same pre-window snapshot. Do not hardcode install-specific target IDs in this packet.
 
 Run-2 pass checklist:
 
@@ -614,6 +616,8 @@ Run-2 pass checklist:
 - post-window `authority_mode=legacy`
 
 If any strict comparator mismatch appears (`blocked_expected_target_mismatch` or `blocked_expected_route_mismatch`), classify run as `WARN` and capture full blocking reason list before rerun.
+
+If target churn is expected during the run window, omit `expected_target` and keep `expected_route` strict.
 
 ## Artifact linkage
 

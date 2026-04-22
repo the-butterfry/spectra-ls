@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.21.59 -->
+<!-- Version: 2026.04.21.60 -->
 <!-- Last updated: 2026-04-21 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -406,14 +406,15 @@ Next execution target (P5-S02-M1):
     - `dry_run=true`
     - unique `window_id` (new value)
     - non-empty `reason`
-    - `expected_target=media_player.spectra_ls_2`
-    - `expected_route=route_linkplay_tcp`
+    - `expected_target=<pre-window route_trace.active_target>` (discovery-first; no install-specific hardcode)
+    - `expected_route=<pre-window route_trace.decision>` (for example `route_linkplay_tcp`)
   - capture one fresh monitor artifact and verify:
     - `status=PASS`, `metadata_readiness=READY`
     - `metadata_trial_last_attempt.status in {dry_run_ok, applied, noop}`
     - `trial_gate_verdict=PASS`, `eligible_for_closeout=true`
     - `missing_audit_fields=0`, `audit_payload_state=COMPLETE`
   - keep explicit post-window authority disposition at `legacy`.
+  - if active target is intentionally churning during the window, omit `expected_target` and keep `expected_route` strict to avoid false mismatch blocks.
 
 Post-Phase destination note (operator UX target):
 

@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.21.137 -->
+<!-- Version: 2026.04.21.138 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Changelog
 
 ## 2026-04-21
+
+- Repo/Main Legacy Path Retirement (`esphome/control-py/**`, `esphome/control-board-esp32-tcp.yaml`, `.gitignore`, `.github/copilot-instructions.md`, `.github/BRANCH-OPERATIONS.md`, `.github/SHARED-CONTRACT-CHECKLIST.md`, `docs/README.md`): remove legacy `control-py` and `control-board-esp32-tcp.yaml` from `main` Git tracking and add explicit ignore guards so these paths stay out of GitHub on `main`. Backup path used before untracking: `/mnt/homeassistant/_backup_2026-04-21/control-py-main-removal/`. Restore command: `cp -a /mnt/homeassistant/_backup_2026-04-21/control-py-main-removal/control-py /mnt/homeassistant/esphome/ && cp -a /mnt/homeassistant/_backup_2026-04-21/control-py-main-removal/control-board-esp32-tcp.yaml /mnt/homeassistant/esphome/`. P1/P2/P3 impact: no runtime source-of-truth change (active path remains `esphome/spectra_ls_system/**`); governance/process/docs updated to stop enforcing control-py parity on `main`. README parity: material repo-state change captured in docs index and workspace instructions.
 
 - HA + ESPHome/LinkPlay Parser + Mixed-Protocol Hardening (`packages/ma_control_hub/template.inc`, `esphome/spectra_ls_system/packages/spectra-ls-system.yaml`, `esphome/control-py/packages/spectra-ls-system.yaml`): fix a remaining Jinja block-closure error in `MA Active Control Capable` (`missing endif`) that could still break template parsing, and add adaptive LinkPlay status polling fallback between HTTPS and HTTP in both active and control-py runtime tracks so mixed Arylic/Up2Stream transports can self-correct when a target only responds on one scheme. P1/P2/P3 impact: no source-of-truth ownership change enacted; parser stability + transport resilience hardening only. README parity: no material repo-state change.
 

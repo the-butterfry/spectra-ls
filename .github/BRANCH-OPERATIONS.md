@@ -1,36 +1,24 @@
-<!-- Description: Operational runbook for keeping main and menu-only branches healthy. -->
-<!-- Version: 2026.04.19.1 -->
-<!-- Last updated: 2026-04-16 -->
+<!-- Description: Operational runbook for current main-only workflow and legacy-branch archival posture. -->
+<!-- Version: 2026.04.21.2 -->
+<!-- Last updated: 2026-04-21 -->
 
 # Branch Operations Runbook
 
 ## Objective
 
-Keep `main` (spectra_ls_system active development) and `menu-only` (v2 stabilization) concurrently operable without disrupting live filesystem paths.
+Keep `main` (`esphome/spectra_ls_system` active development) healthy and synchronized while treating retired legacy paths as out-of-scope for default workflow.
 
 ## Worktree Layout
 
 - `main` worktree: `/mnt/homeassistant`
-- `menu-only` worktree: `/mnt/homeassistant/.worktrees/menu-only`
 
 ## Required Workflow
 
 1. Make changes in the correct worktree for the target branch.
-2. For shared contracts (RP2040 protocol, control API, helper/entity contracts), do one:
-   - paired update in both branches, or
-   - explicit divergence + migration note in `docs/CHANGELOG.md`.
-3. Validate entrypoints before commit:
+2. Validate active entrypoint before commit:
    - `main`: `esphome/spectra_ls_system.yaml`
-   - `menu-only`: `control-board-esp32-tcp.yaml`
-4. Commit and push each branch independently; keep remotes in sync.
-
-## Shared-Contract Parity Gate (Go / No-Go)
-
-Before merging or pushing any shared-contract change, complete `.github/SHARED-CONTRACT-CHECKLIST.md`.
-
-- **Go** only when every required item is checked and evidence is recorded.
-- **No-Go** if any shared-contract item is unchecked or evidence is missing.
-- If parity is intentionally skipped, add explicit divergence + migration note to `docs/CHANGELOG.md` before push.
+3. Commit and push `main`; keep remote synchronized.
+4. Treat `esphome/control-py/**` and `esphome/control-board-esp32-tcp.yaml` as retired/ignored on `main`.
 
 ## Safety Rules
 

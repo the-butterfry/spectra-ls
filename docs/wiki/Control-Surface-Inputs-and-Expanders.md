@@ -1,10 +1,17 @@
 <!-- Description: Operator-facing control-surface reference for Spectra inputs, buttons, sliders/pots, encoders, expanders, and event path. -->
-<!-- Version: 2026.04.19.1 -->
-<!-- Last updated: 2026-04-19 -->
+<!-- Version: 2026.04.22.1 -->
+<!-- Last updated: 2026-04-22 -->
 
 # Control Surface Inputs, Buttons, Sliders, and Expanders
 
 This page is the practical “where are all the controls?” index.
+
+Quick links:
+
+- Wiring protocol: `docs/hardware/WIRING-LAYOUT-PROTOCOL.md`
+- RP legend: `docs/circuitpy/RP-LEGEND.md`
+- RP source config: `esphome/circuitpy/sls_config.py`
+- RP runtime input code: `esphome/circuitpy/code.py`
 
 ## Hardware input stack at a glance
 

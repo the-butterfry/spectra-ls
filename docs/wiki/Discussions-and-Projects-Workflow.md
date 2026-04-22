@@ -1,8 +1,10 @@
 <!-- Description: GitHub Discussions and Projects operating workflow mapped to Spectra L/S scope paths. -->
-<!-- Version: 2026.04.19.2 -->
-<!-- Last updated: 2026-04-19 -->
+<!-- Version: 2026.04.22.1 -->
+<!-- Last updated: 2026-04-22 -->
 
 # Discussions and Projects Workflow
+
+Use this page to route ideas into scoped, trackable, reviewable work.
 
 ## Why use both
 
@@ -51,6 +53,15 @@ Single org/repo project titled: **Spectra Program Board**
 3. Convert to Issue when implementation is scoped.
 4. Add Issue to Project with Area/Track/Priority/Risk.
 5. Execute via PR with checklist + verification evidence.
+
+## Required linked references
+
+- Contribution workflow: `CONTRIBUTING.md`
+- PR checklist: `.github/pull_request_template.md`
+- Changelog: `docs/CHANGELOG.md`
+- Runtime roadmap: `docs/roadmap/v-next-NOTES.md`
+- Component roadmap: `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`
+- Label taxonomy/governance: `docs/governance/LABEL-TAXONOMY.md`
 
 ## Definition of ready (Issue)
 

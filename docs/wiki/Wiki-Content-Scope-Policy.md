@@ -1,6 +1,6 @@
 <!-- Description: Policy for wiki content boundaries, ownership, and parity with repository docs. -->
-<!-- Version: 2026.04.19.1 -->
-<!-- Last updated: 2026-04-19 -->
+<!-- Version: 2026.04.22.1 -->
+<!-- Last updated: 2026-04-22 -->
 
 # Wiki Content Scope Policy
 
@@ -27,6 +27,14 @@ This policy keeps wiki content useful, concise, and user-focused.
 1. Canonical technical detail: `docs/`
 2. Canonical user-facing overview: `README.md`
 3. Wiki: user/operator-friendly navigation + runbooks synchronized from `docs/wiki/`
+
+## Linked references
+
+- Wiki writing standard: `docs/wiki/DOCUMENTATION-WRITING-STANDARD.md`
+- Wiki source index: `docs/wiki/README.md`
+- Docs index: `docs/README.md`
+- Architecture docs: `docs/architecture/`
+- Roadmaps and planning docs: `docs/roadmap/`, `docs/program/`, `docs/notes/`
 
 ## Mature-project pattern (recommended)
 

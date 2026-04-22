@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.21.149 -->
+<!-- Version: 2026.04.21.150 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Changelog
 
 ## 2026-04-21
+
+- ESPHome/OLED Lighting Hold Render Continuity Fix (`esphome/spectra_ls_system/spectra-ls-peripherals.yaml`): prevent the observed post-adjustment visual artifact where the OLED could briefly blank before transitioning to Now Playing by treating the active lighting hold window (`lighting_return_to_audio_ms`) as an explicit lighting-render window in display-state computation and lighting-screen rendering guards. This keeps UI continuity after the last lighting adjustment input while preserving normal handoff to Now Playing when hold expires. P1/P2/P3 impact: no source-of-truth ownership change; display-state timing correctness hardening only. README parity: no material repo-state change.
 
 - Validation/Phase-5 P5-S03 Run-1 Complete PASS Closeout + Promotion (`docs/testing/raw/p5_s03_lighting_orchestration_run_window_checklist.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): record completed bounded lighting run-window evidence with all three captures in-place — pre-window PASS/READY (`2026-04-21 17:41:12.841574-07:00`), in-window PASS/READY (`2026-04-21 17:44:00.229390-07:00`), and post-window PASS/READY (`2026-04-21 17:44:45.600796-07:00`) — including explicit safe post-window authority disposition (`authority_mode=legacy`), clean contract/parity (`missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`), and no stop-condition triggers. Promote `P5-S03` from `Active` to `Validated` in Phase-5 ledgers. P1/P2/P3 impact: no source-of-truth ownership change; evidence-backed slice closeout/progression only. README parity: no material repo-state change.
 

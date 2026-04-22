@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.21.139 -->
+<!-- Version: 2026.04.21.140 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Changelog
 
 ## 2026-04-21
+
+- Validation/Phase-5 P5-S02 Run-2 Strict Evidence Packet (`docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`, `docs/testing/raw/p5_s02_metadata_cutover_run_window_checklist.md`): publish the immediate next bounded-window execution packet after M1 promotion-gate satisfaction, including strict expected-target/route comparator guidance, deterministic run-id/correlation capture, and explicit pass criteria for the next fresh metadata trial record while preserving `legacy` authority baseline policy. P1/P2/P3 impact: no source-of-truth ownership change; this is execution-discipline hardening for continued P5-S02 gate-prep evidence. README parity: no material repo-state change.
 
 - Validation/Phase-5 P5-S02-M1 Fresh COMPLETE Dry-Run Evidence Capture (`docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`, `docs/testing/raw/p5_s02_metadata_cutover_run_window_checklist.md`): record operator-captured monitor evidence (`2026-04-21 17:18:18.431382-07:00`) showing `Status=PASS`, `Metadata readiness=READY`, `authority_mode=legacy`, `route_linkplay_tcp`, contract clean (`missing_required=0`, `unresolved_required=0`), metadata gate `9/9`, and metadata-trial audit `dry_run_ok` with `M1 audit payload completeness=COMPLETE`, `trial_gate_verdict=PASS`, `eligible_for_closeout=true`. P1/P2/P3 impact: no source-of-truth ownership change; this satisfies the documented fresh dry-run promotion evidence gate for P5-S02-M1 while metadata ownership remains legacy. README parity: no material repo-state change.
 

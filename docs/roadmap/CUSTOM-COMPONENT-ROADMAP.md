@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.21.92 -->
+<!-- Version: 2026.04.21.93 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -136,6 +136,7 @@ Execution playbook reference: `docs/program/PARALLEL-PROGRAM-PLAYBOOK.md`.
 | P7-S02 | 7 | Validated (legacy retained as bounded rollback authority with post-window rollback-safe proof accepted) | Validated (first bounded authority-flip execution lane complete) | Completed (Run-1 pre/in/post PASS) | High | Validated |
 | P7-S03 | 7 | Validated (legacy retained as rollback-safe metadata authority baseline with post-window proof accepted) | Validated (bounded metadata-domain authority-flip execution lane complete) | Completed (Run-1 pre/in PASS + Run-2 post PASS) | High | Validated |
 | P7-S04 | 7 | Validated (rollback-safe legacy authority baseline preserved at closeout capture) | Validated (phase-exit closeout packet completed and accepted) | Completed (Run-1 closeout PASS/READY 4/4) | High | Validated |
+| P8-S01 | 8 | Active (legacy sealed baseline readiness gate; no ownership expansion) | Active (post-cutover governance/readiness lane) | In Progress (activation packet published; pre-window capture pending) | High | Active |
 
 ## P1/P2 validation snapshot (2026-04-19)
 
@@ -911,6 +912,36 @@ Run-1 closeout evidence (2026-04-21):
 Promotion disposition:
 
 - `P7-S04` promoted to **Validated**.
+
+### Phase 8 starter slice card — P8-S01 (legacy-seal readiness gate)
+
+Status: **Active**
+
+Scope:
+
+- **In:** post-cutover legacy-seal readiness gating, rollback-safe baseline verification, and governance continuity checks.
+- **Out:** runtime ownership expansion, irreversible legacy retirement actions, and net-new write-path cutover behavior.
+
+Activation gates (required):
+
+1. Phase-7 closeout packet is validated.
+2. Runtime baseline remains rollback-safe (`authority_mode=legacy`) with clean contract/parity.
+3. Rollback + single-writer controls remain explicit and verifiable.
+4. Legacy net-new growth freeze and component-primary posture remain explicit.
+
+Execution checklist:
+
+- `docs/testing/raw/p8_s01_legacy_seal_readiness_checklist.md`
+- Primary live monitor: `docs/testing/raw/p8_s01_legacy_seal_readiness_monitor.jinja`
+
+Two-track disposition:
+
+- **Track A (runtime):** sealed rollback-safe baseline with no net-new ownership growth.
+- **Track B (component):** active governance/readiness lane for post-cutover operation.
+
+Activation disposition:
+
+- `P8-S01` activated with monitor/checklist artifacts; pre-window evidence capture is now pending.
 
 Deferred H1 note (report/log/heal):
 

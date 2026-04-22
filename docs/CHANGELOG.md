@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.21.185 -->
+<!-- Version: 2026.04.21.186 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Changelog
 
 ## 2026-04-21
+
+- Program/Phase-8 P8-S01 Legacy-Seal Readiness Activation (`docs/testing/raw/p8_s01_legacy_seal_readiness_monitor.jinja`, `docs/testing/raw/p8_s01_legacy_seal_readiness_checklist.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): activate the first post-Phase-7 stabilization/governance lane as a fail-closed readiness gate with explicit rollback-safe baseline requirements (`authority_mode=legacy`), contract/parity cleanliness, rollback + single-writer verification, and legacy growth-freeze posture. Two-track disposition: runtime track remains sealed rollback-safe baseline with no net-new ownership growth; component track is active for governance/readiness execution with pre-window evidence pending. P1/P2/P3 impact: no source-of-truth ownership change; activation/evidence tooling and status-lane progression only. README/wiki parity: no material repo-state change.
 
 - Validation/Phase-7 P7-S04 Run-1 Closeout PASS Evidence + Promotion (`docs/testing/raw/p7_s04_phase_exit_closeout_checklist.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): record phase-exit monitor closeout as `Status=PASS`, `P7-S04 readiness=READY`, `gate_score=4/4` (`2026-04-21 21:13:00.468462-07:00`) with rollback-safe baseline and clean contract/parity snapshot (`monitor_source_sensor=sensor.shadow_active_target`, `authority_mode=legacy`, `route_decision=route_linkplay_tcp`, `contract_valid=true`, `missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`, freshness age `60.0s`), no stop-condition triggers, and complete closeout packet evidence. Promote `P7-S04` to validated and mark Phase-7 closeout packet accepted. Two-track disposition: runtime track remains rollback-safe compatibility baseline at closeout; component track completes and validates phase-exit closeout packet lane. P1/P2/P3 impact: no immediate source-of-truth ownership change; evidence-backed phase/slice promotion only. README/wiki parity: no material repo-state change.
 

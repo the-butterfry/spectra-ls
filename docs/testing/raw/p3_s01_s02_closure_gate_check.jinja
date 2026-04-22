@@ -1,6 +1,6 @@
 {# Description: Raw copy/paste Jinja template for Spectra LS Phase 3 S01/S02 closure gate decision. #}
-{# Version: 2026.04.19.5 #}
-{# Last updated: 2026-04-19 #}
+{# Version: 2026.04.20.7 #}
+{# Last updated: 2026-04-20 #}
 
 {# =========================
   Phase 3 S01/S02 Closure Gate Check (custom_components/spectra_ls)
@@ -86,6 +86,12 @@
 {% set gate_distinct_targets_ok = observed_distinct_pass_targets >= 2 or single_capable_topology_waiver %}
 
 {% set use_soak_evidence = evaluation_mode == 'soak_evidence' %}
+{% set gate_soak_cycles_effective = gate_soak_cycles_ok if use_soak_evidence else true %}
+{% set gate_distinct_targets_effective = gate_distinct_targets_ok if use_soak_evidence else true %}
+{% set gate_soak_attempts_effective = gate_soak_attempts_consistent if use_soak_evidence else true %}
+{% set gate_soak_cycles_display = gate_soak_cycles_ok if use_soak_evidence else 'n/a (runtime mode)' %}
+{% set gate_soak_attempts_display = gate_soak_attempts_consistent if use_soak_evidence else 'n/a (runtime mode)' %}
+{% set gate_distinct_targets_display = gate_distinct_targets_ok if use_soak_evidence else 'n/a (runtime mode)' %}
 {% set observed_source_ok = observed_evidence_source | trim == 'script.spectra_p3_soak_one_shot' %}
 {% set observed_reference_ok = (observed_evidence_reference | trim) not in ['', 'unknown', 'unavailable', 'none'] %}
 {% set observed_collected_ts = as_timestamp(observed_evidence_collected_at) if observed_evidence_collected_at not in ['', 'unknown', 'unavailable', 'none', none] else none %}
@@ -103,8 +109,8 @@
 {% if gate_parity_ok %}{% set gate_ok_count = gate_ok_count + 1 %}{% endif %}
 {% if gate_s01_ok %}{% set gate_ok_count = gate_ok_count + 1 %}{% endif %}
 {% if gate_s02_ok %}{% set gate_ok_count = gate_ok_count + 1 %}{% endif %}
-{% if gate_soak_cycles_ok %}{% set gate_ok_count = gate_ok_count + 1 %}{% endif %}
-{% if gate_distinct_targets_ok %}{% set gate_ok_count = gate_ok_count + 1 %}{% endif %}
+{% if gate_soak_cycles_effective %}{% set gate_ok_count = gate_ok_count + 1 %}{% endif %}
+{% if gate_distinct_targets_effective %}{% set gate_ok_count = gate_ok_count + 1 %}{% endif %}
 
 {% set verdict = 'PASS' %}
 {% if gate_ok_count < 5 %}
@@ -113,11 +119,13 @@
   {% set verdict = 'WARN' %}
 {% endif %}
 
-{% if not gate_soak_attempts_consistent %}
+{% if not gate_soak_attempts_effective %}
   {% set verdict = 'FAIL' %}
 {% elif not gate_evidence_provenance_ok %}
   {% set verdict = 'FAIL' %}
 {% elif verdict == 'PASS' and not gate_snapshot_fresh %}
+  {% set verdict = 'WARN' %}
+{% elif verdict == 'PASS' and not use_soak_evidence %}
   {% set verdict = 'WARN' %}
 {% endif %}
 
@@ -125,6 +133,7 @@
 - Result: **{{ verdict }}**
 - Timestamp: **{{ now() }}**
 - Gate score: **{{ gate_ok_count }}/7**
+- Evaluation interpretation: **{{ 'Closure-grade (soak evidence)' if use_soak_evidence else 'Runtime health-check only (not closure-grade)' }}**
 
 ### Runtime context
 - Active target (`{{ s_target }}`): **{{ active_target }}**
@@ -155,9 +164,9 @@
 - Parity clean (`unresolved=0`, `mismatches=0`): **{{ gate_parity_ok }}** (runtime_now={{ gate_parity_ok_runtime }})
 - S01 guarded-write status healthy: **{{ gate_s01_ok }}** (runtime_now={{ gate_s01_ok_runtime }})
 - S02 handoff compatibility healthy: **{{ gate_s02_ok }}** (runtime_now={{ gate_s02_ok_runtime }})
-- Soak cycles sufficient (>=3): **{{ gate_soak_cycles_ok }}**
-- Soak attempts consistent (attempts >= pass cycles and >0): **{{ gate_soak_attempts_consistent }}**
-- Distinct target gate (>=2 or waiver): **{{ gate_distinct_targets_ok }}**
+- Soak cycles sufficient (>=3): **{{ gate_soak_cycles_display }}**{% if use_soak_evidence %} (observed={{ gate_soak_cycles_ok }}){% endif %}
+- Soak attempts consistent (attempts >= pass cycles and >0): **{{ gate_soak_attempts_display }}**{% if use_soak_evidence %} (observed={{ gate_soak_attempts_consistent }}){% endif %}
+- Distinct target gate (>=2 or waiver): **{{ gate_distinct_targets_display }}**{% if use_soak_evidence %} (observed={{ gate_distinct_targets_ok }}){% endif %}
 - Evidence provenance valid (source+reference+<=24h): **{{ gate_evidence_provenance_ok }}**
 
 ### Compatibility details
@@ -171,6 +180,10 @@
 - **Recommend close P3-S01:** Yes
 - **Recommend close P3-S02:** Yes
 - Record closure note in roadmap + v-next + changelog with the soak/waiver evidence above.
+{% elif not use_soak_evidence %}
+- **Recommend close P3-S01:** No (runtime mode is health-check only)
+- **Recommend close P3-S02:** No (runtime mode is health-check only)
+- Re-run in `soak_evidence` mode with recorded soak fields to produce closure-grade evidence.
 {% elif verdict == 'WARN' %}
 - **Recommend close P3-S01:** {{ 'Yes' if gate_s01_ok and gate_route_ok and gate_contract_ok and gate_parity_ok else 'No' }}
 - **Recommend close P3-S02:** No
@@ -180,3 +193,14 @@
 - **Recommend close P3-S02:** No
 - Resolve FAIL gates first; do not advance to P3-S03/Phase 4.
 {% endif %}
+
+### How to use `soak_evidence` mode (quick)
+- Set `evaluation_mode = 'soak_evidence'`.
+- Fill these from your latest `script.spectra_p3_soak_one_shot` run summary/notifications:
+  - `observed_soak_pass_cycles` = successful cycles completed.
+  - `observed_soak_attempts` = attempts consumed.
+  - `observed_distinct_pass_targets` = distinct PASS targets count.
+  - `observed_route_eligible` / `observed_s01_ok` / `observed_s02_ok` / `observed_parity_ok` = true when soak evidence confirms each gate.
+  - `observed_evidence_source = 'script.spectra_p3_soak_one_shot'`.
+  - `observed_evidence_reference` = run tag/notification reference (for example `soak-c3-a4-...`).
+  - `observed_evidence_collected_at` = ISO timestamp from that run (must be <=24h old).

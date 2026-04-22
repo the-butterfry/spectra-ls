@@ -1,6 +1,6 @@
 # Description: Spectra LS lighting hub (rooms/targets from HA Areas).
-# Version: 2026.04.18.23
-# Last updated: 2026-04-18
+# Version: 2026.04.20.24
+# Last updated: 2026-04-20
 # Update version/date whenever you change this file.
 #
 # Notes:
@@ -396,20 +396,34 @@ automation:
           options_changed: "{{ current_options | join('||') != safe_options | join('||') }}"
           needs_reset: "{{ (room_parsed | count > 0) and (states('input_select.control_board_room') not in room_options_effective) }}"
           should_update_options: "{{ options_changed and ((room_parsed | count > 0) or (current_options | count == 0)) }}"
+          transitional_options: >
+            {% if needs_reset and current not in ['', none] and current not in safe_options %}
+              {{ [current] + safe_options }}
+            {% else %}
+              {{ safe_options }}
+            {% endif %}
+          needs_prune: "{{ transitional_options | join('||') != safe_options | join('||') }}"
       - choose:
           - conditions: "{{ should_update_options }}"
             sequence:
               - service: input_select.set_options
                 data:
                   entity_id: input_select.control_board_room
-                  options: "{{ safe_options }}"
+                  options: "{{ transitional_options }}"
       - choose:
           - conditions: "{{ needs_reset }}"
             sequence:
               - service: input_select.select_option
                 data:
                   entity_id: input_select.control_board_room
-                  option: "{{ room_options_effective[0] if room_options_effective | count > 0 else 'Unknown' }}"
+                  option: "{{ room_options_effective[0] if room_options_effective | count > 0 else 'No Rooms' }}"
+      - choose:
+          - conditions: "{{ should_update_options and needs_prune }}"
+            sequence:
+              - service: input_select.set_options
+                data:
+                  entity_id: input_select.control_board_room
+                  options: "{{ safe_options }}"
 
   - id: control_board_sync_target_options
     alias: Control Board - Sync Target Options

@@ -1,6 +1,6 @@
 <!-- Description: End-user overview for the Spectra L/S Home Assistant + ESPHome system. -->
-<!-- Version: 2026.04.19.10 -->
-<!-- Last updated: 2026-04-19 -->
+<!-- Version: 2026.04.21.11 -->
+<!-- Last updated: 2026-04-21 -->
 
 # Spectra L/S
 
@@ -66,3 +66,7 @@ Common entry points:
 - Setup placeholders: `docs/setup/SPECTRA-HA-CONFIG-PLACEHOLDERS.md`
 - Latest project changes: `docs/CHANGELOG.md`
 - Developer onboarding/runbook: `docs/developer/DEVELOPER-INSTRUCTIONS.md`
+
+Roadmap direction:
+
+- After current migration gates complete, Spectra L/S is planned to include a dedicated Home Assistant sidebar **Spectra Control Center** for setup, tuning, defaults, overrides, and mapped-environment visibility.

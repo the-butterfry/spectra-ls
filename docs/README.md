@@ -1,5 +1,5 @@
 <!-- Description: Documentation index for Spectra L/S technical, onboarding, roadmap, and operations artifacts. -->
-<!-- Version: 2026.04.21.3 -->
+<!-- Version: 2026.04.21.4 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Spectra L/S Documentation Index
@@ -12,6 +12,11 @@ Use this folder as the single location for project documentation and notes.
 - Changelog: `docs/CHANGELOG.md`
 - GitHub governance blueprint: `docs/governance/GITHUB-MASTERWORK-BLUEPRINT.md`
 - Active ESPHome runtime path on `main`: `esphome/spectra_ls_system/**` (entrypoint `esphome/spectra_ls_system.yaml`).
+
+Legacy-seal status (current):
+
+- Runtime path (`packages/` + `esphome/`) is sealed as compatibility + rollback baseline.
+- Custom integration path (`custom_components/spectra_ls/`) is primary for net-new control-plane/feature growth.
 
 ## Roadmap and program governance
 

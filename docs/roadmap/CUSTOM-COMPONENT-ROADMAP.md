@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.21.94 -->
+<!-- Version: 2026.04.21.95 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -948,6 +948,11 @@ Run-1 pre-window evidence (2026-04-21):
 - monitor verdict: `Status=PASS`, `P8-S01 readiness=READY`, `gate_score=4/4` (`2026-04-21 21:18:39.504385-07:00`),
 - baseline/gates clean: `monitor_source_sensor=sensor.shadow_active_target`, `authority_mode=legacy`, `route_decision=route_linkplay_tcp`, `contract_valid=true`, `missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`, freshness within threshold (`age_s=157.6`),
 - execution disposition: pre-window authorization accepted; in-window and post-window captures remain required before closeout eligibility.
+
+GitHub/developer declaration (policy mirror):
+
+- Legacy runtime path is sealed as rollback-safe compatibility baseline.
+- Custom component path is primary for net-new feature/control-plane growth.
 
 Deferred H1 note (report/log/heal):
 

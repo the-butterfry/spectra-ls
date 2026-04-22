@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.21.187 -->
+<!-- Version: 2026.04.21.188 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Changelog
 
 ## 2026-04-21
+
+- Governance/Docs Legacy-Seal Positioning Sweep (`README.md`, `docs/README.md`, `docs/developer/DEVELOPER-INSTRUCTIONS.md`, `CONTRIBUTING.md`, `.github/pull_request_template.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): publish explicit GitHub-facing and developer-facing language that the legacy runtime path is now a sealed rollback-safe baseline and the custom component is the primary path for net-new feature/control-plane growth. Adds plain-English contribution and review rules so PRs are evaluated against legacy-seal boundaries (no net-new ownership expansion in runtime path without explicitly approved bounded slice + evidence packet). Two-track disposition: runtime track remains compatibility-sealed; component track remains primary for forward feature work. P1/P2/P3 impact: no source-of-truth ownership flip in this docs sweep; governance clarity and execution discipline only. README/wiki parity: README updated; wiki parity remains no material operator workflow change.
 
 - Validation/Phase-8 P8-S01 Run-1 Pre-Window PASS Evidence Capture (`docs/testing/raw/p8_s01_legacy_seal_readiness_checklist.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): record first post-Phase-7 stabilization pre-window monitor artifact as `Status=PASS`, `P8-S01 readiness=READY`, `gate_score=4/4` (`2026-04-21 21:18:39.504385-07:00`) with rollback-safe baseline and clean contract/parity snapshot (`monitor_source_sensor=sensor.shadow_active_target`, `authority_mode=legacy`, `route_decision=route_linkplay_tcp`, `contract_valid=true`, `missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`, freshness age `157.6s`). Two-track disposition: runtime track remains sealed rollback-safe baseline with no net-new ownership growth; component track remains active in governance/readiness lane. P1/P2/P3 impact: no source-of-truth ownership change; bounded evidence progression only. README/wiki parity: no material repo-state change.
 

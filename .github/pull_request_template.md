@@ -1,6 +1,6 @@
 <!-- Description: Pull request checklist template for quality, parity, and verification evidence. -->
-<!-- Version: 2026.04.19.1 -->
-<!-- Last updated: 2026-04-19 -->
+<!-- Version: 2026.04.21.2 -->
+<!-- Last updated: 2026-04-21 -->
 
 # Pull Request
 
@@ -33,6 +33,12 @@ Evidence notes:
 - [ ] `README.md` updated **or** explicitly not required
 
 Docs touched:
+
+## Legacy-seal boundary check
+
+- [ ] This PR preserves sealed legacy-runtime posture **or** includes explicit bounded exception rationale
+- [ ] Net-new ownership/feature growth is component-first (`custom_components/spectra_ls`) unless explicitly approved and documented
+- [ ] Two-track disposition is stated (runtime + component)
 
 ## Risk and rollback
 

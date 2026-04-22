@@ -1,6 +1,6 @@
 <!-- Description: Contributor guide for Spectra L/S development, scope, workflow, and quality expectations. -->
-<!-- Version: 2026.04.19.2 -->
-<!-- Last updated: 2026-04-19 -->
+<!-- Version: 2026.04.21.3 -->
+<!-- Last updated: 2026-04-21 -->
 
 # Contributing to Spectra L/S
 
@@ -24,6 +24,7 @@ Thank you for contributing.
 - One logical change set per PR.
 - Root-cause fixes over symptom patches.
 - No secrets or environment-local artifacts.
+- Respect migration posture: legacy runtime path is sealed for compatibility/rollback; net-new ownership/features should target `custom_components/spectra_ls` unless a bounded legacy exception is explicitly documented.
 
 ## Required for functional changes
 

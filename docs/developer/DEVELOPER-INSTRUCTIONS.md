@@ -1,6 +1,6 @@
 <!-- Description: Contributor/developer workflow for Spectra L/S implementation, preflight, instrumentation, and documentation/code parity. -->
-<!-- Version: 2026.04.19.2 -->
-<!-- Last updated: 2026-04-19 -->
+<!-- Version: 2026.04.21.3 -->
+<!-- Last updated: 2026-04-21 -->
 
 # Spectra L/S Developer Instructions
 
@@ -127,3 +127,43 @@ A slice is done only when all are true:
 - Changelog updated.
 - Commit pushed with sync proof.
 - (If deployment requested) OTA completed with explicit success evidence.
+
+## 8) Legacy Sealing + Component-Primary Policy (Required)
+
+### Plain-English rule
+
+- Treat legacy runtime (`packages/` + `esphome/`) as a **sealed rollback-safe baseline**.
+- Treat custom integration (`custom_components/spectra_ls/`) as the **primary path** for net-new feature/control-plane work.
+
+### What this means in day-to-day implementation
+
+1. **Allowed legacy edits**
+   - compatibility fixes,
+   - safety/reliability hardening,
+   - rollback integrity,
+   - evidence/diagnostics parity support.
+
+2. **Not allowed by default in legacy path**
+   - unbounded new ownership behavior,
+   - net-new feature growth that should live in component track,
+   - implicit cutover behavior without bounded slice + evidence packet.
+
+3. **When legacy behavior must change**
+   - scope it as a bounded, reversible slice,
+   - define explicit stop conditions,
+   - document two-track disposition (runtime + component),
+   - capture pre/in/post or equivalent closeout evidence before promotion.
+
+4. **PR review expectation**
+   - reviewers should ask: “Is this preserving sealed legacy posture or expanding ownership?”
+   - if ownership expands, require explicit roadmap/changelog rationale and migration gate evidence.
+
+### Documentation and governance parity for this policy
+
+For any change touching this boundary, keep these in sync in the same change set:
+
+1. `docs/CHANGELOG.md`
+2. `docs/roadmap/v-next-NOTES.md`
+3. `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`
+4. `README.md`
+5. this file (`docs/developer/DEVELOPER-INSTRUCTIONS.md`) when developer behavior expectations change.

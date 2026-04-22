@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.21.71 -->
+<!-- Version: 2026.04.21.72 -->
 <!-- Last updated: 2026-04-21 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -538,6 +538,16 @@ Execution checklist:
 
 - `docs/testing/raw/p6_s01_control_center_foundation_checklist.md`
 - Primary live monitor: `docs/testing/raw/p6_s01_control_center_foundation_monitor.jinja`
+
+Baseline evidence (2026-04-21):
+
+- monitor verdict: `Status=PASS`, `P6-S01 readiness=READY`, `gate_score=6/6` (`2026-04-21 19:18:22.634239-07:00`),
+- runtime baseline clean: `authority_mode=legacy`, `route_decision=route_linkplay_tcp`, `contract_valid=true`, `missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`, freshness within threshold,
+- foundation governance gates all true: read-only-first launch, compatibility posture, rollback posture, and bounded-authority posture.
+
+Disposition:
+
+- P6-S01 remains **Active** with baseline packet captured; continue bounded foundation execution toward final closeout evidence.
 
 P1/P2/P3 impact check:
 

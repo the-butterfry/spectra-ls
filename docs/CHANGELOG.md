@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.21.157 -->
+<!-- Version: 2026.04.21.158 -->
 <!-- Last updated: 2026-04-21 -->
 
 # Changelog
 
 ## 2026-04-21
+
+- Validation/Phase-6 P6-S01 Baseline PASS Evidence Capture (`docs/testing/raw/p6_s01_control_center_foundation_checklist.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): record first operator-captured P6-S01 monitor artifact (`2026-04-21 19:18:22.634239-07:00`) with `Status=PASS`, `P6-S01 readiness=READY`, `gate_score=6/6`, safe runtime baseline (`authority_mode=legacy`, `route_decision=route_linkplay_tcp`, `contract_valid=true`, `missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`, fresh snapshot), and all foundation governance gates true. Slice remains `Active` while bounded foundation tasks continue toward closeout packet completion. P1/P2/P3 impact: no source-of-truth ownership change; evidence progression only. README parity: no material repo-state change.
 
 - Roadmap/Phase-6 P6-S01 Control-Center Foundation Activation (`docs/testing/raw/p6_s01_control_center_foundation_checklist.md`, `docs/testing/raw/p6_s01_control_center_foundation_monitor.jinja`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): activate the first Phase-6 slice for sidebar control-center foundation work with a deterministic operator checklist + readiness monitor template, explicit read-only-first launch posture, and bounded rollback/compatibility gates linked from both phase ledgers. P1/P2/P3 impact: no source-of-truth ownership change; post-Phase-5 planning/execution governance progression only. README parity: no material repo-state change.
 

@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.22.105 -->
+<!-- Version: 2026.04.22.106 -->
 <!-- Last updated: 2026-04-22 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -1036,6 +1036,11 @@ Run-7 execution update (2026-04-22):
 
 - High-traffic wiki lane: improved architecture/orientation/install pages (`docs/wiki/System-Architecture.md`, `docs/wiki/Welcome-README-and-Bug-Workflow.md`, `docs/wiki/Install-on-Your-Own-HA.md`) with explicit link-first references for canonical sources and runbooks.
 - Execution disposition: run-7 packet accepted; continue residual link-normalization sweep as follow-on maintenance.
+
+Run-8 execution update (2026-04-22):
+
+- Residual wiki lane: improved contract/control-surface/setup-roadmap pages (`docs/wiki/Control-Contracts-and-Scope-Paths.md`, `docs/wiki/Control-Surface-Inputs-and-Expanders.md`, `docs/wiki/User-Setup-Deploy-and-HA-Integration.md`, `docs/wiki/Custom-Component-Setup-Roadmap-Stub.md`) with explicit link-first references for canonical repo sources.
+- Execution disposition: run-8 packet accepted; continue small residual cleanup as follow-on maintenance.
 
 GitHub/developer declaration (policy mirror):
 

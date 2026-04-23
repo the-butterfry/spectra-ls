@@ -1,5 +1,5 @@
 <!-- Description: Operator-facing control-surface reference for Spectra inputs, buttons, sliders/pots, encoders, expanders, and event path. -->
-<!-- Version: 2026.04.22.1 -->
+<!-- Version: 2026.04.22.2 -->
 <!-- Last updated: 2026-04-22 -->
 
 # Control Surface Inputs, Buttons, Sliders, and Expanders
@@ -8,10 +8,10 @@ This page is the practical “where are all the controls?” index.
 
 Quick links:
 
-- Wiring protocol: `docs/hardware/WIRING-LAYOUT-PROTOCOL.md`
-- RP legend: `docs/circuitpy/RP-LEGEND.md`
-- RP source config: `esphome/circuitpy/sls_config.py`
-- RP runtime input code: `esphome/circuitpy/code.py`
+- Wiring protocol: [`docs/hardware/WIRING-LAYOUT-PROTOCOL.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/hardware/WIRING-LAYOUT-PROTOCOL.md)
+- RP legend: [`docs/circuitpy/RP-LEGEND.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/circuitpy/RP-LEGEND.md)
+- RP source config: [`esphome/circuitpy/sls_config.py`](https://github.com/the-butterfry/spectra-ls/blob/main/esphome/circuitpy/sls_config.py)
+- RP runtime input code: [`esphome/circuitpy/code.py`](https://github.com/the-butterfry/spectra-ls/blob/main/esphome/circuitpy/code.py)
 
 ## Hardware input stack at a glance
 
@@ -23,7 +23,7 @@ Quick links:
 
 ## Digital buttons (PCF8575 path)
 
-Current canonical button pin map from `esphome/circuitpy/sls_config.py`:
+Current canonical button pin map from [`esphome/circuitpy/sls_config.py`](https://github.com/the-butterfry/spectra-ls/blob/main/esphome/circuitpy/sls_config.py):
 
 | Button | PCF pin | Event ID |
 | --- | ---: | ---: |
@@ -46,14 +46,14 @@ Current canonical button pin map from `esphome/circuitpy/sls_config.py`:
   - previous item: `123`
   - confirm: `124`
 
-Selector pin contracts are defined in `esphome/circuitpy/sls_config.py`:
+Selector pin contracts are defined in [`esphome/circuitpy/sls_config.py`](https://github.com/the-butterfry/spectra-ls/blob/main/esphome/circuitpy/sls_config.py):
 
 - mode selector pins: `9..13` (one-hot)
 - control class pins: `14..15` (mapped combinations)
 
 ## Rotary encoders (Seesaw path)
 
-Current encoder map from `esphome/circuitpy/code.py`:
+Current encoder map from [`esphome/circuitpy/code.py`](https://github.com/the-butterfry/spectra-ls/blob/main/esphome/circuitpy/code.py):
 
 | Encoder | I2C address | Delta event ID | Press event ID |
 | --- | ---: | ---: | ---: |
@@ -62,7 +62,7 @@ Current encoder map from `esphome/circuitpy/code.py`:
 
 ## Sliders and pots (analog path)
 
-Current analog input map from `esphome/circuitpy/code.py`:
+Current analog input map from [`esphome/circuitpy/code.py`](https://github.com/the-butterfry/spectra-ls/blob/main/esphome/circuitpy/code.py):
 
 | Control | Source | Channel/Pin | Event ID |
 | --- | --- | --- | ---: |
@@ -88,11 +88,11 @@ Current analog input map from `esphome/circuitpy/code.py`:
 
 ## Source-of-truth files
 
-- RP event/pin map: `esphome/circuitpy/sls_config.py`
-- RP runtime input config: `esphome/circuitpy/code.py`
-- Detailed wiring protocol: `docs/hardware/WIRING-LAYOUT-PROTOCOL.md`
-- RP legend + ownership: `docs/circuitpy/RP-LEGEND.md`
-- Runtime architecture map: `docs/architecture/CODEBASE-RUNTIME-ARCHITECTURE.md`
+- RP event/pin map: [`esphome/circuitpy/sls_config.py`](https://github.com/the-butterfry/spectra-ls/blob/main/esphome/circuitpy/sls_config.py)
+- RP runtime input config: [`esphome/circuitpy/code.py`](https://github.com/the-butterfry/spectra-ls/blob/main/esphome/circuitpy/code.py)
+- Detailed wiring protocol: [`docs/hardware/WIRING-LAYOUT-PROTOCOL.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/hardware/WIRING-LAYOUT-PROTOCOL.md)
+- RP legend + ownership: [`docs/circuitpy/RP-LEGEND.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/circuitpy/RP-LEGEND.md)
+- Runtime architecture map: [`docs/architecture/CODEBASE-RUNTIME-ARCHITECTURE.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/architecture/CODEBASE-RUNTIME-ARCHITECTURE.md)
 
 ## Change discipline
 
@@ -101,4 +101,4 @@ When input mappings or event IDs change:
 1. Update RP source-of-truth files.
 2. Update wiring/legend docs.
 3. Update this wiki page.
-4. Record contract deltas in `docs/CHANGELOG.md`.
+4. Record contract deltas in [`docs/CHANGELOG.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/CHANGELOG.md).

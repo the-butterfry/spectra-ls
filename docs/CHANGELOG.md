@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.22.202 -->
+<!-- Version: 2026.04.22.203 -->
 <!-- Last updated: 2026-04-22 -->
 
 # Changelog
 
 ## 2026-04-22
+
+- P8-S02 Link Consistency Residual Run-8 (`docs/wiki/Control-Contracts-and-Scope-Paths.md`, `docs/wiki/Control-Surface-Inputs-and-Expanders.md`, `docs/wiki/User-Setup-Deploy-and-HA-Integration.md`, `docs/wiki/Custom-Component-Setup-Roadmap-Stub.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): normalize remaining contract/setup/control-surface wiki references to explicit clickable links and tighten canonical source routing in residual high-use pages. Two-track disposition: runtime track unchanged/sealed compatibility baseline; component track unchanged/primary growth lane. P1/P2/P3 impact: no source-of-truth ownership change; documentation navigation quality hardening only.
 
 - P8-S02 Link Consistency High-Traffic Run-7 (`docs/wiki/System-Architecture.md`, `docs/wiki/Welcome-README-and-Bug-Workflow.md`, `docs/wiki/Install-on-Your-Own-HA.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): convert remaining high-traffic wiki orientation/install/architecture pages to link-first references for faster navigation and fewer dead-path callouts. Two-track disposition: runtime track unchanged/sealed compatibility baseline; component track unchanged/primary growth lane. P1/P2/P3 impact: no source-of-truth ownership change; documentation navigation quality hardening only.
 

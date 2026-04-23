@@ -1,6 +1,6 @@
 <!-- Description: Practical setup/deploy/integration guide for Spectra on Home Assistant with clear operator outcomes and failure actions. -->
-<!-- Version: 2026.04.21.6 -->
-<!-- Last updated: 2026-04-21 -->
+<!-- Version: 2026.04.22.7 -->
+<!-- Last updated: 2026-04-22 -->
 
 # User Setup, Deploy, and HA Integration
 
@@ -16,7 +16,7 @@ Target outcome:
 ## Current setup model (today)
 
 - Runtime control path: ESPHome + Home Assistant packages
-- Parallel migration target: `custom_components/spectra_ls` (in roadmap phases)
+- Parallel migration target: [`custom_components/spectra_ls`](https://github.com/the-butterfry/spectra-ls/tree/main/custom_components/spectra_ls) (in roadmap phases)
 - Discovery-first design remains default
 
 ## What is automated vs manual today
@@ -80,13 +80,13 @@ This is additive and migration-safe: runtime/source-of-truth ownership remains u
 
 For P6 execution-lane validation evidence, use:
 
-- `docs/testing/raw/p6_s04_control_input_execution_monitor.jinja`
-- `docs/testing/raw/p6_s04_control_input_execution_checklist.md`
+- [`docs/testing/raw/p6_s04_control_input_execution_monitor.jinja`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/testing/raw/p6_s04_control_input_execution_monitor.jinja)
+- [`docs/testing/raw/p6_s04_control_input_execution_checklist.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/testing/raw/p6_s04_control_input_execution_checklist.md)
 
 ## Step-by-step runtime setup (operator flow)
 
 1. Copy/setup required package and ESPHome config references for your install.
-2. Ensure placeholders from `docs/setup/SPECTRA-HA-CONFIG-PLACEHOLDERS.md` are resolved with your local values.
+2. Ensure placeholders from [`docs/setup/SPECTRA-HA-CONFIG-PLACEHOLDERS.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/setup/SPECTRA-HA-CONFIG-PLACEHOLDERS.md) are resolved with your local values.
 3. Store secrets using `!secret` and local-only files (never commit deployment secrets).
 4. Validate HA configuration and template entities.
 5. Compile ESPHome configuration.
@@ -126,7 +126,7 @@ Use the issue form and include:
 - redacted logs and config snippets,
 - impact and workaround.
 
-See: `docs/wiki/Welcome-README-and-Bug-Workflow.md`.
+See: [`docs/wiki/Welcome-README-and-Bug-Workflow.md`](Welcome-README-and-Bug-Workflow).
 
 Attach these when possible:
 
@@ -145,11 +145,11 @@ Attach these when possible:
 
 ## Custom component setup roadmap (stub)
 
-Setup will gradually move from package-heavy wiring to guided integration flows in `custom_components/spectra_ls`.
+Setup will gradually move from package-heavy wiring to guided integration flows in [`custom_components/spectra_ls`](https://github.com/the-butterfry/spectra-ls/tree/main/custom_components/spectra_ls).
 
 Roadmap source:
 
-- `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`
-- `docs/roadmap/v-next-NOTES.md`
+- [`docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md)
+- [`docs/roadmap/v-next-NOTES.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/roadmap/v-next-NOTES.md)
 
 As each phase lands, this page will gain concrete screenshots/steps/migration notes.

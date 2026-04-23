@@ -1,5 +1,5 @@
 <!-- Description: Scope-path contracts and ownership map for Spectra L/S implementation and operations. -->
-<!-- Version: 2026.04.22.1 -->
+<!-- Version: 2026.04.22.2 -->
 <!-- Last updated: 2026-04-22 -->
 
 # Control Contracts and Scope Paths
@@ -19,19 +19,19 @@ Use this page as the routing map for work intake, review ownership, and project 
 
 ## Shared contract policy
 
-- For shared contracts, maintain branch parity or explicitly log divergence in `docs/CHANGELOG.md`.
-- Complete `.github/SHARED-CONTRACT-CHECKLIST.md` before shared-contract merges.
+- For shared contracts, maintain branch parity or explicitly log divergence in [`docs/CHANGELOG.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/CHANGELOG.md).
+- Complete [`.github/SHARED-CONTRACT-CHECKLIST.md`](https://github.com/the-butterfry/spectra-ls/blob/main/.github/SHARED-CONTRACT-CHECKLIST.md) before shared-contract merges.
 
 ## Verification references
 
-- Build gate and deployment gate policies: `.github/copilot-instructions.md`
-- Contribution workflow: `CONTRIBUTING.md`
+- Build gate and deployment gate policies: [`.github/copilot-instructions.md`](https://github.com/the-butterfry/spectra-ls/blob/main/.github/copilot-instructions.md)
+- Contribution workflow: [`CONTRIBUTING.md`](https://github.com/the-butterfry/spectra-ls/blob/main/CONTRIBUTING.md)
 
 ## Linked reference map
 
-- Runtime architecture: `docs/architecture/CODEBASE-RUNTIME-ARCHITECTURE.md`
-- Control-hub architecture: `docs/architecture/CONTROL-HUB-ARCHITECTURE.md`
-- Parallel program execution: `docs/program/PARALLEL-PROGRAM-PLAYBOOK.md`
-- Runtime roadmap ledger: `docs/roadmap/v-next-NOTES.md`
-- Component roadmap ledger: `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`
-- Shared contract checklist: `.github/SHARED-CONTRACT-CHECKLIST.md`
+- Runtime architecture: [`docs/architecture/CODEBASE-RUNTIME-ARCHITECTURE.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/architecture/CODEBASE-RUNTIME-ARCHITECTURE.md)
+- Control-hub architecture: [`docs/architecture/CONTROL-HUB-ARCHITECTURE.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/architecture/CONTROL-HUB-ARCHITECTURE.md)
+- Parallel program execution: [`docs/program/PARALLEL-PROGRAM-PLAYBOOK.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/program/PARALLEL-PROGRAM-PLAYBOOK.md)
+- Runtime roadmap ledger: [`docs/roadmap/v-next-NOTES.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/roadmap/v-next-NOTES.md)
+- Component roadmap ledger: [`docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md)
+- Shared contract checklist: [`.github/SHARED-CONTRACT-CHECKLIST.md`](https://github.com/the-butterfry/spectra-ls/blob/main/.github/SHARED-CONTRACT-CHECKLIST.md)

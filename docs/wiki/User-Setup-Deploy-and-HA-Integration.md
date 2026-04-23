@@ -1,5 +1,5 @@
 <!-- Description: Practical setup/deploy/integration guide for Spectra on Home Assistant with clear operator outcomes and failure actions. -->
-<!-- Version: 2026.04.22.7 -->
+<!-- Version: 2026.04.22.8 -->
 <!-- Last updated: 2026-04-22 -->
 
 # User Setup, Deploy, and HA Integration
@@ -72,9 +72,13 @@ You can now stage core control-center mappings from the Spectra integration itse
   - encoder long-press action,
   - button 1–4 scene bindings,
   - read-only mode toggle for rollout safety.
+- Scene bindings now use scene-aware selectors in options flow (instead of free-text only), and button-1 quick-trigger defaults are pre-suggested when scenes are discoverable.
 - Service path is also available for automation/operator workflows:
   - `spectra_ls.set_control_center_settings`
   - `spectra_ls.execute_control_center_input` (dry-run-first)
+- New readiness diagnostics entities improve setup visibility without opening full diagnostics payloads:
+  - `sensor.spectra_ls_control_center_readiness`
+  - `sensor.spectra_ls_control_center_last_attempt_status`
 
 This is additive and migration-safe: runtime/source-of-truth ownership remains unchanged while Control Center settings are staged.
 

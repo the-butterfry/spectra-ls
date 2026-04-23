@@ -1057,6 +1057,11 @@ Run-11 execution update (2026-04-22):
 - Writing-standard lane: improved `docs/wiki/DOCUMENTATION-WRITING-STANDARD.md` examples and path references with explicit link-aware references while keeping guidance semantics intact.
 - Execution disposition: run-11 packet accepted; remaining literal references are primarily intentional contract/table notation.
 
+Run-12 execution update (2026-04-22):
+
+- Component UX lane: improved `custom_components/spectra_ls` control-center setup defaults and diagnostics visibility by adding scene-aware options defaults/selectors, stricter scene-binding normalization, richer coordinator readiness diagnostics, and a dedicated readiness sensor surface.
+- Execution disposition: run-12 packet accepted; runtime track unchanged compatibility baseline, component track additive UX/observability hardening.
+
 GitHub/developer declaration (policy mirror):
 
 - Legacy runtime path is sealed as rollback-safe compatibility baseline.

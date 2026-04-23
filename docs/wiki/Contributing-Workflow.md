@@ -1,5 +1,5 @@
 <!-- Description: Practical contribution lifecycle from issue intake to verified merge in Spectra L/S. -->
-<!-- Version: 2026.04.22.3 -->
+<!-- Version: 2026.04.22.4 -->
 <!-- Last updated: 2026-04-22 -->
 
 # Contributing Workflow
@@ -20,13 +20,6 @@ Use this as the default path for any change.
 ## Mandatory parity in each slice
 
 For roadmap/process/contract changes, update together:
-
-1. `docs/CHANGELOG.md`
-2. `docs/roadmap/v-next-NOTES.md`
-3. `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`
-4. `README.md` (or explicit no-material-change note)
-
-Linked parity set:
 
 1. [`docs/CHANGELOG.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/CHANGELOG.md)
 2. [`docs/roadmap/v-next-NOTES.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/roadmap/v-next-NOTES.md)

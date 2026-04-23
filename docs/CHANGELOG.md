@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.22.204 -->
+<!-- Version: 2026.04.22.205 -->
 <!-- Last updated: 2026-04-22 -->
 
 # Changelog
 
 ## 2026-04-22
+
+- P8-S02 Residual Policy Link Cleanup Run-10 (`docs/wiki/Contributing-Workflow.md`, `docs/wiki/Wiki-Content-Scope-Policy.md`, `docs/wiki/Install-on-Your-Own-HA.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): convert remaining policy/process literal path mentions to explicit links where operator navigation benefits and preserve code-literal path examples only where they are contract notation. Two-track disposition: runtime track unchanged/sealed compatibility baseline; component track unchanged/primary growth lane. P1/P2/P3 impact: no source-of-truth ownership change; documentation navigation quality hardening only.
 
 - P8-S02 Process Navigation Residual Run-9 (`docs/wiki/Contributing-Workflow.md`, `docs/wiki/Operations-Runbooks.md`, `docs/wiki/Release-and-Changelog-Process.md`, `docs/wiki/README.md`, `docs/wiki/Home.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): convert remaining process/navigation references to link-first paths for parity, release hygiene, and wiki publishing operations. Two-track disposition: runtime track unchanged/sealed compatibility baseline; component track unchanged/primary growth lane. P1/P2/P3 impact: no source-of-truth ownership change; documentation navigation quality hardening only.
 

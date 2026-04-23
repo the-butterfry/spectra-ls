@@ -1,6 +1,6 @@
-# Description: Data coordinator for Spectra LS parity diagnostics, Phase 3 guarded routing write-path controls, Phase 4 diagnostics scaffolding (F4-S01/F4-S03), and Phase 5 metadata trial contract auditing with unresolved-contract hardening.
-# Version: 2026.04.21.21
-# Last updated: 2026-04-21
+# Description: Data coordinator for Spectra LS parity diagnostics, Phase 3 guarded routing write-path controls, Phase 4 diagnostics scaffolding (F4-S01/F4-S03), Phase 5 metadata trial contract auditing, and Phase 6 control-center settings/execution visibility.
+# Version: 2026.04.22.25
+# Last updated: 2026-04-22
 
 from __future__ import annotations
 
@@ -12,11 +12,13 @@ from time import monotonic
 from typing import Any
 from uuid import uuid4
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.event import async_track_state_change_event
+from homeassistant.helpers.event import async_call_later, async_track_state_change_event
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .const import (
+    CONTROL_CENTER_INPUT_EVENTS,
     DOMAIN,
     LEGACY_ACTIVE_META_ENTITY,
     LEGACY_CONTROL_HOST,
@@ -33,6 +35,7 @@ from .const import (
     WRITE_AUTH_COMPONENT,
     WRITE_AUTH_LEGACY,
     WRITE_DEBOUNCE_SECONDS,
+    normalize_control_center_settings,
 )
 from .registry import build_registry_snapshot
 from .router import build_route_trace
@@ -52,15 +55,25 @@ class LegacySnapshot:
 class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     """Coordinates read-only shadow parity data for legacy routing surfaces."""
 
-    def __init__(self, hass: HomeAssistant) -> None:
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         super().__init__(
             hass=hass,
             logger=_LOGGER,
             name=f"{DOMAIN}_shadow_parity",
         )
+        self._entry = entry
         self._unsub_state_events = None
         self._write_authority_mode = WRITE_AUTH_LEGACY
         self._write_debounce_s = float(WRITE_DEBOUNCE_SECONDS)
+        self._control_center_settings = normalize_control_center_settings(entry.options)
+        self._last_control_center_action_attempt: dict[str, Any] = {
+            "status": "never_attempted",
+            "requested_at": None,
+            "completed_at": None,
+            "input_event": None,
+            "mapped_action": None,
+            "reason": "No control-center actions attempted yet",
+        }
         self._write_in_progress = False
         self._last_write_monotonic = 0.0
         self._last_write_attempt: dict[str, Any] = {
@@ -69,6 +82,9 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "reason": "No write attempts yet",
         }
         self._metadata_trial_in_progress = False
+        self._snapshot_refresh_min_interval_s = 0.75
+        self._last_snapshot_refresh_monotonic = 0.0
+        self._deferred_snapshot_refresh_unsub = None
         self._last_metadata_trial_attempt: dict[str, Any] = {
             "status": "never_attempted",
             "requested_at": None,
@@ -141,6 +157,29 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if self._unsub_state_events is not None:
             self._unsub_state_events()
             self._unsub_state_events = None
+        if self._deferred_snapshot_refresh_unsub is not None:
+            self._deferred_snapshot_refresh_unsub()
+            self._deferred_snapshot_refresh_unsub = None
+
+    def _refresh_snapshot(self, *, force: bool = False) -> None:
+        now_mono = monotonic()
+        if (
+            not force
+            and self._last_snapshot_refresh_monotonic > 0
+            and (now_mono - self._last_snapshot_refresh_monotonic) < self._snapshot_refresh_min_interval_s
+        ):
+            return
+
+        self._last_snapshot_refresh_monotonic = now_mono
+        self.async_set_updated_data(self._build_snapshot())
+
+    @callback
+    def _handle_deferred_snapshot_refresh(self, _now) -> None:
+        self._deferred_snapshot_refresh_unsub = None
+        try:
+            self._refresh_snapshot(force=True)
+        except Exception:  # pragma: no cover - defensive callback hardening
+            _LOGGER.exception("Failed deferred Spectra LS snapshot refresh")
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Read legacy surfaces and compute parity snapshot."""
@@ -179,6 +218,68 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "metadata_trial_in_progress": self._metadata_trial_in_progress,
             "metadata_trial_last_attempt": self._last_metadata_trial_attempt,
             "target_helper_entity": LEGACY_ACTIVE_TARGET_HELPER,
+            "control_center_settings": self._control_center_settings,
+            "control_center_last_attempt": self._last_control_center_action_attempt,
+        }
+
+    def _build_control_center_validation(self) -> dict[str, Any]:
+        settings = dict(self._control_center_settings)
+        required_keys = sorted(settings.keys())
+        scene_keys = [
+            "button_1_scene",
+            "button_2_scene",
+            "button_3_scene",
+            "button_4_scene",
+        ]
+        unresolved_scenes = [
+            key for key in scene_keys if str(settings.get(key, "") or "").strip().lower() in {"", "scene.none"}
+        ]
+        resolved_scene_bindings = [key for key in scene_keys if key not in unresolved_scenes]
+        quick_trigger_scene = str(settings.get("button_1_scene", "scene.none") or "scene.none").strip()
+        quick_trigger_ready = quick_trigger_scene.lower() not in {"", "scene.none"}
+
+        non_dry_run_supported_actions = [
+            "scene_quick_trigger",
+            "no_op",
+            "button_1_scene",
+            "button_2_scene",
+            "button_3_scene",
+            "button_4_scene",
+        ]
+        non_dry_run_pending_actions = [
+            "volume",
+            "brightness",
+            "target_cycle",
+            "source_cycle",
+            "play_pause",
+            "mute_toggle",
+        ]
+
+        readiness_state = "ready" if quick_trigger_ready or len(resolved_scene_bindings) > 0 else "needs_scene_binding"
+        recommended_next_step = (
+            "Bind at least one scene (button 1 recommended) to enable non-dry-run scene execution"
+            if readiness_state != "ready"
+            else "Control-center scene bindings are ready for bounded execution"
+        )
+
+        return {
+            "schema_version": "p6_s02.v1",
+            "settings": settings,
+            "required_keys": required_keys,
+            "settings_present": len(required_keys) > 0,
+            "read_only_mode": bool(settings.get("read_only_mode", True)),
+            "unresolved_scene_bindings": unresolved_scenes,
+            "resolved_scene_bindings": resolved_scene_bindings,
+            "configured_scene_bindings_count": len(resolved_scene_bindings),
+            "total_scene_bindings": len(scene_keys),
+            "quick_trigger_scene": quick_trigger_scene,
+            "quick_trigger_ready": quick_trigger_ready,
+            "non_dry_run_supported_actions": non_dry_run_supported_actions,
+            "non_dry_run_pending_actions": non_dry_run_pending_actions,
+            "readiness_state": readiness_state,
+            "recommended_next_step": recommended_next_step,
+            "ready_for_customization": len(required_keys) > 0,
+            "ready_for_execution": readiness_state == "ready",
         }
 
     def _build_contract_validation(self) -> dict[str, Any]:
@@ -1022,9 +1123,129 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "capability_profile_validation": capability_profile_validation,
             "action_catalog_validation": action_catalog_validation,
             "crossfade_balance_validation": crossfade_balance_validation,
+            "control_center_validation": self._build_control_center_validation(),
             "write_controls": self._build_write_controls(),
             "captured_at": datetime.now(UTC).isoformat(),
         }
+
+    async def async_apply_control_center_settings(self, raw_options: dict[str, Any] | None) -> dict[str, Any]:
+        """Normalize and apply control-center settings from config-entry options."""
+        self._control_center_settings = normalize_control_center_settings(raw_options)
+        self.async_set_updated_data(self._build_snapshot())
+        return dict(self._control_center_settings)
+
+    async def async_execute_control_center_input(
+        self,
+        *,
+        input_event: str,
+        correlation_id: str | None,
+        target_hint: str | None,
+        dry_run: bool,
+        delta: Any,
+    ) -> dict[str, Any]:
+        """Execute one mapped control-center input with dry-run-first safety."""
+        requested_at = datetime.now(UTC).isoformat()
+        normalized_event = (input_event or "").strip().lower()
+        corr = (correlation_id or "").strip() or f"p6-input-{uuid4().hex[:12]}"
+        hint = (target_hint or "").strip()
+
+        result: dict[str, Any] = {
+            "status": "pending",
+            "requested_at": requested_at,
+            "completed_at": requested_at,
+            "correlation_id": corr,
+            "input_event": normalized_event,
+            "target_hint": hint,
+            "dry_run": bool(dry_run),
+            "delta": delta,
+            "mapped_action": None,
+            "reason": "",
+            "read_only_mode": bool(self._control_center_settings.get("read_only_mode", True)),
+        }
+
+        if normalized_event not in CONTROL_CENTER_INPUT_EVENTS:
+            result["status"] = "blocked_unknown_input_event"
+            result["reason"] = "input_event is not part of the supported control-center contract"
+        else:
+            mapped_action: str = ""
+            if normalized_event == "encoder_turn":
+                mapped_action = str(self._control_center_settings.get("encoder_turn_action", "") or "").strip()
+            elif normalized_event == "encoder_press":
+                mapped_action = str(self._control_center_settings.get("encoder_press_action", "") or "").strip()
+            elif normalized_event == "encoder_long_press":
+                mapped_action = str(self._control_center_settings.get("encoder_long_press_action", "") or "").strip()
+            elif normalized_event == "button_1":
+                mapped_action = str(self._control_center_settings.get("button_1_scene", "") or "").strip()
+            elif normalized_event == "button_2":
+                mapped_action = str(self._control_center_settings.get("button_2_scene", "") or "").strip()
+            elif normalized_event == "button_3":
+                mapped_action = str(self._control_center_settings.get("button_3_scene", "") or "").strip()
+            elif normalized_event == "button_4":
+                mapped_action = str(self._control_center_settings.get("button_4_scene", "") or "").strip()
+
+            result["mapped_action"] = mapped_action
+
+            if not mapped_action:
+                result["status"] = "blocked_unmapped_input"
+                result["reason"] = "No mapping exists for the selected input_event"
+            elif mapped_action.lower() in {"scene.none", "none"}:
+                result["status"] = "blocked_scene_unconfigured"
+                result["reason"] = "Input is mapped to placeholder scene.none"
+            elif mapped_action == "no_op":
+                result["status"] = "noop_action"
+                result["reason"] = "Mapped action is no_op; execution intentionally performs no runtime write"
+            elif mapped_action == "scene_quick_trigger":
+                quick_scene = str(self._control_center_settings.get("button_1_scene", "scene.none") or "scene.none").strip()
+                result["mapped_action"] = f"scene_quick_trigger:{quick_scene}"
+                if quick_scene.lower() in {"", "scene.none"}:
+                    result["status"] = "blocked_scene_unconfigured"
+                    result["reason"] = "scene_quick_trigger requires button_1_scene to be configured"
+                elif result["read_only_mode"] and not dry_run:
+                    result["status"] = "blocked_read_only_mode"
+                    result["reason"] = "Control-center read_only_mode is enabled; non-dry-run execution is blocked"
+                elif dry_run:
+                    result["status"] = "dry_run_ok"
+                    result["reason"] = "scene_quick_trigger resolved successfully in dry-run mode"
+                else:
+                    try:
+                        await self.hass.services.async_call(
+                            "scene",
+                            "turn_on",
+                            {"entity_id": quick_scene},
+                            blocking=True,
+                        )
+                        result["status"] = "applied_scene_turn_on"
+                        result["reason"] = "scene_quick_trigger executed via button_1_scene binding"
+                    except Exception as err:  # pragma: no cover - defensive runtime guard
+                        result["status"] = "scene_turn_on_error"
+                        result["reason"] = f"Scene call failed: {err}"
+            elif result["read_only_mode"] and not dry_run:
+                result["status"] = "blocked_read_only_mode"
+                result["reason"] = "Control-center read_only_mode is enabled; non-dry-run execution is blocked"
+            elif dry_run:
+                result["status"] = "dry_run_ok"
+                result["reason"] = "Mapping resolved successfully in dry-run mode"
+            elif mapped_action.startswith("scene."):
+                try:
+                    await self.hass.services.async_call(
+                        "scene",
+                        "turn_on",
+                        {"entity_id": mapped_action},
+                        blocking=True,
+                    )
+                    result["status"] = "applied_scene_turn_on"
+                    result["reason"] = "Mapped scene turn_on call executed"
+                except Exception as err:  # pragma: no cover - defensive runtime guard
+                    result["status"] = "scene_turn_on_error"
+                    result["reason"] = f"Scene call failed: {err}"
+            else:
+                result["status"] = "blocked_unimplemented_action"
+                result["reason"] = "Mapped action is reserved for future bounded execution slices"
+
+        result["completed_at"] = datetime.now(UTC).isoformat()
+        self._last_control_center_action_attempt = result
+        self.async_set_updated_data(self._build_snapshot())
+        return result
 
     async def async_rebuild_registry(self) -> None:
         """Refresh parity data, including registry scaffold snapshot."""
@@ -1369,6 +1590,21 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     @callback
     def _handle_state_change(self, _event) -> None:
         try:
-            self.async_set_updated_data(self._build_snapshot())
+            now_mono = monotonic()
+            elapsed = now_mono - self._last_snapshot_refresh_monotonic
+            if self._last_snapshot_refresh_monotonic == 0.0 or elapsed >= self._snapshot_refresh_min_interval_s:
+                self._refresh_snapshot(force=True)
+                if self._deferred_snapshot_refresh_unsub is not None:
+                    self._deferred_snapshot_refresh_unsub()
+                    self._deferred_snapshot_refresh_unsub = None
+                return
+
+            if self._deferred_snapshot_refresh_unsub is None:
+                delay_s = max(self._snapshot_refresh_min_interval_s - elapsed, 0.05)
+                self._deferred_snapshot_refresh_unsub = async_call_later(
+                    self.hass,
+                    delay_s,
+                    self._handle_deferred_snapshot_refresh,
+                )
         except Exception:  # pragma: no cover - defensive callback hardening
             _LOGGER.exception("Failed to refresh Spectra LS snapshot on state-change event")

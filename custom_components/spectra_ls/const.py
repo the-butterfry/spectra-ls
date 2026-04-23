@@ -1,8 +1,10 @@
-# Description: Constants for Spectra LS custom integration shadow parity, Phase 3 guarded routing write-path controls, Phase 4 diagnostics scaffolding (F4-S01/F4-S03), and Phase 5 metadata trial contract service.
-# Version: 2026.04.21.11
-# Last updated: 2026-04-21
+# Description: Constants for Spectra LS custom integration shadow parity, Phase 3 guarded routing write-path controls, Phase 4 diagnostics scaffolding (F4-S01/F4-S03), Phase 5 metadata trial contract service, and Phase 6 control-center settings/execution contracts.
+# Version: 2026.04.22.14
+# Last updated: 2026-04-22
 
 from __future__ import annotations
+
+from typing import Any, Mapping
 
 from homeassistant.const import Platform
 
@@ -25,6 +27,8 @@ SERVICE_VALIDATE_ACTION_CATALOG = "validate_action_catalog"
 SERVICE_RUN_F4_S02_SEQUENCE = "run_f4_s02_sequence"
 SERVICE_VALIDATE_CROSSFADE_BALANCE = "validate_crossfade_balance"
 SERVICE_RUN_F4_S03_SEQUENCE = "run_f4_s03_sequence"
+SERVICE_SET_CONTROL_CENTER_SETTINGS = "set_control_center_settings"
+SERVICE_EXECUTE_CONTROL_CENTER_INPUT = "execute_control_center_input"
 
 PLATFORMS: tuple[Platform, ...] = (
     Platform.SENSOR,
@@ -63,3 +67,83 @@ LEGACY_SURFACES: dict[str, str] = {
     "active_control_capable": LEGACY_ACTIVE_CONTROL_CAPABLE,
     "control_hosts": LEGACY_CONTROL_HOSTS,
 }
+
+OPT_READ_ONLY_MODE = "read_only_mode"
+OPT_ENCODER_TURN_ACTION = "encoder_turn_action"
+OPT_ENCODER_PRESS_ACTION = "encoder_press_action"
+OPT_ENCODER_LONG_PRESS_ACTION = "encoder_long_press_action"
+OPT_BUTTON_1_SCENE = "button_1_scene"
+OPT_BUTTON_2_SCENE = "button_2_scene"
+OPT_BUTTON_3_SCENE = "button_3_scene"
+OPT_BUTTON_4_SCENE = "button_4_scene"
+
+CONTROL_CENTER_ACTIONS: tuple[str, ...] = (
+    "volume",
+    "brightness",
+    "target_cycle",
+    "source_cycle",
+)
+
+CONTROL_CENTER_PRESS_ACTIONS: tuple[str, ...] = (
+    "play_pause",
+    "mute_toggle",
+    "scene_quick_trigger",
+    "no_op",
+)
+
+CONTROL_CENTER_DEFAULTS: dict[str, Any] = {
+    OPT_READ_ONLY_MODE: True,
+    OPT_ENCODER_TURN_ACTION: "volume",
+    OPT_ENCODER_PRESS_ACTION: "scene_quick_trigger",
+    OPT_ENCODER_LONG_PRESS_ACTION: "no_op",
+    OPT_BUTTON_1_SCENE: "scene.none",
+    OPT_BUTTON_2_SCENE: "scene.none",
+    OPT_BUTTON_3_SCENE: "scene.none",
+    OPT_BUTTON_4_SCENE: "scene.none",
+}
+
+CONTROL_CENTER_INPUT_EVENTS: tuple[str, ...] = (
+    "encoder_turn",
+    "encoder_press",
+    "encoder_long_press",
+    "button_1",
+    "button_2",
+    "button_3",
+    "button_4",
+)
+
+
+def normalize_control_center_settings(raw_options: Mapping[str, Any] | None) -> dict[str, Any]:
+    """Return normalized P6 control-center settings with safe defaults."""
+    options = dict(CONTROL_CENTER_DEFAULTS)
+    if raw_options is None:
+        return options
+
+    raw_read_only = raw_options.get(OPT_READ_ONLY_MODE)
+    if isinstance(raw_read_only, bool):
+        options[OPT_READ_ONLY_MODE] = raw_read_only
+
+    turn_action = str(raw_options.get(OPT_ENCODER_TURN_ACTION, options[OPT_ENCODER_TURN_ACTION]) or "").strip()
+    if turn_action in CONTROL_CENTER_ACTIONS:
+        options[OPT_ENCODER_TURN_ACTION] = turn_action
+
+    press_action = str(raw_options.get(OPT_ENCODER_PRESS_ACTION, options[OPT_ENCODER_PRESS_ACTION]) or "").strip()
+    if press_action in CONTROL_CENTER_PRESS_ACTIONS:
+        options[OPT_ENCODER_PRESS_ACTION] = press_action
+
+    long_press_action = str(
+        raw_options.get(OPT_ENCODER_LONG_PRESS_ACTION, options[OPT_ENCODER_LONG_PRESS_ACTION]) or ""
+    ).strip()
+    if long_press_action in CONTROL_CENTER_PRESS_ACTIONS:
+        options[OPT_ENCODER_LONG_PRESS_ACTION] = long_press_action
+
+    for key in (OPT_BUTTON_1_SCENE, OPT_BUTTON_2_SCENE, OPT_BUTTON_3_SCENE, OPT_BUTTON_4_SCENE):
+        scene_value = str(raw_options.get(key, options[key]) or "").strip()
+        normalized_scene = scene_value.lower()
+        if normalized_scene in {"", "none", "scene.none"}:
+            options[key] = "scene.none"
+            continue
+
+        options[key] = scene_value if scene_value.startswith("scene.") else "scene.none"
+
+    return options

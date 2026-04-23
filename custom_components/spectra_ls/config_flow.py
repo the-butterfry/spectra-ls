@@ -1,18 +1,44 @@
-# Description: Config flow for Spectra LS shadow parity integration.
-# Version: 2026.04.19.1
-# Last updated: 2026-04-19
+# Description: Config and options flow for Spectra LS shadow parity integration with Phase 6 control-center settings.
+# Version: 2026.04.22.3
+# Last updated: 2026-04-22
 
 from __future__ import annotations
 
-from homeassistant import config_entries
+from typing import Any
 
-from .const import DOMAIN, ENTRY_TITLE, SINGLETON_UNIQUE_ID
+import voluptuous as vol
+
+from homeassistant import config_entries
+from homeassistant.helpers import selector
+
+from .const import (
+    CONTROL_CENTER_ACTIONS,
+    CONTROL_CENTER_DEFAULTS,
+    CONTROL_CENTER_PRESS_ACTIONS,
+    DOMAIN,
+    ENTRY_TITLE,
+    OPT_BUTTON_1_SCENE,
+    OPT_BUTTON_2_SCENE,
+    OPT_BUTTON_3_SCENE,
+    OPT_BUTTON_4_SCENE,
+    OPT_ENCODER_LONG_PRESS_ACTION,
+    OPT_ENCODER_PRESS_ACTION,
+    OPT_ENCODER_TURN_ACTION,
+    OPT_READ_ONLY_MODE,
+    SINGLETON_UNIQUE_ID,
+    normalize_control_center_settings,
+)
 
 
 class SpectraLsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle config flow for Spectra LS."""
 
     VERSION = 1
+
+    @staticmethod
+    def async_get_options_flow(config_entry: config_entries.ConfigEntry):
+        """Return options flow for control-center settings."""
+        return SpectraLsOptionsFlow(config_entry)
 
     async def async_step_user(self, user_input=None):
         """Create a single config entry for shadow parity surfaces."""
@@ -25,4 +51,78 @@ class SpectraLsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_create_entry(
             title=ENTRY_TITLE,
             data={},
+        )
+
+
+class SpectraLsOptionsFlow(config_entries.OptionsFlow):
+    """Handle Spectra LS control-center options."""
+
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+        self._config_entry = config_entry
+
+    def _suggest_default_scene_for_quick_trigger(self, current_scene_value: str) -> str:
+        """Suggest a first scene binding for button 1 when still unconfigured."""
+        normalized = str(current_scene_value or "").strip().lower()
+        if normalized not in {"", "none", "scene.none"}:
+            return current_scene_value
+
+        scene_entities = sorted(state.entity_id for state in self.hass.states.async_all("scene"))
+        return scene_entities[0] if scene_entities else "scene.none"
+
+    async def async_step_init(self, user_input: dict[str, Any] | None = None):
+        """Configure control-center input mappings and scene bindings."""
+        if user_input is not None:
+            normalized = normalize_control_center_settings(user_input)
+            return self.async_create_entry(title="", data=normalized)
+
+        existing = normalize_control_center_settings(self._config_entry.options)
+        defaults = dict(CONTROL_CENTER_DEFAULTS)
+        defaults.update(existing)
+        defaults[OPT_BUTTON_1_SCENE] = self._suggest_default_scene_for_quick_trigger(defaults[OPT_BUTTON_1_SCENE])
+
+        scene_selector = selector.EntitySelector(
+            selector.EntitySelectorConfig(
+                domain=["scene"],
+                multiple=False,
+            )
+        )
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema(
+                {
+                    vol.Optional(OPT_READ_ONLY_MODE, default=defaults[OPT_READ_ONLY_MODE]): selector.BooleanSelector(),
+                    vol.Optional(
+                        OPT_ENCODER_TURN_ACTION,
+                        default=defaults[OPT_ENCODER_TURN_ACTION],
+                    ): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=list(CONTROL_CENTER_ACTIONS),
+                            mode=selector.SelectSelectorMode.DROPDOWN,
+                        )
+                    ),
+                    vol.Optional(
+                        OPT_ENCODER_PRESS_ACTION,
+                        default=defaults[OPT_ENCODER_PRESS_ACTION],
+                    ): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=list(CONTROL_CENTER_PRESS_ACTIONS),
+                            mode=selector.SelectSelectorMode.DROPDOWN,
+                        )
+                    ),
+                    vol.Optional(
+                        OPT_ENCODER_LONG_PRESS_ACTION,
+                        default=defaults[OPT_ENCODER_LONG_PRESS_ACTION],
+                    ): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=list(CONTROL_CENTER_PRESS_ACTIONS),
+                            mode=selector.SelectSelectorMode.DROPDOWN,
+                        )
+                    ),
+                    vol.Optional(OPT_BUTTON_1_SCENE, default=defaults[OPT_BUTTON_1_SCENE]): scene_selector,
+                    vol.Optional(OPT_BUTTON_2_SCENE, default=defaults[OPT_BUTTON_2_SCENE]): scene_selector,
+                    vol.Optional(OPT_BUTTON_3_SCENE, default=defaults[OPT_BUTTON_3_SCENE]): scene_selector,
+                    vol.Optional(OPT_BUTTON_4_SCENE, default=defaults[OPT_BUTTON_4_SCENE]): scene_selector,
+                }
+            ),
         )

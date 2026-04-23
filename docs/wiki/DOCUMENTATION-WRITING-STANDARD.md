@@ -1,10 +1,10 @@
 <!-- Description: Writing standard for Spectra documentation and wiki pages, focused on native-English clarity, task completion, and reference-first structure. -->
-<!-- Version: 2026.04.22.1 -->
+<!-- Version: 2026.04.22.2 -->
 <!-- Last updated: 2026-04-22 -->
 
 # Documentation Writing Standard (Native-English, Directive, Useful)
 
-Use this standard for `README`, `docs/`, and all `docs/wiki/` pages.
+Use this standard for [`README`](https://github.com/the-butterfry/spectra-ls/blob/main/README.md), [`docs/`](https://github.com/the-butterfry/spectra-ls/tree/main/docs), and all [`docs/wiki/`](https://github.com/the-butterfry/spectra-ls/tree/main/docs/wiki) pages.
 
 ## External style baselines used
 
@@ -65,7 +65,7 @@ This standard shifts docs to:
    - No “AI voice” filler.
 
 1. **Use direct links with context-rich link text**
-   - Prefer: “See `docs/roadmap/v-next-NOTES.md` for active slice status.”
+   - Prefer: “See [`docs/roadmap/v-next-NOTES.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/roadmap/v-next-NOTES.md) for active slice status.”
    - Avoid: “See here” or bare URLs in body text.
 
 1. **Use second-person guidance where actions are required**
@@ -98,7 +98,7 @@ Every operational page should link at least:
 
 - one canonical runtime/component source file,
 - one roadmap ledger (`v-next` or component roadmap),
-- one process/governance artifact (`CONTRIBUTING.md`, PR template, or runbook).
+- one process/governance artifact ([`CONTRIBUTING.md`](https://github.com/the-butterfry/spectra-ls/blob/main/CONTRIBUTING.md), PR template, or runbook).
 
 ## Anti-patterns to remove during maintenance
 
@@ -126,7 +126,7 @@ Every operational page should link at least:
 
 ### Strong example B
 
-“If room/target menus are empty after restart: confirm placeholder values are resolved in `docs/setup/SPECTRA-HA-CONFIG-PLACEHOLDERS.md`, then revalidate HA config and refresh helper states.”
+“If room/target menus are empty after restart: confirm placeholder values are resolved in [`docs/setup/SPECTRA-HA-CONFIG-PLACEHOLDERS.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/setup/SPECTRA-HA-CONFIG-PLACEHOLDERS.md), then revalidate HA config and refresh helper states.”
 
 ## Definition of done for documentation slices
 

@@ -1,5 +1,5 @@
 <!-- Description: First-stop operator page for orientation, support routing, and high-quality bug submission workflow. -->
-<!-- Version: 2026.04.22.3 -->
+<!-- Version: 2026.04.22.4 -->
 <!-- Last updated: 2026-04-22 -->
 
 # Welcome, README, and Bug Workflow
@@ -8,10 +8,10 @@ Start here if you are new to Spectra or if something is broken and you need the 
 
 ## Step 1 — Read these pages first
 
-1. `README.md` (what Spectra is and why it exists)
-2. `docs/wiki/Install-on-Your-Own-HA.md` (strict install checklist)
-3. `docs/wiki/User-Setup-Deploy-and-HA-Integration.md` (operator setup and deployment)
-4. `docs/wiki/Discussions-and-Projects-Workflow.md` (how work moves from idea to implementation)
+1. [`README.md`](https://github.com/the-butterfry/spectra-ls/blob/main/README.md) (what Spectra is and why it exists)
+2. [`docs/wiki/Install-on-Your-Own-HA.md`](Install-on-Your-Own-HA) (strict install checklist)
+3. [`docs/wiki/User-Setup-Deploy-and-HA-Integration.md`](User-Setup-Deploy-and-HA-Integration) (operator setup and deployment)
+4. [`docs/wiki/Discussions-and-Projects-Workflow.md`](Discussions-and-Projects-Workflow) (how work moves from idea to implementation)
 
 ## Step 2 — Choose the right intake path
 

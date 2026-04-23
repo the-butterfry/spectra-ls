@@ -1,5 +1,5 @@
 <!-- Description: High-level architecture map for Spectra L/S runtime, control plane, and migration tracks. -->
-<!-- Version: 2026.04.22.1 -->
+<!-- Version: 2026.04.22.2 -->
 <!-- Last updated: 2026-04-22 -->
 
 # System Architecture
@@ -9,13 +9,13 @@ This page explains where things live and which path owns what.
 ## Top-level domains
 
 1. **Runtime domain (legacy compatibility baseline)**
-   - `esphome/spectra_ls_system/`
-   - `packages/`
+   - [`esphome/spectra_ls_system/`](https://github.com/the-butterfry/spectra-ls/tree/main/esphome/spectra_ls_system)
+   - [`packages/`](https://github.com/the-butterfry/spectra-ls/tree/main/packages)
 2. **Control-center domain (primary growth path)**
-   - `custom_components/spectra_ls/`
+   - [`custom_components/spectra_ls/`](https://github.com/the-butterfry/spectra-ls/tree/main/custom_components/spectra_ls)
 3. **RP2040 input firmware domain**
    - live source: `CIRCUITPY/`
-   - mirror source: `esphome/circuitpy/`
+   - mirror source: [`esphome/circuitpy/`](https://github.com/the-butterfry/spectra-ls/tree/main/esphome/circuitpy)
 
 ## What “sealed runtime baseline” means
 
@@ -34,21 +34,21 @@ Every feature slice must map both tracks as implemented, compatibility-shimmed, 
 
 ## Ownership snapshot (current)
 
-- Source-of-truth for active growth: `custom_components/spectra_ls/`
-- Source-of-truth for compatibility baseline: `packages/` + `esphome/spectra_ls_system/`
+- Source-of-truth for active growth: [`custom_components/spectra_ls/`](https://github.com/the-butterfry/spectra-ls/tree/main/custom_components/spectra_ls)
+- Source-of-truth for compatibility baseline: [`packages/`](https://github.com/the-butterfry/spectra-ls/tree/main/packages) + [`esphome/spectra_ls_system/`](https://github.com/the-butterfry/spectra-ls/tree/main/esphome/spectra_ls_system)
 - RP2040 firmware updates must be mirrored in both required locations.
 
 ## If you are new, read in this order
 
-1. `docs/wiki/Getting-Started.md`
-2. `docs/wiki/Install-on-Your-Own-HA.md`
-3. `docs/wiki/User-Setup-Deploy-and-HA-Integration.md`
+1. [`docs/wiki/Getting-Started.md`](Getting-Started)
+2. [`docs/wiki/Install-on-Your-Own-HA.md`](Install-on-Your-Own-HA)
+3. [`docs/wiki/User-Setup-Deploy-and-HA-Integration.md`](User-Setup-Deploy-and-HA-Integration)
 4. this page (for architecture context)
 
 ## Authoritative references
 
-- Runtime architecture: `docs/architecture/CODEBASE-RUNTIME-ARCHITECTURE.md`
-- Control hub architecture: `docs/architecture/CONTROL-HUB-ARCHITECTURE.md`
-- Parallel program playbook: `docs/program/PARALLEL-PROGRAM-PLAYBOOK.md`
-- Custom-component roadmap: `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`
-- v-next notes: `docs/roadmap/v-next-NOTES.md`
+- Runtime architecture: [`docs/architecture/CODEBASE-RUNTIME-ARCHITECTURE.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/architecture/CODEBASE-RUNTIME-ARCHITECTURE.md)
+- Control hub architecture: [`docs/architecture/CONTROL-HUB-ARCHITECTURE.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/architecture/CONTROL-HUB-ARCHITECTURE.md)
+- Parallel program playbook: [`docs/program/PARALLEL-PROGRAM-PLAYBOOK.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/program/PARALLEL-PROGRAM-PLAYBOOK.md)
+- Custom-component roadmap: [`docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md)
+- v-next notes: [`docs/roadmap/v-next-NOTES.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/roadmap/v-next-NOTES.md)

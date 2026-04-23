@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.22.109 -->
+<!-- Version: 2026.04.22.110 -->
 <!-- Last updated: 2026-04-22 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -1031,6 +1031,46 @@ Run-12 execution update (2026-04-22):
 
 - Component UX lane: improved `custom_components/spectra_ls` control-center setup defaults and diagnostics visibility by adding scene-aware options defaults/selectors, stricter scene-binding normalization, richer coordinator readiness diagnostics, and a dedicated readiness sensor surface.
 - Execution disposition: run-12 packet accepted; runtime track unchanged compatibility baseline, component track additive UX/observability hardening.
+
+Run-13 execution update (2026-04-22):
+
+- Plan-delta lane: clarified cutover semantics so component remains the primary development lane for net-new work while legacy remains an explicit rollback-safe authority baseline for compatibility contracts until bounded retirement gates are executed.
+- Priority lane: activated `P8-S03` as a core fast-remap UX slice so operators can quickly re-map button/encoder input behavior from Home Assistant integration settings without script-level edits.
+- Execution disposition: run-13 packet accepted; runtime track unchanged compatibility baseline, component track prioritizes operator remap workflow acceleration.
+
+### Phase 8 follow-on slice card — P8-S03 (fast input-remap UX in HA settings)
+
+Status: **Active**
+
+Scope:
+
+- **In:** operator-first remap workflow for encoder/button actions in integration settings, tighter quick-remap defaults/presets, and diagnostics that explicitly show “what is currently mapped where.”
+- **Out:** unbounded authority expansion, legacy contract retirement, or cross-domain ownership changes.
+
+Activation gates (required):
+
+1. P8-S01 validated baseline remains clean (`authority_mode=legacy`, parity/contract clean).
+2. Existing P6 settings contract remains backward compatible (no helper/entity contract breaks).
+3. Remap workflow is fast/operator-friendly from HA integration settings path.
+4. Rollback-safe posture remains explicit with read-only-first behavior where applicable.
+
+Execution checklist:
+
+- Component settings workflow: `custom_components/spectra_ls/config_flow.py`
+- Mapping normalization/contract: `custom_components/spectra_ls/const.py`
+- Execution/readiness visibility: `custom_components/spectra_ls/coordinator.py`, `custom_components/spectra_ls/sensor.py`, `custom_components/spectra_ls/diagnostics.py`
+- Operator docs parity: `docs/wiki/User-Setup-Deploy-and-HA-Integration.md`
+
+Two-track disposition:
+
+- **Track A (runtime):** compatibility-shimmed rollback baseline, no ownership expansion.
+- **Track B (component):** active operator remap UX priority lane.
+
+P1/P2/P3 impact check:
+
+- **P1:** unchanged read-only parity contract surfaces.
+- **P2:** unchanged registry/router diagnostics ownership.
+- **P3:** unchanged single-writer boundary and rollback discipline.
 
 GitHub/developer declaration (policy mirror):
 

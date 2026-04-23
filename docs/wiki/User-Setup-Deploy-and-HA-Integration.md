@@ -1,5 +1,5 @@
 <!-- Description: Practical setup/deploy/integration guide for Spectra on Home Assistant with clear operator outcomes and failure actions. -->
-<!-- Version: 2026.04.22.8 -->
+<!-- Version: 2026.04.22.9 -->
 <!-- Last updated: 2026-04-22 -->
 
 # User Setup, Deploy, and HA Integration
@@ -66,6 +66,9 @@ Target outcome:
 
 You can now stage core control-center mappings from the Spectra integration itself:
 
+- **Fast remap path (today):** Home Assistant -> Settings -> Devices & Services -> Integrations -> `Spectra LS` -> Configure.
+- This is currently the primary operator UX for quick input-function remapping (not a custom Lovelace panel yet).
+
 - Integration options (Configure on `Spectra LS`) now include:
   - encoder turn action,
   - encoder press action,
@@ -81,6 +84,11 @@ You can now stage core control-center mappings from the Spectra integration itse
   - `sensor.spectra_ls_control_center_last_attempt_status`
 
 This is additive and migration-safe: runtime/source-of-truth ownership remains unchanged while Control Center settings are staged.
+
+Cutover note:
+
+- Component is the primary development lane for net-new control-center behavior.
+- Legacy runtime remains a rollback-safe compatibility baseline until bounded retirement gates are completed.
 
 For P6 execution-lane validation evidence, use:
 

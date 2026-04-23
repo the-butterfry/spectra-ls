@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.22.205 -->
+<!-- Version: 2026.04.22.206 -->
 <!-- Last updated: 2026-04-22 -->
 
 # Changelog
 
 ## 2026-04-22
+
+- P8-S02 Writing Standard Link Micro-Pass Run-11 (`docs/wiki/DOCUMENTATION-WRITING-STANDARD.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): upgrade remaining example/path references in the writing standard to explicit link-aware references while preserving style-guide semantics. Two-track disposition: runtime track unchanged/sealed compatibility baseline; component track unchanged/primary growth lane. P1/P2/P3 impact: no source-of-truth ownership change; documentation quality standard hardening only. README parity: no material repo-state change.
 
 - P8-S02 Residual Policy Link Cleanup Run-10 (`docs/wiki/Contributing-Workflow.md`, `docs/wiki/Wiki-Content-Scope-Policy.md`, `docs/wiki/Install-on-Your-Own-HA.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): convert remaining policy/process literal path mentions to explicit links where operator navigation benefits and preserve code-literal path examples only where they are contract notation. Two-track disposition: runtime track unchanged/sealed compatibility baseline; component track unchanged/primary growth lane. P1/P2/P3 impact: no source-of-truth ownership change; documentation navigation quality hardening only.
 

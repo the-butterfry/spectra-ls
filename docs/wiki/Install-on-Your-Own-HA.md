@@ -1,6 +1,6 @@
 <!-- Description: Operator runbook for installing Spectra on a user-owned Home Assistant instance with explicit pass/fail checkpoints. -->
-<!-- Version: 2026.04.21.4 -->
-<!-- Last updated: 2026-04-21 -->
+<!-- Version: 2026.04.22.5 -->
+<!-- Last updated: 2026-04-22 -->
 
 # Install on Your Own Home Assistant
 
@@ -21,7 +21,7 @@ Goal: finish with working audio + lighting control, populated room/target menus,
 
 - [ ] Put deployment-specific values in `secrets.yaml` or local includes.
 - [ ] Do **not** commit IPs, tokens, or private host mappings.
-- [ ] Resolve placeholders from `docs/setup/SPECTRA-HA-CONFIG-PLACEHOLDERS.md`.
+- [ ] Resolve placeholders from [`docs/setup/SPECTRA-HA-CONFIG-PLACEHOLDERS.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/setup/SPECTRA-HA-CONFIG-PLACEHOLDERS.md).
 
 ### 2) Apply runtime config
 
@@ -84,15 +84,15 @@ Planned additions to this page:
 
 Roadmap references:
 
-- `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`
-- `docs/roadmap/v-next-NOTES.md`
+- [`docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md)
+- [`docs/roadmap/v-next-NOTES.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/roadmap/v-next-NOTES.md)
 
 ## Optional: wiki publishing token (docs automation only)
 
 This is **not** needed to run Spectra in your home.
 
 - Use `WIKI_FINE_GRAINED_PAT` only if you want GitHub Actions to publish `docs/wiki/*` to the GitHub Wiki.
-- Setup steps are in `docs/wiki/README.md`.
+- Setup steps are in [`docs/wiki/README.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/wiki/README.md).
 
 ## Rollback checklist (operator safety)
 
@@ -104,6 +104,6 @@ This is **not** needed to run Spectra in your home.
 
 | Symptom | Likely cause | Action |
 | --- | --- | --- |
-| Room/target menus are empty | unresolved placeholders or helper bootstrap failure | Re-check `docs/setup/SPECTRA-HA-CONFIG-PLACEHOLDERS.md`, reload helpers, and revalidate template entities |
+| Room/target menus are empty | unresolved placeholders or helper bootstrap failure | Re-check [`docs/setup/SPECTRA-HA-CONFIG-PLACEHOLDERS.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/setup/SPECTRA-HA-CONFIG-PLACEHOLDERS.md), reload helpers, and revalidate template entities |
 | Controls trigger but state never changes | route metadata unresolved or wrong target path | Verify `control_path` and `control_capable` surfaces, then confirm active target selection is valid |
 | OTA/build succeeds but behavior is wrong | stale runtime state after deploy | Restart HA + integration path, then rerun integration verification checklist |

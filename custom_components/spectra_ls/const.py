@@ -1,5 +1,5 @@
-# Description: Constants for Spectra LS custom integration shadow parity, Phase 3 guarded routing write-path controls, Phase 4 diagnostics scaffolding (F4-S01/F4-S03), Phase 5 metadata trial contract service, and Phase 6 control-center settings/execution contracts.
-# Version: 2026.04.22.14
+# Description: Constants for Spectra LS custom integration shadow parity, Phase 3 guarded routing write-path controls, Phase 4 diagnostics scaffolding (F4-S01/F4-S03), Phase 5 metadata trial contract service, and Phase 6/8 control-center settings and fast-remap preset contracts.
+# Version: 2026.04.22.15
 # Last updated: 2026-04-22
 
 from __future__ import annotations
@@ -76,6 +76,7 @@ OPT_BUTTON_1_SCENE = "button_1_scene"
 OPT_BUTTON_2_SCENE = "button_2_scene"
 OPT_BUTTON_3_SCENE = "button_3_scene"
 OPT_BUTTON_4_SCENE = "button_4_scene"
+OPT_MAPPING_PRESET = "mapping_preset"
 
 CONTROL_CENTER_ACTIONS: tuple[str, ...] = (
     "volume",
@@ -91,8 +92,46 @@ CONTROL_CENTER_PRESS_ACTIONS: tuple[str, ...] = (
     "no_op",
 )
 
+CONTROL_CENTER_MAPPING_PRESETS: tuple[str, ...] = (
+    "media_default",
+    "scene_focus",
+    "target_navigation",
+    "custom",
+)
+
+CONTROL_CENTER_PRESET_VALUES: dict[str, dict[str, Any]] = {
+    "media_default": {
+        OPT_ENCODER_TURN_ACTION: "volume",
+        OPT_ENCODER_PRESS_ACTION: "play_pause",
+        OPT_ENCODER_LONG_PRESS_ACTION: "mute_toggle",
+        OPT_BUTTON_1_SCENE: "scene.none",
+        OPT_BUTTON_2_SCENE: "scene.none",
+        OPT_BUTTON_3_SCENE: "scene.none",
+        OPT_BUTTON_4_SCENE: "scene.none",
+    },
+    "scene_focus": {
+        OPT_ENCODER_TURN_ACTION: "volume",
+        OPT_ENCODER_PRESS_ACTION: "scene_quick_trigger",
+        OPT_ENCODER_LONG_PRESS_ACTION: "no_op",
+        OPT_BUTTON_1_SCENE: "scene.none",
+        OPT_BUTTON_2_SCENE: "scene.none",
+        OPT_BUTTON_3_SCENE: "scene.none",
+        OPT_BUTTON_4_SCENE: "scene.none",
+    },
+    "target_navigation": {
+        OPT_ENCODER_TURN_ACTION: "target_cycle",
+        OPT_ENCODER_PRESS_ACTION: "no_op",
+        OPT_ENCODER_LONG_PRESS_ACTION: "no_op",
+        OPT_BUTTON_1_SCENE: "scene.none",
+        OPT_BUTTON_2_SCENE: "scene.none",
+        OPT_BUTTON_3_SCENE: "scene.none",
+        OPT_BUTTON_4_SCENE: "scene.none",
+    },
+}
+
 CONTROL_CENTER_DEFAULTS: dict[str, Any] = {
     OPT_READ_ONLY_MODE: True,
+    OPT_MAPPING_PRESET: "custom",
     OPT_ENCODER_TURN_ACTION: "volume",
     OPT_ENCODER_PRESS_ACTION: "scene_quick_trigger",
     OPT_ENCODER_LONG_PRESS_ACTION: "no_op",
@@ -118,6 +157,15 @@ def normalize_control_center_settings(raw_options: Mapping[str, Any] | None) -> 
     options = dict(CONTROL_CENTER_DEFAULTS)
     if raw_options is None:
         return options
+
+    mapping_preset = str(raw_options.get(OPT_MAPPING_PRESET, options[OPT_MAPPING_PRESET]) or "").strip().lower()
+    if mapping_preset not in CONTROL_CENTER_MAPPING_PRESETS:
+        mapping_preset = str(options[OPT_MAPPING_PRESET])
+    options[OPT_MAPPING_PRESET] = mapping_preset
+
+    preset_values = CONTROL_CENTER_PRESET_VALUES.get(mapping_preset)
+    if isinstance(preset_values, dict):
+        options.update(preset_values)
 
     raw_read_only = raw_options.get(OPT_READ_ONLY_MODE)
     if isinstance(raw_read_only, bool):

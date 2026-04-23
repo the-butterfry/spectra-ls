@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.22.208 -->
+<!-- Version: 2026.04.22.209 -->
 <!-- Last updated: 2026-04-22 -->
 
 # Changelog
 
 ## 2026-04-22
+
+- Custom Component P8-S03 Fast Remap Presets + Effective Mapping Visibility (`custom_components/spectra_ls/const.py`, `custom_components/spectra_ls/config_flow.py`, `custom_components/spectra_ls/coordinator.py`, `custom_components/spectra_ls/sensor.py`, `custom_components/spectra_ls/services.yaml`, `docs/wiki/User-Setup-Deploy-and-HA-Integration.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): add operator-focused input remap presets (`media_default`, `scene_focus`, `target_navigation`, `custom`) in HA integration settings and service contract, preserve backward-compatible manual overrides, and expose active preset/effective mapping summary in diagnostics readiness surfaces for quick verification. Two-track disposition: runtime track compatibility-shimmed (no ownership expansion); component track implemented (fast remap UX + observability). P1/P2/P3 impact: no source-of-truth ownership change; additive settings UX and visibility hardening only.
 
 - Plan Delta — Component-First Cutover Semantics + Input Remap UX Priority (`docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`, `docs/wiki/User-Setup-Deploy-and-HA-Integration.md`): clarify that component development is primary while legacy remains an explicit rollback-safe authority baseline for specific compatibility contracts, and activate a new Phase-8 follow-on slice for fast operator input-remapping UX in HA settings (quick remap workflow + clearer “where to configure” guidance). Two-track disposition: runtime track compatibility-shimmed (no ownership expansion); component track implemented for plan/UX priority definition. P1/P2/P3 impact: no source-of-truth ownership change; roadmap/operator-flow clarity and next-slice prioritization only.
 

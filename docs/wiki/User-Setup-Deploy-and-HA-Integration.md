@@ -1,5 +1,5 @@
 <!-- Description: Practical setup/deploy/integration guide for Spectra on Home Assistant with clear operator outcomes and failure actions. -->
-<!-- Version: 2026.04.22.9 -->
+<!-- Version: 2026.04.22.10 -->
 <!-- Last updated: 2026-04-22 -->
 
 # User Setup, Deploy, and HA Integration
@@ -70,11 +70,17 @@ You can now stage core control-center mappings from the Spectra integration itse
 - This is currently the primary operator UX for quick input-function remapping (not a custom Lovelace panel yet).
 
 - Integration options (Configure on `Spectra LS`) now include:
+  - mapping preset (`media_default`, `scene_focus`, `target_navigation`, `custom`),
   - encoder turn action,
   - encoder press action,
   - encoder long-press action,
   - button 1–4 scene bindings,
   - read-only mode toggle for rollout safety.
+- Recommended fast-remap workflow:
+  1. choose a mapping preset,
+  2. save,
+  3. optionally switch to `custom` for per-input fine-tuning,
+  4. confirm active mapping via `sensor.spectra_ls_control_center_readiness` attributes.
 - Scene bindings now use scene-aware selectors in options flow (instead of free-text only), and button-1 quick-trigger defaults are pre-suggested when scenes are discoverable.
 - Service path is also available for automation/operator workflows:
   - `spectra_ls.set_control_center_settings`

@@ -1,5 +1,5 @@
-# Description: Data coordinator for Spectra LS parity diagnostics, Phase 3 guarded routing write-path controls, Phase 4 diagnostics scaffolding (F4-S01/F4-S03), Phase 5 metadata trial contract auditing, and Phase 6 control-center settings/execution visibility.
-# Version: 2026.04.22.25
+# Description: Data coordinator for Spectra LS parity diagnostics, Phase 3 guarded routing write-path controls, Phase 4 diagnostics scaffolding (F4-S01/F4-S03), Phase 5 metadata trial contract auditing, and Phase 6/8 control-center settings, fast-remap, and execution visibility.
+# Version: 2026.04.22.26
 # Last updated: 2026-04-22
 
 from __future__ import annotations
@@ -224,6 +224,7 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     def _build_control_center_validation(self) -> dict[str, Any]:
         settings = dict(self._control_center_settings)
+        mapping_preset = str(settings.get("mapping_preset", "custom") or "custom").strip().lower()
         required_keys = sorted(settings.keys())
         scene_keys = [
             "button_1_scene",
@@ -237,6 +238,16 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         resolved_scene_bindings = [key for key in scene_keys if key not in unresolved_scenes]
         quick_trigger_scene = str(settings.get("button_1_scene", "scene.none") or "scene.none").strip()
         quick_trigger_ready = quick_trigger_scene.lower() not in {"", "scene.none"}
+
+        effective_mapping = {
+            "encoder_turn": str(settings.get("encoder_turn_action", "") or ""),
+            "encoder_press": str(settings.get("encoder_press_action", "") or ""),
+            "encoder_long_press": str(settings.get("encoder_long_press_action", "") or ""),
+            "button_1": str(settings.get("button_1_scene", "scene.none") or "scene.none"),
+            "button_2": str(settings.get("button_2_scene", "scene.none") or "scene.none"),
+            "button_3": str(settings.get("button_3_scene", "scene.none") or "scene.none"),
+            "button_4": str(settings.get("button_4_scene", "scene.none") or "scene.none"),
+        }
 
         non_dry_run_supported_actions = [
             "scene_quick_trigger",
@@ -265,6 +276,9 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         return {
             "schema_version": "p6_s02.v1",
             "settings": settings,
+            "mapping_preset": mapping_preset,
+            "preset_applied": mapping_preset != "custom",
+            "effective_mapping": effective_mapping,
             "required_keys": required_keys,
             "settings_present": len(required_keys) > 0,
             "read_only_mode": bool(settings.get("read_only_mode", True)),

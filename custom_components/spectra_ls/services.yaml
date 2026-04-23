@@ -1,6 +1,131 @@
-# Description: Service definitions for Spectra LS Phase 2/3 diagnostics, Phase 4 Slice-01/Slice-03 diagnostics scaffolding, and Phase 5 metadata trial contract.
-# Version: 2026.04.21.10
-# Last updated: 2026-04-21
+# Description: Service definitions for Spectra LS Phase 2/3 diagnostics, Phase 4 Slice-01/Slice-03 diagnostics scaffolding, Phase 5 metadata trial contract, and Phase 6/8 control-center settings, fast-remap presets, and execution.
+# Version: 2026.04.22.13
+# Last updated: 2026-04-22
+
+execute_control_center_input:
+  name: Execute control-center input
+  description: Execute one mapped control-center input event with dry-run-first safety semantics.
+  fields:
+    input_event:
+      name: Input event
+      description: Input event key (encoder/button) to execute.
+      required: true
+      selector:
+        select:
+          options:
+            - encoder_turn
+            - encoder_press
+            - encoder_long_press
+            - button_1
+            - button_2
+            - button_3
+            - button_4
+    dry_run:
+      name: Dry run
+      description: Keep true to validate mapping execution without calling runtime write services.
+      required: false
+      selector:
+        boolean:
+    target_hint:
+      name: Target hint
+      description: Optional target hint for diagnostics and future dispatch policies.
+      required: false
+      selector:
+        text:
+    delta:
+      name: Delta
+      description: Optional numeric delta for encoder turn events.
+      required: false
+      selector:
+        number:
+          min: -100
+          max: 100
+          step: 1
+    correlation_id:
+      name: Correlation ID
+      description: Optional correlation tag for this execution attempt.
+      required: false
+      selector:
+        text:
+
+set_control_center_settings:
+  name: Set control-center settings
+  description: Update Phase-6 control-center mappings for encoder and button scene bindings.
+  fields:
+    mapping_preset:
+      name: Mapping preset
+      description: Quick remap preset (`media_default`, `scene_focus`, `target_navigation`, `custom`).
+      required: false
+      selector:
+        select:
+          options:
+            - media_default
+            - scene_focus
+            - target_navigation
+            - custom
+    read_only_mode:
+      name: Read-only mode
+      description: Keep true to preserve read-only-first posture while staging mappings.
+      required: false
+      selector:
+        boolean:
+    encoder_turn_action:
+      name: Encoder turn action
+      description: Action mapping for encoder rotation.
+      required: false
+      selector:
+        select:
+          options:
+            - volume
+            - brightness
+            - target_cycle
+            - source_cycle
+    encoder_press_action:
+      name: Encoder press action
+      description: Action mapping for encoder press.
+      required: false
+      selector:
+        select:
+          options:
+            - play_pause
+            - mute_toggle
+            - scene_quick_trigger
+            - no_op
+    encoder_long_press_action:
+      name: Encoder long-press action
+      description: Action mapping for encoder long-press.
+      required: false
+      selector:
+        select:
+          options:
+            - play_pause
+            - mute_toggle
+            - scene_quick_trigger
+            - no_op
+    button_1_scene:
+      name: Button 1 scene
+      description: Scene entity ID bound to button 1 (e.g., `scene.living_room_evening`).
+      required: false
+      selector:
+        text:
+    button_2_scene:
+      name: Button 2 scene
+      description: Scene entity ID bound to button 2.
+      required: false
+      selector:
+        text:
+    button_3_scene:
+      name: Button 3 scene
+      description: Scene entity ID bound to button 3.
+      required: false
+      selector:
+        text:
+    button_4_scene:
+      name: Button 4 scene
+      description: Scene entity ID bound to button 4.
+      required: false
+      selector:
+        text:
 
 rebuild_registry:
   name: Rebuild registry

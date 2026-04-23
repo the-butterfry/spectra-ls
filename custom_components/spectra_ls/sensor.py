@@ -1,5 +1,5 @@
-# Description: Sensor entities for Spectra LS shadow parity routing surfaces with Phase 3 write-control, Phase 4 diagnostics attributes, and Phase 6 control-center settings/readiness/last-attempt visibility.
-# Version: 2026.04.22.12
+# Description: Sensor entities for Spectra LS shadow parity routing surfaces with Phase 3 write-control, Phase 4 diagnostics attributes, and Phase 6/8 control-center settings/readiness/last-attempt visibility.
+# Version: 2026.04.22.13
 # Last updated: 2026-04-22
 
 from __future__ import annotations
@@ -86,6 +86,8 @@ class SpectraLsControlCenterLastAttemptStatusSensor(CoordinatorEntity, SensorEnt
             "requested_at": last_attempt.get("requested_at"),
             "completed_at": last_attempt.get("completed_at"),
             "control_center_settings": write_controls.get("control_center_settings", {}),
+            "mapping_preset": cc_validation.get("mapping_preset"),
+            "effective_mapping": cc_validation.get("effective_mapping", {}),
             "ready_for_customization": cc_validation.get("ready_for_customization"),
             "unresolved_scene_bindings": cc_validation.get("unresolved_scene_bindings", []),
             "captured_at": data.get("captured_at"),
@@ -116,6 +118,9 @@ class SpectraLsControlCenterReadinessSensor(CoordinatorEntity, SensorEntity):
         return {
             "ready_for_execution": cc_validation.get("ready_for_execution"),
             "recommended_next_step": cc_validation.get("recommended_next_step"),
+            "mapping_preset": cc_validation.get("mapping_preset"),
+            "preset_applied": cc_validation.get("preset_applied"),
+            "effective_mapping": cc_validation.get("effective_mapping", {}),
             "configured_scene_bindings_count": cc_validation.get("configured_scene_bindings_count"),
             "total_scene_bindings": cc_validation.get("total_scene_bindings"),
             "resolved_scene_bindings": cc_validation.get("resolved_scene_bindings", []),

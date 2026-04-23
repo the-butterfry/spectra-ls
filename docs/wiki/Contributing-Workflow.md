@@ -1,5 +1,5 @@
 <!-- Description: Practical contribution lifecycle from issue intake to verified merge in Spectra L/S. -->
-<!-- Version: 2026.04.22.2 -->
+<!-- Version: 2026.04.22.3 -->
 <!-- Last updated: 2026-04-22 -->
 
 # Contributing Workflow
@@ -25,6 +25,13 @@ For roadmap/process/contract changes, update together:
 2. `docs/roadmap/v-next-NOTES.md`
 3. `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`
 4. `README.md` (or explicit no-material-change note)
+
+Linked parity set:
+
+1. [`docs/CHANGELOG.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/CHANGELOG.md)
+2. [`docs/roadmap/v-next-NOTES.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/roadmap/v-next-NOTES.md)
+3. [`docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md)
+4. [`README.md`](https://github.com/the-butterfry/spectra-ls/blob/main/README.md) (or explicit no-material-change note)
 
 If one is missing, the slice is not done.
 

@@ -1,5 +1,5 @@
 <!-- Description: Release-note and changelog discipline for Spectra L/S behavior, contract, and governance changes. -->
-<!-- Version: 2026.04.22.2 -->
+<!-- Version: 2026.04.22.3 -->
 <!-- Last updated: 2026-04-22 -->
 
 # Release and Changelog Process
@@ -10,7 +10,7 @@ This is the minimum release hygiene for every slice.
 
 For functional behavior, contract, architecture, workflow, or governance changes:
 
-1. Update `docs/CHANGELOG.md` in the same change set.
+1. Update [`docs/CHANGELOG.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/CHANGELOG.md) in the same change set.
 2. Include affected file paths in the entry.
 3. Keep entries concise and impact-oriented.
 
@@ -18,10 +18,10 @@ For functional behavior, contract, architecture, workflow, or governance changes
 
 For roadmap/process/contract changes, update these together:
 
-1. `docs/CHANGELOG.md`
-2. `docs/roadmap/v-next-NOTES.md`
-3. `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`
-4. `README.md` (or explicit no-material-change note)
+1. [`docs/CHANGELOG.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/CHANGELOG.md)
+2. [`docs/roadmap/v-next-NOTES.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/roadmap/v-next-NOTES.md)
+3. [`docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md)
+4. [`README.md`](https://github.com/the-butterfry/spectra-ls/blob/main/README.md) (or explicit no-material-change note)
 
 ## Release hygiene recommendations
 

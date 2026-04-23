@@ -1,5 +1,5 @@
 <!-- Description: Practical operations runbooks for docs parity, runtime validation, deployment proof, and rollback readiness. -->
-<!-- Version: 2026.04.22.2 -->
+<!-- Version: 2026.04.22.3 -->
 <!-- Last updated: 2026-04-22 -->
 
 # Operations Runbooks
@@ -8,12 +8,12 @@ Use this page when you need the exact “what do I do next?” steps.
 
 ## Documentation parity runbook
 
-1. Update `docs/CHANGELOG.md` first.
+1. Update [`docs/CHANGELOG.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/CHANGELOG.md) first.
 2. Update the affected roadmap docs:
-   - `docs/roadmap/v-next-NOTES.md`
-   - `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`
-3. Update any changed wiki source pages under `docs/wiki/`.
-4. Update `README.md` only when user-facing behavior or workflow changed.
+   - [`docs/roadmap/v-next-NOTES.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/roadmap/v-next-NOTES.md)
+   - [`docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md)
+3. Update any changed wiki source pages under [`docs/wiki/`](https://github.com/the-butterfry/spectra-ls/tree/main/docs/wiki).
+4. Update [`README.md`](https://github.com/the-butterfry/spectra-ls/blob/main/README.md) only when user-facing behavior or workflow changed.
 5. Validate markdown and file diagnostics.
 6. Commit and push with a clear slice label.
 
@@ -46,7 +46,7 @@ Required proof lines:
    - verify `WIKI_FINE_GRAINED_PAT` exists and has `Contents: Read and write`.
 3. If failure is **sync/push**:
    - verify PAT repository selection includes this repo,
-   - push a small `docs/wiki/*` change and rerun.
+   - push a small change under [`docs/wiki/*`](https://github.com/the-butterfry/spectra-ls/tree/main/docs/wiki) and rerun.
 4. Confirm the `Sync docs/wiki to GitHub Wiki` step is green.
 
 Quick triage checklist:

@@ -1,5 +1,5 @@
 <!-- Description: Release-note and changelog discipline for Spectra L/S behavior, contract, and governance changes. -->
-<!-- Version: 2026.04.22.1 -->
+<!-- Version: 2026.04.22.2 -->
 <!-- Last updated: 2026-04-22 -->
 
 # Release and Changelog Process
@@ -45,7 +45,7 @@ For roadmap/process/contract changes, update these together:
 
 ## Linked references
 
-- Main changelog: `docs/CHANGELOG.md`
-- Runtime roadmap ledger: `docs/roadmap/v-next-NOTES.md`
-- Component roadmap ledger: `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`
-- Contributor process: `CONTRIBUTING.md`
+- Main changelog: [`docs/CHANGELOG.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/CHANGELOG.md)
+- Runtime roadmap ledger: [`docs/roadmap/v-next-NOTES.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/roadmap/v-next-NOTES.md)
+- Component roadmap ledger: [`docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md)
+- Contributor process: [`CONTRIBUTING.md`](https://github.com/the-butterfry/spectra-ls/blob/main/CONTRIBUTING.md)

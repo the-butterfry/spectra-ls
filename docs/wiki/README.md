@@ -1,6 +1,6 @@
 <!-- Description: Wiki source and synchronization instructions for Spectra documentation pages. -->
-<!-- Version: 2026.04.21.9 -->
-<!-- Last updated: 2026-04-21 -->
+<!-- Version: 2026.04.22.10 -->
+<!-- Last updated: 2026-04-22 -->
 
 # Wiki Source + Sync
 
@@ -11,6 +11,9 @@ This folder stores the source pages for GitHub Wiki publishing.
 - Source of truth: `docs/wiki/*.md`
 - Publish target: `<owner>/<repo>.wiki.git`
 - Automation: `.github/workflows/wiki-sync.yml`
+- Canonical docs index (repo): `docs/README.md`
+- Canonical changelog (repo): `docs/CHANGELOG.md`
+- Canonical roadmap notes (repo): `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`
 
 ## Core page inventory
 

@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.22.102 -->
+<!-- Version: 2026.04.22.104 -->
 <!-- Last updated: 2026-04-22 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -1020,6 +1020,17 @@ Run-4 execution update (2026-04-22):
 
 - Wiki docs lane: improved remaining core workflow/architecture contributor pages (`docs/wiki/Operations-Runbooks.md`, `docs/wiki/System-Architecture.md`, `docs/wiki/Contributing-Workflow.md`) with direct task flow, explicit outcomes, and parity/ownership reminders.
 - Execution disposition: run-4 packet accepted; continue remaining lower-traffic wiki cleanup pages and consistency passes.
+
+Run-5 execution update (2026-04-22):
+
+- Navigation/reference lane: aligned top-level + wiki entry navigation (`README.md`, `docs/wiki/Home.md`, `docs/wiki/_Sidebar.md`, `docs/wiki/README.md`) to link-first reference paths and stronger canonical source routing.
+- Language lane: removed low-value process narration about edit mechanics and kept page intent outcome-focused.
+- Execution disposition: run-5 packet accepted; continue remaining long-tail page consistency cleanup.
+
+Run-6 execution update (2026-04-22):
+
+- Long-tail wiki lane: improved process/reference-heavy pages (`docs/wiki/Getting-Started.md`, `docs/wiki/Discussions-and-Projects-Workflow.md`, `docs/wiki/Release-and-Changelog-Process.md`, `docs/wiki/Wiki-Content-Scope-Policy.md`, `docs/wiki/Contributing-Workflow.md`, `docs/wiki/Operations-Runbooks.md`) with explicit clickable links for canonical repo references.
+- Execution disposition: run-6 packet accepted; continue remaining page-by-page consistency sweep as follow-on maintenance.
 
 GitHub/developer declaration (policy mirror):
 

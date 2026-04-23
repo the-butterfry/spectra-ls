@@ -1,5 +1,5 @@
 <!-- Description: GitHub Discussions and Projects operating workflow mapped to Spectra L/S scope paths. -->
-<!-- Version: 2026.04.22.1 -->
+<!-- Version: 2026.04.22.2 -->
 <!-- Last updated: 2026-04-22 -->
 
 # Discussions and Projects Workflow
@@ -56,12 +56,12 @@ Single org/repo project titled: **Spectra Program Board**
 
 ## Required linked references
 
-- Contribution workflow: `CONTRIBUTING.md`
-- PR checklist: `.github/pull_request_template.md`
-- Changelog: `docs/CHANGELOG.md`
-- Runtime roadmap: `docs/roadmap/v-next-NOTES.md`
-- Component roadmap: `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`
-- Label taxonomy/governance: `docs/governance/LABEL-TAXONOMY.md`
+- Contribution workflow: [`CONTRIBUTING.md`](https://github.com/the-butterfry/spectra-ls/blob/main/CONTRIBUTING.md)
+- PR checklist: [`.github/pull_request_template.md`](https://github.com/the-butterfry/spectra-ls/blob/main/.github/pull_request_template.md)
+- Changelog: [`docs/CHANGELOG.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/CHANGELOG.md)
+- Runtime roadmap: [`docs/roadmap/v-next-NOTES.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/roadmap/v-next-NOTES.md)
+- Component roadmap: [`docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md)
+- Label taxonomy/governance: [`docs/governance/LABEL-TAXONOMY.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/governance/LABEL-TAXONOMY.md)
 
 ## Definition of ready (Issue)
 

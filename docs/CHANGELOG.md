@@ -1,10 +1,14 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.22.199 -->
+<!-- Version: 2026.04.22.201 -->
 <!-- Last updated: 2026-04-22 -->
 
 # Changelog
 
 ## 2026-04-22
+
+- P8-S02 Link Consistency Long-Tail Run-6 (`docs/wiki/Getting-Started.md`, `docs/wiki/Discussions-and-Projects-Workflow.md`, `docs/wiki/Release-and-Changelog-Process.md`, `docs/wiki/Wiki-Content-Scope-Policy.md`, `docs/wiki/Contributing-Workflow.md`, `docs/wiki/Operations-Runbooks.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): convert key workflow/reference callouts to explicit clickable links and normalize page metadata/version cadence across high-traffic process pages. Two-track disposition: runtime track unchanged/sealed compatibility baseline; component track unchanged/primary growth lane. P1/P2/P3 impact: no source-of-truth ownership change; documentation navigation quality hardening only.
+
+- P8-S02 Navigation + Reference Consistency Run-5 (`README.md`, `docs/wiki/Home.md`, `docs/wiki/_Sidebar.md`, `docs/wiki/README.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): align top-level and wiki navigation with link-first reference paths, remove low-value process narration in page-intent notes, and strengthen canonical source pointers for operators/contributors. Two-track disposition: runtime track unchanged/sealed compatibility baseline; component track unchanged/primary growth lane. P1/P2/P3 impact: no source-of-truth ownership change; documentation discoverability and execution clarity hardening only.
 
 - P8-S02 Documentation Polish — Wiki Core Pages Run-4 (`docs/wiki/Operations-Runbooks.md`, `docs/wiki/System-Architecture.md`, `docs/wiki/Contributing-Workflow.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): update core workflow/architecture/contributor wiki pages for concise task flow and stronger in-repo references. Two-track disposition: runtime track unchanged/sealed compatibility baseline; component track unchanged/primary growth lane. P1/P2/P3 impact: no source-of-truth ownership change; documentation usability and execution clarity hardening only.
 

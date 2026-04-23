@@ -1,5 +1,5 @@
 <!-- Description: End-user overview for the Spectra L/S Home Assistant + ESPHome system. -->
-<!-- Version: 2026.04.22.18 -->
+<!-- Version: 2026.04.22.20 -->
 <!-- Last updated: 2026-04-22 -->
 
 # Spectra L/S
@@ -79,15 +79,20 @@ Inspired by modern physical-control craftsmanship from [Condesa Electronics — 
 
 Start here for setup, operations, and development workflow:
 
-- `docs/README.md`
+- [`docs/README.md`](docs/README.md)
 
 Common entry points:
 
-- Setup placeholders: `docs/setup/SPECTRA-HA-CONFIG-PLACEHOLDERS.md`
-- Latest project changes: `docs/CHANGELOG.md`
-- Developer onboarding/runbook: `docs/developer/DEVELOPER-INSTRUCTIONS.md`
+- Setup placeholders: [`docs/setup/SPECTRA-HA-CONFIG-PLACEHOLDERS.md`](docs/setup/SPECTRA-HA-CONFIG-PLACEHOLDERS.md)
+- Latest project changes: [`docs/CHANGELOG.md`](docs/CHANGELOG.md)
+- Developer onboarding/runbook: [`docs/developer/DEVELOPER-INSTRUCTIONS.md`](docs/developer/DEVELOPER-INSTRUCTIONS.md)
 
-Need current execution status? Use `docs/roadmap/v-next-NOTES.md`.
-Need migration mechanics and slice evidence? Use roadmap docs + raw checklists under `docs/`.
-Need wiki navigation? Start at `docs/wiki/Home.md`.
+Need current execution status? Use [`docs/roadmap/v-next-NOTES.md`](docs/roadmap/v-next-NOTES.md).
+
+Need migration mechanics and slice evidence? Use:
+
+- [`docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`](docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md)
+- [`docs/testing/raw/`](docs/testing/raw/)
+
+Need wiki navigation? Start at [`docs/wiki/Home.md`](docs/wiki/Home.md).
 

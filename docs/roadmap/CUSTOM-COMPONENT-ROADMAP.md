@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.22.110 -->
+<!-- Version: 2026.04.22.111 -->
 <!-- Last updated: 2026-04-22 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -1067,6 +1067,12 @@ Run-13 execution update (2026-04-22):
 - Plan-delta lane: clarified cutover semantics so component remains the primary development lane for net-new work while legacy remains an explicit rollback-safe authority baseline for compatibility contracts until bounded retirement gates are executed.
 - Priority lane: activated `P8-S03` as a core fast-remap UX slice so operators can quickly re-map button/encoder input behavior from Home Assistant integration settings without script-level edits.
 - Execution disposition: run-13 packet accepted; runtime track unchanged compatibility baseline, component track prioritizes operator remap workflow acceleration.
+
+Run-14 execution update (2026-04-22):
+
+- Component remap lane: implemented preset-driven fast remap contract in integration settings/service surfaces (`media_default`, `scene_focus`, `target_navigation`, `custom`) with backward-compatible manual override flow.
+- Diagnostics lane: added active preset + effective mapping visibility in control-center readiness/attempt diagnostics for quick operator verification after remap.
+- Execution disposition: run-14 packet accepted; runtime track unchanged compatibility baseline, component track advanced P8-S03 operator remap implementation.
 
 ### Phase 8 follow-on slice card — P8-S03 (fast input-remap UX in HA settings)
 

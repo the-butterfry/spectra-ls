@@ -1,5 +1,5 @@
-# Description: Config and options flow for Spectra LS shadow parity integration with Phase 6 control-center settings.
-# Version: 2026.04.22.3
+# Description: Config and options flow for Spectra LS shadow parity integration with Phase 6/8 control-center fast-remap settings.
+# Version: 2026.04.22.4
 # Last updated: 2026-04-22
 
 from __future__ import annotations
@@ -14,6 +14,8 @@ from homeassistant.helpers import selector
 from .const import (
     CONTROL_CENTER_ACTIONS,
     CONTROL_CENTER_DEFAULTS,
+    CONTROL_CENTER_MAPPING_PRESETS,
+    CONTROL_CENTER_PRESET_VALUES,
     CONTROL_CENTER_PRESS_ACTIONS,
     DOMAIN,
     ENTRY_TITLE,
@@ -24,6 +26,7 @@ from .const import (
     OPT_ENCODER_LONG_PRESS_ACTION,
     OPT_ENCODER_PRESS_ACTION,
     OPT_ENCODER_TURN_ACTION,
+    OPT_MAPPING_PRESET,
     OPT_READ_ONLY_MODE,
     SINGLETON_UNIQUE_ID,
     normalize_control_center_settings,
@@ -69,10 +72,26 @@ class SpectraLsOptionsFlow(config_entries.OptionsFlow):
         scene_entities = sorted(state.entity_id for state in self.hass.states.async_all("scene"))
         return scene_entities[0] if scene_entities else "scene.none"
 
+    def _apply_selected_preset(self, user_input: dict[str, Any]) -> dict[str, Any]:
+        """Apply selected mapping preset to the submitted input payload."""
+        selected_preset = str(user_input.get(OPT_MAPPING_PRESET, "custom") or "custom").strip().lower()
+        if selected_preset not in CONTROL_CENTER_MAPPING_PRESETS:
+            selected_preset = "custom"
+
+        if selected_preset == "custom":
+            return dict(user_input)
+
+        patched = dict(user_input)
+        patched[OPT_MAPPING_PRESET] = selected_preset
+        preset_values = CONTROL_CENTER_PRESET_VALUES.get(selected_preset, {})
+        if isinstance(preset_values, dict):
+            patched.update(preset_values)
+        return patched
+
     async def async_step_init(self, user_input: dict[str, Any] | None = None):
         """Configure control-center input mappings and scene bindings."""
         if user_input is not None:
-            normalized = normalize_control_center_settings(user_input)
+            normalized = normalize_control_center_settings(self._apply_selected_preset(user_input))
             return self.async_create_entry(title="", data=normalized)
 
         existing = normalize_control_center_settings(self._config_entry.options)
@@ -92,6 +111,15 @@ class SpectraLsOptionsFlow(config_entries.OptionsFlow):
             data_schema=vol.Schema(
                 {
                     vol.Optional(OPT_READ_ONLY_MODE, default=defaults[OPT_READ_ONLY_MODE]): selector.BooleanSelector(),
+                    vol.Optional(
+                        OPT_MAPPING_PRESET,
+                        default=defaults[OPT_MAPPING_PRESET],
+                    ): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=list(CONTROL_CENTER_MAPPING_PRESETS),
+                            mode=selector.SelectSelectorMode.DROPDOWN,
+                        )
+                    ),
                     vol.Optional(
                         OPT_ENCODER_TURN_ACTION,
                         default=defaults[OPT_ENCODER_TURN_ACTION],

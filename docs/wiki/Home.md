@@ -1,6 +1,6 @@
 <!-- Description: Wiki home page for Spectra L/S operations, architecture, contribution flow, and runbooks. -->
-<!-- Version: 2026.04.21.9 -->
-<!-- Last updated: 2026-04-21 -->
+<!-- Version: 2026.04.22.10 -->
+<!-- Last updated: 2026-04-22 -->
 
 # Spectra L/S Wiki
 
@@ -24,20 +24,20 @@ This wiki mirrors curated content from `docs/wiki/` in the main repository and i
 - [Wiki Content Scope Policy](Wiki-Content-Scope-Policy)
 - [Custom Component Setup Roadmap Stub](Custom-Component-Setup-Roadmap-Stub)
 
-## Current documentation objective
+## Documentation quality baseline
 
-We are actively rewriting wiki and repository docs to be more direct, practical, and operator-useful.
+Current documentation posture:
 
 What that means in practice:
 
 - clearer action-first instructions,
 - explicit expected outcomes,
 - concrete troubleshooting paths,
-- less generic/AI-sounding language.
+- concise language with strong references.
 
 Writing quality standard:
 
-- `docs/wiki/DOCUMENTATION-WRITING-STANDARD.md`
+- [`docs/wiki/DOCUMENTATION-WRITING-STANDARD.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/wiki/DOCUMENTATION-WRITING-STANDARD.md)
 
 ## Operator quick paths
 
@@ -48,9 +48,10 @@ Writing quality standard:
 
 ## Source of truth
 
-- Canonical docs index: `docs/README.md`
-- Canonical changelog: `docs/CHANGELOG.md`
-- Runtime roadmap notes: `docs/roadmap/v-next-NOTES.md`
+- Canonical docs index: [`docs/README.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/README.md)
+- Canonical changelog: [`docs/CHANGELOG.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/CHANGELOG.md)
+- Runtime roadmap notes: [`docs/roadmap/v-next-NOTES.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/roadmap/v-next-NOTES.md)
+- Component roadmap notes: [`docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md)
 
 ## How this wiki is published
 

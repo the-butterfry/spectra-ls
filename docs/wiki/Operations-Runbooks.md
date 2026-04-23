@@ -1,5 +1,5 @@
 <!-- Description: Practical operations runbooks for docs parity, runtime validation, deployment proof, and rollback readiness. -->
-<!-- Version: 2026.04.22.1 -->
+<!-- Version: 2026.04.22.2 -->
 <!-- Last updated: 2026-04-22 -->
 
 # Operations Runbooks
@@ -77,6 +77,6 @@ If one is missing, the slice is not complete.
 
 ## Operational references
 
-- `docs/wiki/Install-on-Your-Own-HA.md`
-- `docs/wiki/Welcome-README-and-Bug-Workflow.md`
-- `docs/wiki/Discussions-and-Projects-Workflow.md`
+- [Install-on-Your-Own-HA.md](Install-on-Your-Own-HA)
+- [Welcome-README-and-Bug-Workflow.md](Welcome-README-and-Bug-Workflow)
+- [Discussions-and-Projects-Workflow.md](Discussions-and-Projects-Workflow)

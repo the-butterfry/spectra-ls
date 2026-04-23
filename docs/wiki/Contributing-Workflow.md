@@ -1,5 +1,5 @@
 <!-- Description: Practical contribution lifecycle from issue intake to verified merge in Spectra L/S. -->
-<!-- Version: 2026.04.22.1 -->
+<!-- Version: 2026.04.22.2 -->
 <!-- Last updated: 2026-04-22 -->
 
 # Contributing Workflow
@@ -36,10 +36,10 @@ If one is missing, the slice is not done.
 
 ## Required references
 
-- `CONTRIBUTING.md`
-- `.github/pull_request_template.md`
-- `docs/CHANGELOG.md`
-- `docs/roadmap/v-next-NOTES.md`
+- [`CONTRIBUTING.md`](https://github.com/the-butterfry/spectra-ls/blob/main/CONTRIBUTING.md)
+- [`.github/pull_request_template.md`](https://github.com/the-butterfry/spectra-ls/blob/main/.github/pull_request_template.md)
+- [`docs/CHANGELOG.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/CHANGELOG.md)
+- [`docs/roadmap/v-next-NOTES.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/roadmap/v-next-NOTES.md)
 
 ## Review expectations
 

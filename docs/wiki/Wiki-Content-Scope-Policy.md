@@ -1,5 +1,5 @@
 <!-- Description: Policy for wiki content boundaries, ownership, and parity with repository docs. -->
-<!-- Version: 2026.04.22.1 -->
+<!-- Version: 2026.04.22.2 -->
 <!-- Last updated: 2026-04-22 -->
 
 # Wiki Content Scope Policy
@@ -30,11 +30,11 @@ This policy keeps wiki content useful, concise, and user-focused.
 
 ## Linked references
 
-- Wiki writing standard: `docs/wiki/DOCUMENTATION-WRITING-STANDARD.md`
-- Wiki source index: `docs/wiki/README.md`
-- Docs index: `docs/README.md`
-- Architecture docs: `docs/architecture/`
-- Roadmaps and planning docs: `docs/roadmap/`, `docs/program/`, `docs/notes/`
+- Wiki writing standard: [`docs/wiki/DOCUMENTATION-WRITING-STANDARD.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/wiki/DOCUMENTATION-WRITING-STANDARD.md)
+- Wiki source index: [`docs/wiki/README.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/wiki/README.md)
+- Docs index: [`docs/README.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/README.md)
+- Architecture docs: [`docs/architecture/`](https://github.com/the-butterfry/spectra-ls/tree/main/docs/architecture)
+- Roadmaps and planning docs: [`docs/roadmap/`](https://github.com/the-butterfry/spectra-ls/tree/main/docs/roadmap), [`docs/program/`](https://github.com/the-butterfry/spectra-ls/tree/main/docs/program), [`docs/notes/`](https://github.com/the-butterfry/spectra-ls/tree/main/docs/notes)
 
 ## Mature-project pattern (recommended)
 

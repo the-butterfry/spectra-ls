@@ -1,5 +1,5 @@
 <!-- Description: Operator runbook for installing Spectra on a user-owned Home Assistant instance with explicit pass/fail checkpoints. -->
-<!-- Version: 2026.04.22.5 -->
+<!-- Version: 2026.04.22.6 -->
 <!-- Last updated: 2026-04-22 -->
 
 # Install on Your Own Home Assistant
@@ -91,7 +91,7 @@ Roadmap references:
 
 This is **not** needed to run Spectra in your home.
 
-- Use `WIKI_FINE_GRAINED_PAT` only if you want GitHub Actions to publish `docs/wiki/*` to the GitHub Wiki.
+- Use `WIKI_FINE_GRAINED_PAT` only if you want GitHub Actions to publish changes from [`docs/wiki/*`](https://github.com/the-butterfry/spectra-ls/tree/main/docs/wiki) to the GitHub Wiki.
 - Setup steps are in [`docs/wiki/README.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/wiki/README.md).
 
 ## Rollback checklist (operator safety)

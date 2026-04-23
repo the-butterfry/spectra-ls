@@ -1,5 +1,5 @@
 <!-- Description: Policy for wiki content boundaries, ownership, and parity with repository docs. -->
-<!-- Version: 2026.04.22.2 -->
+<!-- Version: 2026.04.22.3 -->
 <!-- Last updated: 2026-04-22 -->
 
 # Wiki Content Scope Policy
@@ -17,16 +17,16 @@ This policy keeps wiki content useful, concise, and user-focused.
 
 ## What SHOULD NOT be in wiki
 
-- Deep low-level implementation internals better suited to `docs/architecture/`
-- Exhaustive branch-specific engineering notes better suited to `docs/roadmap/`, `docs/program/`, `docs/notes/`
+- Deep low-level implementation internals better suited to [`docs/architecture/`](https://github.com/the-butterfry/spectra-ls/tree/main/docs/architecture)
+- Exhaustive branch-specific engineering notes better suited to [`docs/roadmap/`](https://github.com/the-butterfry/spectra-ls/tree/main/docs/roadmap), [`docs/program/`](https://github.com/the-butterfry/spectra-ls/tree/main/docs/program), [`docs/notes/`](https://github.com/the-butterfry/spectra-ls/tree/main/docs/notes)
 - Temporary scratch investigations without enduring operator value
 - Secret values, private topology details, or environment-specific credentials
 
 ## Source-of-truth hierarchy
 
-1. Canonical technical detail: `docs/`
-2. Canonical user-facing overview: `README.md`
-3. Wiki: user/operator-friendly navigation + runbooks synchronized from `docs/wiki/`
+1. Canonical technical detail: [`docs/`](https://github.com/the-butterfry/spectra-ls/tree/main/docs)
+2. Canonical user-facing overview: [`README.md`](https://github.com/the-butterfry/spectra-ls/blob/main/README.md)
+3. Wiki: user/operator-friendly navigation + runbooks synchronized from [`docs/wiki/`](https://github.com/the-butterfry/spectra-ls/tree/main/docs/wiki)
 
 ## Linked references
 

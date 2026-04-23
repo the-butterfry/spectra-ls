@@ -1,5 +1,5 @@
 <!-- Description: Wiki source and synchronization instructions for Spectra documentation pages. -->
-<!-- Version: 2026.04.22.10 -->
+<!-- Version: 2026.04.22.11 -->
 <!-- Last updated: 2026-04-22 -->
 
 # Wiki Source + Sync
@@ -8,12 +8,12 @@ This folder stores the source pages for GitHub Wiki publishing.
 
 ## Architecture
 
-- Source of truth: `docs/wiki/*.md`
+- Source of truth: [`docs/wiki/*.md`](https://github.com/the-butterfry/spectra-ls/tree/main/docs/wiki)
 - Publish target: `<owner>/<repo>.wiki.git`
-- Automation: `.github/workflows/wiki-sync.yml`
-- Canonical docs index (repo): `docs/README.md`
-- Canonical changelog (repo): `docs/CHANGELOG.md`
-- Canonical roadmap notes (repo): `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`
+- Automation: [`.github/workflows/wiki-sync.yml`](https://github.com/the-butterfry/spectra-ls/blob/main/.github/workflows/wiki-sync.yml)
+- Canonical docs index (repo): [`docs/README.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/README.md)
+- Canonical changelog (repo): [`docs/CHANGELOG.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/CHANGELOG.md)
+- Canonical roadmap notes (repo): [`docs/roadmap/v-next-NOTES.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/roadmap/v-next-NOTES.md), [`docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md)
 
 ## Core page inventory
 
@@ -34,9 +34,9 @@ This folder stores the source pages for GitHub Wiki publishing.
 
 ## Content scope policy
 
-Use `Wiki-Content-Scope-Policy.md` to decide what belongs in wiki versus deep docs under `docs/architecture`, `docs/roadmap`, and `docs/program`.
+Use [`Wiki-Content-Scope-Policy.md`](Wiki-Content-Scope-Policy) to decide what belongs in wiki versus deep docs under [`docs/architecture`](https://github.com/the-butterfry/spectra-ls/tree/main/docs/architecture), [`docs/roadmap`](https://github.com/the-butterfry/spectra-ls/tree/main/docs/roadmap), and [`docs/program`](https://github.com/the-butterfry/spectra-ls/tree/main/docs/program).
 
-Use `DOCUMENTATION-WRITING-STANDARD.md` to enforce direct, native-English, task-oriented page quality across all wiki pages.
+Use [`DOCUMENTATION-WRITING-STANDARD.md`](DOCUMENTATION-WRITING-STANDARD) to enforce direct, native-English, task-oriented page quality across all wiki pages.
 
 ## One-time enablement checklist
 
@@ -44,7 +44,7 @@ Use `DOCUMENTATION-WRITING-STANDARD.md` to enforce direct, native-English, task-
 2. Open the repo **Wiki** tab and create/save the first `Home` page (initializes `<repo>.wiki.git`).
 3. Create a fine-grained PAT with wiki push capability.
 4. Add the token as repository secret: `WIKI_FINE_GRAINED_PAT`.
-5. Commit wiki pages in `docs/wiki/` to `main`.
+5. Commit wiki pages in [`docs/wiki/`](https://github.com/the-butterfry/spectra-ls/tree/main/docs/wiki) to `main`.
 6. Confirm workflow run `Wiki Sync` succeeds.
 
 ## How to create the fine-grained PAT
@@ -87,4 +87,4 @@ Quick checks:
 1. Confirm wiki is enabled: **Repo Settings → General → Features → Wikis**
 2. Confirm secret exists: `WIKI_FINE_GRAINED_PAT`
 3. Confirm PAT has repository **Contents: Read and write** and includes this repo.
-4. Re-run `Wiki Sync` from Actions after saving any change under `docs/wiki/`.
+4. Re-run `Wiki Sync` from Actions after saving any change under [`docs/wiki/`](https://github.com/the-butterfry/spectra-ls/tree/main/docs/wiki).

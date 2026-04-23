@@ -1,12 +1,12 @@
 <!-- Description: Wiki home page for Spectra L/S operations, architecture, contribution flow, and runbooks. -->
-<!-- Version: 2026.04.22.10 -->
+<!-- Version: 2026.04.22.11 -->
 <!-- Last updated: 2026-04-22 -->
 
 # Spectra L/S Wiki
 
 Spectra L/S is a tactile analog surface for Home Assistant, with deep audio/lighting workflows and broad mappable control capabilities across the home.
 
-This wiki mirrors curated content from `docs/wiki/` in the main repository and is optimized for operators/contributors who prefer GitHub-native documentation navigation.
+This wiki mirrors curated content from [`docs/wiki/`](https://github.com/the-butterfry/spectra-ls/tree/main/docs/wiki) in the main repository and is optimized for operators/contributors who prefer GitHub-native documentation navigation.
 
 ## Start here
 
@@ -55,9 +55,9 @@ Writing quality standard:
 
 ## How this wiki is published
 
-- Source pages live in: `docs/wiki/`
-- Publish pipeline: `.github/workflows/wiki-sync.yml`
-- Sync trigger: changes to `docs/wiki/**` on `main` (or manual workflow dispatch)
+- Source pages live in: [`docs/wiki/`](https://github.com/the-butterfry/spectra-ls/tree/main/docs/wiki)
+- Publish pipeline: [`.github/workflows/wiki-sync.yml`](https://github.com/the-butterfry/spectra-ls/blob/main/.github/workflows/wiki-sync.yml)
+- Sync trigger: changes to [`docs/wiki/**`](https://github.com/the-butterfry/spectra-ls/tree/main/docs/wiki) on `main` (or manual workflow dispatch)
 
 ## What this wiki is for
 
@@ -65,4 +65,4 @@ Writing quality standard:
 - High-level architecture and process routing.
 - Practical checklists that evolve with the custom-component migration.
 
-For deep internals, use `docs/architecture`, `docs/roadmap`, and `docs/program`.
+For deep internals, use [`docs/architecture`](https://github.com/the-butterfry/spectra-ls/tree/main/docs/architecture), [`docs/roadmap`](https://github.com/the-butterfry/spectra-ls/tree/main/docs/roadmap), and [`docs/program`](https://github.com/the-butterfry/spectra-ls/tree/main/docs/program).

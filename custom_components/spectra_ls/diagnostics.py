@@ -1,6 +1,6 @@
-# Description: Diagnostics export for Spectra LS read-only shadow parity, Phase 2 scaffold snapshots, and Phase 6 control-center settings/readiness visibility.
-# Version: 2026.04.22.4
-# Last updated: 2026-04-22
+# Description: Diagnostics export for Spectra LS read-only shadow parity, Phase 2 scaffold snapshots, Phase 6 control-center settings/readiness visibility, and monitor-manager freshness/publish diagnostics.
+# Version: 2026.04.25.1
+# Last updated: 2026-04-25
 
 from __future__ import annotations
 
@@ -26,6 +26,7 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: ConfigE
         "control_center_settings": coordinator.data.get("write_controls", {}).get("control_center_settings", {}),
         "control_center_validation": coordinator.data.get("control_center_validation", {}),
         "control_center_last_attempt": coordinator.data.get("write_controls", {}).get("control_center_last_attempt", {}),
+        "component_monitor": coordinator.data.get("component_monitor", {}),
         "source_states": source_states,
         "shadow_snapshot": coordinator.data,
     }

@@ -1,6 +1,6 @@
-# Description: Data coordinator for Spectra LS parity diagnostics, Phase 3 guarded routing write-path controls, Phase 4 diagnostics scaffolding (F4-S01/F4-S03), Phase 5 metadata trial contract auditing, and Phase 6/8 control-center settings, fast-remap, and execution visibility.
-# Version: 2026.04.22.26
-# Last updated: 2026-04-22
+# Description: Data coordinator for Spectra LS parity diagnostics, Phase 3 guarded routing write-path controls, Phase 4 diagnostics scaffolding (F4-S01/F4-S03), Phase 5 metadata trial contract auditing, and Phase 6/8 control-center settings, fast-remap, execution visibility, plus freshness-gated component monitor manager diagnostics.
+# Version: 2026.04.25.1
+# Last updated: 2026-04-25
 
 from __future__ import annotations
 
@@ -85,6 +85,9 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._snapshot_refresh_min_interval_s = 0.75
         self._last_snapshot_refresh_monotonic = 0.0
         self._deferred_snapshot_refresh_unsub = None
+        self._monitor_now_playing_max_age_s = 300.0
+        self._monitor_snapshot_max_age_s = 12.0
+        self._monitor_fail_closed = True
         self._last_metadata_trial_attempt: dict[str, Any] = {
             "status": "never_attempted",
             "requested_at": None,
@@ -435,6 +438,207 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         age_s = (datetime.now(UTC) - parsed.astimezone(UTC)).total_seconds()
         return max(age_s, 0.0)
+
+    @staticmethod
+    def _coerce_age_seconds(raw_value: Any) -> float | None:
+        if isinstance(raw_value, (int, float)):
+            return max(float(raw_value), 0.0)
+        return None
+
+    @staticmethod
+    def _extract_control_host_candidates(raw_value: Any) -> list[str]:
+        raw = (raw_value or "").strip()
+        if not raw or raw.lower() in {"unknown", "unavailable", "none", "missing"}:
+            return []
+
+        host_candidates: list[str] = []
+
+        def _add_candidate(candidate: Any) -> None:
+            if not isinstance(candidate, str):
+                return
+            normalized = candidate.strip()
+            if not normalized or normalized.lower() in {"unknown", "unavailable", "none", "missing"}:
+                return
+            if normalized not in host_candidates:
+                host_candidates.append(normalized)
+
+        if "," in raw:
+            for item in raw.split(","):
+                _add_candidate(item)
+            return host_candidates
+
+        if raw.startswith("{"):
+            try:
+                parsed = json.loads(raw)
+            except json.JSONDecodeError:
+                parsed = None
+
+            if isinstance(parsed, dict):
+                for value in parsed.values():
+                    if isinstance(value, str):
+                        _add_candidate(value)
+                    elif isinstance(value, list):
+                        for nested in value:
+                            _add_candidate(nested)
+            return host_candidates
+
+        _add_candidate(raw)
+        return host_candidates
+
+    @staticmethod
+    def _infer_target_from_now_playing_entity(now_playing_entity: str, registry_entries: dict[str, Any]) -> str:
+        candidate = (now_playing_entity or "").strip()
+        if not candidate:
+            return ""
+        if candidate in registry_entries:
+            return candidate
+
+        lowered = candidate.lower()
+        for target in registry_entries:
+            target_str = str(target or "").strip()
+            if not target_str:
+                continue
+            target_lower = target_str.lower()
+            if lowered == target_lower or lowered.endswith(target_lower):
+                return target_str
+        return ""
+
+    def _build_component_monitor_status(
+        self,
+        *,
+        parity: dict[str, Any],
+        route_trace: dict[str, Any],
+        registry: dict[str, Any],
+    ) -> dict[str, Any]:
+        registry_entries = registry.get("entries", {}) if isinstance(registry.get("entries", {}), dict) else {}
+        active_target = str(parity.get("active_target", "") or "").strip()
+        active_target_resolved = self._is_resolved_state(active_target)
+
+        now_playing_entity_state = self.hass.states.get(LEGACY_NOW_PLAYING_ENTITY)
+        now_playing_entity = now_playing_entity_state.state if now_playing_entity_state is not None else ""
+        now_playing_entity = str(now_playing_entity or "").strip()
+        now_playing_entity_resolved = self._is_resolved_state(now_playing_entity)
+        now_playing_signal = self._build_now_playing_signal(now_playing_entity)
+        now_playing_fresh_play_signal = bool(now_playing_signal.get("fresh_play_signal", False))
+        paused_without_fresh_signal = bool(now_playing_signal.get("paused_without_fresh_signal", False))
+        now_playing_age_s = self._coerce_age_seconds(now_playing_signal.get("position_age_s"))
+
+        inferred_target = self._infer_target_from_now_playing_entity(now_playing_entity, registry_entries)
+        inferred_target_resolved = self._is_resolved_state(inferred_target)
+
+        helper_target_stale_idle = (
+            active_target_resolved
+            and inferred_target_resolved
+            and active_target != inferred_target
+            and now_playing_fresh_play_signal
+        )
+
+        effective_target = active_target
+        target_resolution_source = "active_target"
+        if (not active_target_resolved and inferred_target_resolved) or helper_target_stale_idle:
+            effective_target = inferred_target
+            target_resolution_source = "fresh_now_playing_entity"
+
+        effective_target_resolved = self._is_resolved_state(effective_target)
+        selected_entry = registry_entries.get(effective_target)
+        selected_entry_host = ""
+        if isinstance(selected_entry, dict):
+            selected_entry_host = str(selected_entry.get("host", "") or "").strip()
+
+        control_host_candidates = self._extract_control_host_candidates(str(parity.get("control_hosts", "") or ""))
+        control_host_candidate = selected_entry_host
+        if not control_host_candidate and len(control_host_candidates) > 0:
+            control_host_candidate = control_host_candidates[0]
+
+        now_playing_state = self.hass.states.get(LEGACY_NOW_PLAYING_STATE)
+        now_playing_title = self.hass.states.get(LEGACY_NOW_PLAYING_TITLE)
+        now_playing_state_value = now_playing_state.state if now_playing_state is not None else ""
+        now_playing_title_value = now_playing_title.state if now_playing_title is not None else ""
+        now_playing_title_candidate = str(now_playing_title_value or "").strip()
+        if not self._is_resolved_state(now_playing_title_candidate):
+            playback_entity = self.hass.states.get(now_playing_entity) if now_playing_entity_resolved else None
+            if playback_entity is not None:
+                attr_title = str(playback_entity.attributes.get("media_title", "") or "").strip()
+                if self._is_resolved_state(attr_title):
+                    now_playing_title_candidate = attr_title
+
+        now_snapshot_age_s: float | None = None
+        if self._last_snapshot_refresh_monotonic > 0.0:
+            now_snapshot_age_s = max(monotonic() - self._last_snapshot_refresh_monotonic, 0.0)
+
+        stale_reasons: list[str] = []
+        if not now_playing_entity_resolved:
+            stale_reasons.append("now_playing_entity_unresolved")
+        if not now_playing_fresh_play_signal:
+            stale_reasons.append("now_playing_not_fresh")
+        if paused_without_fresh_signal:
+            stale_reasons.append("paused_without_recent_progress")
+        if now_playing_age_s is not None and now_playing_age_s > self._monitor_now_playing_max_age_s:
+            stale_reasons.append("now_playing_age_exceeded")
+        if now_snapshot_age_s is not None and now_snapshot_age_s > self._monitor_snapshot_max_age_s:
+            stale_reasons.append("snapshot_age_exceeded")
+        if not effective_target_resolved:
+            stale_reasons.append("effective_target_unresolved")
+        if not self._is_resolved_state(control_host_candidate):
+            stale_reasons.append("control_host_unresolved")
+
+        publish_allowed = len(stale_reasons) == 0
+        publish_reason = "fresh_context_ready" if publish_allowed else stale_reasons[0]
+
+        published_control_host = control_host_candidate if publish_allowed else ""
+        published_now_playing_title = now_playing_title_candidate if publish_allowed else ""
+
+        if publish_allowed:
+            monitor_health = "healthy"
+        elif any(reason in {"now_playing_not_fresh", "now_playing_age_exceeded", "snapshot_age_exceeded"} for reason in stale_reasons):
+            monitor_health = "stale"
+        else:
+            monitor_health = "degraded"
+
+        return {
+            "schema_version": "pywiim_monitor.v1",
+            "monitor_health": monitor_health,
+            "monitor_enabled": True,
+            "fail_closed": self._monitor_fail_closed,
+            "freshness": {
+                "now_playing_fresh_play_signal": now_playing_fresh_play_signal,
+                "paused_without_fresh_signal": paused_without_fresh_signal,
+                "now_playing_position_age_s": now_playing_age_s,
+                "snapshot_age_s": round(now_snapshot_age_s, 3) if isinstance(now_snapshot_age_s, float) else None,
+                "thresholds": {
+                    "now_playing_max_age_s": self._monitor_now_playing_max_age_s,
+                    "snapshot_max_age_s": self._monitor_snapshot_max_age_s,
+                },
+                "stale_reasons": stale_reasons,
+            },
+            "target_resolution": {
+                "active_target": active_target,
+                "active_target_resolved": active_target_resolved,
+                "inferred_target": inferred_target,
+                "inferred_target_resolved": inferred_target_resolved,
+                "helper_target_stale_idle": helper_target_stale_idle,
+                "effective_target": effective_target,
+                "effective_target_resolved": effective_target_resolved,
+                "target_resolution_source": target_resolution_source,
+                "route_decision": str(route_trace.get("decision", "") or ""),
+            },
+            "sources": {
+                "control_host_candidates": control_host_candidates,
+                "selected_entry_host": selected_entry_host,
+                "now_playing_entity": now_playing_entity,
+                "now_playing_state": str(now_playing_state_value or "").strip(),
+                "now_playing_title_candidate": now_playing_title_candidate,
+            },
+            "publish_gate": {
+                "allowed": publish_allowed,
+                "reason": publish_reason,
+                "fail_closed": self._monitor_fail_closed,
+            },
+            "published": {
+                "control_host": published_control_host,
+                "now_playing_title": published_now_playing_title,
+            },
+        }
 
     def _build_now_playing_signal(self, entity_id: str) -> dict[str, Any]:
         if not self._is_resolved_state(entity_id):
@@ -1123,6 +1327,11 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             contract_validation=contract_validation,
             action_catalog_validation=action_catalog_validation,
         )
+        component_monitor = self._build_component_monitor_status(
+            parity=parity,
+            route_trace=route_trace,
+            registry=registry,
+        )
 
         return {
             "legacy": legacy,
@@ -1137,6 +1346,7 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "capability_profile_validation": capability_profile_validation,
             "action_catalog_validation": action_catalog_validation,
             "crossfade_balance_validation": crossfade_balance_validation,
+            "component_monitor": component_monitor,
             "control_center_validation": self._build_control_center_validation(),
             "write_controls": self._build_write_controls(),
             "captured_at": datetime.now(UTC).isoformat(),

@@ -1,6 +1,6 @@
-# Description: Binary sensor entities for Spectra LS shadow parity routing surfaces with Phase 3 write-control and Phase 4 diagnostics attributes (F4-S01/F4-S03).
-# Version: 2026.04.20.9
-# Last updated: 2026-04-20
+# Description: Binary sensor entities for Spectra LS shadow parity routing surfaces with Phase 3 write-control, Phase 4 diagnostics attributes (F4-S01/F4-S03), and monitor-manager publish-gate status.
+# Version: 2026.04.25.1
+# Last updated: 2026-04-25
 
 from __future__ import annotations
 
@@ -43,7 +43,37 @@ class SpectraLsShadowControlCapableBinarySensor(CoordinatorEntity, BinarySensorE
             "capability_profile_validation": data.get("capability_profile_validation", {}),
             "action_catalog_validation": data.get("action_catalog_validation", {}),
             "crossfade_balance_validation": data.get("crossfade_balance_validation", {}),
+            "component_monitor": data.get("component_monitor", {}),
             "write_controls": data.get("write_controls", {}),
+        }
+
+
+class SpectraLsMonitorPublishGateBinarySensor(CoordinatorEntity, BinarySensorEntity):
+    """Binary sensor exposing whether monitor freshness gate currently allows publish."""
+
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:shield-check"
+    _attr_name = "Monitor Publish Gate"
+    _attr_unique_id = "spectra_ls_monitor_publish_gate"
+
+    @property
+    def is_on(self) -> bool:
+        monitor = self.coordinator.data.get("component_monitor", {})
+        gate = monitor.get("publish_gate", {}) if isinstance(monitor.get("publish_gate", {}), dict) else {}
+        return bool(gate.get("allowed", False))
+
+    @property
+    def extra_state_attributes(self):
+        data = self.coordinator.data
+        monitor = data.get("component_monitor", {})
+        return {
+            "monitor_health": monitor.get("monitor_health"),
+            "publish_gate": monitor.get("publish_gate", {}),
+            "freshness": monitor.get("freshness", {}),
+            "target_resolution": monitor.get("target_resolution", {}),
+            "published": monitor.get("published", {}),
+            "captured_at": data.get("captured_at"),
         }
 
 
@@ -54,4 +84,9 @@ async def async_setup_entry(
 ) -> None:
     """Set up Spectra LS shadow binary sensors."""
     coordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities([SpectraLsShadowControlCapableBinarySensor(coordinator)])
+    async_add_entities(
+        [
+            SpectraLsShadowControlCapableBinarySensor(coordinator),
+            SpectraLsMonitorPublishGateBinarySensor(coordinator),
+        ]
+    )

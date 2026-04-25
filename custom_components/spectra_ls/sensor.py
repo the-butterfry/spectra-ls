@@ -1,6 +1,6 @@
-# Description: Sensor entities for Spectra LS shadow parity routing surfaces with Phase 3 write-control, Phase 4 diagnostics attributes, and Phase 6/8 control-center settings/readiness/last-attempt visibility.
-# Version: 2026.04.22.13
-# Last updated: 2026-04-22
+# Description: Sensor entities for Spectra LS shadow parity routing surfaces with Phase 3 write-control, Phase 4 diagnostics attributes, Phase 6/8 control-center settings/readiness/last-attempt visibility, and component monitor-manager freshness diagnostics.
+# Version: 2026.04.25.1
+# Last updated: 2026-04-25
 
 from __future__ import annotations
 
@@ -47,8 +47,42 @@ class SpectraLsShadowSensor(CoordinatorEntity, SensorEntity):
             "capability_profile_validation": data.get("capability_profile_validation", {}),
             "action_catalog_validation": data.get("action_catalog_validation", {}),
             "crossfade_balance_validation": data.get("crossfade_balance_validation", {}),
+            "component_monitor": data.get("component_monitor", {}),
             "control_center_validation": data.get("control_center_validation", {}),
             "write_controls": data.get("write_controls", {}),
+        }
+
+
+class SpectraLsMonitorHealthSensor(CoordinatorEntity, SensorEntity):
+    """Diagnostic sensor exposing monitor manager freshness and fail-closed gate state."""
+
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:heart-pulse"
+    _attr_name = "Monitor Health"
+    _attr_unique_id = "spectra_ls_monitor_health"
+
+    @property
+    def native_value(self):
+        monitor = self.coordinator.data.get("component_monitor", {})
+        health = str(monitor.get("monitor_health", "unknown") or "").strip()
+        return health or "unknown"
+
+    @property
+    def extra_state_attributes(self):
+        data = self.coordinator.data
+        monitor = data.get("component_monitor", {})
+
+        return {
+            "schema_version": monitor.get("schema_version"),
+            "monitor_enabled": monitor.get("monitor_enabled"),
+            "fail_closed": monitor.get("fail_closed"),
+            "publish_gate": monitor.get("publish_gate", {}),
+            "freshness": monitor.get("freshness", {}),
+            "target_resolution": monitor.get("target_resolution", {}),
+            "sources": monitor.get("sources", {}),
+            "published": monitor.get("published", {}),
+            "captured_at": data.get("captured_at"),
         }
 
 
@@ -148,6 +182,7 @@ async def async_setup_entry(
             SpectraLsShadowSensor(coordinator, "active_target", "Shadow Active Target"),
             SpectraLsShadowSensor(coordinator, "active_control_path", "Shadow Active Control Path"),
             SpectraLsShadowSensor(coordinator, "control_hosts", "Shadow Control Hosts"),
+            SpectraLsMonitorHealthSensor(coordinator),
             SpectraLsControlCenterReadinessSensor(coordinator),
             SpectraLsControlCenterLastAttemptStatusSensor(coordinator),
         ]

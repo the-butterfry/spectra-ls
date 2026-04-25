@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.25.3 -->
+<!-- Version: 2026.04.25.4 -->
 <!-- Last updated: 2026-04-25 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -92,6 +92,12 @@ Each feature slice is only complete when component ownership is explicit and any
 - A deterministic local upstream-check utility is now part of the workflow: `bin/pywiim_sync_check.py`.
 - The checker compares pinned `custom_components/spectra_ls/manifest.json` `pywiim==...` to upstream `mjcumming/pywiim` latest release and emits `up_to_date`/`behind`/`ahead` state for release-train decisions.
 - This is governance/tooling-only and does not alter runtime/component authority behavior.
+
+### Plan Delta (2026-04-25) — pywiim sync checker hardening (strict pin + token-aware API)
+
+- Sync checker now enforces exact `pywiim==...` pin semantics by default and fails closed when requirement operator is non-exact/missing.
+- Bounded override is available for controlled diagnostics (`--allow-nonexact-pin`) without changing default governance posture.
+- GitHub API access is now token-aware (`--github-token-env`, default `GITHUB_TOKEN`) with configurable timeout (`--timeout`) for rate-limit/resilience handling.
 
 ### Plan Delta (2026-04-25) — hard deprecation of legacy runtime alias + direct transport API lanes
 

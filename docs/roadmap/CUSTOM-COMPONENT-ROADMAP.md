@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component as the authoritative control-plane implementation lane. -->
-<!-- Version: 2026.04.25.3 -->
+<!-- Version: 2026.04.25.4 -->
 <!-- Last updated: 2026-04-25 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -176,6 +176,12 @@ Execution playbook reference: `docs/program/PARALLEL-PROGRAM-PLAYBOOK.md`.
 - Added a deterministic sync-check workflow utility at `bin/pywiim_sync_check.py`.
 - The utility compares pinned `pywiim` requirement in `custom_components/spectra_ls/manifest.json` with latest upstream release from `mjcumming/pywiim`.
 - Output is governance-focused (`up_to_date`, `behind`, `ahead`) and intended for release-update planning with explicit operator review.
+
+## Plan Delta (2026-04-25) — pywiim sync checker hardening
+
+- Checker now validates requirement operator semantics and enforces exact pin by default (`pywiim==...`) for migration-safe dependency governance.
+- Optional bounded override (`--allow-nonexact-pin`) exists for controlled diagnostics only.
+- GitHub query path now supports token-aware API access (`--github-token-env`, default `GITHUB_TOKEN`) and explicit timeout control (`--timeout`) for resilient upstream sync checks.
 
 ## Plan Delta (2026-04-25) — hard deprecation of runtime legacy alias + direct transport lanes
 

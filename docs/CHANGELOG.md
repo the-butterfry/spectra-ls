@@ -1,5 +1,5 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.25.3 -->
+<!-- Version: 2026.04.25.4 -->
 <!-- Last updated: 2026-04-25 -->
 
 # Changelog
@@ -39,6 +39,8 @@
 - ESPHome/Volume Control-Path Refactor for High-Quality Arbitration (`esphome/spectra_ls_system/packages/spectra-ls-audio-tcp.yaml`, `esphome/spectra_ls_system/substitutions.yaml`, `docs/hardware/SUBSTITUTIONS-TUNING-LEGEND.md`): refactor volume send flow to use a single transport-arbitration script for all volume writers (pot immediate, pot deferred flush, encoder delta, and HA number set) and add tunable pot deadband/hysteresis so near-threshold analog jitter does not churn repeated send/defer cycles. This preserves existing catch/defer/rate-limit contracts while reducing duplicated send logic and improving deterministic behavior under rapid input. P1/P2/P3 impact: no source-of-truth ownership change; runtime-path input arbitration and stability hardening only. README/wiki parity: no material repo-state change.
 
 ## 2026-04-25
+
+- Tooling/PyWiiM Sync Checker Hardening (`bin/pywiim_sync_check.py`, `custom_components/spectra_ls/manifest.json`, `README.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): harden sync governance with strict requirement parsing and exact-pin enforcement (`pywiim==...` by default), optional bounded override (`--allow-nonexact-pin`), token-aware GitHub API auth support (`--github-token-env`, default `GITHUB_TOKEN`), and configurable request timeout (`--timeout`). This slice also restores explicit pinned requirement contract in the integration manifest (`pywiim==2.2.3`) so checker validation is deterministic. P1/P2/P3 impact: no source-of-truth ownership change; governance/tooling hardening only. README/wiki parity: README + roadmap parity updated in same slice.
 
 - Tooling/PyWiiM Upstream Sync Contract (`bin/pywiim_sync_check.py`, `README.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): add a deterministic local sync-check utility that compares the pinned `custom_components/spectra_ls` `pywiim==...` requirement against upstream `mjcumming/pywiim` latest release and emits explicit `up_to_date` / `behind` / `ahead` status with rollback-safe update guidance. This establishes a repeatable update method without changing runtime authority behavior. P1/P2/P3 impact: no source-of-truth ownership change; governance/tooling hardening only. README/wiki parity: README + roadmap parity updated in same slice.
 

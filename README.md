@@ -1,5 +1,5 @@
 <!-- Description: End-user overview for the Spectra L/S Home Assistant + ESPHome system. -->
-<!-- Version: 2026.04.25.3 -->
+<!-- Version: 2026.04.25.4 -->
 <!-- Last updated: 2026-04-25 -->
 
 # Spectra L/S
@@ -115,6 +115,10 @@ Common entry points:
 Need current execution status? Use [`docs/roadmap/v-next-NOTES.md`](docs/roadmap/v-next-NOTES.md).
 
 Need to verify pywiim upstream sync status? Run the local checker: `bin/pywiim_sync_check.py`.
+
+- Governance default is strict exact pin validation (`pywiim==...` required in manifest requirements).
+- For API resilience under rate limits, provide a token via environment (default `GITHUB_TOKEN`; overridable with `--github-token-env`).
+- Use `--allow-nonexact-pin` only for bounded diagnostics windows.
 
 Need migration mechanics and slice evidence? Use:
 

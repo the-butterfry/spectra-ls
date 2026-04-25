@@ -1,6 +1,6 @@
 # Description: Spectra LS custom integration setup for shadow parity, Phase 3 guarded routing write-path services, Phase 4 diagnostics scaffolding services (F4-S01/F4-S03), and Phase 5 metadata trial contract service wiring.
-# Version: 2026.04.21.12
-# Last updated: 2026-04-21
+# Version: 2026.04.25.1
+# Last updated: 2026-04-25
 
 from __future__ import annotations
 
@@ -46,7 +46,7 @@ async def async_setup(hass: HomeAssistant, _config: dict[str, Any]) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Spectra LS from config entry."""
-    coordinator = SpectraLsShadowCoordinator(hass)
+    coordinator = SpectraLsShadowCoordinator(hass, entry)
     await coordinator.async_setup()
 
     hass.data.setdefault(DOMAIN, {})

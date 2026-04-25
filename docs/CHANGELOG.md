@@ -1,5 +1,5 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.25.6 -->
+<!-- Version: 2026.04.25.7 -->
 <!-- Last updated: 2026-04-25 -->
 
 # Changelog
@@ -39,6 +39,8 @@
 - ESPHome/Volume Control-Path Refactor for High-Quality Arbitration (`esphome/spectra_ls_system/packages/spectra-ls-audio-tcp.yaml`, `esphome/spectra_ls_system/substitutions.yaml`, `docs/hardware/SUBSTITUTIONS-TUNING-LEGEND.md`): refactor volume send flow to use a single transport-arbitration script for all volume writers (pot immediate, pot deferred flush, encoder delta, and HA number set) and add tunable pot deadband/hysteresis so near-threshold analog jitter does not churn repeated send/defer cycles. This preserves existing catch/defer/rate-limit contracts while reducing duplicated send logic and improving deterministic behavior under rapid input. P1/P2/P3 impact: no source-of-truth ownership change; runtime-path input arbitration and stability hardening only. README/wiki parity: no material repo-state change.
 
 ## 2026-04-25
+
+- Custom Component/Setup Entry Constructor Wiring Fix (`custom_components/spectra_ls/__init__.py`): fix startup failure introduced by coordinator constructor signature alignment by passing the active config entry into `SpectraLsShadowCoordinator(...)` during integration setup. This resolves `TypeError: SpectraLsShadowCoordinator.__init__() missing 1 required positional argument: 'entry'` and restores normal `spectra_ls` config-entry initialization. P1/P2/P3 impact: no source-of-truth ownership change; component startup wiring correctness hotfix only. README/wiki parity: no material repo-state change.
 
 - Custom Component/PyWiiM Plumbing Normalization + Compatibility Surface Restore (`custom_components/spectra_ls/router.py`, `custom_components/spectra_ls/sensor.py`, `custom_components/spectra_ls/binary_sensor.py`): normalize legacy runtime control-path input tokens at the component boundary (`linkplay_tcp` → `pywiim`) and restore runtime-facing `component_*` compatibility entities (`component_control_host(s)`, `component_now_playing_*`, summary surfaces, and `component_control_ambiguous`) with canonical pywiim-backed values so existing ESP/runtime bindings no longer fall `unavailable` after route-token migration. P1/P2/P3 impact: no source-of-truth ownership change; compatibility-contract continuity + routing input normalization hardening only. README/wiki parity: no material repo-state change.
 

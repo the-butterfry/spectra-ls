@@ -1,5 +1,5 @@
 # Description: Template entities for ma_control_hub runtime routing, metadata, and now-playing state surfaces.
-# Version: 2026.04.25.2
+# Version: 2026.04.25.3
 # Last updated: 2026-04-25
 # PARITY DIRECTIVE (until full cutover): any behavior/contract change here requires same-slice custom-component parity review,
 # explicit implemented/shim/defer disposition in docs/CHANGELOG.md, and version-metadata review on both runtime and component tracks.
@@ -1453,7 +1453,7 @@
           {% set ma_ok = state_attr(target,'music_assistant_compatible') %}
           {% set hint = (hardware_family ~ ' ' ~ model ~ ' ' ~ manufacturer ~ ' ' ~ purpose ~ ' ' ~ target) %}
           {% set inferred = 'pywiim' if (contract_host_ok or entry_host_ok or transport_host_ok or (ip not in ['','none','unknown','unavailable','None', none] and ((ma_ok is true) or ('arylic' in hint) or ('linkplay' in hint) or ('up2stream' in hint)))) else 'other' %}
-          {% set hint_canonical = 'pywiim' if path_hint == 'linkplay_tcp' else path_hint %}
+          {% set hint_canonical = path_hint %}
           {% set path = inferred if (hint_canonical == 'other' and inferred == 'pywiim') else (hint_canonical if hint_canonical in ['pywiim','other'] else inferred) %}
           {% set host_evidence = contract_host_ok or entry_host_ok or transport_host_ok %}
           {% if cap_l in ['1','true','yes','on'] %}

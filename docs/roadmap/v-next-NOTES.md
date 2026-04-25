@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.25.4 -->
+<!-- Version: 2026.04.25.5 -->
 <!-- Last updated: 2026-04-25 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -105,6 +105,12 @@ Each feature slice is only complete when component ownership is explicit and any
 - ESP legacy direct transport API polling (`httpapi.asp?command=getPlayerStatus`) is now hard-disabled by default behind explicit rollback toggle `${legacy_transport_httpapi_enabled}`.
 - Legacy UPnP hack script lane is now operator-gated (`SPECTRA_ALLOW_LEGACY_UPNP=1`) and otherwise fails closed as deprecated.
 - Rollback-safe posture remains explicit: operators can temporarily re-enable legacy lanes for bounded diagnostics/recovery windows only.
+
+### Plan Delta (2026-04-25) — hard-retirement route token canonicalization completion
+
+- Active component/runtime code-path route semantics are now strict-canonical (`route_pywiim`, `control_path=pywiim`) with no remaining runtime/component alias checks for `route_linkplay_tcp` or `linkplay_tcp` in routing decision code.
+- Transition history and historical evidence docs retain legacy tokens for archival context only; active code paths are now legacy-token free for route/control-path decisions.
+- A dedicated verification artifact is now required for closure evidence: `docs/testing/raw/p8_s06_route_token_retirement_checklist.md`.
 
 ### Plan Delta (2026-04-24) — component-authoritative unit implementation (metadata/now-playing/control-host)
 

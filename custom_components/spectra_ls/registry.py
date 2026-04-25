@@ -1,6 +1,6 @@
 # Description: Registry scaffold helpers for Spectra LS Phase 2 read-only target normalization and deterministic payload parsing.
-# Version: 2026.04.19.2
-# Last updated: 2026-04-19
+# Version: 2026.04.25.1
+# Last updated: 2026-04-25
 
 from __future__ import annotations
 
@@ -102,7 +102,7 @@ def build_registry_snapshot(
     for target in sorted(registry_targets):
         entries[target] = {
             "target": target,
-            "control_path": "linkplay_tcp" if control_host else "unknown",
+            "control_path": "pywiim" if control_host else "unknown",
             "hardware_family": "arylic_linkplay" if control_host else "unknown",
             "control_capable": bool(control_host),
             "host": control_host,

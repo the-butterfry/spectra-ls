@@ -1,5 +1,5 @@
 <!-- Description: End-user overview for the Spectra L/S Home Assistant + ESPHome system. -->
-<!-- Version: 2026.04.25.4 -->
+<!-- Version: 2026.04.25.5 -->
 <!-- Last updated: 2026-04-25 -->
 
 # Spectra L/S
@@ -20,6 +20,7 @@ Current operating posture:
 - The custom integration (`custom_components/spectra_ls`) is the **primary path for net-new control-plane and feature growth**.
 - Component control-plane code now runs on **component-native source contracts** (active-target helper + discovery) and no longer depends on legacy `sensor.ma_*` / `sensor.now_playing_*` inputs.
 - Runtime compatibility contracts now use pywiim-canonical control-path naming (`control_path=pywiim`) with bounded legacy alias compatibility where transition shims are still required.
+- Active component/runtime route-decision code is now strict-canonical (`route_pywiim` only) and no longer keeps legacy `route_linkplay_tcp` decision aliases in execution paths.
 - Runtime legacy alias pass-through (`route_linkplay_tcp`) is now hard-deprecated in active package diagnostics/gates; canonical runtime pass semantics are `route_pywiim`.
 - ESP runtime host intake is now **component-authoritative and fail-closed** on `sensor.component_control_hosts` / `sensor.component_control_host` (legacy runtime fallback host sensors are no longer used in active send-path selection).
 - Legacy direct transport/API lanes are now disabled by default behind explicit rollback gates:

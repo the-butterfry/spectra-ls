@@ -1,5 +1,5 @@
 # Description: Music Assistant control hub scripts (target options, auto-select, control helpers).
-# Version: 2026.04.25.2
+# Version: 2026.04.25.3
 # Last updated: 2026-04-25
 # Update version/date whenever you change this file.
 # HUB MUST-READ: Contract parser methodology.
@@ -126,14 +126,14 @@ ma_update_target_options:
             {% set cap_l = (cap_hint | string | lower) %}
             {% set hint = (model ~ ' ' ~ manufacturer ~ ' ' ~ purpose ~ ' ' ~ ent) | lower %}
             {% set is_linkplay = ('arylic' in hint) or ('linkplay' in hint) or ('up2stream' in hint) %}
-            {% set control_path = 'linkplay_tcp' if (ip not in ['','none','unknown','unavailable','None', none] and ((ma_ok is true) or is_linkplay)) else 'other' %}
-            {% set control_capable = (cap_l in ['1','true','yes','on']) if cap_l not in ['','none','unknown','unavailable'] else (control_path == 'linkplay_tcp') %}
+            {% set control_path = 'pywiim' if (ip not in ['','none','unknown','unavailable','None', none] and ((ma_ok is true) or is_linkplay)) else 'other' %}
+            {% set control_capable = (cap_l in ['1','true','yes','on']) if cap_l not in ['','none','unknown','unavailable'] else (control_path == 'pywiim') %}
             {% if ent not in ['','none','unknown','unavailable']
                   and (ent | regex_match('^media_player\\.'))
                   and states[ent] is not none
                   and ent not in excluded_targets
               and ip not in discovery_blacklist_hosts
-                  and control_path == 'linkplay_tcp'
+                  and control_path == 'pywiim'
                   and control_capable %}
               {% set ns.list = ns.list + [ent] %}
             {% endif %}

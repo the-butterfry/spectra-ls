@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component as the authoritative control-plane implementation lane. -->
-<!-- Version: 2026.04.25.4 -->
+<!-- Version: 2026.04.25.5 -->
 <!-- Last updated: 2026-04-25 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -189,6 +189,12 @@ Execution playbook reference: `docs/program/PARALLEL-PROGRAM-PLAYBOOK.md`.
 - ESP direct legacy Arylic HTTP API polling is now disabled by default via explicit rollback gate (`legacy_transport_httpapi_enabled=false`).
 - Legacy UPnP hack control scripts are operator-gated and fail-closed unless explicitly enabled for bounded rollback (`SPECTRA_ALLOW_LEGACY_UPNP=1`).
 - Disposition: runtime compatibility lane reduced with explicit rollback controls; component authority posture unchanged.
+
+## Plan Delta (2026-04-25) — hard-retirement canonical token completion
+
+- Active component/runtime route code paths are now canonical-only (`route_pywiim`, `control_path=pywiim`) with remaining `route_linkplay_tcp` / `linkplay_tcp` route-decision alias checks removed from code execution paths.
+- Legacy token references are retained only in historical evidence/roadmap archives and are no longer part of active route/control-path code decisions.
+- Closure evidence now requires explicit zero-token verification using `docs/testing/raw/p8_s06_route_token_retirement_checklist.md`.
 
 ## Plan Delta (2026-04-24) — live-feed diagnosis corrections (metadata scoping + runtime tuning visibility)
 

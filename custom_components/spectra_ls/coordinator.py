@@ -1,5 +1,5 @@
 # Description: Data coordinator for Spectra LS parity diagnostics, Phase 3 guarded routing write-path controls, Phase 4 diagnostics scaffolding (F4-S01/F4-S03), Phase 5 metadata trial contract auditing, and Phase 6/8 control-center settings, fast-remap, execution visibility, plus freshness-gated component monitor manager diagnostics.
-# Version: 2026.04.25.1
+# Version: 2026.04.25.2
 # Last updated: 2026-04-25
 
 from __future__ import annotations
@@ -374,7 +374,7 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         ]
 
         route_decision = str(route_trace.get("decision", "") or "")
-        route_ready = route_decision == "route_linkplay_tcp"
+        route_ready = route_decision == "route_pywiim"
         contract_valid = bool(contract_validation.get("valid", False))
 
         verdict = "PASS"
@@ -1563,7 +1563,7 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         "debounce_s": self._write_debounce_s,
                     }
                 )
-        if "status" not in result and route_decision != "route_linkplay_tcp":
+        if "status" not in result and route_decision != "route_pywiim":
             result.update(
                 {
                     "status": "blocked_route_decision",

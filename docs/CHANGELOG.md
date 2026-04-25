@@ -1,5 +1,5 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.25.5 -->
+<!-- Version: 2026.04.25.6 -->
 <!-- Last updated: 2026-04-25 -->
 
 # Changelog
@@ -39,6 +39,8 @@
 - ESPHome/Volume Control-Path Refactor for High-Quality Arbitration (`esphome/spectra_ls_system/packages/spectra-ls-audio-tcp.yaml`, `esphome/spectra_ls_system/substitutions.yaml`, `docs/hardware/SUBSTITUTIONS-TUNING-LEGEND.md`): refactor volume send flow to use a single transport-arbitration script for all volume writers (pot immediate, pot deferred flush, encoder delta, and HA number set) and add tunable pot deadband/hysteresis so near-threshold analog jitter does not churn repeated send/defer cycles. This preserves existing catch/defer/rate-limit contracts while reducing duplicated send logic and improving deterministic behavior under rapid input. P1/P2/P3 impact: no source-of-truth ownership change; runtime-path input arbitration and stability hardening only. README/wiki parity: no material repo-state change.
 
 ## 2026-04-25
+
+- Custom Component/PyWiiM Plumbing Normalization + Compatibility Surface Restore (`custom_components/spectra_ls/router.py`, `custom_components/spectra_ls/sensor.py`, `custom_components/spectra_ls/binary_sensor.py`): normalize legacy runtime control-path input tokens at the component boundary (`linkplay_tcp` → `pywiim`) and restore runtime-facing `component_*` compatibility entities (`component_control_host(s)`, `component_now_playing_*`, summary surfaces, and `component_control_ambiguous`) with canonical pywiim-backed values so existing ESP/runtime bindings no longer fall `unavailable` after route-token migration. P1/P2/P3 impact: no source-of-truth ownership change; compatibility-contract continuity + routing input normalization hardening only. README/wiki parity: no material repo-state change.
 
 - Hard-Retirement Slice / Route Canonicalization + Legacy Alias Removal (`custom_components/spectra_ls/router.py`, `custom_components/spectra_ls/coordinator.py`, `custom_components/spectra_ls/registry.py`, `packages/ma_control_hub/script.inc`, `packages/ma_control_hub/template.inc`, `packages/spectra_ls_setup.yaml`, `docs/testing/raw/p8_s06_route_token_retirement_checklist.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`, `README.md`): complete the narrow canonicalization pass in active component/runtime paths by removing remaining `linkplay_tcp` / `route_linkplay_tcp` compatibility checks from code-path routing decisions and enforcing canonical pywiim semantics only (`control_path=pywiim`, `route_decision=route_pywiim`). Added an explicit operator checklist artifact to prove no legacy route tokens remain in active component/runtime code scopes before closeout. P1/P2/P3 impact: no source-of-truth ownership expansion; retirement/governance hardening only with fail-closed routing semantics preserved. README/wiki parity: README parity updated in same slice; no wiki workflow/material operator setup change.
 

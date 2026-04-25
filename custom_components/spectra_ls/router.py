@@ -1,5 +1,5 @@
-# Description: Router scaffold helpers for Spectra LS Phase 2 read-only route-trace visibility with deterministic resolved-path decisions.
-# Version: 2026.04.25.1
+# Description: Router scaffold helpers for Spectra LS Phase 2 read-only route-trace visibility with deterministic resolved-path decisions and canonical pywiim boundary normalization.
+# Version: 2026.04.25.2
 # Last updated: 2026-04-25
 
 from __future__ import annotations
@@ -11,7 +11,8 @@ def build_route_trace(active_target: str, active_control_path: str, registry: di
     """Build a read-only route trace from active surfaces and registry scaffold."""
     entries: dict[str, dict[str, Any]] = registry.get("entries", {})
     target_key = (active_target or "").strip()
-    normalized_path = (active_control_path or "").strip()
+    normalized_path_raw = (active_control_path or "").strip().lower()
+    normalized_path = "pywiim" if normalized_path_raw == "linkplay_tcp" else normalized_path_raw
 
     selected = entries.get(target_key)
     selected_control_path = (
@@ -38,6 +39,7 @@ def build_route_trace(active_target: str, active_control_path: str, registry: di
     return {
         "active_target": target_key,
         "active_control_path": normalized_path,
+        "active_control_path_raw": normalized_path_raw,
         "resolved_control_path": resolved_path,
         "selected_control_path": selected_control_path,
         "decision": decision,

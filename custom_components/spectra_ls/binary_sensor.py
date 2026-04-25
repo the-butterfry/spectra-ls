@@ -1,8 +1,10 @@
-# Description: Binary sensor entities for Spectra LS shadow parity routing surfaces with Phase 3 write-control, Phase 4 diagnostics attributes (F4-S01/F4-S03), and monitor-manager publish-gate status.
-# Version: 2026.04.25.1
+# Description: Binary sensor entities for Spectra LS shadow parity routing surfaces with Phase 3 write-control, Phase 4 diagnostics attributes (F4-S01/F4-S03), monitor-manager publish-gate status, and runtime compatibility component_* surfaces.
+# Version: 2026.04.25.2
 # Last updated: 2026-04-25
 
 from __future__ import annotations
+
+from typing import Any
 
 from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.config_entries import ConfigEntry
@@ -12,6 +14,56 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
+
+
+def _is_resolved_value(value: Any) -> bool:
+    normalized = str(value or "").strip().lower()
+    return normalized not in {"", "unknown", "unavailable", "none", "missing", "null"}
+
+
+class SpectraLsComponentControlAmbiguousBinarySensor(CoordinatorEntity, BinarySensorEntity):
+    """Compatibility binary sensor for runtime control-target ambiguity gating."""
+
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:help-network-outline"
+    _attr_name = "Component Control Ambiguous"
+    _attr_unique_id = "spectra_ls_component_control_ambiguous"
+
+    @property
+    def is_on(self) -> bool:
+        explicit_legacy = self.coordinator.hass.states.get("binary_sensor.ma_control_ambiguous")
+        if explicit_legacy is not None:
+            normalized = str(explicit_legacy.state or "").strip().lower()
+            return normalized in {"on", "true", "1", "yes"}
+
+        monitor = self.coordinator.data.get("component_monitor", {})
+        monitor = monitor if isinstance(monitor, dict) else {}
+        target_resolution = monitor.get("target_resolution", {})
+        target_resolution = target_resolution if isinstance(target_resolution, dict) else {}
+        sources = monitor.get("sources", {})
+        sources = sources if isinstance(sources, dict) else {}
+
+        helper_target_stale_idle = bool(target_resolution.get("helper_target_stale_idle", False))
+        effective_target_resolved = bool(target_resolution.get("effective_target_resolved", False))
+
+        candidates = sources.get("control_host_candidates", [])
+        resolved_candidates = []
+        if isinstance(candidates, list):
+            for item in candidates:
+                if _is_resolved_value(item):
+                    resolved_candidates.append(str(item).strip())
+
+        return helper_target_stale_idle or (not effective_target_resolved) or len(resolved_candidates) > 1
+
+    @property
+    def extra_state_attributes(self):
+        monitor = self.coordinator.data.get("component_monitor", {})
+        monitor = monitor if isinstance(monitor, dict) else {}
+        return {
+            "component_monitor": monitor,
+            "captured_at": self.coordinator.data.get("captured_at"),
+        }
 
 
 class SpectraLsShadowControlCapableBinarySensor(CoordinatorEntity, BinarySensorEntity):
@@ -86,6 +138,7 @@ async def async_setup_entry(
     coordinator = hass.data[DOMAIN][entry.entry_id]
     async_add_entities(
         [
+            SpectraLsComponentControlAmbiguousBinarySensor(coordinator),
             SpectraLsShadowControlCapableBinarySensor(coordinator),
             SpectraLsMonitorPublishGateBinarySensor(coordinator),
         ]

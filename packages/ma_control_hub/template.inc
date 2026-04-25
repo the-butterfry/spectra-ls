@@ -1,6 +1,8 @@
 # Description: Template entities for ma_control_hub runtime routing, metadata, and now-playing state surfaces.
-# Version: 2026.04.21.37
-# Last updated: 2026-04-21
+# Version: 2026.04.25.2
+# Last updated: 2026-04-25
+# PARITY DIRECTIVE (until full cutover): any behavior/contract change here requires same-slice custom-component parity review,
+# explicit implemented/shim/defer disposition in docs/CHANGELOG.md, and version-metadata review on both runtime and component tracks.
 # HUB MUST-READ: Contract parser methodology.
 # - For complex attributes (`rooms`, `candidates_json`, etc.), prefer native sequence/mapping values first.
 # - Only parse string JSON when trimmed payload starts with `[` or `{` and is not unknown/unavailable/none/''.
@@ -597,11 +599,13 @@
           {% set entry = entries[0] if (entries | length) > 0 else none %}
           {% set override_on = is_state('input_boolean.ma_meta_override_active','on') %}
           {% set override_entity = states('input_text.ma_meta_override_entity') %}
+          {% set by_host = states('sensor.ma_active_target_by_host') %}
           {% set detected = states('sensor.ma_meta_detected_entity') %}
           {% set detected_conf = states('sensor.ma_meta_confidence') | int(0) %}
           {% set conf_min = states('input_number.ma_meta_confidence_min') | int(4) %}
-          {% set detected_ok = detected not in ['','none','unknown','unavailable'] and detected_conf >= conf_min %}
           {% set mapped = (entry.meta if entry is not none and entry.meta is defined and entry.meta not in ['','none','unknown','unavailable'] else '') %}
+          {% set detected_target_match = detected not in ['','none','unknown','unavailable'] and (detected == t or detected == mapped or detected == by_host) %}
+          {% set detected_ok = detected_target_match and detected_conf >= conf_min %}
           {% set stale_s = states('input_number.ma_meta_stale_s') | float(45) %}
           {% set mapped_valid = mapped not in ['','none','unknown','unavailable'] and states[mapped] is not none %}
           {% set mapped_state = (states(mapped) | lower) if mapped_valid else '' %}
@@ -615,30 +619,74 @@
           {% set mapped_playing_signal = mapped_state == 'playing' or mapped_play_state in ['play','playing'] or (mapped_is_playing is true) %}
           {% set mapped_paused_signal = mapped_state == 'paused' or mapped_play_state in ['pause','paused'] or (mapped_is_paused is true) %}
           {% set mapped_active = mapped_playing_signal or (mapped_paused_signal and mapped_recent) %}
-          {% set kitchen_meta = 'media_player.kitchen_wiim' %}
-          {% set kitchen_state = states(kitchen_meta) | lower %}
-          {% set kitchen_active = kitchen_state in ['playing','paused'] %}
-          {% set kitchen_title = (state_attr(kitchen_meta,'media_title') or '') %}
-          {% set kitchen_artist = (state_attr(kitchen_meta,'media_artist') or '') %}
-          {% set kitchen_has_meta = kitchen_title not in ['', 'None', none] or kitchen_artist not in ['', 'None', none] %}
-          {% set kitchen_pos_updated = state_attr(kitchen_meta,'media_position_updated_at') %}
-          {% set kitchen_pos_ts = as_timestamp(kitchen_pos_updated) if kitchen_pos_updated is not none else 0 %}
-          {% set kitchen_pos_age = (as_timestamp(now()) - kitchen_pos_ts) if kitchen_pos_ts > 0 else 9999 %}
-          {% set kitchen_stream_active = kitchen_pos_age < 30 %}
+          {% set mapped_title = (state_attr(mapped,'media_title') if mapped_valid else '') or '' %}
+          {% set mapped_artist = (state_attr(mapped,'media_artist') if mapped_valid else '') or '' %}
+          {% set mapped_album = ((state_attr(mapped,'media_album_name') if mapped_valid else '') or (state_attr(mapped,'media_album') if mapped_valid else '') or '') %}
+          {% set mapped_title_l = mapped_title | lower %}
+          {% set mapped_content = (state_attr(mapped,'media_content_id') if mapped_valid else '') or '' %}
+          {% set mapped_content_l = mapped_content | lower %}
+          {% set mapped_url_like = (('://' in mapped_title_l) or mapped_title_l.startswith('www.') or mapped_title_l.endswith('.mp3') or mapped_title_l.endswith('.flac') or mapped_title_l.endswith('.wav') or mapped_title_l.endswith('.m4a') or mapped_title_l.endswith('.aac') or mapped_title_l.endswith('.ogg') or
+                                   (('://' in mapped_content_l) or mapped_content_l.startswith('www.') or mapped_content_l.endswith('.mp3') or mapped_content_l.endswith('.flac') or mapped_content_l.endswith('.wav') or mapped_content_l.endswith('.m4a') or mapped_content_l.endswith('.aac') or mapped_content_l.endswith('.ogg'))) %}
+          {% set mapped_has_meta = (mapped_title not in ['','None', none] and not mapped_url_like) or mapped_artist not in ['','None', none] or mapped_album not in ['','None', none] %}
+          {% set mapped_candidate_ok = mapped_active and mapped_recent and mapped_has_meta %}
+          {% set detected_valid = detected not in ['','none','unknown','unavailable'] and states[detected] is not none %}
+          {% set detected_state = (states(detected) | lower) if detected_valid else '' %}
+          {% set detected_play_state = ((state_attr(detected,'play_state') if detected_valid else '') | lower) %}
+          {% set detected_is_playing = (state_attr(detected,'is_playing') if detected_valid else none) %}
+          {% set detected_is_paused = (state_attr(detected,'is_paused') if detected_valid else none) %}
+          {% set detected_pos_updated = (state_attr(detected,'media_position_updated_at') if detected_valid else none) %}
+          {% set detected_pos_ts = as_timestamp(detected_pos_updated) if detected_pos_updated is not none else 0 %}
+          {% set detected_pos_age = (as_timestamp(now()) - detected_pos_ts) if detected_pos_ts > 0 else 9999 %}
+          {% set detected_recent = detected_pos_age < stale_s %}
+          {% set detected_playing_signal = detected_state == 'playing' or detected_play_state in ['play','playing'] or (detected_is_playing is true) %}
+          {% set detected_paused_signal = detected_state == 'paused' or detected_play_state in ['pause','paused'] or (detected_is_paused is true) %}
+          {% set detected_active = detected_playing_signal or (detected_paused_signal and detected_recent) %}
+          {% set detected_title = (state_attr(detected,'media_title') if detected_valid else '') or '' %}
+          {% set detected_artist = (state_attr(detected,'media_artist') if detected_valid else '') or '' %}
+          {% set detected_album = ((state_attr(detected,'media_album_name') if detected_valid else '') or (state_attr(detected,'media_album') if detected_valid else '') or '') %}
+          {% set detected_title_l = detected_title | lower %}
+          {% set detected_content = (state_attr(detected,'media_content_id') if detected_valid else '') or '' %}
+          {% set detected_content_l = detected_content | lower %}
+          {% set detected_url_like = (('://' in detected_title_l) or detected_title_l.startswith('www.') or detected_title_l.endswith('.mp3') or detected_title_l.endswith('.flac') or detected_title_l.endswith('.wav') or detected_title_l.endswith('.m4a') or detected_title_l.endswith('.aac') or detected_title_l.endswith('.ogg') or
+                                     (('://' in detected_content_l) or detected_content_l.startswith('www.') or detected_content_l.endswith('.mp3') or detected_content_l.endswith('.flac') or detected_content_l.endswith('.wav') or detected_content_l.endswith('.m4a') or detected_content_l.endswith('.aac') or detected_content_l.endswith('.ogg'))) %}
+          {% set detected_has_meta = (detected_title not in ['','None', none] and not detected_url_like) or detected_artist not in ['','None', none] or detected_album not in ['','None', none] %}
+          {% set detected_candidate_ok = detected_ok and detected_active and detected_recent and detected_has_meta %}
+          {% set target_valid = states[t] is not none %}
+          {% set target_state = (states(t) | lower) if target_valid else '' %}
+          {% set target_play_state = ((state_attr(t,'play_state') if target_valid else '') | lower) %}
+          {% set target_is_playing = (state_attr(t,'is_playing') if target_valid else none) %}
+          {% set target_is_paused = (state_attr(t,'is_paused') if target_valid else none) %}
+          {% set target_pos_updated = (state_attr(t,'media_position_updated_at') if target_valid else none) %}
+          {% set target_pos_ts = as_timestamp(target_pos_updated) if target_pos_updated is not none else 0 %}
+          {% set target_pos_age = (as_timestamp(now()) - target_pos_ts) if target_pos_ts > 0 else 9999 %}
+          {% set target_recent = target_pos_age < stale_s %}
+          {% set target_playing_signal = target_state == 'playing' or target_play_state in ['play','playing'] or (target_is_playing is true) %}
+          {% set target_paused_signal = target_state == 'paused' or target_play_state in ['pause','paused'] or (target_is_paused is true) %}
+          {% set target_active = target_playing_signal or (target_paused_signal and target_recent) %}
+          {% set target_title = (state_attr(t,'media_title') or '') %}
+          {% set target_artist = (state_attr(t,'media_artist') or '') %}
+          {% set target_album = ((state_attr(t,'media_album_name') or state_attr(t,'media_album')) or '') %}
+          {% set target_title_l = target_title | lower %}
+          {% set target_content = (state_attr(t,'media_content_id') or '') %}
+          {% set target_content_l = target_content | lower %}
+          {% set target_url_like = (('://' in target_title_l) or target_title_l.startswith('www.') or target_title_l.endswith('.mp3') or target_title_l.endswith('.flac') or target_title_l.endswith('.wav') or target_title_l.endswith('.m4a') or target_title_l.endswith('.aac') or target_title_l.endswith('.ogg') or
+                                   (('://' in target_content_l) or target_content_l.startswith('www.') or target_content_l.endswith('.mp3') or target_content_l.endswith('.flac') or target_content_l.endswith('.wav') or target_content_l.endswith('.m4a') or target_content_l.endswith('.aac') or target_content_l.endswith('.ogg'))) %}
+          {% set target_has_meta = (target_title not in ['','None', none] and not target_url_like) or target_artist not in ['','None', none] or target_album not in ['','None', none] %}
+          {% set target_candidate_ok = target_active and target_recent and target_has_meta %}
           {% if override_on and override_entity not in ['','none','unknown','unavailable'] %}
             {% set meta_candidate = override_entity %}
-          {% elif t == 'media_player.kitchen_speakers' and (kitchen_stream_active or kitchen_active) and kitchen_has_meta and not detected_ok %}
-            {% set meta_candidate = kitchen_meta %}
-          {% elif detected_ok %}
+          {% elif detected_candidate_ok %}
             {% set meta_candidate = detected %}
-          {% elif mapped_active %}
+          {% elif mapped_candidate_ok %}
             {% set meta_candidate = mapped %}
-          {% else %}
+          {% elif target_candidate_ok %}
             {% set meta_candidate = t %}
+          {% else %}
+            {% set meta_candidate = '' %}
           {% endif %}
           {% set meta_state = states(meta_candidate) if meta_candidate not in ['','none','unknown','unavailable'] else '' %}
           {% set meta_valid = meta_candidate not in ['','none','unknown','unavailable'] and meta_state not in ['unknown','unavailable',''] %}
-          {{ meta_candidate if meta_valid else t }}
+          {{ meta_candidate if meta_valid else '' }}
         {% endif %}
     - name: MA Active Player ID
       state: >-
@@ -910,6 +958,7 @@
         {% set ma_title = states('sensor.ma_active_title') %}
         {% set by_host = states('sensor.ma_active_target_by_host') %}
         {% set preferred = states('sensor.ma_active_meta_entity') %}
+        {% set resolver_scoped = res_valid and (resolver == t or resolver == preferred or resolver == by_host) %}
         {% set pref_valid = preferred not in ['','unknown','unavailable','none'] and states[preferred] is not none %}
         {% set pref_state = (states(preferred) | lower) if pref_valid else '' %}
         {% set pref_title = (state_attr(preferred,'media_title') if pref_valid else '') or '' %}
@@ -920,7 +969,7 @@
         {% set pref_recent = pref_pos_age < 30 %}
         {% set pref_has_meta = pref_title not in ['', 'None', none] or pref_artist not in ['', 'None', none] %}
         {% set pref_active = pref_state == 'playing' or (pref_state == 'paused' and pref_recent) %}
-        {% if res_valid %}
+        {% if resolver_scoped %}
           {{ resolver }}
         {% elif pref_valid and (pref_active or pref_recent) %}
           {{ preferred }}
@@ -1140,9 +1189,15 @@
       state: >-
         {% set target = states('input_select.ma_active_target') %}
         {% set valid_target = target not in ['none','unknown','unavailable',''] %}
-        {% set fallback_enabled = is_state('input_boolean.ma_control_fallback_enabled','on') %}
-        {% set active_path = states('sensor.ma_active_control_path') %}
-        {% set control_capable = is_state('binary_sensor.ma_active_control_capable','on') %}
+        {% set shadow_target_entity = 'sensor.shadow_active_target' if states['sensor.shadow_active_target'] is not none else 'sensor.spectra_ls_shadow_active_target' %}
+        {% set shadow_route = state_attr(shadow_target_entity,'route_trace') if states[shadow_target_entity] is not none else {} %}
+        {% set selected = (shadow_route.selected_target if shadow_route is mapping and shadow_route.selected_target is defined and shadow_route.selected_target is mapping else {}) %}
+        {% set selected_entity = (selected.target if selected is mapping and selected.target is defined else '') | string | trim %}
+        {% set selected_host = (selected.host if selected is mapping and selected.host is defined else '') | string | trim %}
+        {% if ':' in selected_host %}
+          {% set selected_host = selected_host.split(':', 1)[0] %}
+        {% endif %}
+        {% set route_decision = (shadow_route.decision if shadow_route is mapping and shadow_route.decision is defined else '') | string | trim %}
         {% set rooms_raw = state_attr('sensor.spectra_ls_rooms_json','rooms_json') | default([], true) %}
         {% set rooms = rooms_raw %}
         {% if rooms is string %}
@@ -1167,19 +1222,164 @@
         {% endif %}
         {% set members = state_attr(target,'group_members') or state_attr(target,'members') or [] %}
         {% set target_host = '' %}
-        {% if valid_target and control_capable and active_path == 'linkplay_tcp' %}
-          {% set target_entries = (rooms | selectattr('entity','equalto', target) | list) %}
-          {% set target_entry = (target_entries[0] if (target_entries | length) > 0 else none) %}
-          {% if target_entry is not none and target_entry.tcp_host is defined and target_entry.tcp_host not in ['','unknown','unavailable'] %}
-            {% set target_host = target_entry.tcp_host %}
+        {% set meta_entity = states('sensor.ma_active_meta_entity') %}
+        {% set meta_valid = meta_entity not in ['','none','unknown','unavailable'] and states[meta_entity] is not none %}
+        {% set stale_s = states('input_number.ma_meta_stale_s') | float(45) %}
+        {% set target_name = (state_attr(target,'friendly_name') or '') | lower | trim %}
+        {% set meta_name = (state_attr(meta_entity,'friendly_name') if meta_valid else '') | lower | trim %}
+        {% set meta_matches_target = meta_valid and (meta_entity == target or meta_entity in members or (target_name not in ['','none','unknown','unavailable'] and meta_name == target_name)) %}
+        {% set meta_state = (states(meta_entity) | lower) if meta_valid else '' %}
+        {% set meta_play_state = ((state_attr(meta_entity,'play_state') if meta_valid else '') | lower) %}
+        {% set meta_is_playing = (state_attr(meta_entity,'is_playing') if meta_valid else none) %}
+        {% set meta_is_paused = (state_attr(meta_entity,'is_paused') if meta_valid else none) %}
+        {% set meta_pos_updated = (state_attr(meta_entity,'media_position_updated_at') if meta_valid else none) %}
+        {% set meta_pos_ts = as_timestamp(meta_pos_updated) if meta_pos_updated is not none else 0 %}
+        {% set meta_pos_age = (as_timestamp(now()) - meta_pos_ts) if meta_pos_ts > 0 else 9999 %}
+        {% set meta_recent = meta_pos_age < stale_s %}
+        {% set meta_playing_signal = meta_state == 'playing' or meta_play_state in ['play','playing'] or (meta_is_playing is true) %}
+        {% set meta_paused_signal = meta_state == 'paused' or meta_play_state in ['pause','paused'] or (meta_is_paused is true) %}
+        {% set meta_active = meta_playing_signal or (meta_paused_signal and meta_recent) %}
+        {% set meta_title = (state_attr(meta_entity,'media_title') if meta_valid else '') or '' %}
+        {% set meta_artist = (state_attr(meta_entity,'media_artist') if meta_valid else '') or '' %}
+        {% set meta_album = ((state_attr(meta_entity,'media_album_name') if meta_valid else '') or (state_attr(meta_entity,'media_album') if meta_valid else '') or '') %}
+        {% set meta_content = (state_attr(meta_entity,'media_content_id') if meta_valid else '') or '' %}
+        {% set meta_title_l = meta_title | lower %}
+        {% set meta_content_l = meta_content | lower %}
+        {% set meta_url_like = (('://' in meta_title_l) or meta_title_l.startswith('www.') or meta_title_l.endswith('.mp3') or meta_title_l.endswith('.flac') or meta_title_l.endswith('.wav') or meta_title_l.endswith('.m4a') or meta_title_l.endswith('.aac') or meta_title_l.endswith('.ogg') or
+                                 (('://' in meta_content_l) or meta_content_l.startswith('www.') or meta_content_l.endswith('.mp3') or meta_content_l.endswith('.flac') or meta_content_l.endswith('.wav') or meta_content_l.endswith('.m4a') or meta_content_l.endswith('.aac') or meta_content_l.endswith('.ogg'))) %}
+        {% set meta_has_metadata = (meta_title not in ['','None', none] and not meta_url_like) or meta_artist not in ['','None', none] or meta_album not in ['','None', none] %}
+        {% set meta_source_eligible = meta_matches_target and meta_active and meta_recent and meta_has_metadata %}
+        {% if valid_target and meta_source_eligible %}
+          {% set meta_ip = state_attr(meta_entity,'ip_address') or '' %}
+          {% if meta_ip not in ['','none','unknown','unavailable','None', none] %}
+            {% set target_host = meta_ip %}
           {% endif %}
+          {% if target_host == '' %}
+            {% set meta_members = state_attr(meta_entity,'group_members') or state_attr(meta_entity,'members') or [] %}
+            {% set ns_meta = namespace(host='') %}
+            {% for mm in meta_members %}
+              {% if ns_meta.host == '' and mm not in ['','none','unknown','unavailable'] and states[mm] is not none %}
+                {% set mm_ip = state_attr(mm,'ip_address') or '' %}
+                {% if mm_ip not in ['','none','unknown','unavailable','None', none] %}
+                  {% set ns_meta.host = mm_ip %}
+                {% endif %}
+              {% endif %}
+            {% endfor %}
+            {% if ns_meta.host != '' %}
+              {% set target_host = ns_meta.host %}
+            {% endif %}
+          {% endif %}
+        {% endif %}
+        {% set route_supported = route_decision in ['route_pywiim'] %}
+        {% if target_host == '' and valid_target and route_supported and selected_entity == target and selected_host not in ['','none','unknown','unavailable','None', none] %}
+          {% set target_host = selected_host %}
         {% endif %}
         {% if target_host == '' and valid_target %}
           {% set target_ip = state_attr(target,'ip_address') or '' %}
-          {% set target_state = states(target) | lower if states[target] is not none else '' %}
-          {% set target_active = target_state in ['playing','paused'] %}
-          {% if target_ip not in ['','none','unknown','unavailable','None', none] and (control_capable or active_path == 'linkplay_tcp' or target_active) %}
+          {% if target_ip not in ['','none','unknown','unavailable','None', none] %}
             {% set target_host = target_ip %}
+          {% endif %}
+        {% endif %}
+        {% if target_host == '' and valid_target %}
+          {% set target_entries = (rooms | selectattr('entity','equalto', target) | list) %}
+          {% set target_entry = (target_entries[0] if (target_entries | length) > 0 else none) %}
+          {% if target_entry is not none and target_entry.tcp_host is defined and target_entry.tcp_host not in ['','unknown','unavailable'] %}
+            {% set target_host_raw = (target_entry.tcp_host | string | trim) %}
+            {% set target_host = (target_host_raw.split(':')[0] if ':' in target_host_raw else target_host_raw) %}
+          {% endif %}
+          {% if target_host == '' and target_entry is not none %}
+            {% set meta_entity = (target_entry.meta if target_entry.meta is defined else '') %}
+            {% set meta_ip = (state_attr(meta_entity,'ip_address') if meta_entity not in ['','none','unknown','unavailable'] and states[meta_entity] is not none else '') %}
+            {% if meta_ip not in ['','none','unknown','unavailable','None', none] %}
+              {% set target_host = meta_ip %}
+            {% endif %}
+            {% if target_host == '' and meta_entity not in ['','none','unknown','unavailable'] and states[meta_entity] is not none %}
+              {% set meta_members = state_attr(meta_entity,'group_members') or state_attr(meta_entity,'members') or [] %}
+              {% set ns_meta = namespace(host='') %}
+              {% for mm in meta_members %}
+                {% if ns_meta.host == '' and mm not in ['','none','unknown','unavailable'] and states[mm] is not none %}
+                  {% set mm_ip = state_attr(mm,'ip_address') or '' %}
+                  {% if mm_ip not in ['','none','unknown','unavailable','None', none] %}
+                    {% set ns_meta.host = mm_ip %}
+                  {% endif %}
+                {% endif %}
+              {% endfor %}
+              {% if ns_meta.host != '' %}
+                {% set target_host = ns_meta.host %}
+              {% endif %}
+            {% endif %}
+          {% endif %}
+        {% endif %}
+        {% if target_host == '' and valid_target %}
+          {% set player_raw = state_attr('sensor.ma_active_player_id_resolved','player_json') | default('{}', true) %}
+          {% set player = player_raw if (player_raw is mapping) else ((player_raw | from_json) if (player_raw is string and (player_raw | trim).startswith('{')) else {}) %}
+          {% set player_entity = (player.entity_id if player is mapping and player.entity_id is defined else '') %}
+          {% set player_host = (state_attr(player_entity,'ip_address') if player_entity not in ['','none','unknown','unavailable'] and states[player_entity] is not none else '') %}
+          {% if player_host not in ['','none','unknown','unavailable','None', none] %}
+            {% set target_host = player_host %}
+          {% endif %}
+        {% endif %}
+        {% if target_host == '' and valid_target %}
+          {% set players = state_attr('sensor.ma_players','result') or [] %}
+          {% set target_short = target.split('.')[-1] if '.' in target else target %}
+          {% set target_short_norm = (target_short | lower | replace('_',' ') | trim) %}
+          {% set target_short_compact = (target_short_norm | replace(' ','')) %}
+          {% set ns_player = namespace(host='') %}
+          {% for p in players %}
+            {% if ns_player.host == '' and p is mapping %}
+              {% set p_ent = (p.entity_id if p.entity_id is defined else '') %}
+              {% set p_pid = (p.player_id if p.player_id is defined else '') %}
+              {% set p_name = (p.display_name if p.display_name is defined else (p.name if p.name is defined else '')) %}
+              {% set p_search = (p_ent ~ ' ' ~ p_pid ~ ' ' ~ p_name) | lower %}
+              {% set p_search_norm = (p_search | replace('_',' ') | trim) %}
+              {% set p_search_compact = (p_search_norm | replace(' ','')) %}
+              {% set token_match = (target_short | lower) in p_search or target_short_norm in p_search_norm or target_short_compact in p_search_compact %}
+              {% if p_ent not in ['','none','unknown','unavailable'] and states[p_ent] is not none and (p_ent == target or p_pid == target or p_pid == target_short or token_match) %}
+                {% set p_host = state_attr(p_ent,'ip_address') or '' %}
+                {% if p_host not in ['','none','unknown','unavailable','None', none] %}
+                  {% set ns_player.host = p_host %}
+                {% endif %}
+              {% endif %}
+            {% endif %}
+          {% endfor %}
+          {% if ns_player.host != '' %}
+            {% set target_host = ns_player.host %}
+          {% endif %}
+        {% endif %}
+        {% if target_host == '' and valid_target %}
+          {% set target_name = (state_attr(target,'friendly_name') or '') | lower | trim %}
+          {% set ns_peer = namespace(host='') %}
+          {% if target_name not in ['','none','unknown','unavailable'] %}
+            {% for mp in states.media_player %}
+              {% if ns_peer.host == '' and mp is not none %}
+                {% set mp_ent = mp.entity_id if mp.entity_id is defined else '' %}
+                {% set mp_name = (mp.attributes.friendly_name if mp.attributes is defined and mp.attributes.friendly_name is defined else '') | lower | trim %}
+                {% set mp_ip = (mp.attributes.ip_address if mp.attributes is defined and mp.attributes.ip_address is defined else '') %}
+                {% if mp_ent not in ['', target, 'none', 'unknown', 'unavailable'] and mp_name == target_name and mp_ip not in ['','none','unknown','unavailable','None', none] %}
+                  {% set ns_peer.host = mp_ip %}
+                {% endif %}
+              {% endif %}
+            {% endfor %}
+          {% endif %}
+          {% if ns_peer.host != '' %}
+            {% set target_host = ns_peer.host %}
+          {% endif %}
+        {% endif %}
+        {% if target_host == '' and valid_target %}
+          {% set transport = states('sensor.ma_control_transport') %}
+          {% if transport not in ['','none','unknown','unavailable','None', none] %}
+            {% set transport_raw = transport | string | trim %}
+            {% if '://' in transport_raw %}
+              {% set transport_raw = transport_raw.split('://', 1)[1] %}
+            {% endif %}
+            {% set transport_hostport = transport_raw.split('/', 1)[0] %}
+            {% set transport_host = transport_hostport.split('@')[-1] %}
+            {% if ':' in transport_host %}
+              {% set transport_host = transport_host.split(':', 1)[0] %}
+            {% endif %}
+            {% if transport_host not in ['','none','unknown','unavailable','None', none] %}
+              {% set target_host = transport_host %}
+            {% endif %}
           {% endif %}
         {% endif %}
         {% if target_host != '' %}
@@ -1187,47 +1387,13 @@
         {% else %}
           {% set hosts = [] %}
           {% for m in members %}
-            {% for r in rooms %}
-              {% if r.entity is defined and r.entity == m and r.tcp_host is defined and r.tcp_host not in ['','unknown','unavailable'] %}
-                {% set hosts = hosts + [r.tcp_host] %}
+            {% if m not in ['','none','unknown','unavailable'] and states[m] is not none %}
+              {% set m_ip = state_attr(m,'ip_address') or '' %}
+              {% if m_ip not in ['','none','unknown','unavailable','None', none] %}
+                {% set hosts = hosts + [m_ip] %}
               {% endif %}
-            {% endfor %}
+            {% endif %}
           {% endfor %}
-          {% if hosts | length == 0 and fallback_enabled %}
-            {% set primary_entity = states('input_text.spectra_ls_target_primary_entity') %}
-            {% set room_entity = states('input_text.spectra_ls_target_room_entity') %}
-            {% set primary_host = states('input_text.spectra_ls_target_primary_tcp_host') %}
-            {% set room_host = states('input_text.spectra_ls_target_room_tcp_host') %}
-            {% if valid_target and target == primary_entity and primary_host not in ['','unknown','unavailable','none'] %}
-              {% set hosts = [primary_host] %}
-            {% elif valid_target and target == room_entity and room_host not in ['','unknown','unavailable','none'] %}
-              {% set hosts = [room_host] %}
-            {% endif %}
-          {% endif %}
-          {% if hosts | length == 0 and fallback_enabled %}
-            {% set candidates = [states('sensor.ma_detected_receiver_entity'), states('sensor.ma_active_meta_entity'), target] %}
-            {% set ns = namespace(picked='') %}
-            {% for c in candidates %}
-              {% if ns.picked == '' and c not in ['','none','unknown','unavailable'] %}
-                {% set c_state = states(c) %}
-                {% if c_state not in ['unknown','unavailable',''] %}
-                  {% set ip = state_attr(c,'ip_address') or '' %}
-                  {% set model = state_attr(c,'device_model') or '' %}
-                  {% set role = state_attr(c,'group_role') or '' %}
-                  {% set gstate = state_attr(c,'group_state') or '' %}
-                  {% set purpose = state_attr(c,'integration_purpose') or '' %}
-                  {% set ma_ok = state_attr(c,'music_assistant_compatible') %}
-                  {% set is_linkplay = (ip not in ['','None', none]) and ((ma_ok is true) or (model not in ['','None', none]) or (role not in ['','None', none]) or (gstate not in ['','None', none]) or (purpose not in ['','None', none])) %}
-                  {% if is_linkplay %}
-                    {% set ns.picked = ip %}
-                  {% endif %}
-                {% endif %}
-              {% endif %}
-            {% endfor %}
-            {% if ns.picked != '' %}
-              {% set hosts = [ns.picked] %}
-            {% endif %}
-          {% endif %}
           {{ hosts | unique | join(',') if (hosts | length) > 0 else '' }}
         {% endif %}
     - name: MA Active Control Path
@@ -1258,20 +1424,45 @@
           {% elif rooms is not sequence %}
             {% set rooms = [] %}
           {% endif %}
-          {% set entry = (rooms | selectattr('entity','equalto', target) | list | first) %}
+          {% set entries = (rooms | selectattr('entity','equalto', target) | list) %}
+          {% set entry = (entries[0] if (entries | length) > 0 else none) %}
           {% set hardware_family = (entry.hardware_family if entry is not none and entry.hardware_family is defined else '') | lower %}
           {% set path_hint = (entry.control_path if entry is not none and entry.control_path is defined else '') | lower %}
           {% set control_capable_hint = (entry.control_capable if entry is not none and entry.control_capable is defined else '') %}
           {% set cap_l = (control_capable_hint | string | lower) %}
+          {% set entry_host_raw = (entry.tcp_host if entry is not none and entry.tcp_host is defined else '') | string | trim %}
+          {% set entry_host = (entry_host_raw.split(':')[0] if ':' in entry_host_raw else entry_host_raw) %}
+          {% set entry_host_ok = entry_host not in ['','none','unknown','unavailable','None', none] %}
+          {% set transport = states('sensor.ma_control_transport') %}
+          {% set transport_raw = (transport | string | trim) if transport not in ['','none','unknown','unavailable','None', none] else '' %}
+          {% if transport_raw != '' and '://' in transport_raw %}
+            {% set transport_raw = transport_raw.split('://', 1)[1] %}
+          {% endif %}
+          {% set transport_hostport = transport_raw.split('/', 1)[0] if transport_raw != '' else '' %}
+          {% set transport_host = transport_hostport.split('@')[-1] if transport_hostport != '' else '' %}
+          {% if ':' in transport_host %}
+            {% set transport_host = transport_host.split(':', 1)[0] %}
+          {% endif %}
+          {% set transport_host_ok = transport_host not in ['','none','unknown','unavailable','None', none] %}
+          {% set contract_hosts = states('sensor.ma_control_hosts') %}
+          {% set contract_host_ok = contract_hosts not in ['','none','unknown','unavailable','None', none] %}
           {% set ip = state_attr(target,'ip_address') or '' %}
           {% set model = (state_attr(target,'device_model') or '') | lower %}
           {% set manufacturer = (state_attr(target,'manufacturer') or '') | lower %}
           {% set purpose = (state_attr(target,'integration_purpose') or '') | lower %}
           {% set ma_ok = state_attr(target,'music_assistant_compatible') %}
           {% set hint = (hardware_family ~ ' ' ~ model ~ ' ' ~ manufacturer ~ ' ' ~ purpose ~ ' ' ~ target) %}
-          {% set inferred = 'linkplay_tcp' if (ip not in ['','none','unknown','unavailable','None', none] and ((ma_ok is true) or ('arylic' in hint) or ('linkplay' in hint) or ('up2stream' in hint))) else 'other' %}
-          {% set path = (path_hint if path_hint in ['linkplay_tcp','other'] else inferred) %}
-          {% set control_capable = (cap_l in ['1','true','yes','on']) if cap_l not in ['','none','unknown','unavailable'] else (path == 'linkplay_tcp') %}
+          {% set inferred = 'pywiim' if (contract_host_ok or entry_host_ok or transport_host_ok or (ip not in ['','none','unknown','unavailable','None', none] and ((ma_ok is true) or ('arylic' in hint) or ('linkplay' in hint) or ('up2stream' in hint)))) else 'other' %}
+          {% set hint_canonical = 'pywiim' if path_hint == 'linkplay_tcp' else path_hint %}
+          {% set path = inferred if (hint_canonical == 'other' and inferred == 'pywiim') else (hint_canonical if hint_canonical in ['pywiim','other'] else inferred) %}
+          {% set host_evidence = contract_host_ok or entry_host_ok or transport_host_ok %}
+          {% if cap_l in ['1','true','yes','on'] %}
+            {% set control_capable = true %}
+          {% elif cap_l in ['0','false','no','off'] %}
+            {% set control_capable = (path == 'pywiim') or host_evidence %}
+          {% else %}
+            {% set control_capable = (path == 'pywiim') or host_evidence %}
+          {% endif %}
           {{ path if control_capable else 'other' }}
         {% endif %}
     - name: MA Control Targets
@@ -1473,6 +1664,22 @@
     - name: MA Control Port
       state: >-
         8899
+    - name: MA Control Transport
+      state: >-
+        {% set v = states('text_sensor.spectra_ls_system_arylic_http_transport') %}
+        {% if v in ['','none','unknown','unavailable'] %}
+          {{ 'unknown' }}
+        {% else %}
+          {{ v }}
+        {% endif %}
+    - name: MA Control Transport Scheme
+      state: >-
+        {% set v = states('text_sensor.spectra_ls_system_arylic_http_scheme') %}
+        {% if v in ['http','https'] %}
+          {{ v }}
+        {% else %}
+          {{ 'unknown' }}
+        {% endif %}
     - name: MA Active Friendly
       state: >-
         {% set t = states('input_select.ma_active_target') %}
@@ -1613,11 +1820,20 @@
           {% elif rooms is not sequence %}
             {% set rooms = [] %}
           {% endif %}
-          {% set entry = (rooms | selectattr('entity','equalto', target) | list | first) %}
+          {% set entries = (rooms | selectattr('entity','equalto', target) | list) %}
+          {% set entry = (entries[0] if (entries | length) > 0 else none) %}
           {% set cap_hint = (entry.control_capable if entry is not none and entry.control_capable is defined else '') %}
           {% set cap_l = (cap_hint | string | lower) %}
+          {% set hosts = states('sensor.ma_control_hosts') %}
+          {% set hosts_valid = hosts not in ['','none','unknown','unavailable'] %}
           {% set path = states('sensor.ma_active_control_path') %}
-          {{ (cap_l in ['1','true','yes','on']) if cap_l not in ['','none','unknown','unavailable'] else (path == 'linkplay_tcp') }}
+          {% if cap_l in ['1','true','yes','on'] %}
+            {{ true }}
+          {% elif cap_l in ['0','false','no','off'] %}
+            {{ (path == 'pywiim') or hosts_valid }}
+          {% else %}
+            {{ (path == 'pywiim') or hosts_valid }}
+          {% endif %}
         {% endif %}
     - name: MA No Control Capable Hosts
       state: >-

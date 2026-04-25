@@ -1,6 +1,6 @@
 # Description: Spectra LS System substitutions for ESPHome main config and packages.
-# Version: 2026.04.20.1
-# Last updated: 2026-04-20
+# Version: 2026.04.25.1
+# Last updated: 2026-04-25
 # Spectra LS substitutions scoped to spectra_ls_system.
 # Use absolute paths for assets so this file can move with spectra_ls_system.
 
@@ -35,6 +35,28 @@ dns2_ip: 1.1.1.1
 volume_pot_send_interval_ms: "25"
 volume_pot_settle_ms: "50"
 volume_pot_jump_steps: "1"
+# Pot deadband around last committed target to suppress threshold jitter chatter.
+volume_pot_deadband_steps: "1"
+# Max time to hold pot catch gate before fail-safe auto-release.
+# Set 0 to disable TTL auto-release.
+volume_pot_catch_max_hold_ms: "1800"
+# Cross-source intent reducer cadence (single writer dispatch window).
+volume_intent_send_interval_ms: "90"
+# Volume convergence behavior: catch (default) or scale.
+volume_control_mode: "catch"
+# Max per-dispatch step when volume_control_mode=scale.
+volume_scale_slew_steps: "4"
+# Test lane: when true, bypass legacy volume intent/catch chain and route
+# volume through an EQ-style direct/deferred send path (legacy code stays intact).
+volume_eq_chain_test_mode: "true"
+# Dedicated pacing for volume EQ-test lane (kept separate from EQ pot cadence).
+volume_eq_test_send_interval_ms: "130"
+# AirPlay-aware test-lane cap to reduce control-path burst pressure when
+# source/app indicates AirPlay transport context.
+volume_eq_test_airplay_send_interval_ms: "200"
+# Ignore conflicting polled volume feedback for a short window after local sends.
+# This prevents stale HTTP poll snapshots from reintroducing old volume values.
+arylic_volume_feedback_hold_ms: "1400"
 eq_pot_send_interval_ms: "90"
 eq_pot_settle_ms: "60"
 eq_pot_jump_steps: "1"
@@ -61,27 +83,36 @@ arylic_tcp_burst_max_sends: "5"
 arylic_tcp_queue_len: "16"
 arylic_tcp_worker_stack: "4096"
 arylic_tcp_worker_prio: "1"
-arylic_tcp_log_interval_ms: "500"
+arylic_tcp_log_interval_ms: "250"
+# Drop queued volume commands older than this window to prevent delayed replay bursts.
+arylic_tcp_stale_vol_drop_ms: "250"
 
 # === Arylic / LinkPlay Endpoints + Routing ===
 # Purpose: primary endpoint and optional HTTP status polling controls.
 # Gain: central host/port control for transport paths.
 # Risk: mismatched host/port produces connect timeouts and false lag symptoms.
-# Runtime authority note:
-# - Active TCP control host(s)/port are resolved dynamically from HA (`sensor.ma_control_hosts`,
-#   `sensor.ma_control_host`, `sensor.ma_control_port`) in spectra-ls-audio-tcp.yaml.
-# - Values below are bootstrap/fallback defaults used before HA host sensors are available.
-# Primary device (bootstrap TCP + optional HTTP status)
-arylic_tcp_host: 192.168.1.50
+# Runtime authority note (discovery-first, fail-closed):
+# - Active TCP control host(s) are resolved dynamically from component-authoritative HA sensors
+#   (`sensor.component_control_hosts`, `sensor.component_control_host`) in spectra-ls-audio-tcp.yaml.
+# - Control port is fixed to `${arylic_tcp_port}` for runtime send calls.
+# - No install-specific host fallback is allowed here; empty host defaults keep runtime sends blocked
+#   until HA publishes a valid resolved target.
+# Primary device (discovery-resolved TCP + optional HTTP status)
+arylic_tcp_host: ""
 arylic_tcp_port: "8899"
-arylic_http_host: 192.168.1.50
-arylic_http_scheme: "https"
-arylic_http_port: "443"
+arylic_http_host: ""
+arylic_http_scheme: "http"
+arylic_http_port: "80"
 arylic_http_poll_ms: "5000"
-arylic_http_enabled: "false"
+arylic_http_timeout_ms: "500"
+arylic_http_quiet_after_input_ms: "1800"
+arylic_http_enabled: "true"
+# Legacy direct HTTP transport lane deprecation gate.
+# Default fail-closed (false). Set true only for bounded rollback diagnostics.
+legacy_transport_httpapi_enabled: "false"
 
-# Secondary device (bootstrap HTTP optional, TCP control supported via HA host resolution)
-arylic_lr_http_host: 192.168.1.51
+# Secondary device (discovery-resolved HTTP optional)
+arylic_lr_http_host: ""
 arylic_lr_http_scheme: "http"
 arylic_lr_http_port: "80"
 arylic_lr_http_poll_ms: "10000"
@@ -107,18 +138,17 @@ oled_model: "SSD1306 128x64"
 # Purpose: entity contracts consumed by active packages.
 # Gain: decouples package logic from site-specific entity naming.
 # Risk: renamed helpers/entities without updating here can break routing/metadata.
-# Now Playing metadata (from MA active sensors)
-ha_ma_active_title: sensor.ma_active_title
-ha_ma_active_artist: sensor.ma_active_artist
-ha_ma_active_album: sensor.ma_active_album
-ha_ma_active_app: sensor.ma_active_app
-ha_ma_active_source: sensor.ma_active_source
-ha_ma_active_state: sensor.ma_active_state
-ha_ma_active_duration: sensor.ma_active_duration
-ha_ma_active_position: sensor.ma_active_position
-ha_ma_active_volume: sensor.ma_active_volume
-ha_ma_meta_candidates: sensor.ma_meta_candidates
-ha_ma_meta_low_confidence: binary_sensor.ma_meta_low_confidence
+# Now Playing metadata (component-authoritative now-playing sensors)
+ha_ma_active_title: sensor.component_now_playing_title
+ha_ma_active_artist: sensor.component_now_playing_artist
+ha_ma_active_album: sensor.component_now_playing_album
+ha_ma_active_app: sensor.component_now_playing_app
+ha_ma_active_source: sensor.component_now_playing_source
+ha_ma_active_state: sensor.component_now_playing_state
+ha_ma_active_duration: sensor.component_now_playing_duration
+ha_ma_active_position: sensor.component_now_playing_position
+ha_component_control_targets: sensor.component_control_targets
+ha_component_meta_candidates: sensor.component_meta_candidates
 ha_ma_meta_override_active: input_boolean.ma_meta_override_active
 ha_ma_meta_override_entity: input_text.ma_meta_override_entity
 
@@ -193,6 +223,7 @@ menu_level_lighting_targets: "6"
 menu_level_lighting_adjust: "7"
 menu_level_lighting_toggle: "8"
 menu_level_meta_select: "9"
+menu_level_control_target_select: "10"
 # Shared screen-mode constants.
 screen_mode_lighting: "0"
 screen_mode_audio: "1"
@@ -204,7 +235,7 @@ hardware_mode_audio_transport: "3"
 hardware_mode_system_meta: "4"
 # Shared menu-count constants (avoid branch-size magic numbers in lambdas).
 menu_count_root: "3"
-menu_count_gear: "2"
+menu_count_gear: "3"
 menu_count_lighting_adjust: "4"
 menu_count_lighting_toggle_all: "2"
 menu_count_lighting_toggle_target: "3"
@@ -277,9 +308,10 @@ ma_target_refresh_interval_ms: "15000"
 # Meta override settle delay after cycle command before label refresh.
 meta_override_settle_ms: "160"
 # Local input/log throttles (debug smoothness vs log volume).
-input_raw_log_interval_ms: "700"
-input_send_log_interval_ms: "450"
+input_raw_log_interval_ms: "250"
+input_send_log_interval_ms: "180"
 audio_gate_log_interval_ms: "1200"
+arylic_http_status_log_interval_ms: "5000"
 
 # === Audio Source Cycle + Meta Labels ===
 # Purpose: source cycling contract and user-facing meta source labels.

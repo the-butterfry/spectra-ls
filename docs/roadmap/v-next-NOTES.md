@@ -1,6 +1,6 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.22.111 -->
-<!-- Last updated: 2026-04-22 -->
+<!-- Version: 2026.04.25.3 -->
+<!-- Last updated: 2026-04-25 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
 
@@ -8,13 +8,15 @@
 > Audience: Implementation agent working across RP2040 CircuitPython + ESPHome packages + HA helpers.
 > Status: Draft plan. Update as decisions solidify.
 
-## Custom-Component Parallel Program (Required)
+## Component-Only Control-Plane Program (Required)
 
-`custom_components/spectra_ls` must be developed in parallel with the current runtime stack (`packages/` + `esphome/`) and cannot be treated as a big-bang replacement.
+`custom_components/spectra_ls` is the default and authoritative implementation lane for HA/control-plane behavior.
+
+Runtime paths (`packages/` + `esphome/`) are compatibility/rollback surfaces and are exception-only for device/runtime root-cause fixes or explicit user requests.
 
 Execution system reference: `docs/program/PARALLEL-PROGRAM-PLAYBOOK.md`.
 
-### Required migration sequence
+### Historical migration sequence (archival context)
 
 1. Shadow mode (read-only parity surfaces)
 2. Parity validation (legacy vs component)
@@ -22,12 +24,12 @@ Execution system reference: `docs/program/PARALLEL-PROGRAM-PLAYBOOK.md`.
 4. Domain cutover (small slices)
 5. Legacy retirement (after sustained parity)
 
-### Feature-slice completion contract
+### Feature-slice completion contract (current)
 
-Each feature slice is only complete when both tracks are dispositioned:
+Each feature slice is only complete when component ownership is explicit and any runtime exception is documented:
 
-- **Track A (current runtime):** implemented / compatibility-shimmed / deferred (with rationale)
-- **Track B (custom component):** implemented / compatibility-shimmed / deferred (with rationale)
+- **Component lane:** implemented / compatibility-shimmed / deferred (with rationale)
+- **Runtime exception lane:** not-applicable / exception-implemented (with rationale)
 
 ### Phase map + status ledger
 
@@ -35,13 +37,145 @@ Each feature slice is only complete when both tracks are dispositioned:
 | --- | --- | --- | --- | --- |
 | 0 | Charter + contract freeze | Documented in v-next + changelog | Documented in roadmap/spec | In Progress |
 | 1 | Skeleton + shadow parity | Keep existing contracts stable | Scaffold integration + read-only parity outputs | Implemented |
-| 2 | Registry + route foundation | Keep helper contracts + diagnostics parity | Target registry + adapter router (`linkplay_tcp`) | Implemented |
+| 2 | Registry + route foundation | Keep helper contracts + diagnostics parity | Target registry + adapter router (`pywiim`, legacy alias-compatible) | Implemented |
 | 3 | Guarded dual-write | Add shims and loop guards | Controlled write path with correlation/debounce guards | Validated (Sealed 2026-04-20) |
 | 4 | Functional expansion | Preserve compatibility while exposing new capabilities | Profiles/actions/capability matrix/crossfade-balance services | Validated (F4-S01/F4-S02/F4-S03 sealed; diagnostics-only authority boundary retained) |
 | 5 | Domain cutover + retirement | Domain-by-domain template retirement | Primary control plane ownership + migration tooling | Validated (P5-S01/P5-S02/P5-S03/P5-S04 sealed; P6 planning handoff ready) |
 | 6 | Sidebar control center productization | Runtime compatibility surfaces retained for migration-safe UX rollout | Full HA sidebar Spectra control center (setup/tuning/defaults/overrides/mapped environment) | Validated (P6-S01/P6-S02/P6-S03/P6-S04 validated) |
 | 7 | Component-first authority cutover + legacy sealing | Legacy runtime transitions to compatibility/rollback baseline, then sealed from normal write ownership | Component becomes default primary control plane for net-new sidebar/beyond features | Validated (P7-S01/P7-S02/P7-S03/P7-S04 validated; phase-exit packet accepted) |
-| 8 | Post-cutover stabilization + legacy-seal governance | Runtime retained as rollback-safe sealed baseline with no net-new growth | Component continues as primary feature/control plane under strict governance gates | Active (P8-S01 active) |
+| 8 | Post-cutover stabilization + legacy-seal governance | Runtime retained as rollback-safe sealed baseline with no net-new growth | Component continues as primary feature/control plane under strict governance gates | Active (post-cutover era; P8-S01 + P8-S04 + P8-S05 validated) |
+
+### Current phase posture (2026-04-24)
+
+- Program is explicitly **post-cutover**.
+- **Phase 7** is closed/validated (`P7-S01`..`P7-S04` complete).
+- **Phase 8** is the active governance/stabilization lane with legacy held as rollback-safe baseline and component as default forward control plane.
+
+### Plan Delta (2026-04-24) — authority baseline persistence correction
+
+- Corrective implementation aligns runtime behavior with sealed-install contract: component startup authority is now restored from persisted integration options (`write_authority_mode`) and defaults to `component` when unset.
+- Root cause addressed: setup-path hard reset to `legacy` on load/reload has been removed from default path.
+- Operator-directed authority flips remain supported and now persist across restart instead of snapping back.
+
+### Plan Delta (2026-04-24) — legacy authority hard-disable (component-only)
+
+- `custom_components/spectra_ls` write-authority service contract is now component-only; legacy mode is removed from allowed options and normalization fallback.
+- Metadata/control diagnostics that previously treated `legacy` as required baseline now enforce component baseline semantics.
+- Runtime path remains compatibility execution lane for device transport behavior; control-plane authority mode no longer falls back to legacy in component service flows.
+
+### Plan Delta (2026-04-24) — live-feed diagnosis follow-through (meta scoping + tuning visibility)
+
+- Live HA/ESP evidence showed cross-target metadata binding (`now_playing_entity` selecting a non-active target domain while control host/route were valid for the active target).
+- Runtime metadata selection logic now scopes resolver/detected winners to active-target context (`active target`, `active meta`, `active_target_by_host`) to prevent stale cross-host title bleed.
+- Runtime tuning values (audio/transport/poll cadence and stale-drop setting) are now surfaced in diagnostics entities/dashboard for direct operator visibility.
+
+### Plan Delta (2026-04-24) — execution governance correction (permission + implementation-boundary clarity)
+
+- Operator granted standing in-session authorization to use Home Assistant long-lived token for live diagnostics, service calls, and reload/verification actions; this authorization is persistent for active Phase-8 execution and should not be re-requested each turn.
+- Component-primary posture remains in force, but current implementation is not yet fully standalone from legacy compatibility entities for metadata/control-host surfaces.
+- `custom_components/spectra_ls` currently consumes legacy contract entities (for example `sensor.ma_active_meta_entity`, `sensor.now_playing_entity`, `sensor.ma_control_hosts`, `sensor.ma_control_host`) as compatibility inputs while component ownership continues to expand.
+
+### Plan Delta (2026-04-25) — pywiim route-semantics migration
+
+- Component route/control-path semantics are now canonicalized to pywiim (`control_path=pywiim`, `route_decision=route_pywiim`) for host-resolved control-capable targets.
+- Compatibility-safe migration behavior is preserved by accepting legacy alias checks (`route_linkplay_tcp`) in guarded route gates and emitting `route_trace.decision_legacy` for transition templates.
+- A full requirements + comprehensive use-case contract is now published: `docs/features/PYWIIM-CONTROL-REQUIREMENTS-USE-CASE.md`.
+
+### Plan Delta (2026-04-25) — runtime pywiim naming parity
+
+- Runtime compatibility contracts in `packages/ma_control_hub/*` and `packages/spectra_ls_setup.yaml` are now canonicalized to pywiim naming (`control_path=pywiim`) to match component-path route semantics.
+- Legacy alias acceptance remains explicit where required (`route_linkplay_tcp`) for bounded transition compatibility.
+- No authority ownership change: this slice is naming/contract parity hardening only.
+
+### Plan Delta (2026-04-25) — pywiim upstream sync method (governance + tooling)
+
+- A deterministic local upstream-check utility is now part of the workflow: `bin/pywiim_sync_check.py`.
+- The checker compares pinned `custom_components/spectra_ls/manifest.json` `pywiim==...` to upstream `mjcumming/pywiim` latest release and emits `up_to_date`/`behind`/`ahead` state for release-train decisions.
+- This is governance/tooling-only and does not alter runtime/component authority behavior.
+
+### Plan Delta (2026-04-25) — hard deprecation of legacy runtime alias + direct transport API lanes
+
+- Runtime package gates now treat `route_pywiim` as canonical pass criteria; legacy `route_linkplay_tcp` pass-through is removed from active diagnostics/eligibility checks.
+- ESP legacy direct transport API polling (`httpapi.asp?command=getPlayerStatus`) is now hard-disabled by default behind explicit rollback toggle `${legacy_transport_httpapi_enabled}`.
+- Legacy UPnP hack script lane is now operator-gated (`SPECTRA_ALLOW_LEGACY_UPNP=1`) and otherwise fails closed as deprecated.
+- Rollback-safe posture remains explicit: operators can temporarily re-enable legacy lanes for bounded diagnostics/recovery windows only.
+
+### Plan Delta (2026-04-24) — component-authoritative unit implementation (metadata/now-playing/control-host)
+
+- Component coordinator now computes authoritative unit values for `active_meta_entity`, `now_playing_entity`, `control_hosts`, and `control_host` without requiring direct reads of legacy meta/now-playing/control-host sensor IDs.
+- Route-safety and metadata-prep diagnostics now consume these component units as primary evaluation inputs.
+- Dedicated component unit sensors now expose the authoritative values for operator verification while parity surfaces remain available during transition.
+
+### Plan Delta (2026-04-24) — component root-cause repair (unit population + stale-meta resilience)
+
+- Registry host derivation now tolerates digit-suffixed wrapper aliases during friendly-peer token matching (`spectra_ls` / `spectra_ls_2` class collisions), reducing transient no-host drifts in component registry snapshots.
+- Coordinator metadata candidate gating now preserves paused-but-fresh context payloads under bounded freshness rules (fail-closed on freshness, not title-only strictness), addressing post-restart meta-drop windows.
+- Component summary sensors now read registry/candidate payloads using both dict/list entry shapes and `entity_id|entity` key variants so component unit truth is not masked by reader-shape drift.
+
+### Plan Delta (2026-04-24) — component code hard-cutover from legacy sensor inputs
+
+- `custom_components/spectra_ls` no longer reads legacy runtime sensor contracts (`sensor.ma_*`, `sensor.now_playing_*`, legacy rooms/control-host/control-target sensors) as coordinator/registry input dependencies.
+- Component registry/route/parity derivation now uses component-native sources: active-target helper + media-player discovery + component-owned route/component-unit computation.
+- Runtime contracts remain compatibility surfaces for non-component consumers (ESP/runtime tooling), but component control-plane logic no longer depends on them.
+
+### Plan Delta (2026-04-24) — ESP runtime host-intake component-only rewire
+
+- Active ESP TCP host intake now fail-closes on component-authoritative host surfaces only (`sensor.component_control_hosts` / `sensor.component_control_host`); legacy fallback intake (`sensor.ma_control_hosts` / `sensor.ma_control_host`) is removed from runtime send-path selection.
+- Runtime control port intake now remains bounded to `${arylic_tcp_port}` baseline instead of depending on legacy HA control-port sensor surfaces.
+- Metadata/control-target runtime UI feeds are rewired to component-authoritative contracts (`sensor.component_meta_candidates`, `sensor.component_control_targets`, `sensor.component_active_friendly`, `binary_sensor.component_control_ambiguous`) for component-aligned operator pathing.
+
+### Plan Delta (2026-04-24) — resiliency hardening follow-up (target-match normalization + runtime host/log correctness)
+
+- Component route-safety and control-host derivation now use normalized target matching (`entity_id`, suffix, and compact token intersection) so wrapper/friendly-name variants do not produce false mismatch failures.
+- Runtime host intake remains component-authoritative first with sanitized legacy fallback and explicit fail-closed clearing on invalid contracts.
+- LR HTTP transport telemetry now logs active probe host values (not static substitutions), improving fault triage fidelity when endpoints rotate or recover.
+
+### Plan Delta (2026-04-24) — OTA endpoint source-of-truth clarification
+
+- ESP OTA deployment target is sourced from `esphome/spectra_ls_system/substitutions.yaml` `static_ip` (current configured value `192.168.10.40`).
+- Audio endpoint helper files (`spectra_ls_primary_tcp_host.yaml`, `spectra_ls_room_tcp_host.yaml`) are routing targets for audio/control host contracts and must not be used as ESP OTA upload targets.
+- Deployment proof for this slice: OTA upload to `192.168.10.40` succeeded (`OTA successful`); `.50/.51` refused OTA port `3232` in this environment.
+
+### Plan Delta (2026-04-24) — runtime stale-metadata hold correction (target-switch invalidation)
+
+- Live diagnosis isolated a runtime-path stale OLED metadata hold where target transitions could retain prior now-playing cache/progress windows.
+- Runtime metadata pipeline now enforces target-switch invalidation by marking active-target changes dirty, forcing metadata refresh, and clearing stale now-playing display cache/progress hold state on compute-loop transition.
+- Metadata freshness timestamps are now quality-gated so placeholder/empty title-artist-album updates do not extend freshness hold windows.
+- Disposition: runtime exception lane implemented for proven device/runtime-path failure class; component lane unchanged in this slice.
+
+### Plan Delta (2026-04-24) — OLED display truth hardening (fail-closed cached replay)
+
+- Runtime now-playing compute/render rules now fail-closed cached metadata replay unless live transport-playing evidence is present (HA playing + fresh activity, or Arylic/LR playing flags).
+- Now-playing state activation no longer treats cached text alone as sufficient activity while transport is idle/stale.
+- This closes a stale-text resurfacing class where old title/source content could persist after playback truth dropped.
+
+### Plan Delta (2026-04-24) — metadata authority-plane alignment (component metadata feed)
+
+- Runtime OLED metadata ingestion is now aligned to component-authoritative now-playing sensors rather than legacy `sensor.ma_active_*` metadata surfaces.
+- Component units now publish expanded now-playing metadata fields (title/artist/album/source/app/state/position/duration) with freshness gating.
+- This removes mixed-authority behavior where control host was component-correct but metadata could still be selected from legacy MA context.
+
+### Plan Delta (2026-04-24) — control-loss stabilization via strict playing-only auto-select
+
+- Live failure evidence showed active-target drift during interaction windows (`.51 -> .50`) followed by transport backoff/no-control symptoms.
+- Runtime `ma_auto_select` arbitration is tightened to select detected/fallback targets only when target state is `playing` (not merely available/paused).
+- This reduces unintended target flips that can rebind control host away from the currently controlled endpoint during churn.
+- Disposition: runtime exception lane implemented for proven runtime target-selection instability; component lane compatibility-shimmed (component host authority contract unchanged).
+
+### Plan Delta (2026-04-24) — control-loss stabilization via fail-closed valid-target lock
+
+- Live runtime evidence still showed target/host rebound after playing-only tightening (`ma_active_target` flipping between wrappers and rebinding `.51 <-> .50`), causing recurring Arylic HTTP connect/backoff windows.
+- Runtime `ma_auto_select` now fail-closes on any valid current target and refuses opportunistic retargeting while current target remains resolvable/healthy.
+- Auto-retarget path remains available only for invalid/unresolved current target recovery (startup/contract-loss scenarios).
+- Disposition: runtime exception lane implemented for proven runtime arbitration flapping; component lane compatibility-shimmed (component host authority contract unchanged, fed by stabilized active-target helper).
+
+### Next steps (post-cutover move-forward queue)
+
+1. Execute current active Phase-8 lane checklist/monitor packet in-window and post-window (no authority-boundary relaxations).
+2. Keep runtime path sealed to compatibility/rollback posture only; reject net-new runtime ownership expansion unless explicitly approved as bounded exception.
+3. Continue component-first operator UX hardening (settings/remap/visibility) with dry-run-first control execution semantics.
+4. Keep roadmap + changelog + checklist artifacts synchronized per slice closeout (`status`, evidence timestamp, stop-condition result).
+5. For any planned MA-native/plugin exploration lane, run as bounded Phase-8 feasibility packet with explicit rollback and fail-closed stop criteria.
 
 ### Active slice ledger
 
@@ -69,6 +203,8 @@ Each feature slice is only complete when both tracks are dispositioned:
 | P7-S03 | 7 | Validated (legacy retained as rollback-safe metadata authority baseline with post-window proof accepted) | Validated (bounded metadata-domain authority-flip execution lane complete) | Completed (Run-1 pre/in PASS + Run-2 post PASS) | High | Validated |
 | P7-S04 | 7 | Validated (rollback-safe legacy authority baseline preserved at closeout capture) | Validated (phase-exit closeout packet completed and accepted) | Completed (Run-1 closeout PASS/READY 4/4) | High | Validated |
 | P8-S01 | 8 | Validated (legacy sealed baseline readiness gate completed with pre/in/post PASS packet) | Validated (post-cutover governance/readiness lane completed for starter gate) | Completed (Run-1/Run-2/Run-3 PASS; promoted) | High | Validated |
+| P8-S04 | 8 | Validated (legacy rollback-safe baseline preserved through MA feasibility pre/in/post window) | Validated (MA-native plugin feasibility fast-cutover packet closed with complete PASS evidence) | Completed (Run-1/Run-2/Run-3 PASS; promoted) | High | Validated |
+| P8-S05 | 8 | Validated (rollback-safe baseline preserved through MA-provider scaffold pre/in/post window) | Validated (MA-provider scaffold dry-run lane closed with complete PASS evidence) | Completed (Run-1/Run-2/Run-3 PASS; promoted) | High | Validated |
 
 ### P1/P2 validation snapshot (2026-04-19)
 
@@ -1044,9 +1180,115 @@ Run-14 execution update (2026-04-22):
 - Diagnostics lane: added active preset + effective mapping visibility in control-center readiness/attempt diagnostics for quick operator verification after remap.
 - Execution disposition: run-14 packet accepted; runtime track unchanged compatibility baseline, component track advanced P8-S03 operator remap implementation.
 
+Run-15 execution update (2026-04-22):
+
+- Component UX maturity lane: refactored integration settings to a guided two-step flow (quick preset/safety step + conditional advanced custom-mapping step) so common remaps complete faster while custom mapping remains one click away.
+- Selector ergonomics lane: replaced raw option-value style with explicit human-readable option labels for presets and encoder action choices to better match mature HA integration settings UX patterns.
+- Execution disposition: run-15 packet accepted; runtime track unchanged compatibility baseline, component track implemented guided remap flow ergonomics hardening.
+
+Run-16 execution update (2026-04-22):
+
+- Setup-lane clarity lane: added an explicit first-step chooser in integration options so operators select `Quick setup` or `Advanced mapping` before entering remap fields.
+- Flow-structure lane: split options UX into dedicated quick and advanced steps (`init -> quick/advanced`) so the common preset path is fast while manual mapping remains a focused advanced path.
+- Execution disposition: run-16 packet accepted; runtime track unchanged compatibility baseline, component track implemented explicit lane separation for settings UX.
+
+Run-17 execution update (2026-04-22):
+
+- Label-clarity lane: refined setup/action selector labels for quicker scanability and lower operator ambiguity.
+- Default-lane lane: set smarter setup-lane default (`advanced` when existing preset is `custom`, otherwise `quick`) so re-opened settings land in the expected path.
+- Execution disposition: run-17 packet accepted; runtime track unchanged compatibility baseline, component track implemented settings-flow polish.
+
+Run-18 execution update (2026-04-22):
+
+- Corrective UX lane: simplify integration Configure UX from multi-lane flow back to a single-step settings form to reduce operator confusion.
+- Sidebar surface lane: add a real Home Assistant sidebar dashboard entry (`Spectra L/S`) for persistent settings/readiness visibility outside the modal configure dialog.
+- Execution disposition: run-18 packet accepted; runtime track unchanged compatibility baseline, component track implemented usability/navigation correction.
+
+Run-19 execution update (2026-04-22):
+
+- Sidebar reliability lane: correct sidebar dashboard sensor bindings to match real registered entity IDs and eliminate post-restart `Entity not found` cards.
+- Execution disposition: run-19 packet accepted; runtime track unchanged compatibility baseline, component track implemented dashboard reliability correction.
+
+Run-20 execution update (2026-04-22):
+
+- MA exploration lane: publish a future-focused technical note that consolidates Music Assistant plugin/provider extension routes, capability constraints, and recommended integration path for Spectra audio-side ownership.
+- Fast-cutover planning lane: queue the next bounded phase slice to execute immediately after UX usefulness closure, with explicit gates, stop conditions, rollback posture, and evidence packet requirements.
+- Execution disposition: run-20 packet accepted; runtime track compatibility-shimmed, component track deferred-with-rationale as the queued next slice.
+
+Run-21 execution update (2026-04-22):
+
+- UX completion lane: finish the sidebar usability pass by replacing dev-tools-only quick actions with direct one-click action buttons for dry-run probes and rollback-safe preset application.
+- Operator flow lane: align wiki/setup docs to the click-first sidebar workflow and mark the current UX-stage lane complete.
+- Execution disposition: run-21 packet accepted; `P8-S03` promoted to validated, and `P8-S04` moved from queued to active planning/execution prep.
+
+Run-22 execution update (2026-04-22):
+
+- P8-S04 activation lane: publish deterministic monitor + checklist artifacts for MA-native plugin/provider fast-cutover gate-prep windows (pre/in/post).
+- Evidence lane: add explicit rollback-safe stop conditions and packet fields so first MA probe can be classified PASS/WARN/FAIL without ad hoc interpretation.
+- Execution disposition: run-22 packet accepted; `P8-S04` is now active with execution artifacts published.
+
+Run-23 execution update (2026-04-22):
+
+- Run-2 packet lane: publish a strict in-window execution packet for `P8-S04` with explicit `run_id`, `selected_path=player_provider`, dry-run-first probe posture, and artifact-reference capture fields.
+- Governance lane: keep promotion blocked at Run-2 by policy until post-window rollback proof is captured in a subsequent record.
+- Execution disposition: run-23 packet accepted; P8-S04 Run-2 is execution-ready.
+
+Run-24 closeout update (2026-04-24):
+
+- Bounded pre/in/post monitor captures completed with `PASS` and gate score `4/4` at:
+  - pre: `2026-04-24 07:02:18.867940-07:00`
+  - in: `2026-04-24 07:03:08.585627-07:00`
+  - post: `2026-04-24 07:04:18.996495-07:00`
+- Baseline remained rollback-safe and clean in all windows (`authority_mode=legacy`, `route_decision=route_linkplay_tcp`, `contract_valid=true`, `missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`).
+- Stop conditions remained clear (`triggered=false`); post-window artifact requirement satisfied (`ma_probe_artifact_captured=true`).
+- Execution disposition: run-24 closeout packet accepted; `P8-S04` promoted to **Validated**.
+
+Run-25 activation update (2026-04-24):
+
+- Next-slice lane activated as `P8-S05` for MA-provider scaffold dry-run readiness with bounded pre/in/post evidence flow.
+- Published deterministic artifacts:
+  - `docs/testing/raw/p8_s05_ma_provider_scaffold_readiness_monitor.jinja`
+  - `docs/testing/raw/p8_s05_ma_provider_scaffold_readiness_checklist.md`
+- Execution disposition: run-25 packet accepted; `P8-S05` moved to **Active**.
+
+Run-26 closeout update (2026-04-24):
+
+- Bounded pre/in/post monitor captures completed with `PASS` and gate score `4/4` at:
+  - pre: `2026-04-24 07:51:05.967494-07:00`
+  - in: `2026-04-24 07:51:28.747949-07:00`
+  - post: `2026-04-24 07:52:02.487890-07:00`
+- Baseline remained rollback-safe and clean in all windows (`authority_mode=legacy`, `route_decision=route_linkplay_tcp`, `contract_valid=true`, `missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`).
+- Stop conditions remained clear (`triggered=false`); post-window artifact requirement satisfied (`scaffold_probe_artifact_captured=true`).
+- Execution disposition: run-26 closeout packet accepted; `P8-S05` promoted to **Validated**.
+
+Run-27 testing-rigor update (2026-04-24):
+
+- Converted `P8-S05` packet semantics from snapshot-only readiness checks to action-driven functional probe verification.
+- In-window runs now require explicit `spectra_ls.execute_control_center_input` execution evidence and recent last-attempt payload confirmation before closeout can pass.
+- Execution disposition: run-27 packet accepted; Phase-8 testing semantics hardened to functional/action-based posture.
+
+Run-28 diagnostics-ops update (2026-04-24):
+
+- Added a dedicated HA sidebar diagnostics dashboard (`Spectra Diagnostics`) with categorized action buttons for pre/in/post capture flow and bounded in-window probes.
+- Added script-driven structured NDJSON evidence logging (`/config/docs/testing/logs/spectra_diag.ndjson`) so run packets are machine-readable and replayable without manual copy assembly.
+- Execution disposition: run-28 packet accepted; Phase-8 diagnostics workflow now supports click-driven action execution + persistent file-backed evidence capture.
+
+Run-29 diagnostics-platform update (2026-04-24):
+
+- Refactored diagnostics tooling into an UBER architecture with reusable run context helpers (slice/phase/mode/input event), generic capture/probe/full-packet scripts, and optional per-slice presets.
+- Rebuilt sidebar diagnostics page into categorized reusable sections (context, core actions, presets, compatibility shortcuts, template catalog, evidence summary) to support forward slice growth without dashboard rewrites.
+- Execution disposition: run-29 packet accepted; diagnostics workflow is now scalable/expandable and no longer bound to single-slice (`P8-S05`) hardcoding.
+
+Run-30 deep-diagnostics update (2026-04-24):
+
+- Added a full top-to-bottom DT diagnosis template for control-host/path/contract triage (`docs/testing/raw/uber_control_route_full_diagnosis.jinja`) and retained the detailed P8-specific diagnosis template.
+- Added a one-press deep diagnosis runner in the diagnostics hub package that refreshes shadow state, classifies likely root cause, logs structured `deep_diagnosis` NDJSON evidence, and publishes compact blocker/summary fields for immediate operator consumption.
+- Surfaced the deep diagnosis action and summarized output directly on the sidebar diagnostics page for single-click run + on-page result visibility.
+- Execution disposition: run-30 packet accepted; diagnostics workflow now supports full one-press deep triage without manual template parsing.
+
 ### Phase 8 follow-on slice card — P8-S03 (fast input-remap UX in HA settings)
 
-Status: **Active**
+Status: **Validated**
 
 Scope:
 
@@ -1082,6 +1324,86 @@ GitHub/developer declaration (policy mirror):
 
 - Legacy runtime path is sealed as rollback-safe compatibility baseline.
 - Custom component path is primary for net-new feature/control-plane growth.
+
+### Phase 8 next slice card — P8-S04 (MA-native audio plugin feasibility + fast cutover packet)
+
+Status: **Validated**
+
+Scope:
+
+- **In:**
+  - consolidate MA-native extension options into one implementation-ready path,
+  - define a bounded Spectra audio-side plugin/provider scaffold plan,
+  - publish a fast cutover packet with explicit rollback and evidence controls.
+- **Out:**
+  - immediate authority flip in this planning slice,
+  - cross-domain helper/entity retirement,
+  - unbounded runtime ownership expansion.
+
+Primary planning artifact:
+
+- `docs/notes/NOTES-ma-audio-plugin-cutover-plan.md`
+
+Execution artifacts:
+
+- `docs/testing/raw/p8_s04_ma_plugin_cutover_readiness_monitor.jinja`
+- `docs/testing/raw/p8_s04_ma_plugin_cutover_readiness_checklist.md`
+
+Activation gates (required):
+
+1. P8-S03 UX usefulness closure accepted (operator-confirmed usable baseline).
+2. Legacy rollback baseline remains clean (`authority_mode=legacy`, contract/parity clean).
+3. Chosen MA integration route is explicitly mapped as implemented/shimmed/deferred across both tracks.
+4. Pre/in/post evidence capture template is defined before any authority-touching implementation.
+
+Two-track disposition target (for execution start):
+
+- **Track A (runtime):** compatibility-shimmed rollback baseline retained during plugin feasibility/probe windows.
+- **Track B (component):** implement MA-native audio plugin/provider scaffold and diagnostics-first control-path probes.
+
+P1/P2/P3 impact check:
+
+- **P1:** unchanged read-only parity surfaces.
+- **P2:** unchanged registry/router ownership in this planning queue step.
+- **P3:** unchanged single-writer boundary; any authority move stays explicitly gated for execution windows.
+
+### Phase 8 next slice card — P8-S05 (MA-provider scaffold dry-run verification)
+
+Status: **Validated**
+
+Scope:
+
+- **In:**
+  - bounded verification of MA-provider scaffold readiness signals,
+  - deterministic dry-run-first probe evidence for provider-route viability,
+  - explicit rollback-safe post-window proof capture.
+- **Out:**
+  - immediate ownership cutover,
+  - broad runtime expansion,
+  - cross-domain retirement actions.
+
+Execution artifacts:
+
+- `docs/testing/raw/p8_s05_ma_provider_scaffold_readiness_monitor.jinja`
+- `docs/testing/raw/p8_s05_ma_provider_scaffold_readiness_checklist.md`
+
+Activation gates (required):
+
+1. `P8-S04` validated closeout is recorded.
+2. Legacy rollback baseline remains clean (`authority_mode=legacy`, contract/parity clean, fresh snapshot).
+3. Dry-run-first probe plan is explicit and artifact-linked.
+4. Pre/in/post packet fields are defined before execution.
+
+Two-track disposition target:
+
+- **Track A (runtime):** compatibility-shimmed rollback baseline retained during bounded scaffold verification.
+- **Track B (component):** active MA-provider scaffold dry-run verification lane.
+
+P1/P2/P3 impact check:
+
+- **P1:** unchanged read-only parity surfaces.
+- **P2:** unchanged registry/router ownership.
+- **P3:** unchanged single-writer boundary with explicit rollback discipline.
 
 Reference specification: `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`.
 

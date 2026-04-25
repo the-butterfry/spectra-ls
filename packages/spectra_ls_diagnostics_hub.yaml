@@ -1,0 +1,728 @@
+# Description: Home Assistant UBER diagnostics action hub for reusable run packets, structured capture, and expandable slice workflows.
+# Version: 2026.04.25.2
+# Last updated: 2026-04-25
+
+input_select:
+  spectra_diag_slice:
+    name: Spectra Diagnostics Slice
+    options:
+      - p8_s04
+      - p8_s05
+      - custom
+  spectra_diag_window_phase:
+    name: Spectra Diagnostics Window Phase
+    options:
+      - pre
+      - in
+      - post
+  spectra_diag_probe_mode:
+    name: Spectra Diagnostics Probe Mode
+    options:
+      - dry_run
+      - bounded_live
+  spectra_diag_probe_input_event:
+    name: Spectra Diagnostics Probe Input Event
+    options:
+      - encoder_press
+      - encoder_turn
+      - button_press
+
+input_boolean:
+  spectra_diag_probe_service_invoked:
+    name: Spectra Diagnostics Probe Service Invoked
+  spectra_diag_scaffold_artifact_captured:
+    name: Spectra Diagnostics Scaffold Artifact Captured
+
+input_text:
+  spectra_diag_expected_mapped_action:
+    name: Spectra Diagnostics Expected Mapped Action
+    max: 255
+  spectra_diag_operator_notes:
+    name: Spectra Diagnostics Operator Notes
+    max: 255
+  spectra_diag_last_run_id:
+    name: Spectra Diagnostics Last Run ID
+    max: 255
+  spectra_diag_last_status:
+    name: Spectra Diagnostics Last Status
+    max: 255
+  spectra_diag_last_summary:
+    name: Spectra Diagnostics Last Summary
+    max: 255
+  spectra_diag_last_log_record:
+    name: Spectra Diagnostics Last Log Record
+    max: 255
+  spectra_diag_last_deep_summary:
+    name: Spectra Diagnostics Last Deep Summary
+    max: 255
+  spectra_diag_last_deep_blockers:
+    name: Spectra Diagnostics Last Deep Blockers
+    max: 255
+  spectra_diag_last_deep_payload_1:
+    name: Spectra Diagnostics Last Deep Payload (1/8)
+    max: 255
+  spectra_diag_last_deep_payload_2:
+    name: Spectra Diagnostics Last Deep Payload (2/8)
+    max: 255
+  spectra_diag_last_deep_payload_3:
+    name: Spectra Diagnostics Last Deep Payload (3/8)
+    max: 255
+  spectra_diag_last_deep_payload_4:
+    name: Spectra Diagnostics Last Deep Payload (4/8)
+    max: 255
+  spectra_diag_last_deep_payload_5:
+    name: Spectra Diagnostics Last Deep Payload (5/8)
+    max: 255
+  spectra_diag_last_deep_payload_6:
+    name: Spectra Diagnostics Last Deep Payload (6/8)
+    max: 255
+  spectra_diag_last_deep_payload_7:
+    name: Spectra Diagnostics Last Deep Payload (7/8)
+    max: 255
+  spectra_diag_last_deep_payload_8:
+    name: Spectra Diagnostics Last Deep Payload (8/8)
+    max: 255
+
+script:
+  spectra_diag_set_defaults_p8s04:
+    alias: Spectra Diagnostics - Set Defaults (P8-S04)
+    mode: single
+    sequence:
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.spectra_diag_slice
+        data:
+          option: p8_s04
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.spectra_diag_probe_mode
+        data:
+          option: dry_run
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.spectra_diag_probe_input_event
+        data:
+          option: encoder_press
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.spectra_diag_expected_mapped_action
+        data:
+          value: ""
+
+  spectra_diag_set_defaults_p8s05:
+    alias: Spectra Diagnostics - Set Defaults (P8-S05)
+    mode: single
+    sequence:
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.spectra_diag_slice
+        data:
+          option: p8_s05
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.spectra_diag_probe_mode
+        data:
+          option: dry_run
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.spectra_diag_probe_input_event
+        data:
+          option: encoder_press
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.spectra_diag_expected_mapped_action
+        data:
+          value: ""
+
+  spectra_diag_log_snapshot:
+    alias: Spectra Diagnostics - Log Snapshot
+    description: Capture a structured diagnostics snapshot and append one NDJSON record.
+    mode: queued
+    fields:
+      slice_id:
+        description: Slice identifier (for example p8_s05)
+        example: p8_s05
+      window_phase:
+        description: Window phase pre|in|post
+        example: in
+      run_id:
+        description: Unique run id for this record
+        example: p8s05-2026-04-24-run2
+      probe_service_invoked:
+        description: Whether in-window probe service was invoked in this run
+        example: true
+      scaffold_probe_artifact_captured:
+        description: Whether post-window probe artifact is captured
+        example: false
+      probe_input_event:
+        description: Input event used for probe
+        example: encoder_press
+      probe_expected_mapped_action:
+        description: Optional expected mapped action
+        example: play_pause
+      probe_mode:
+        description: dry_run or bounded_live
+        example: dry_run
+      notes:
+        description: Optional operator note
+        example: first in-window probe after baseline refresh
+    sequence:
+      - variables:
+          s_target_primary: sensor.shadow_active_target
+          s_target_fallback: sensor.spectra_ls_shadow_active_target
+          primary_has_attrs: "{{ state_attr(s_target_primary, 'route_trace') is not none or state_attr(s_target_primary, 'captured_at') is not none }}"
+          fallback_has_attrs: "{{ state_attr(s_target_fallback, 'route_trace') is not none or state_attr(s_target_fallback, 'captured_at') is not none }}"
+          s_target: "{{ s_target_primary if primary_has_attrs else (s_target_fallback if fallback_has_attrs else s_target_primary) }}"
+          route_trace: "{{ state_attr(s_target, 'route_trace') or {} }}"
+          contract: "{{ state_attr(s_target, 'contract_validation') or {} }}"
+          write_controls: "{{ state_attr(s_target, 'write_controls') or {} }}"
+          unresolved: "{{ state_attr(s_target, 'unresolved_sources') or [] }}"
+          mismatches: "{{ state_attr(s_target, 'mismatches') or [] }}"
+          last_attempt: "{{ write_controls.control_center_last_attempt if write_controls is mapping and write_controls.control_center_last_attempt is defined else {} }}"
+          authority_mode: "{{ write_controls.authority_mode if write_controls is mapping and write_controls.authority_mode is defined else 'missing' }}"
+          route_decision: "{{ route_trace.decision if route_trace is mapping and route_trace.decision is defined else '' }}"
+          contract_valid: "{{ contract.valid if contract is mapping and contract.valid is defined else false }}"
+          missing_required: "{{ contract.missing_required if contract is mapping and contract.missing_required is defined else [] }}"
+          unresolved_required: "{{ contract.unresolved_required if contract is mapping and contract.unresolved_required is defined else [] }}"
+          captured_at: "{{ state_attr(s_target, 'captured_at') | default('', true) }}"
+          captured_ts: "{{ as_timestamp(captured_at) if captured_at not in ['', 'unknown', 'unavailable', 'none', none] else none }}"
+          age_s: "{{ (as_timestamp(now()) - captured_ts) if captured_ts is not none else none }}"
+          snapshot_fresh: "{{ age_s is not none and age_s <= 300 }}"
+          probe_service_invoked_bool: >-
+            {{
+              (probe_service_invoked | bool)
+              if probe_service_invoked is defined
+              else is_state('input_boolean.spectra_diag_probe_service_invoked', 'on')
+            }}
+          scaffold_probe_artifact_captured_bool: >-
+            {{
+              (scaffold_probe_artifact_captured | bool)
+              if scaffold_probe_artifact_captured is defined
+              else is_state('input_boolean.spectra_diag_scaffold_artifact_captured', 'on')
+            }}
+          probe_input_event_value: >-
+            {{
+              probe_input_event
+              if probe_input_event is defined
+              else states('input_select.spectra_diag_probe_input_event')
+            }}
+          probe_expected_mapped_action_value: >-
+            {{
+              probe_expected_mapped_action
+              if probe_expected_mapped_action is defined
+              else states('input_text.spectra_diag_expected_mapped_action')
+            }}
+          probe_mode_value: >-
+            {{
+              probe_mode
+              if probe_mode is defined
+              else states('input_select.spectra_diag_probe_mode')
+            }}
+          window_phase_value: >-
+            {{
+              window_phase
+              if window_phase is defined
+              else states('input_select.spectra_diag_window_phase')
+            }}
+          run_id_value: >-
+            {{
+              run_id
+              if run_id is defined
+              else (states('input_select.spectra_diag_slice') ~ '-' ~ now().strftime('%Y%m%d%H%M%S'))
+            }}
+          slice_id_value: >-
+            {{
+              slice_id
+              if slice_id is defined
+              else states('input_select.spectra_diag_slice')
+            }}
+          notes_value: >-
+            {{
+              notes
+              if notes is defined
+              else states('input_text.spectra_diag_operator_notes')
+            }}
+          entry_gate_pass: "{{ route_decision in ['route_pywiim', 'route_player_provider'] and contract_valid }}"
+          safety_gate_pass: "{{ authority_mode == 'legacy' }}"
+          baseline_gate_pass: "{{ contract_valid and (missing_required | count) == 0 and (unresolved_required | count) == 0 and (unresolved | count) == 0 and (mismatches | count) == 0 and snapshot_fresh }}"
+          last_attempt_status: "{{ last_attempt.status if last_attempt is mapping and last_attempt.status is defined else 'missing' }}"
+          last_attempt_input_event: "{{ last_attempt.input_event if last_attempt is mapping and last_attempt.input_event is defined else '' }}"
+          last_attempt_mapped_action: "{{ last_attempt.mapped_action if last_attempt is mapping and last_attempt.mapped_action is defined else '' }}"
+          last_attempt_requested_at: "{{ last_attempt.requested_at if last_attempt is mapping and last_attempt.requested_at is defined else '' }}"
+          attempt_requested_ts: "{{ as_timestamp(last_attempt_requested_at) if last_attempt_requested_at not in ['', 'unknown', 'unavailable', 'none', none] else none }}"
+          attempt_age_s: "{{ (as_timestamp(now()) - attempt_requested_ts) if attempt_requested_ts is not none else none }}"
+          recent_attempt: "{{ attempt_age_s is not none and attempt_age_s <= 180 }}"
+          functional_probe_pass: >-
+            {{
+              (window_phase_value == 'pre')
+              or (
+                probe_service_invoked_bool
+                and recent_attempt
+                and (last_attempt_status not in ['missing', 'never_attempted'])
+                and (last_attempt_input_event == probe_input_event_value)
+                and (probe_expected_mapped_action_value in ['', last_attempt_mapped_action])
+              )
+            }}
+          execution_gate_pass: "{{ ((window_phase_value != 'post') or scaffold_probe_artifact_captured_bool) and functional_probe_pass }}"
+          gate_pass_count: >-
+            {{
+              (1 if baseline_gate_pass else 0)
+              + (1 if entry_gate_pass else 0)
+              + (1 if safety_gate_pass else 0)
+              + (1 if execution_gate_pass else 0)
+            }}
+          status: >-
+            {% if not baseline_gate_pass or not entry_gate_pass %}
+              FAIL
+            {% elif not safety_gate_pass or not execution_gate_pass %}
+              WARN
+            {% else %}
+              PASS
+            {% endif %}
+          readiness: >-
+            {% if status == 'PASS' and gate_pass_count | int == 4 %}
+              READY
+            {% elif status == 'FAIL' %}
+              BLOCKED
+            {% else %}
+              CAUTION
+            {% endif %}
+          log_message: >-
+            {{ {
+              'captured_at': now().isoformat(),
+              'slice_id': slice_id_value,
+              'run_id': run_id_value,
+              'window_phase': window_phase_value,
+              'status': status,
+              'readiness': readiness,
+              'gate_score': gate_pass_count,
+              'monitor_source_sensor': s_target,
+              'authority_mode': authority_mode,
+              'route_decision': route_decision,
+              'contract_valid': contract_valid,
+              'missing_required_count': (missing_required | count),
+              'unresolved_required_count': (unresolved_required | count),
+              'unresolved_sources_count': (unresolved | count),
+              'mismatches_count': (mismatches | count),
+              'snapshot_fresh': snapshot_fresh,
+              'snapshot_age_s': age_s,
+              'probe_mode': probe_mode_value,
+              'probe_service_invoked': probe_service_invoked_bool,
+              'probe_input_event': probe_input_event_value,
+              'probe_expected_mapped_action': probe_expected_mapped_action_value,
+              'last_attempt_status': last_attempt_status,
+              'last_attempt_input_event': last_attempt_input_event,
+              'last_attempt_mapped_action': last_attempt_mapped_action,
+              'recent_attempt': recent_attempt,
+              'functional_probe_pass': functional_probe_pass,
+              'execution_gate_pass': execution_gate_pass,
+              'scaffold_probe_artifact_captured': scaffold_probe_artifact_captured_bool,
+              'notes': notes_value
+            } | tojson }}
+      - service: system_log.write
+        data:
+          level: info
+          logger: spectra_ls.diagnostics
+          message: "{{ log_message }}"
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.spectra_diag_last_run_id
+        data:
+          value: "{{ run_id_value }}"
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.spectra_diag_last_status
+        data:
+          value: "{{ status }} / {{ readiness }} ({{ gate_pass_count }}/4)"
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.spectra_diag_last_summary
+        data:
+          value: "{{ slice_id_value }} {{ window_phase_value }} | route={{ route_decision if route_decision != '' else 'n/a' }} | authority={{ authority_mode }}"
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.spectra_diag_last_log_record
+        data:
+          value: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }} {{ status }} {{ slice_id_value }} {{ window_phase_value }}"
+
+  spectra_diag_refresh_shadow_snapshot:
+    alias: Spectra Diagnostics - Refresh Shadow Snapshot
+    description: Refresh active shadow sensors before running a diagnostic capture.
+    mode: single
+    sequence:
+      - service: homeassistant.update_entity
+        continue_on_error: true
+        target:
+          entity_id:
+            - sensor.ma_active_target
+            - sensor.ma_control_hosts
+            - sensor.ma_control_host
+            - sensor.ma_active_control_path
+            - binary_sensor.ma_active_control_capable
+      - service: homeassistant.update_entity
+        continue_on_error: true
+        target:
+          entity_id:
+            - sensor.shadow_active_target
+
+  spectra_diag_run_deep_diagnosis:
+    alias: Spectra Diagnostics - Run Deep Diagnosis (One Press)
+    description: One-press full control-host/path diagnosis with on-page summary + NDJSON record.
+    mode: single
+    sequence:
+      - service: script.spectra_diag_refresh_shadow_snapshot
+      - delay: 00:00:01
+      - variables:
+          s_target_primary: sensor.shadow_active_target
+          s_target_fallback: sensor.spectra_ls_shadow_active_target
+          primary_has_attrs: "{{ state_attr(s_target_primary, 'route_trace') is not none or state_attr(s_target_primary, 'captured_at') is not none }}"
+          fallback_has_attrs: "{{ state_attr(s_target_fallback, 'route_trace') is not none or state_attr(s_target_fallback, 'captured_at') is not none }}"
+          s_target: "{{ s_target_primary if primary_has_attrs else (s_target_fallback if fallback_has_attrs else s_target_primary) }}"
+          route_trace: "{{ state_attr(s_target, 'route_trace') or {} }}"
+          contract: "{{ state_attr(s_target, 'contract_validation') or {} }}"
+          registry: "{{ state_attr(s_target, 'registry') or {} }}"
+          write_controls: "{{ state_attr(s_target, 'write_controls') or {} }}"
+          unresolved: "{{ state_attr(s_target, 'unresolved_sources') or [] }}"
+          mismatches: "{{ state_attr(s_target, 'mismatches') or [] }}"
+          authority_mode: "{{ write_controls.authority_mode if write_controls is mapping and write_controls.authority_mode is defined else 'missing' }}"
+          route_decision: "{{ route_trace.decision if route_trace is mapping and route_trace.decision is defined else '' }}"
+          route_reason: "{{ route_trace.reason if route_trace is mapping and route_trace.reason is defined else '' }}"
+          contract_valid: "{{ contract.valid if contract is mapping and contract.valid is defined else false }}"
+          missing_required: "{{ contract.missing_required if contract is mapping and contract.missing_required is defined else [] }}"
+          unresolved_required: "{{ contract.unresolved_required if contract is mapping and contract.unresolved_required is defined else [] }}"
+          selected_target: "{{ route_trace.selected_target if route_trace is mapping and route_trace.selected_target is defined and route_trace.selected_target is mapping else {} }}"
+          selected_target_host: "{{ selected_target.host if selected_target is mapping and selected_target.host is defined else '' }}"
+          active_target: "{{ states('sensor.ma_active_target') }}"
+          ma_control_hosts: "{{ states('sensor.ma_control_hosts') }}"
+          ma_control_host: "{{ states('sensor.ma_control_host') }}"
+          ma_active_control_path: "{{ states('sensor.ma_active_control_path') }}"
+          ma_active_control_capable: "{{ states('binary_sensor.ma_active_control_capable') }}"
+          ma_control_transport: "{{ states('sensor.ma_control_transport') }}"
+          run_id: "deepdiag-{{ now().strftime('%Y%m%d%H%M%S') }}"
+          likely_root_cause: >-
+            {% if route_decision == 'defer_unsupported_path' %}
+              active_control_path_not_pywiim
+            {% elif route_decision == 'defer_not_capable' %}
+              target_marked_not_control_capable
+            {% elif route_decision == 'defer_unknown_target' %}
+              active_target_not_in_registry
+            {% elif route_decision == 'defer_no_target' %}
+              active_target_unresolved
+            {% elif not contract_valid and (unresolved_required | count) > 0 %}
+              required_contract_entities_unresolved
+            {% else %}
+              undetermined
+            {% endif %}
+          blocker_line: >-
+            {{
+              (
+                (unresolved_required | join(','))
+                if (unresolved_required | count) > 0
+                else (
+                  route_decision
+                  if route_decision != ''
+                  else 'no_explicit_blocker'
+                )
+              )
+              | truncate(250, true, '')
+            }}
+          summary_line: >-
+            {{
+              (
+                'root=' ~ likely_root_cause
+                ~ ' | route=' ~ (route_decision if route_decision != '' else 'n/a')
+                ~ ' | hosts=' ~ (ma_control_hosts if ma_control_hosts not in ['', 'none', 'unknown', 'unavailable'] else 'none')
+                ~ ' | path=' ~ (ma_active_control_path if ma_active_control_path not in ['', 'none', 'unknown', 'unavailable'] else 'none')
+                ~ ' | capable=' ~ ma_active_control_capable
+              )
+              | truncate(250, true, '')
+            }}
+          log_message: >-
+            {{ {
+              'kind': 'deep_diagnosis',
+              'captured_at': now().isoformat(),
+              'run_id': run_id,
+              'slice_id': states('input_select.spectra_diag_slice'),
+              'monitor_source_sensor': s_target,
+              'authority_mode': authority_mode,
+              'route_decision': route_decision,
+              'route_reason': route_reason,
+              'contract_valid': contract_valid,
+              'missing_required_count': (missing_required | count),
+              'unresolved_required_count': (unresolved_required | count),
+              'unresolved_required': unresolved_required,
+              'unresolved_sources_count': (unresolved | count),
+              'mismatches_count': (mismatches | count),
+              'active_target': active_target,
+              'ma_control_hosts': ma_control_hosts,
+              'ma_control_host': ma_control_host,
+              'ma_active_control_path': ma_active_control_path,
+              'ma_active_control_capable': ma_active_control_capable,
+              'ma_control_transport': ma_control_transport,
+              'selected_target_host': selected_target_host,
+              'registry_source_summary': (registry.source_summary if registry is mapping and registry.source_summary is defined else {}),
+              'likely_root_cause': likely_root_cause,
+              'summary_line': summary_line,
+              'blockers': blocker_line
+            } | tojson }}
+          payload_raw: "{{ log_message }}"
+          payload_1: "{{ payload_raw[0:255] }}"
+          payload_2: "{{ payload_raw[255:510] }}"
+          payload_3: "{{ payload_raw[510:765] }}"
+          payload_4: "{{ payload_raw[765:1020] }}"
+          payload_5: "{{ payload_raw[1020:1275] }}"
+          payload_6: "{{ payload_raw[1275:1530] }}"
+          payload_7: "{{ payload_raw[1530:1785] }}"
+          payload_8: "{{ payload_raw[1785:2040] }}"
+      - service: system_log.write
+        data:
+          level: warning
+          logger: spectra_ls.diagnostics
+          message: "{{ log_message }}"
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.spectra_diag_last_run_id
+        data:
+          value: "{{ run_id }}"
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.spectra_diag_last_status
+        data:
+          value: "DEEP / {{ 'PASS' if contract_valid and route_decision in ['route_pywiim', 'route_player_provider'] else 'BLOCKED' }}"
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.spectra_diag_last_summary
+        data:
+          value: "{{ summary_line }}"
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.spectra_diag_last_deep_summary
+        data:
+          value: "{{ summary_line }}"
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.spectra_diag_last_deep_blockers
+        data:
+          value: "{{ blocker_line }}"
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.spectra_diag_last_deep_payload_1
+        data:
+          value: "{{ payload_1 }}"
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.spectra_diag_last_deep_payload_2
+        data:
+          value: "{{ payload_2 }}"
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.spectra_diag_last_deep_payload_3
+        data:
+          value: "{{ payload_3 }}"
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.spectra_diag_last_deep_payload_4
+        data:
+          value: "{{ payload_4 }}"
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.spectra_diag_last_deep_payload_5
+        data:
+          value: "{{ payload_5 }}"
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.spectra_diag_last_deep_payload_6
+        data:
+          value: "{{ payload_6 }}"
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.spectra_diag_last_deep_payload_7
+        data:
+          value: "{{ payload_7 }}"
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.spectra_diag_last_deep_payload_8
+        data:
+          value: "{{ payload_8 }}"
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.spectra_diag_last_log_record
+        data:
+          value: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }} DEEP {{ states('input_select.spectra_diag_slice') }}"
+
+  spectra_diag_capture_selected_phase:
+    alias: Spectra Diagnostics - Capture Selected Phase
+    mode: single
+    sequence:
+      - service: script.spectra_diag_refresh_shadow_snapshot
+      - delay: 00:00:01
+      - service: script.spectra_diag_log_snapshot
+        data:
+          slice_id: "{{ states('input_select.spectra_diag_slice') }}"
+          window_phase: "{{ states('input_select.spectra_diag_window_phase') }}"
+          run_id: "{{ states('input_select.spectra_diag_slice') }}-{{ now().strftime('%Y%m%d%H%M%S') }}-{{ states('input_select.spectra_diag_window_phase') }}"
+          notes: "{{ states('input_text.spectra_diag_operator_notes') }}"
+
+  spectra_diag_run_in_probe_selected:
+    alias: Spectra Diagnostics - Run In-Window Probe (Selected)
+    mode: single
+    sequence:
+      - variables:
+          slice_id: "{{ states('input_select.spectra_diag_slice') }}"
+          probe_mode: "{{ states('input_select.spectra_diag_probe_mode') }}"
+          probe_input_event: "{{ states('input_select.spectra_diag_probe_input_event') }}"
+          run_id: "{{ states('input_select.spectra_diag_slice') }}-{{ now().strftime('%Y%m%d%H%M%S') }}-in"
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ probe_mode == 'bounded_live' }}"
+            sequence:
+              - service: spectra_ls.execute_control_center_input
+                data:
+                  input_event: "{{ probe_input_event }}"
+                  correlation_id: "{{ run_id }}"
+                  dry_run: false
+        default:
+          - service: spectra_ls.execute_control_center_input
+            data:
+              input_event: "{{ probe_input_event }}"
+              correlation_id: "{{ run_id }}"
+              dry_run: true
+      - delay: 00:00:02
+      - service: script.spectra_diag_log_snapshot
+        data:
+          slice_id: "{{ slice_id }}"
+          window_phase: in
+          run_id: "{{ run_id }}"
+          probe_service_invoked: true
+          scaffold_probe_artifact_captured: true
+          probe_input_event: "{{ probe_input_event }}"
+          probe_expected_mapped_action: "{{ states('input_text.spectra_diag_expected_mapped_action') }}"
+          probe_mode: "{{ probe_mode }}"
+          notes: "{{ states('input_text.spectra_diag_operator_notes') }}"
+
+  spectra_diag_run_full_packet_selected:
+    alias: Spectra Diagnostics - Run Full Packet (Selected Slice)
+    mode: single
+    sequence:
+      - variables:
+          slice_id: "{{ states('input_select.spectra_diag_slice') }}"
+          probe_mode: "{{ states('input_select.spectra_diag_probe_mode') }}"
+          probe_input_event: "{{ states('input_select.spectra_diag_probe_input_event') }}"
+          base_run_id: "{{ states('input_select.spectra_diag_slice') }}-{{ now().strftime('%Y%m%d%H%M%S') }}"
+      - service: script.spectra_diag_refresh_shadow_snapshot
+      - delay: 00:00:01
+      - service: script.spectra_diag_log_snapshot
+        data:
+          slice_id: "{{ slice_id }}"
+          window_phase: pre
+          run_id: "{{ base_run_id }}-pre"
+          notes: full packet pre
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ probe_mode == 'bounded_live' }}"
+            sequence:
+              - service: spectra_ls.execute_control_center_input
+                data:
+                  input_event: "{{ probe_input_event }}"
+                  correlation_id: "{{ base_run_id }}-in"
+                  dry_run: false
+        default:
+          - service: spectra_ls.execute_control_center_input
+            data:
+              input_event: "{{ probe_input_event }}"
+              correlation_id: "{{ base_run_id }}-in"
+              dry_run: true
+      - delay: 00:00:02
+      - service: script.spectra_diag_log_snapshot
+        data:
+          slice_id: "{{ slice_id }}"
+          window_phase: in
+          run_id: "{{ base_run_id }}-in"
+          probe_service_invoked: true
+          scaffold_probe_artifact_captured: true
+          probe_input_event: "{{ probe_input_event }}"
+          probe_expected_mapped_action: "{{ states('input_text.spectra_diag_expected_mapped_action') }}"
+          probe_mode: "{{ probe_mode }}"
+          notes: full packet in
+      - service: script.spectra_diag_refresh_shadow_snapshot
+      - delay: 00:00:01
+      - service: script.spectra_diag_log_snapshot
+        data:
+          slice_id: "{{ slice_id }}"
+          window_phase: post
+          run_id: "{{ base_run_id }}-post"
+          probe_service_invoked: true
+          scaffold_probe_artifact_captured: true
+          probe_input_event: "{{ probe_input_event }}"
+          probe_expected_mapped_action: "{{ states('input_text.spectra_diag_expected_mapped_action') }}"
+          probe_mode: "{{ probe_mode }}"
+          notes: full packet post
+
+  # Compatibility wrappers (retain old service entry points while routing through generic runner)
+  spectra_diag_p8s05_post_capture:
+    alias: Spectra Diagnostics - P8-S05 Post Capture
+    mode: single
+    sequence:
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.spectra_diag_slice
+        data:
+          option: p8_s05
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.spectra_diag_window_phase
+        data:
+          option: post
+      - service: input_boolean.turn_on
+        target:
+          entity_id:
+            - input_boolean.spectra_diag_probe_service_invoked
+            - input_boolean.spectra_diag_scaffold_artifact_captured
+      - service: script.spectra_diag_capture_selected_phase
+
+  spectra_diag_p8s05_pre_capture:
+    alias: Spectra Diagnostics - P8-S05 Pre Capture
+    mode: single
+    sequence:
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.spectra_diag_slice
+        data:
+          option: p8_s05
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.spectra_diag_window_phase
+        data:
+          option: pre
+      - service: input_boolean.turn_off
+        target:
+          entity_id:
+            - input_boolean.spectra_diag_probe_service_invoked
+            - input_boolean.spectra_diag_scaffold_artifact_captured
+      - service: script.spectra_diag_capture_selected_phase
+
+  spectra_diag_p8s05_in_probe_dry_run:
+    alias: Spectra Diagnostics - P8-S05 In Probe (Dry Run)
+    mode: single
+    sequence:
+      - service: script.spectra_diag_set_defaults_p8s05
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.spectra_diag_probe_mode
+        data:
+          option: dry_run
+      - service: script.spectra_diag_run_in_probe_selected
+
+  spectra_diag_p8s05_in_probe_live:
+    alias: Spectra Diagnostics - P8-S05 In Probe (Bounded Live)
+    mode: single
+    sequence:
+      - service: script.spectra_diag_set_defaults_p8s05
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.spectra_diag_probe_mode
+        data:
+          option: bounded_live
+      - service: script.spectra_diag_run_in_probe_selected

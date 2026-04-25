@@ -1,6 +1,6 @@
 # Description: Spectra LS core state + globals + system intervals + shared scripts.
-# Version: 2026.04.21.1
-# Last updated: 2026-04-21
+# Version: 2026.04.25.1
+# Last updated: 2026-04-25
 # Update version/date whenever you change this file.
 #
 # Sections:
@@ -115,6 +115,70 @@ globals:
     type: int
     restore_value: no
     initial_value: "-1"
+  - id: volume_intent_seq
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: volume_intent_pending
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: volume_intent_pending_target
+    type: int
+    restore_value: no
+    initial_value: "-1"
+  - id: volume_intent_pending_source
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: volume_intent_pending_due_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: volume_intent_enqueue_count
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: volume_intent_overwrite_count
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: volume_intent_flush_count
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: volume_intent_dispatch_count
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: volume_intent_scale_count
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: volume_intent_no_host_block_count
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: volume_intent_send_fail_count
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: volume_intent_last_dispatch_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: volume_intent_last_pending_age_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: volume_intent_pending_peak_age_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: volume_intent_diag_last_log_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
 
   # Volume pot deferral
   - id: pot_volume_target
@@ -187,6 +251,22 @@ globals:
     type: int
     restore_value: no
     initial_value: "0"
+  - id: arylic_http_error_count_total
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: arylic_http_fallback_switch_count
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: arylic_http_last_ok_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: arylic_http_last_error_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
   - id: arylic_http_pause_until_ms
     type: uint32_t
     restore_value: no
@@ -195,10 +275,18 @@ globals:
     type: uint32_t
     restore_value: no
     initial_value: "0"
+  - id: arylic_lr_http_last_log_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
   - id: arylic_http_scheme_active
     type: std::string
     restore_value: no
     initial_value: '"${arylic_http_scheme}"'
+  - id: arylic_http_host_active
+    type: std::string
+    restore_value: no
+    initial_value: '""'
   - id: arylic_http_port_active
     type: int
     restore_value: no
@@ -207,6 +295,10 @@ globals:
     type: std::string
     restore_value: no
     initial_value: '"${arylic_lr_http_scheme}"'
+  - id: arylic_lr_http_host_active
+    type: std::string
+    restore_value: no
+    initial_value: '"${arylic_lr_http_host}"'
   - id: arylic_lr_http_port_active
     type: int
     restore_value: no
@@ -226,11 +318,11 @@ globals:
   - id: arylic_control_host
     type: std::string
     restore_value: no
-    initial_value: '"${arylic_tcp_host}"'
+    initial_value: '""'
   - id: arylic_control_hosts
     type: std::string
     restore_value: no
-    initial_value: '"${arylic_tcp_host}"'
+    initial_value: '""'
   - id: arylic_control_port
     type: int
     restore_value: no
@@ -1090,8 +1182,41 @@ globals:
 http_request:
   id: arylic_http
   useragent: esphome/${device_name}
-  timeout: 1s
+  timeout: ${arylic_http_timeout_ms}ms
   verify_ssl: false
+
+text_sensor:
+  - platform: template
+    name: "Arylic HTTP Transport"
+    id: arylic_http_transport
+    internal: true
+    update_interval: 10s
+    lambda: |-
+      std::string scheme = id(arylic_http_scheme_active);
+      std::string host = id(arylic_http_host_active);
+      int port = id(arylic_http_port_active);
+      auto clean = [](std::string value) {
+        for (auto &c : value) c = (char) ::tolower(c);
+        return value;
+      };
+      std::string low_scheme = clean(scheme);
+      std::string low_host = clean(host);
+      if (scheme.empty() || host.empty()) return std::string("unknown");
+      if (low_scheme == "unknown" || low_scheme == "unavailable" || low_scheme == "none") return std::string("unknown");
+      if (low_host == "unknown" || low_host == "unavailable" || low_host == "none") return std::string("unknown");
+      if (port <= 0 || port > 65534) return std::string("unknown");
+      return scheme + "://" + host + ":" + std::to_string(port);
+  - platform: template
+    name: "Arylic HTTP Scheme"
+    id: arylic_http_scheme
+    internal: true
+    update_interval: 10s
+    lambda: |-
+      std::string scheme = id(arylic_http_scheme_active);
+      std::string low = scheme;
+      for (auto &c : low) c = (char) ::tolower(c);
+      if (low == "http" || low == "https") return low;
+      return std::string("unknown");
 
 # === System intervals ===
 interval:
@@ -1105,18 +1230,66 @@ interval:
                 condition:
                   lambda: |-
                     const uint32_t now = millis();
-                    const bool http_enabled = ${arylic_http_enabled};
+                    const bool http_enabled = ${arylic_http_enabled} && ${legacy_transport_httpapi_enabled};
                     if (!http_enabled) return false;
                     if (id(arylic_http_inflight)) return false;
                     if (id(arylic_http_pause_until_ms) > now) return false;
+                    const uint32_t quiet_after_input_ms = (uint32_t) ${arylic_http_quiet_after_input_ms};
+                    if (id(last_input_ms) > 0 && (now - id(last_input_ms)) < quiet_after_input_ms) return false;
+                    if (id(pot_volume_deferred)) return false;
+
+                    auto clean = [](std::string value) -> std::string {
+                      size_t start = value.find_first_not_of(" \t");
+                      size_t end = value.find_last_not_of(" \t");
+                      if (start == std::string::npos || end == std::string::npos) return std::string();
+                      value = value.substr(start, end - start + 1);
+                      std::string low = value;
+                      for (auto &c : low) c = (char) ::tolower(c);
+                      if (low.empty() || low == "unknown" || low == "unavailable" || low == "none" || low == "null") {
+                        return std::string();
+                      }
+                      return value;
+                    };
+
+                    auto first_csv = [&](const std::string &csv) -> std::string {
+                      if (csv.empty()) return std::string();
+                      size_t comma = csv.find(',');
+                      if (comma == std::string::npos) return clean(csv);
+                      return clean(csv.substr(0, comma));
+                    };
+
+                    std::string probe_host = clean(id(arylic_control_host));
+                    if (probe_host.empty()) {
+                      probe_host = first_csv(id(arylic_control_hosts));
+                    }
+                    if (probe_host.empty()) {
+                      probe_host = clean("${arylic_http_host}");
+                    }
+                    if (probe_host.empty()) {
+                      return false;
+                    }
+
+                    if (probe_host != id(arylic_http_host_active)) {
+                      id(arylic_http_host_active) = probe_host;
+                      id(arylic_http_scheme_active) = "${arylic_http_scheme}";
+                      id(arylic_http_port_active) = ${arylic_http_port};
+                      id(arylic_http_fail_count) = 0;
+                      id(arylic_http_pause_until_ms) = 0;
+                      ESP_LOGI("arylic_http", "probe host switched -> %s (start %s:%d)",
+                               id(arylic_http_host_active).c_str(),
+                               id(arylic_http_scheme_active).c_str(),
+                               id(arylic_http_port_active));
+                    }
+
                     id(arylic_http_inflight) = true;
                     return true;
                 then:
                   - http_request.get:
                       url: !lambda |-
+                        if (id(arylic_http_host_active).empty()) id(arylic_http_host_active) = "${arylic_http_host}";
                         if (id(arylic_http_scheme_active).empty()) id(arylic_http_scheme_active) = "${arylic_http_scheme}";
                         if (id(arylic_http_port_active) <= 0) id(arylic_http_port_active) = ${arylic_http_port};
-                        const std::string url = id(arylic_http_scheme_active) + "://${arylic_http_host}:" +
+                        const std::string url = id(arylic_http_scheme_active) + "://" + id(arylic_http_host_active) + ":" +
                                                 std::to_string(id(arylic_http_port_active)) +
                                                 "/httpapi.asp?command=getPlayerStatus";
                         return url;
@@ -1126,6 +1299,8 @@ interval:
                           - lambda: |-
                               id(arylic_http_inflight) = false;
                               if (response->status_code < 200 || response->status_code >= 300) {
+                                id(arylic_http_error_count_total)++;
+                                id(arylic_http_last_error_ms) = millis();
                                 int fails = id(arylic_http_fail_count) + 1;
                                 id(arylic_http_fail_count) = fails;
                                 const uint32_t backoff_ms = (fails >= 6) ? 60000 : (fails >= 4) ? 30000 : (fails >= 2) ? 15000 : 5000;
@@ -1136,20 +1311,22 @@ interval:
                                   id(arylic_http_port_active) = use_https ? 80 : 443;
                                   id(arylic_http_fail_count) = 0;
                                   id(arylic_http_pause_until_ms) = millis() + 1000;
+                                  id(arylic_http_fallback_switch_count)++;
                                   ESP_LOGW("arylic_http", "probe fallback switch host=%s -> %s:%d",
-                                           "${arylic_http_host}",
+                                           id(arylic_http_host_active).c_str(),
                                            id(arylic_http_scheme_active).c_str(),
                                            id(arylic_http_port_active));
                                   return;
                                 }
                                 ESP_LOGW("arylic_http", "getPlayerStatus http=%d host=%s scheme=%s port=%s (backoff %ums, fail=%d)",
                                          response->status_code,
-                                         "${arylic_http_host}", id(arylic_http_scheme_active).c_str(), std::to_string(id(arylic_http_port_active)).c_str(),
+                                         id(arylic_http_host_active).c_str(), id(arylic_http_scheme_active).c_str(), std::to_string(id(arylic_http_port_active)).c_str(),
                                          (unsigned) backoff_ms, fails);
                                 return;
                               }
                               id(arylic_http_fail_count) = 0;
                               id(arylic_http_pause_until_ms) = 0;
+                              id(arylic_http_last_ok_ms) = millis();
                               const std::string &payload = body;
                               if (payload.empty()) return;
                               const uint32_t now_ms = millis();
@@ -1230,10 +1407,24 @@ interval:
                                 id(arylic_mute_state) = (mute != 0);
                               }
                               if (vol >= 0) {
-                                if (vol != id(arylic_volume_cached)) {
-                                  id(audio_ring_active_until_ms) = millis() + ${ring_active_window_ms};
+                                bool allow_feedback_apply = true;
+                                const uint32_t hold_ms = (uint32_t) ${arylic_volume_feedback_hold_ms};
+                                const bool recent_local_send =
+                                    (id(arylic_last_vol_sent_ms) > 0) &&
+                                    ((now_ms - id(arylic_last_vol_sent_ms)) < hold_ms);
+                                if (recent_local_send && id(arylic_last_vol_sent_target) >= 0) {
+                                  int diff = vol - id(arylic_last_vol_sent_target);
+                                  if (diff < 0) diff = -diff;
+                                  if (diff > 1) {
+                                    allow_feedback_apply = false;
+                                  }
                                 }
-                                id(arylic_volume_cached) = vol;
+                                if (allow_feedback_apply && vol != id(arylic_volume_cached)) {
+                                  id(audio_ring_active_until_ms) = now_ms + ${ring_active_window_ms};
+                                }
+                                if (allow_feedback_apply) {
+                                  id(arylic_volume_cached) = vol;
+                                }
                               }
                               std::string src = id(arylic_source_state);
                               if (mode >= 0) {
@@ -1270,22 +1461,21 @@ interval:
                               const std::string title = clean_meta(hex_to_ascii(title_raw));
                               const std::string artist = clean_meta(hex_to_ascii(artist_raw));
                               const std::string album = clean_meta(hex_to_ascii(album_raw));
-                              const bool meta_changed = (title != id(arylic_title_state)) ||
-                                                       (artist != id(arylic_artist_state)) ||
-                                                       (album != id(arylic_album_state));
-                              const uint32_t log_every_ms = 15000;
-                              const bool should_log = meta_changed ||
-                                                      (now_ms - id(arylic_http_last_log_ms) > log_every_ms);
+                              const uint32_t log_every_ms = (uint32_t) ${arylic_http_status_log_interval_ms};
+                              const bool should_log = (now_ms - id(arylic_http_last_log_ms) > log_every_ms);
                               if (should_log) {
                                 id(arylic_http_last_log_ms) = now_ms;
                                 ESP_LOGI("arylic_http",
-                                         "status=%s src=%s vol=%d mute=%d pos=%d/%d title='%s' artist='%s' album='%s'",
+                                         "status=%s src=%s vol=%d mute=%d pos=%d/%d transport=%s://%s:%d title='%s' artist='%s' album='%s'",
                                          status.empty() ? "" : status.c_str(),
                                          src.c_str(),
                                          vol,
                                          mute,
                                          curpos,
                                          totlen,
+                                         id(arylic_http_scheme_active).c_str(),
+                                         id(arylic_http_host_active).c_str(),
+                                         id(arylic_http_port_active),
                                          title.c_str(),
                                          artist.c_str(),
                                          album.c_str());
@@ -1319,6 +1509,8 @@ interval:
                         then:
                           - lambda: |-
                               id(arylic_http_inflight) = false;
+                              id(arylic_http_error_count_total)++;
+                              id(arylic_http_last_error_ms) = millis();
                               int fails = id(arylic_http_fail_count) + 1;
                               id(arylic_http_fail_count) = fails;
                               const uint32_t backoff_ms = (fails >= 6) ? 60000 : (fails >= 4) ? 30000 : (fails >= 2) ? 15000 : 5000;
@@ -1329,14 +1521,15 @@ interval:
                                 id(arylic_http_port_active) = use_https ? 80 : 443;
                                 id(arylic_http_fail_count) = 0;
                                 id(arylic_http_pause_until_ms) = millis() + 1000;
+                                id(arylic_http_fallback_switch_count)++;
                                 ESP_LOGW("arylic_http", "probe fallback switch host=%s -> %s:%d",
-                                         "${arylic_http_host}",
+                                         id(arylic_http_host_active).c_str(),
                                          id(arylic_http_scheme_active).c_str(),
                                          id(arylic_http_port_active));
                                 return;
                               }
                               ESP_LOGW("arylic_http", "getPlayerStatus error host=%s scheme=%s port=%s (backoff %ums, fail=%d)",
-                                       "${arylic_http_host}", id(arylic_http_scheme_active).c_str(), std::to_string(id(arylic_http_port_active)).c_str(),
+                                       id(arylic_http_host_active).c_str(), id(arylic_http_scheme_active).c_str(), std::to_string(id(arylic_http_port_active)).c_str(),
                                        (unsigned) backoff_ms, fails);
 
   - interval: ${arylic_lr_http_poll_ms}ms
@@ -1349,18 +1542,35 @@ interval:
                 condition:
                   lambda: |-
                     const uint32_t now = millis();
-                    const bool lr_http_enabled = ${arylic_lr_http_enabled};
+                    const bool lr_http_enabled = ${arylic_lr_http_enabled} && ${legacy_transport_httpapi_enabled};
+                    auto clean = [](std::string value) -> std::string {
+                      size_t start = value.find_first_not_of(" \t");
+                      size_t end = value.find_last_not_of(" \t");
+                      if (start == std::string::npos || end == std::string::npos) return std::string();
+                      value = value.substr(start, end - start + 1);
+                      std::string low = value;
+                      for (auto &c : low) c = (char) ::tolower(c);
+                      if (low.empty() || low == "unknown" || low == "unavailable" || low == "none" || low == "null") {
+                        return std::string();
+                      }
+                      return value;
+                    };
                     if (!lr_http_enabled) return false;
+                    if (clean(id(arylic_lr_http_host_active)).empty()) return false;
                     if (id(arylic_http_inflight)) return false;
                     if (id(arylic_lr_http_inflight)) return false;
+                    const uint32_t quiet_after_input_ms = (uint32_t) ${arylic_http_quiet_after_input_ms};
+                    if (id(last_input_ms) > 0 && (now - id(last_input_ms)) < quiet_after_input_ms) return false;
+                    if (id(pot_volume_deferred)) return false;
                     id(arylic_lr_http_inflight) = true;
                     return true;
                 then:
                   - http_request.get:
                       url: !lambda |-
                         if (id(arylic_lr_http_scheme_active).empty()) id(arylic_lr_http_scheme_active) = "${arylic_lr_http_scheme}";
+                        if (id(arylic_lr_http_host_active).empty()) id(arylic_lr_http_host_active) = "${arylic_lr_http_host}";
                         if (id(arylic_lr_http_port_active) <= 0) id(arylic_lr_http_port_active) = ${arylic_lr_http_port};
-                        const std::string url = id(arylic_lr_http_scheme_active) + "://${arylic_lr_http_host}:" +
+                        const std::string url = id(arylic_lr_http_scheme_active) + "://" + id(arylic_lr_http_host_active) + ":" +
                                                 std::to_string(id(arylic_lr_http_port_active)) +
                                                 "/httpapi.asp?command=getPlayerStatus";
                         return url;
@@ -1374,13 +1584,13 @@ interval:
                                 id(arylic_lr_http_scheme_active) = use_https ? "http" : "https";
                                 id(arylic_lr_http_port_active) = use_https ? 80 : 443;
                                 ESP_LOGW("arylic_lr", "probe fallback switch host=%s -> %s:%d (http=%d)",
-                                         "${arylic_lr_http_host}",
+                                         id(arylic_lr_http_host_active).c_str(),
                                          id(arylic_lr_http_scheme_active).c_str(),
                                          id(arylic_lr_http_port_active),
                                          response->status_code);
                                 ESP_LOGW("arylic_lr", "getPlayerStatus http=%d host=%s scheme=%s port=%s",
                                          response->status_code,
-                                         "${arylic_lr_http_host}", id(arylic_lr_http_scheme_active).c_str(), std::to_string(id(arylic_lr_http_port_active)).c_str());
+                                         id(arylic_lr_http_host_active).c_str(), id(arylic_lr_http_scheme_active).c_str(), std::to_string(id(arylic_lr_http_port_active)).c_str());
                                 return;
                               }
                               const std::string &payload = body;
@@ -1491,21 +1701,21 @@ interval:
                                 id(arylic_lr_source_state) = src;
                               }
 
-                              const bool meta_changed = (title != id(arylic_lr_title_state)) ||
-                                                       (artist != id(arylic_lr_artist_state)) ||
-                                                       (album != id(arylic_lr_album_state));
-                              const uint32_t log_every_ms = 15000;
-                              const bool should_log = meta_changed || (now_ms - id(arylic_http_last_log_ms) > log_every_ms);
+                              const uint32_t log_every_ms = (uint32_t) ${arylic_http_status_log_interval_ms};
+                              const bool should_log = (now_ms - id(arylic_lr_http_last_log_ms) > log_every_ms);
                               if (should_log) {
-                                id(arylic_http_last_log_ms) = now_ms;
+                                id(arylic_lr_http_last_log_ms) = now_ms;
                                 ESP_LOGI("arylic_lr",
-                                         "status=%s src=%s vol=%d mute=%d pos=%d/%d title='%s' artist='%s' album='%s'",
+                                         "status=%s src=%s vol=%d mute=%d pos=%d/%d transport=%s://%s:%d title='%s' artist='%s' album='%s'",
                                          status.empty() ? "" : status.c_str(),
                                          src.c_str(),
                                          vol,
                                          mute,
                                          curpos,
                                          totlen,
+                                         id(arylic_lr_http_scheme_active).c_str(),
+                                   id(arylic_lr_http_host_active).c_str(),
+                                         id(arylic_lr_http_port_active),
                                          title.c_str(),
                                          artist.c_str(),
                                          album.c_str());
@@ -1533,11 +1743,11 @@ interval:
                               id(arylic_lr_http_scheme_active) = use_https ? "http" : "https";
                               id(arylic_lr_http_port_active) = use_https ? 80 : 443;
                               ESP_LOGW("arylic_lr", "probe fallback switch host=%s -> %s:%d",
-                                       "${arylic_lr_http_host}",
+                                       id(arylic_lr_http_host_active).c_str(),
                                        id(arylic_lr_http_scheme_active).c_str(),
                                        id(arylic_lr_http_port_active));
                               ESP_LOGW("arylic_lr", "getPlayerStatus error host=%s scheme=%s port=%s",
-                                       "${arylic_lr_http_host}", id(arylic_lr_http_scheme_active).c_str(), std::to_string(id(arylic_lr_http_port_active)).c_str());
+                                       id(arylic_lr_http_host_active).c_str(), id(arylic_lr_http_scheme_active).c_str(), std::to_string(id(arylic_lr_http_port_active)).c_str());
   - interval: ${heartbeat_interval_ms}ms
     then:
       - script.execute: log_status_burst

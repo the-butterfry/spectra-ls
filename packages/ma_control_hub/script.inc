@@ -1,5 +1,5 @@
 # Description: Music Assistant control hub scripts (target options, auto-select, control helpers).
-# Version: 2026.04.25.1
+# Version: 2026.04.25.2
 # Last updated: 2026-04-25
 # Update version/date whenever you change this file.
 # HUB MUST-READ: Contract parser methodology.
@@ -41,6 +41,22 @@ ma_update_target_options:
           {% endif %}
         excluded_targets: >-
           {{ (label_entities('no-spectra') + label_entities('no_spectra')) | unique | list }}
+        discovery_blacklist_hosts: >-
+          {% set raw = states('input_text.ma_discovery_blacklist_hosts') | default('', true) %}
+          {% if raw is string %}
+            {% set ns = namespace(list=[]) %}
+            {% for token in raw.split(',') %}
+              {% set ip = token | trim %}
+              {% if ip not in ['','none','unknown','unavailable'] and ip not in ns.list %}
+                {% set ns.list = ns.list + [ip] %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.list }}
+          {% elif raw is sequence and raw is not string and raw is not mapping %}
+            {{ raw | map('string') | map('trim') | reject('equalto','') | list | unique | list }}
+          {% else %}
+            {{ [] }}
+          {% endif %}
         known_targets: >-
           {% set ns = namespace(list=[]) %}
           {% for r in rooms %}
@@ -85,7 +101,7 @@ ma_update_target_options:
           {% set ns = namespace(list=[]) %}
           {% for d in devices %}
             {% set ip = ((d.ip if d is mapping and d.ip is defined else '') | string | trim) %}
-            {% if ip not in ['','none','unknown','unavailable','None', none] %}
+            {% if ip not in ['','none','unknown','unavailable','None', none] and ip not in discovery_blacklist_hosts %}
               {% for mp in states.media_player %}
                 {% set ent = (mp.entity_id if mp is not none and mp.entity_id is defined else '') %}
                 {% set ent_ip = (mp.attributes.ip_address if mp is not none and mp.attributes is defined and mp.attributes.ip_address is defined else '') %}
@@ -116,6 +132,7 @@ ma_update_target_options:
                   and (ent | regex_match('^media_player\\.'))
                   and states[ent] is not none
                   and ent not in excluded_targets
+              and ip not in discovery_blacklist_hosts
                   and control_path == 'linkplay_tcp'
                   and control_capable %}
               {% set ns.list = ns.list + [ent] %}

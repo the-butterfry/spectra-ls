@@ -1,5 +1,5 @@
 <!-- Description: Retroactive architecture and feature documentation for the MA control hub package split. -->
-<!-- Version: 2026.04.25.1 -->
+<!-- Version: 2026.04.25.2 -->
 <!-- Last updated: 2026-04-25 -->
 
 # MA Control Hub Architecture (Retroactive Baseline)
@@ -48,12 +48,14 @@ Defined by `command_line.inc`:
 
 - pywiim discovery feed (`sensor.ma_pywiim_discovery`) using `wiim-discover --output json` contract with local script fallback (`/config/bin/pywiim_discover_targets.py`)
 - normalized device payload (`name`, `model`, `firmware`, `ip`, `mac`, `uuid`) for target-option enrichment
+- discovery normalization gate drops non-usable rows before publication (`ip` missing and explicit `validated=false` records)
 
 ### 3) Orchestration script domain
 
 Defined by `script.inc`:
 
 - target option synthesis (`ma_update_target_options`)
+  - blacklist helper `input_text.ma_discovery_blacklist_hosts` (CSV host deny list) excludes matching IP-backed candidates from both pywiim and MA fallback discovery lanes
   - primary discovery enrichment from pywiim device feed mapped to HA media_player entities by IP
   - fallback discovery enrichment from `sensor.ma_players` heuristic contract
 - target cycling (`ma_cycle_target`)

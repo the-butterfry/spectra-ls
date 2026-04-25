@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Description: Discover WiiM/LinkPlay devices via pywiim and emit normalized JSON for MA target synthesis.
-# Version: 2026.04.25.2
+# Version: 2026.04.25.3
 # Last updated: 2026-04-25
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ def _as_str(value: Any) -> str:
     return str(value).strip()
 
 
-def _device_to_dict(device: Any) -> dict[str, str]:
+def _device_to_dict(device: Any) -> dict[str, Any]:
     """Normalize pywiim DiscoveredDevice-like object into portable dict fields."""
     return {
         "name": _as_str(getattr(device, "name", "")),
@@ -29,11 +29,29 @@ def _device_to_dict(device: Any) -> dict[str, str]:
         "ip": _as_str(getattr(device, "ip", "")),
         "mac": _as_str(getattr(device, "mac", "")),
         "uuid": _as_str(getattr(device, "uuid", "")),
+        "validated": getattr(device, "validated", None),
     }
 
 
+def _is_explicitly_unvalidated(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value is False
+    if isinstance(value, str):
+        return value.strip().lower() in {"false", "0", "no", "off"}
+    return False
+
+
+def _is_usable_device_row(row: dict[str, Any]) -> bool:
+    ip = _as_str(row.get("ip"))
+    if not ip:
+        return False
+    if _is_explicitly_unvalidated(row.get("validated")):
+        return False
+    return True
+
+
 async def _discover(validate: bool, ssdp_timeout: int) -> dict[str, Any]:
-    normalized: list[dict[str, str]] = []
+    normalized: list[dict[str, Any]] = []
 
     try:
         from pywiim.discovery import discover_devices
@@ -72,6 +90,7 @@ async def _discover(validate: bool, ssdp_timeout: int) -> dict[str, Any]:
                     "ip": _as_str(item.get("ip")),
                     "mac": _as_str(item.get("mac")),
                     "uuid": _as_str(item.get("uuid")),
+                    "validated": item.get("validated"),
                 }
             )
 
@@ -79,10 +98,25 @@ async def _discover(validate: bool, ssdp_timeout: int) -> dict[str, Any]:
         source = "wiim-discover"
 
     seen_ips: set[str] = set()
-    deduped: list[dict[str, str]] = []
+    filtered: list[dict[str, Any]] = []
+    dropped_missing_ip = 0
+    dropped_unvalidated = 0
     for row in normalized:
+        ip = _as_str(row.get("ip"))
+        if not ip:
+            dropped_missing_ip += 1
+            continue
+        if _is_explicitly_unvalidated(row.get("validated")):
+            dropped_unvalidated += 1
+            continue
+        filtered.append(row)
+
+    deduped: list[dict[str, Any]] = []
+    dropped_duplicate_ip = 0
+    for row in filtered:
         ip = row.get("ip", "")
         if ip and ip in seen_ips:
+            dropped_duplicate_ip += 1
             continue
         if ip:
             seen_ips.add(ip)
@@ -95,6 +129,9 @@ async def _discover(validate: bool, ssdp_timeout: int) -> dict[str, Any]:
         "ssdp_timeout": int(ssdp_timeout),
         "status": status,
         "source": source,
+        "dropped_missing_ip": dropped_missing_ip,
+        "dropped_unvalidated": dropped_unvalidated,
+        "dropped_duplicate_ip": dropped_duplicate_ip,
     }
 
 

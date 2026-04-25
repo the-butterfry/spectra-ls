@@ -1,6 +1,6 @@
 # Description: MA control hub input_text helper defaults and target mappings.
-# Version: 2026.04.17.2
-# Last updated: 2026-04-17
+# Version: 2026.04.25.1
+# Last updated: 2026-04-25
 # HUB MUST-READ: Contract parser methodology.
 # - For complex attributes (`rooms`, `candidates_json`, etc.), prefer native sequence/mapping values first.
 # - Only parse string JSON when trimmed payload starts with `[` or `{` and is not unknown/unavailable/none/''.
@@ -25,6 +25,11 @@ ma_meta_override_entity:
 ma_last_valid_target:
   name: MA Last Valid Target
   initial: ""
+  max: 255
+  mode: text
+ma_discovery_blacklist_hosts:
+  name: MA Discovery Blacklist Hosts (CSV)
+  initial: "192.168.10.35"
   max: 255
   mode: text
 spectra_ls_target_primary_entity:

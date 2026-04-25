@@ -1,5 +1,5 @@
 # Description: MA control hub command-line discovery sensors.
-# Version: 2026.04.25.2
+# Version: 2026.04.25.3
 # Last updated: 2026-04-25
 # HUB MUST-READ: Contract parser methodology.
 # - For complex attributes (`rooms`, `candidates_json`, etc.), prefer native sequence/mapping values first.
@@ -24,5 +24,8 @@
       - ssdp_timeout
       - status
       - source
+      - dropped_missing_ip
+      - dropped_unvalidated
+      - dropped_duplicate_ip
       - error
     scan_interval: 300

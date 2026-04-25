@@ -1,5 +1,5 @@
 # Description: MA control hub command-line discovery sensors.
-# Version: 2026.04.25.1
+# Version: 2026.04.25.2
 # Last updated: 2026-04-25
 # HUB MUST-READ: Contract parser methodology.
 # - For complex attributes (`rooms`, `candidates_json`, etc.), prefer native sequence/mapping values first.
@@ -10,9 +10,7 @@
 - sensor:
     name: MA PyWiiM Discovery
     command: >-
-      /bin/sh -c 'if command -v wiim-discover >/dev/null 2>&1; then
-      wiim-discover --output json --ssdp-timeout 5;
-      elif [ -f /config/bin/pywiim_discover_targets.py ]; then
+      /bin/sh -c 'if [ -f /config/bin/pywiim_discover_targets.py ]; then
       python3 /config/bin/pywiim_discover_targets.py --ssdp-timeout 5;
       else
       printf "{\"count\":0,\"devices\":[],\"status\":\"missing\"}";
@@ -25,5 +23,6 @@
       - validate
       - ssdp_timeout
       - status
+      - source
       - error
     scan_interval: 300

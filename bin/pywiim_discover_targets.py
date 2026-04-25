@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Description: Discover WiiM/LinkPlay devices via pywiim and emit normalized JSON for MA target synthesis.
-# Version: 2026.04.25.1
+# Version: 2026.04.25.2
 # Last updated: 2026-04-25
 
 from __future__ import annotations
@@ -8,6 +8,8 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
+import subprocess
 import sys
 from typing import Any
 
@@ -31,27 +33,68 @@ def _device_to_dict(device: Any) -> dict[str, str]:
 
 
 async def _discover(validate: bool, ssdp_timeout: int) -> dict[str, Any]:
-    from pywiim.discovery import discover_devices
-
-    devices = await discover_devices(validate=validate, ssdp_timeout=ssdp_timeout)
-
     normalized: list[dict[str, str]] = []
+
+    try:
+        from pywiim.discovery import discover_devices
+
+        devices = await discover_devices(validate=validate, ssdp_timeout=ssdp_timeout)
+        for device in devices:
+            normalized.append(_device_to_dict(device))
+
+        status = "ok"
+        source = "pywiim.discovery"
+    except Exception:
+        discover_bin = os.environ.get("PYWIIM_WIIM_DISCOVER_BIN", "wiim-discover")
+        cmd = [discover_bin, "--output", "json", "--ssdp-timeout", str(ssdp_timeout)]
+        if not validate:
+            cmd.append("--no-validate")
+
+        proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
+        stdout = (proc.stdout or "").strip()
+
+        parsed_list: list[dict[str, Any]] = []
+        if stdout:
+            start = stdout.find("[")
+            end = stdout.rfind("]")
+            if start >= 0 and end >= start:
+                snippet = stdout[start : end + 1]
+                parsed = json.loads(snippet)
+                if isinstance(parsed, list):
+                    parsed_list = [item for item in parsed if isinstance(item, dict)]
+
+        for item in parsed_list:
+            normalized.append(
+                {
+                    "name": _as_str(item.get("name")),
+                    "model": _as_str(item.get("model")),
+                    "firmware": _as_str(item.get("firmware")),
+                    "ip": _as_str(item.get("ip")),
+                    "mac": _as_str(item.get("mac")),
+                    "uuid": _as_str(item.get("uuid")),
+                }
+            )
+
+        status = "ok" if len(normalized) > 0 or proc.returncode == 0 else "error"
+        source = "wiim-discover"
+
     seen_ips: set[str] = set()
-    for device in devices:
-        row = _device_to_dict(device)
+    deduped: list[dict[str, str]] = []
+    for row in normalized:
         ip = row.get("ip", "")
         if ip and ip in seen_ips:
             continue
         if ip:
             seen_ips.add(ip)
-        normalized.append(row)
+        deduped.append(row)
 
     return {
-        "count": len(normalized),
-        "devices": normalized,
+        "count": len(deduped),
+        "devices": deduped,
         "validate": bool(validate),
         "ssdp_timeout": int(ssdp_timeout),
-        "status": "ok",
+        "status": status,
+        "source": source,
     }
 
 

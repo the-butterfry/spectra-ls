@@ -1,6 +1,6 @@
 # Description: Music Assistant control hub scripts (target options, auto-select, control helpers).
-# Version: 2026.04.18.12
-# Last updated: 2026-04-18
+# Version: 2026.04.25.1
+# Last updated: 2026-04-25
 # Update version/date whenever you change this file.
 # HUB MUST-READ: Contract parser methodology.
 # - For complex attributes (`rooms`, `candidates_json`, etc.), prefer native sequence/mapping values first.
@@ -49,6 +49,53 @@ ma_update_target_options:
             {% endif %}
           {% endfor %}
           {{ ns.list }}
+        pywiim_discovered_targets: >-
+          {% set raw = state_attr('sensor.ma_pywiim_discovery','devices') | default([], true) %}
+          {% set devices = raw %}
+          {% if devices is string %}
+            {% set raw_trim = devices | trim %}
+            {% set raw_trim_l = raw_trim | lower %}
+            {% if raw_trim_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
+              {% set parsed = raw_trim | from_json %}
+              {% if parsed is sequence and parsed is not string and parsed is not mapping %}
+                {% set devices = parsed %}
+              {% elif parsed is mapping %}
+                {% set mapped = (parsed.devices if parsed.devices is defined else (parsed.result if parsed.result is defined else [])) %}
+                {% if mapped is sequence and mapped is not string and mapped is not mapping %}
+                  {% set devices = mapped %}
+                {% else %}
+                  {% set devices = [] %}
+                {% endif %}
+              {% else %}
+                {% set devices = [] %}
+              {% endif %}
+            {% else %}
+              {% set devices = [] %}
+            {% endif %}
+          {% elif devices is mapping %}
+            {% set mapped = (devices.devices if devices.devices is defined else (devices.result if devices.result is defined else [])) %}
+            {% if mapped is sequence and mapped is not string and mapped is not mapping %}
+              {% set devices = mapped %}
+            {% else %}
+              {% set devices = [] %}
+            {% endif %}
+          {% elif devices is not sequence %}
+            {% set devices = [] %}
+          {% endif %}
+          {% set ns = namespace(list=[]) %}
+          {% for d in devices %}
+            {% set ip = ((d.ip if d is mapping and d.ip is defined else '') | string | trim) %}
+            {% if ip not in ['','none','unknown','unavailable','None', none] %}
+              {% for mp in states.media_player %}
+                {% set ent = (mp.entity_id if mp is not none and mp.entity_id is defined else '') %}
+                {% set ent_ip = (mp.attributes.ip_address if mp is not none and mp.attributes is defined and mp.attributes.ip_address is defined else '') %}
+                {% if ent not in ['','none','unknown','unavailable'] and ent not in excluded_targets and ent_ip == ip and ent not in ns.list %}
+                  {% set ns.list = ns.list + [ent] %}
+                {% endif %}
+              {% endfor %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.list }}
         discovered_targets: >-
           {% set players = state_attr('sensor.ma_players','result') or [] %}
           {% set ns = namespace(list=[]) %}
@@ -92,9 +139,9 @@ ma_update_target_options:
           {{ current not in ['none','unknown','unavailable',''] and current in excluded_targets }}
         final_options: >-
           {% set extra = ([current] if (current_norm not in ['none','unknown','unavailable',''] and current not in known_targets and current not in excluded_targets) else []) %}
-          {{ (['none'] + known_targets + discovered_targets + extra) | unique | list }}
+          {{ (['none'] + known_targets + pywiim_discovered_targets + discovered_targets + extra) | unique | list }}
         default_option: >-
-          {% set selectable = (known_targets + discovered_targets) | unique | list %}
+          {% set selectable = (known_targets + pywiim_discovered_targets + discovered_targets) | unique | list %}
           {% set last_ok = last_valid not in ['none','unknown','unavailable',''] and last_valid in selectable %}
           {{ (current if (current_norm not in ['none','unknown','unavailable',''] and (not current_excluded) and current in selectable) else (last_valid if last_ok else (selectable[0] if (selectable | length) > 0 else 'none'))) }}
     - service: input_select.set_options

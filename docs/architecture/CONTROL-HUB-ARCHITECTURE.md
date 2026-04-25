@@ -1,6 +1,6 @@
 <!-- Description: Retroactive architecture and feature documentation for the MA control hub package split. -->
-<!-- Version: 2026.04.21.7 -->
-<!-- Last updated: 2026-04-21 -->
+<!-- Version: 2026.04.25.1 -->
+<!-- Last updated: 2026-04-25 -->
 
 # MA Control Hub Architecture (Retroactive Baseline)
 
@@ -18,6 +18,7 @@ Aggregate package entrypoint: `packages/ma_control_hub.yaml`
 - `input_text.inc`
 - `rest.inc`
 - `rest_command.inc`
+- `command_line.inc`
 - `script.inc`
 - `automation.inc`
 - `template.inc`
@@ -43,11 +44,18 @@ Defined by `rest.inc` + `rest_command.inc`:
 - active player request surface (`sensor.ma_active_player`)
 - generic MA API POST wrapper (`rest_command.ma_api_command`)
 
+Defined by `command_line.inc`:
+
+- pywiim discovery feed (`sensor.ma_pywiim_discovery`) using `wiim-discover --output json` contract with local script fallback (`/config/bin/pywiim_discover_targets.py`)
+- normalized device payload (`name`, `model`, `firmware`, `ip`, `mac`, `uuid`) for target-option enrichment
+
 ### 3) Orchestration script domain
 
 Defined by `script.inc`:
 
 - target option synthesis (`ma_update_target_options`)
+  - primary discovery enrichment from pywiim device feed mapped to HA media_player entities by IP
+  - fallback discovery enrichment from `sensor.ma_players` heuristic contract
 - target cycling (`ma_cycle_target`)
 - auto-selection policy (`ma_auto_select`)
 - explicit read-only lock for write helpers:
@@ -59,6 +67,7 @@ Defined by `script.inc`:
 Defined by `automation.inc`:
 
 - startup option refresh and auto-select
+  - target-option refresh now also reacts to pywiim discovery sensor updates
 - continuous auto-select loop (with guard conditions)
 - last-valid target persistence
 - ambiguity lock + stale-unlock handling
@@ -106,7 +115,8 @@ This contract is required across readers of:
 ## Feature responsibilities
 
 - choose active control target from known + discovered + valid candidates
-- classify active target route (`linkplay_tcp` vs `other`) and control capability
+  - discovery candidates are sourced first from pywiim-validated network discovery, then MA players fallback
+- classify active target route (`pywiim` vs `other`) and control capability
 - resolve now-playing title/artist/album/source/state with fallback ordering
 - expose host(s)/port contracts for ESPHome TCP control
 - surface ambiguity/confidence/staleness for prompt gating
@@ -114,7 +124,7 @@ This contract is required across readers of:
 ## Known constraints
 
 - `ma_set_volume` and `ma_set_balance` are intentionally disabled (read-only write path policy).
-- Route support is currently practical for `linkplay_tcp`; other routes are classified but not direct-routed by runtime.
+- Route support is currently practical for `pywiim`; other routes are classified but not direct-routed by runtime.
 - Legacy helper names are still part of active runtime contract.
 
 ## Component migration interaction contract (P3-S01)

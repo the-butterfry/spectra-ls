@@ -1,6 +1,6 @@
 # Description: MA control hub automations for startup sync, target selection, and override lifecycle.
-# Version: 2026.04.21.2
-# Last updated: 2026-04-21
+# Version: 2026.04.25.1
+# Last updated: 2026-04-25
 # HUB MUST-READ: Contract parser methodology.
 # - For complex attributes (`rooms`, `candidates_json`, etc.), prefer native sequence/mapping values first.
 # - Only parse string JSON when trimmed payload starts with `[` or `{` and is not unknown/unavailable/none/''.
@@ -14,6 +14,8 @@
       event: start
     - platform: state
       entity_id: sensor.ma_players
+    - platform: state
+      entity_id: sensor.ma_pywiim_discovery
     - platform: time_pattern
       minutes: "/5"
   action:

@@ -3,8 +3,8 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 ---
 
 <!-- Description: Workspace Copilot operating instructions for Home Assistant + ESPHome. -->
-<!-- Version: 2026.04.21.17 -->
-<!-- Last updated: 2026-04-21 -->
+<!-- Version: 2026.04.23.1 -->
+<!-- Last updated: 2026-04-23 -->
 
 # GitHub Copilot Instructions — Home Assistant + ESPHome
 
@@ -35,10 +35,18 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 
 ## Parallel Custom-Component Program (Required)
 - Develop `custom_components/spectra_ls` in parallel with the current runtime stack (`packages/` + `esphome/`) rather than as a big-bang replacement.
+- Diagnosis/bugfix dual-path rule (mandatory): for every analysis, triage, or bug-squashing task, explicitly evaluate both code paths — runtime (`packages/` + `esphome/`) and componentized (`custom_components/spectra_ls`) — before finalizing conclusions or fixes.
+- For every diagnosis/bugfix slice, include an explicit two-track disposition in notes/changelog: runtime track status + component track status, each marked as `implemented`, `compatibility-shimmed`, or `deferred with rationale`.
+- If a warning/error originates in only one path, still verify the other path for equivalent failure modes and document the “checked/not-applicable” outcome.
 - Every feature slice must include a two-track disposition:
   1) current runtime implementation/shim/defer note, and
   2) custom-component implementation/shim/defer note.
 - Bugfix lock-step rule: for behavior-visible bugfixes, keep runtime and custom-component tracks in lock-step when feasible in the same slice; if strict lock-step is not feasible, include an explicit shim/defer rationale and changelog divergence note in that same change set.
+- Version parity rule (required): when a behavior/contract-affecting slice touches either runtime (`packages/` + `esphome/`) or component (`custom_components/spectra_ls/`) code, review and update version metadata on both tracks in the same change set when applicable; if strict lock-step version bump is not applicable, record explicit rationale in `docs/CHANGELOG.md` two-track disposition.
+
+### Top-of-file parity directive (required until cutover)
+- For actively edited dual-path files, keep an explicit top-of-file `PARITY DIRECTIVE` comment reminding that behavior/contract edits require same-slice two-track parity review and version-metadata review.
+- Minimum active anchors: `packages/ma_control_hub/template.inc` and `custom_components/spectra_ls/registry.py`; extend to other high-churn dual-path files when touched.
 - No feature is considered complete unless both tracks are mapped as: implemented, compatibility-shimmed, or explicitly deferred with rationale.
 - Keep migration compatibility first: **shadow mode → parity validation → dual-write → domain cutover → legacy retirement**.
 - Preserve existing helper/entity/script contracts during migration windows unless an approved migration step explicitly changes them.

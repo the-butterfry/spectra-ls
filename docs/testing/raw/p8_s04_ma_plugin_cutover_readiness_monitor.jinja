@@ -1,0 +1,97 @@
+{# Description: Raw copy/paste Jinja monitor template for Spectra LS P8-S04 MA-native audio plugin/provider fast-cutover readiness and bounded execution windows. #}
+{# Version: 2026.04.22.1 #}
+{# Last updated: 2026-04-22 #}
+
+{% set s_target_primary = 'sensor.shadow_active_target' %}
+{% set s_target_fallback = 'sensor.spectra_ls_shadow_active_target' %}
+{% set primary_has_attrs = state_attr(s_target_primary, 'route_trace') is not none or state_attr(s_target_primary, 'captured_at') is not none %}
+{% set fallback_has_attrs = state_attr(s_target_fallback, 'route_trace') is not none or state_attr(s_target_fallback, 'captured_at') is not none %}
+{% set s_target = s_target_primary if primary_has_attrs else (s_target_fallback if fallback_has_attrs else s_target_primary) %}
+
+{% set route_trace = state_attr(s_target, 'route_trace') or {} %}
+{% set contract = state_attr(s_target, 'contract_validation') or {} %}
+{% set write_controls = state_attr(s_target, 'write_controls') or {} %}
+{% set unresolved = state_attr(s_target, 'unresolved_sources') or [] %}
+{% set mismatches = state_attr(s_target, 'mismatches') or [] %}
+
+{% set authority_mode = write_controls.authority_mode if write_controls is mapping and write_controls.authority_mode is defined else 'missing' %}
+{% set route_decision = route_trace.decision if route_trace is mapping and route_trace.decision is defined else '' %}
+{% set contract_valid = contract.valid if contract is mapping and contract.valid is defined else false %}
+{% set missing_required = contract.missing_required if contract is mapping and contract.missing_required is defined else [] %}
+{% set unresolved_required = contract.unresolved_required if contract is mapping and contract.unresolved_required is defined else [] %}
+
+{% set captured_at = state_attr(s_target, 'captured_at') | default('', true) %}
+{% set captured_ts = as_timestamp(captured_at) if captured_at not in ['', 'unknown', 'unavailable', 'none', none] else none %}
+{% set age_s = (as_timestamp(now()) - captured_ts) if captured_ts is not none else none %}
+{% set snapshot_fresh = age_s is not none and age_s <= 300 %}
+
+{# Operator-selected window phase for bounded execution packet: pre | in | post #}
+{% set window_phase = 'pre' %}
+
+{# Operator-confirmed P8-S04 packet readiness booleans #}
+{% set p8s03_validated = true %}
+{% set route_selection_confirmed = 'player_provider' %} {# expected: player_provider | plugin_adjunct | bridge_shim #}
+{% set rollback_path_verified = true %}
+{% set monitor_checklist_published = true %}
+{% set ma_probe_artifact_captured = false %}
+
+{% set baseline_gate_pass = authority_mode == 'legacy' and contract_valid and (missing_required | length) == 0 and (unresolved_required | length) == 0 and (unresolved | length) == 0 and (mismatches | length) == 0 and snapshot_fresh %}
+{% set entry_gate_pass = p8s03_validated and route_selection_confirmed in ['player_provider', 'plugin_adjunct', 'bridge_shim'] and monitor_checklist_published %}
+{% set safety_gate_pass = rollback_path_verified %}
+{% set execution_gate_pass = (window_phase != 'post') or ma_probe_artifact_captured %}
+
+{% set gate_pass_count = (1 if baseline_gate_pass else 0)
+  + (1 if entry_gate_pass else 0)
+  + (1 if safety_gate_pass else 0)
+  + (1 if execution_gate_pass else 0) %}
+
+{% set status = 'PASS' %}
+{% if not baseline_gate_pass or not entry_gate_pass %}
+  {% set status = 'FAIL' %}
+{% elif not safety_gate_pass or not execution_gate_pass %}
+  {% set status = 'WARN' %}
+{% endif %}
+
+{% set p8s04_readiness = 'NOT_READY' %}
+{% if status == 'PASS' and gate_pass_count == 4 %}
+  {% set p8s04_readiness = 'READY' %}
+{% elif status == 'FAIL' %}
+  {% set p8s04_readiness = 'BLOCKED' %}
+{% else %}
+  {% set p8s04_readiness = 'CAUTION' %}
+{% endif %}
+
+### P8-S04 MA Plugin Cutover Readiness Monitor (`spectra_ls`)
+- Window phase: **{{ window_phase }}**
+- Status: **{{ status }}**
+- P8-S04 readiness: **{{ p8s04_readiness }}**
+- Gate score: **{{ gate_pass_count }}/4**
+- Timestamp: **{{ now() }}**
+
+### Gates
+- Baseline gate (legacy + clean contract/parity + fresh): **{{ baseline_gate_pass }}**
+- Entry gate (P8-S03 validated + route selected + packet published): **{{ entry_gate_pass }}**
+- Safety gate (rollback path verified): **{{ safety_gate_pass }}**
+- Execution gate (probe artifact required for post window): **{{ execution_gate_pass }}**
+
+### Snapshot
+- `monitor_source_sensor`: **{{ s_target }}**
+- `authority_mode`: **{{ authority_mode }}**
+- `route_trace.decision`: **{{ route_decision if route_decision != '' else 'n/a' }}**
+- `contract_valid`: **{{ contract_valid }}**
+- `missing_required`: **{{ missing_required | length }}**
+- `unresolved_required`: **{{ unresolved_required | length }}**
+- `unresolved_sources`: **{{ unresolved | length }}**
+- `mismatches`: **{{ mismatches | length }}**
+- Freshness (`captured_at<=300s`): **{{ snapshot_fresh }}** (age_s={{ (age_s | round(1)) if age_s is not none else 'n/a' }})
+
+### Packet controls (operator inputs)
+- `route_selection_confirmed`: **{{ route_selection_confirmed }}**
+- `rollback_path_verified`: **{{ rollback_path_verified }}**
+- `monitor_checklist_published`: **{{ monitor_checklist_published }}**
+- `ma_probe_artifact_captured`: **{{ ma_probe_artifact_captured }}**
+
+### What to run now
+- `pre`: capture baseline proof before MA probe.
+- `in`: run bounded MA probe (dry-run-first), then capture monitor output.
+- `post`: rollback/legacy baseline proof + set `ma_probe_artifact_captured=true` before promotion decision.

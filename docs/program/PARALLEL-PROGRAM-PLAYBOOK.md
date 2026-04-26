@@ -1,6 +1,6 @@
 <!-- Description: Execution playbook for running Spectra runtime and custom component development tracks in strict-parity parallel. -->
-<!-- Version: 2026.04.19.2 -->
-<!-- Last updated: 2026-04-19 -->
+<!-- Version: 2026.04.21.3 -->
+<!-- Last updated: 2026-04-21 -->
 
 # Spectra Parallel Program Playbook
 
@@ -77,6 +77,19 @@ If a request is too broad, split into bounded slices first.
 
 - Cut over by domain with rollback gates.
 - Retire legacy logic only after soak parity.
+
+### Phase 6 — Sidebar control center productization
+
+- Deliver full operator-facing sidebar surfaces in component track.
+- Keep runtime track compatibility-preserved while product UX matures.
+- Validate with operator-grade evidence packets before promotion.
+
+### Phase 7 — Component-first authority cutover + legacy sealing
+
+- Execute explicit cutover-readiness gate before any authority flip.
+- Flip ownership by bounded domains with reversible rollback controls.
+- Seal legacy runtime as maintenance/rollback path, then retire from normal operations.
+- Keep net-new sidebar and beyond features component-first by default.
 
 ## Feature slice contract (template)
 
@@ -174,3 +187,20 @@ Execution quality target is team-grade delivery by one operator:
 - synchronized documentation.
 
 If uncertain, narrow the slice. If unstable, stop expansion. If contracts shift, sync docs before proceeding.
+
+## Post-P6 Plan Delta (2026-04-21)
+
+- What changed:
+  - Phase-6 slices are validated end-to-end; productization baseline is complete.
+  - Program focus shifts from UX foundation delivery to authority ownership transition.
+- Why it changed:
+  - Net-new sidebar and broader control-surface features now require component-first ownership velocity.
+  - Legacy remains high quality and trusted but should no longer carry new feature growth burden.
+- Stable assumptions:
+  - Single-writer guardrails remain mandatory.
+  - Runtime track remains rollback-capable until bounded cutover proofs are accepted.
+  - Discovery-first contracts and anonymized product posture remain unchanged.
+- New exit criteria:
+  - P7-S01 cutover-readiness gate PASS with sustained parity + rollback proof.
+  - Domain cutover sequence validated without loop/flap regressions.
+  - Legacy path explicitly sealed with deprecation/retirement contract documented.

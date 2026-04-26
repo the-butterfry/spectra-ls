@@ -1,6 +1,6 @@
-# Description: Spectra LS custom integration setup for shadow parity, Phase 3 guarded routing write-path services, Phase 4 diagnostics scaffolding services (F4-S01/F4-S03), and Phase 5 metadata trial contract service wiring.
-# Version: 2026.04.21.12
-# Last updated: 2026-04-21
+# Description: Spectra LS custom integration setup for shadow parity, Phase 3 guarded routing write-path services, Phase 4 diagnostics scaffolding services (F4-S01/F4-S03), Phase 5 metadata trial contract service wiring, and Phase 6 control-center settings/execution services.
+# Version: 2026.04.23.1
+# Last updated: 2026-04-23
 
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ from homeassistant.core import ServiceCall
 from homeassistant.exceptions import HomeAssistantError
 
 from .const import (
+    CONTROL_CENTER_DEFAULTS,
     DOMAIN,
     PLATFORMS,
     SERVICE_DUMP_ROUTE_TRACE,
@@ -32,6 +33,9 @@ from .const import (
     SERVICE_RUN_F4_S02_SEQUENCE,
     SERVICE_VALIDATE_CROSSFADE_BALANCE,
     SERVICE_RUN_F4_S03_SEQUENCE,
+    SERVICE_EXECUTE_CONTROL_CENTER_INPUT,
+    SERVICE_SET_CONTROL_CENTER_SETTINGS,
+    normalize_control_center_settings,
 )
 from .coordinator import SpectraLsShadowCoordinator
 
@@ -46,11 +50,19 @@ async def async_setup(hass: HomeAssistant, _config: dict[str, Any]) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Spectra LS from config entry."""
-    coordinator = SpectraLsShadowCoordinator(hass)
+    coordinator = SpectraLsShadowCoordinator(hass, entry)
     await coordinator.async_setup()
 
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = coordinator
+
+    async def _handle_options_update(hass: HomeAssistant, updated_entry: ConfigEntry) -> None:
+        coordinator_obj: SpectraLsShadowCoordinator | None = hass.data.get(DOMAIN, {}).get(updated_entry.entry_id)
+        if coordinator_obj is not None:
+            await coordinator_obj.async_apply_control_center_settings(updated_entry.options)
+
+    options_update_unsub = entry.add_update_listener(_handle_options_update)
+    hass.data[DOMAIN][f"{entry.entry_id}_options_unsub"] = options_update_unsub
 
     async def _service_rebuild_registry(_call: ServiceCall) -> None:
         await coordinator.async_rebuild_registry()
@@ -246,6 +258,26 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 _LOGGER.exception("F4-S03 sequence failed at stage '%s'", stage)
                 raise HomeAssistantError(f"F4-S03 sequence failed at stage '{stage}': {err}") from err
 
+    async def _service_set_control_center_settings(call: ServiceCall) -> None:
+        raw_patch = {key: call.data.get(key) for key in CONTROL_CENTER_DEFAULTS.keys() if key in call.data}
+        merged = normalize_control_center_settings({**entry.options, **raw_patch})
+        hass.config_entries.async_update_entry(entry, options=merged)
+        await coordinator.async_apply_control_center_settings(merged)
+
+    async def _service_execute_control_center_input(call: ServiceCall) -> None:
+        input_event = str(call.data.get("input_event", "") or "").strip()
+        correlation_id = str(call.data.get("correlation_id", "") or "").strip() or None
+        target_hint = str(call.data.get("target_hint", "") or "").strip() or None
+        dry_run = bool(call.data.get("dry_run", True))
+        delta = call.data.get("delta")
+        await coordinator.async_execute_control_center_input(
+            input_event=input_event,
+            correlation_id=correlation_id,
+            target_hint=target_hint,
+            dry_run=dry_run,
+            delta=delta,
+        )
+
     if not hass.services.has_service(DOMAIN, SERVICE_REBUILD_REGISTRY):
         hass.services.async_register(DOMAIN, SERVICE_REBUILD_REGISTRY, _service_rebuild_registry)
     if not hass.services.has_service(DOMAIN, SERVICE_VALIDATE_CONTRACTS):
@@ -280,6 +312,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.services.async_register(DOMAIN, SERVICE_VALIDATE_CROSSFADE_BALANCE, _service_validate_crossfade_balance)
     if not hass.services.has_service(DOMAIN, SERVICE_RUN_F4_S03_SEQUENCE):
         hass.services.async_register(DOMAIN, SERVICE_RUN_F4_S03_SEQUENCE, _service_run_f4_s03_sequence)
+    if not hass.services.has_service(DOMAIN, SERVICE_SET_CONTROL_CENTER_SETTINGS):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_SET_CONTROL_CENTER_SETTINGS,
+            _service_set_control_center_settings,
+        )
+    if not hass.services.has_service(DOMAIN, SERVICE_EXECUTE_CONTROL_CENTER_INPUT):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_EXECUTE_CONTROL_CENTER_INPUT,
+            _service_execute_control_center_input,
+        )
 
     try:
         await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
@@ -298,6 +342,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         coordinator: SpectraLsShadowCoordinator | None = hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
         if coordinator is not None:
             await coordinator.async_shutdown()
+        unsub = hass.data.get(DOMAIN, {}).pop(f"{entry.entry_id}_options_unsub", None)
+        if callable(unsub):
+            unsub()
         if not hass.data.get(DOMAIN):
             if hass.services.has_service(DOMAIN, SERVICE_REBUILD_REGISTRY):
                 hass.services.async_remove(DOMAIN, SERVICE_REBUILD_REGISTRY)
@@ -333,4 +380,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 hass.services.async_remove(DOMAIN, SERVICE_VALIDATE_CROSSFADE_BALANCE)
             if hass.services.has_service(DOMAIN, SERVICE_RUN_F4_S03_SEQUENCE):
                 hass.services.async_remove(DOMAIN, SERVICE_RUN_F4_S03_SEQUENCE)
+            if hass.services.has_service(DOMAIN, SERVICE_SET_CONTROL_CENTER_SETTINGS):
+                hass.services.async_remove(DOMAIN, SERVICE_SET_CONTROL_CENTER_SETTINGS)
+            if hass.services.has_service(DOMAIN, SERVICE_EXECUTE_CONTROL_CENTER_INPUT):
+                hass.services.async_remove(DOMAIN, SERVICE_EXECUTE_CONTROL_CENTER_INPUT)
     return unload_ok

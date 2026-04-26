@@ -1,5 +1,5 @@
 # Description: MA control hub automations for startup sync, target selection, and override lifecycle.
-# Version: 2026.04.21.2
+# Version: 2026.04.21.3
 # Last updated: 2026-04-21
 # HUB MUST-READ: Contract parser methodology.
 # - For complex attributes (`rooms`, `candidates_json`, etc.), prefer native sequence/mapping values first.
@@ -21,9 +21,14 @@
         - conditions: "{{ trigger.platform == 'homeassistant' }}"
           sequence:
             - delay: "00:01:00"
-    - service: homeassistant.update_entity
-      data:
-        entity_id: sensor.spectra_ls_rooms_raw
+    - choose:
+        - conditions:
+            - condition: template
+              value_template: "{{ states.sensor.spectra_ls_rooms_raw is not none }}"
+          sequence:
+            - service: homeassistant.update_entity
+              data:
+                entity_id: sensor.spectra_ls_rooms_raw
     - service: script.turn_on
       data:
         entity_id: script.ma_update_target_options

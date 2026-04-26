@@ -1,6 +1,6 @@
 # Description: Spectra LS hardware play-state polling via UART-over-TCP.
-# Version: 2026.04.18.3
-# Last updated: 2026-04-18
+# Version: 2026.04.23.1
+# Last updated: 2026-04-23
 # Update version/date whenever you change this file.
 
 command_line:
@@ -8,7 +8,7 @@ command_line:
       name: Spectra LS HW Status
       command: >-
         /bin/sh -c 'if [ -f /config/bin/arylic_hw_status.py ] && [ -f /config/spectra_ls_rooms.json ]; then
-        python3 /config/bin/arylic_hw_status.py /config/spectra_ls_rooms.json;
+        timeout 12s python3 /config/bin/arylic_hw_status.py /config/spectra_ls_rooms.json || printf "{\"playing_host\":\"\",\"playing_entity\":\"\",\"playing_label\":\"\",\"rooms\":[]}";
         else
         printf "{\"playing_host\":\"\",\"playing_entity\":\"\",\"playing_label\":\"\",\"rooms\":[]}";
         fi'
@@ -37,6 +37,8 @@ template:
 automation:
   - id: spectra_ls_hw_status_refresh_now_playing
     alias: "Spectra LS: HW status refresh (now playing)"
+    mode: restart
+    max_exceeded: silent
     trigger:
       - platform: state
         entity_id:

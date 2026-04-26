@@ -1,6 +1,6 @@
 # Description: Spectra LS setup (top-level user config).
-# Version: 2026.04.17.1
-# Last updated: 2026-04-17
+# Version: 2026.04.23.2
+# Last updated: 2026-04-23
 # Update version/date whenever you change this file.
 #
 # This package provides user-facing helpers for Spectra LS room mapping.
@@ -29,7 +29,7 @@ input_text:
     mode: text
   spectra_ls_room_1_tcp_host:
     name: Spectra LS Room 1 TCP Host
-    initial: "192.168.10.50"
+    initial: ""
     max: 255
     mode: text
 
@@ -50,7 +50,7 @@ input_text:
     mode: text
   spectra_ls_room_2_tcp_host:
     name: Spectra LS Room 2 TCP Host
-    initial: "192.168.10.51"
+    initial: ""
     max: 255
     mode: text
 
@@ -65,7 +65,7 @@ input_text:
     #     "label": "Office",
     #     "entity": "media_player.office",
     #     "meta": "media_player.office",
-    #     "tcp_host": "192.168.10.60",
+    #     "tcp_host": "auto-resolved-or-local-host",
     #     "hardware_family": "linkplay",
     #     "control_path": "linkplay_tcp",
     #     "control_capable": true,
@@ -84,16 +84,44 @@ template:
           {% set label1 = states('input_text.spectra_ls_room_1_label') | trim %}
           {% set ent1 = states('input_text.spectra_ls_room_1_entity') | trim %}
           {% set meta1 = states('input_text.spectra_ls_room_1_meta') | trim %}
-          {% set host1 = states('input_text.spectra_ls_room_1_tcp_host') | trim %}
-          {% if label1 and ent1 and host1 %}
-            {% set rooms = rooms + [{"label": label1, "entity": ent1, "meta": (meta1 if meta1 else ent1), "tcp_host": host1, "hardware_family": "linkplay", "control_path": "linkplay_tcp", "control_capable": true, "capabilities": ["volume","eq"]}] %}
+          {% set host1_cfg = states('input_text.spectra_ls_room_1_tcp_host') | trim %}
+          {% set host1_ip = (state_attr(ent1,'ip_address') | string | trim) if (ent1 not in ['','none','unknown','unavailable'] and states[ent1] is not none) else '' %}
+          {% set meta1_ip = (state_attr(meta1,'ip_address') | string | trim) if (meta1 not in ['','none','unknown','unavailable'] and states[meta1] is not none) else '' %}
+          {% set ns_meta1 = namespace(member_ip='') %}
+          {% set meta1_members = (state_attr(meta1,'group_members') or state_attr(meta1,'members') or []) if (meta1 not in ['','none','unknown','unavailable'] and states[meta1] is not none) else [] %}
+          {% for mm in meta1_members %}
+            {% if ns_meta1.member_ip == '' and mm not in ['','none','unknown','unavailable'] and states[mm] is not none %}
+              {% set mm_ip = state_attr(mm,'ip_address') or '' %}
+              {% if mm_ip not in ['','none','unknown','unavailable','None', none] %}
+                {% set ns_meta1.member_ip = mm_ip %}
+              {% endif %}
+            {% endif %}
+          {% endfor %}
+          {% set host1 = host1_cfg if host1_cfg not in ['','none','unknown','unavailable'] else (host1_ip if host1_ip not in ['','none','unknown','unavailable','None'] else (meta1_ip if meta1_ip not in ['','none','unknown','unavailable','None'] else ns_meta1.member_ip)) %}
+          {% set host1_ok = host1 not in ['','none','unknown','unavailable','None'] %}
+          {% if label1 and ent1 %}
+            {% set rooms = rooms + [{"label": label1, "entity": ent1, "meta": (meta1 if meta1 else ent1), "tcp_host": (host1 if host1_ok else ''), "hardware_family": "linkplay", "control_path": ("linkplay_tcp" if host1_ok else "other"), "control_capable": host1_ok, "capabilities": (["volume","eq"] if host1_ok else [])}] %}
           {% endif %}
           {% set label2 = states('input_text.spectra_ls_room_2_label') | trim %}
           {% set ent2 = states('input_text.spectra_ls_room_2_entity') | trim %}
           {% set meta2 = states('input_text.spectra_ls_room_2_meta') | trim %}
-          {% set host2 = states('input_text.spectra_ls_room_2_tcp_host') | trim %}
-          {% if label2 and ent2 and host2 %}
-            {% set rooms = rooms + [{"label": label2, "entity": ent2, "meta": (meta2 if meta2 else ent2), "tcp_host": host2, "hardware_family": "linkplay", "control_path": "linkplay_tcp", "control_capable": true, "capabilities": ["volume","eq"]}] %}
+          {% set host2_cfg = states('input_text.spectra_ls_room_2_tcp_host') | trim %}
+          {% set host2_ip = (state_attr(ent2,'ip_address') | string | trim) if (ent2 not in ['','none','unknown','unavailable'] and states[ent2] is not none) else '' %}
+          {% set meta2_ip = (state_attr(meta2,'ip_address') | string | trim) if (meta2 not in ['','none','unknown','unavailable'] and states[meta2] is not none) else '' %}
+          {% set ns_meta2 = namespace(member_ip='') %}
+          {% set meta2_members = (state_attr(meta2,'group_members') or state_attr(meta2,'members') or []) if (meta2 not in ['','none','unknown','unavailable'] and states[meta2] is not none) else [] %}
+          {% for mm in meta2_members %}
+            {% if ns_meta2.member_ip == '' and mm not in ['','none','unknown','unavailable'] and states[mm] is not none %}
+              {% set mm_ip = state_attr(mm,'ip_address') or '' %}
+              {% if mm_ip not in ['','none','unknown','unavailable','None', none] %}
+                {% set ns_meta2.member_ip = mm_ip %}
+              {% endif %}
+            {% endif %}
+          {% endfor %}
+          {% set host2 = host2_cfg if host2_cfg not in ['','none','unknown','unavailable'] else (host2_ip if host2_ip not in ['','none','unknown','unavailable','None'] else (meta2_ip if meta2_ip not in ['','none','unknown','unavailable','None'] else ns_meta2.member_ip)) %}
+          {% set host2_ok = host2 not in ['','none','unknown','unavailable','None'] %}
+          {% if label2 and ent2 %}
+            {% set rooms = rooms + [{"label": label2, "entity": ent2, "meta": (meta2 if meta2 else ent2), "tcp_host": (host2 if host2_ok else ''), "hardware_family": "linkplay", "control_path": ("linkplay_tcp" if host2_ok else "other"), "control_capable": host2_ok, "capabilities": (["volume","eq"] if host2_ok else [])}] %}
           {% endif %}
           {% set extra_raw = states('input_text.spectra_ls_rooms_extra_json') | trim %}
           {% if extra_raw not in ['','none','unknown','unavailable'] %}
@@ -111,16 +139,44 @@ template:
             {% set label1 = states('input_text.spectra_ls_room_1_label') | trim %}
             {% set ent1 = states('input_text.spectra_ls_room_1_entity') | trim %}
             {% set meta1 = states('input_text.spectra_ls_room_1_meta') | trim %}
-            {% set host1 = states('input_text.spectra_ls_room_1_tcp_host') | trim %}
-            {% if label1 and ent1 and host1 %}
-              {% set rooms = rooms + [{"label": label1, "entity": ent1, "meta": (meta1 if meta1 else ent1), "tcp_host": host1, "hardware_family": "linkplay", "control_path": "linkplay_tcp", "control_capable": true, "capabilities": ["volume","eq"]}] %}
+            {% set host1_cfg = states('input_text.spectra_ls_room_1_tcp_host') | trim %}
+            {% set host1_ip = (state_attr(ent1,'ip_address') | string | trim) if (ent1 not in ['','none','unknown','unavailable'] and states[ent1] is not none) else '' %}
+            {% set meta1_ip = (state_attr(meta1,'ip_address') | string | trim) if (meta1 not in ['','none','unknown','unavailable'] and states[meta1] is not none) else '' %}
+            {% set ns_meta1 = namespace(member_ip='') %}
+            {% set meta1_members = (state_attr(meta1,'group_members') or state_attr(meta1,'members') or []) if (meta1 not in ['','none','unknown','unavailable'] and states[meta1] is not none) else [] %}
+            {% for mm in meta1_members %}
+              {% if ns_meta1.member_ip == '' and mm not in ['','none','unknown','unavailable'] and states[mm] is not none %}
+                {% set mm_ip = state_attr(mm,'ip_address') or '' %}
+                {% if mm_ip not in ['','none','unknown','unavailable','None', none] %}
+                  {% set ns_meta1.member_ip = mm_ip %}
+                {% endif %}
+              {% endif %}
+            {% endfor %}
+            {% set host1 = host1_cfg if host1_cfg not in ['','none','unknown','unavailable'] else (host1_ip if host1_ip not in ['','none','unknown','unavailable','None'] else (meta1_ip if meta1_ip not in ['','none','unknown','unavailable','None'] else ns_meta1.member_ip)) %}
+            {% set host1_ok = host1 not in ['','none','unknown','unavailable','None'] %}
+            {% if label1 and ent1 %}
+              {% set rooms = rooms + [{"label": label1, "entity": ent1, "meta": (meta1 if meta1 else ent1), "tcp_host": (host1 if host1_ok else ''), "hardware_family": "linkplay", "control_path": ("linkplay_tcp" if host1_ok else "other"), "control_capable": host1_ok, "capabilities": (["volume","eq"] if host1_ok else [])}] %}
             {% endif %}
             {% set label2 = states('input_text.spectra_ls_room_2_label') | trim %}
             {% set ent2 = states('input_text.spectra_ls_room_2_entity') | trim %}
             {% set meta2 = states('input_text.spectra_ls_room_2_meta') | trim %}
-            {% set host2 = states('input_text.spectra_ls_room_2_tcp_host') | trim %}
-            {% if label2 and ent2 and host2 %}
-              {% set rooms = rooms + [{"label": label2, "entity": ent2, "meta": (meta2 if meta2 else ent2), "tcp_host": host2, "hardware_family": "linkplay", "control_path": "linkplay_tcp", "control_capable": true, "capabilities": ["volume","eq"]}] %}
+            {% set host2_cfg = states('input_text.spectra_ls_room_2_tcp_host') | trim %}
+            {% set host2_ip = (state_attr(ent2,'ip_address') | string | trim) if (ent2 not in ['','none','unknown','unavailable'] and states[ent2] is not none) else '' %}
+            {% set meta2_ip = (state_attr(meta2,'ip_address') | string | trim) if (meta2 not in ['','none','unknown','unavailable'] and states[meta2] is not none) else '' %}
+            {% set ns_meta2 = namespace(member_ip='') %}
+            {% set meta2_members = (state_attr(meta2,'group_members') or state_attr(meta2,'members') or []) if (meta2 not in ['','none','unknown','unavailable'] and states[meta2] is not none) else [] %}
+            {% for mm in meta2_members %}
+              {% if ns_meta2.member_ip == '' and mm not in ['','none','unknown','unavailable'] and states[mm] is not none %}
+                {% set mm_ip = state_attr(mm,'ip_address') or '' %}
+                {% if mm_ip not in ['','none','unknown','unavailable','None', none] %}
+                  {% set ns_meta2.member_ip = mm_ip %}
+                {% endif %}
+              {% endif %}
+            {% endfor %}
+            {% set host2 = host2_cfg if host2_cfg not in ['','none','unknown','unavailable'] else (host2_ip if host2_ip not in ['','none','unknown','unavailable','None'] else (meta2_ip if meta2_ip not in ['','none','unknown','unavailable','None'] else ns_meta2.member_ip)) %}
+            {% set host2_ok = host2 not in ['','none','unknown','unavailable','None'] %}
+            {% if label2 and ent2 %}
+              {% set rooms = rooms + [{"label": label2, "entity": ent2, "meta": (meta2 if meta2 else ent2), "tcp_host": (host2 if host2_ok else ''), "hardware_family": "linkplay", "control_path": ("linkplay_tcp" if host2_ok else "other"), "control_capable": host2_ok, "capabilities": (["volume","eq"] if host2_ok else [])}] %}
             {% endif %}
             {% set extra_raw = states('input_text.spectra_ls_rooms_extra_json') | trim %}
             {% if extra_raw not in ['','none','unknown','unavailable'] %}

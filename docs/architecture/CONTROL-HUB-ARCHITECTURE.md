@@ -1,6 +1,6 @@
 <!-- Description: Retroactive architecture and feature documentation for the MA control hub package split. -->
-<!-- Version: 2026.04.21.7 -->
-<!-- Last updated: 2026-04-21 -->
+<!-- Version: 2026.04.23.7 -->
+<!-- Last updated: 2026-04-23 -->
 
 # MA Control Hub Architecture (Retroactive Baseline)
 
@@ -42,6 +42,7 @@ Defined by `rest.inc` + `rest_command.inc`:
 - `players/all` polling surface (`sensor.ma_players`)
 - active player request surface (`sensor.ma_active_player`)
 - generic MA API POST wrapper (`rest_command.ma_api_command`)
+- command-shape compatibility note: avoid unsupported MA command aliases in REST sensors (for example `players/get_active`); use supported command shapes and template-side selection/parsing.
 
 ### 3) Orchestration script domain
 
@@ -89,6 +90,8 @@ Defined by `template.inc`:
 2. accept native mapping payloads with `rooms`/`result` extraction,
 3. parse string JSON only when trimmed payload starts with `[` or `{` and is not `unknown/unavailable/none/''`.
 
+`script.ma_update_target_options` explicitly follows this same string-mode rule for both array and object payloads (object payloads extract `rooms`/`result`) to avoid accidental target-option collapse during room-contract shape drift.
+
 This contract is required across readers of:
 
 - room maps,
@@ -116,6 +119,11 @@ This contract is required across readers of:
 - `ma_set_volume` and `ma_set_balance` are intentionally disabled (read-only write path policy).
 - Route support is currently practical for `linkplay_tcp`; other routes are classified but not direct-routed by runtime.
 - Legacy helper names are still part of active runtime contract.
+- Discovery-first control-host contract is fail-closed: runtime must not rely on install-specific bootstrap IP defaults for control hosts, and control sends stay blocked until `sensor.ma_control_hosts` / `sensor.ma_control_host` provide valid resolved values.
+- Host resolution should come from live HA entity discovery (for example `media_player.<target>.ip_address` on WiiM/LinkPlay-class targets) before any manual override paths are considered.
+- Host recovery for target-bound rooms is deadlock-safe: active-target host resolution does not depend on downstream classifier outputs (`control_path` / `control_capable`), and room contracts may fall back to the mapped `meta` entity `ip_address` when the selected target entity is a wrapper/group entity without direct `ip_address`.
+- When room-target matching is unresolved for wrapper targets, host recovery may use active MA player mapping (`sensor.ma_active_player_id_resolved.player_json.entity_id`) to resolve host by discovered `ip_address` while preserving fail-closed/no-static-bootstrap posture.
+- Host recovery also includes room `meta` entity fallback (`meta.ip_address`) and meta-group member IP fallback (`meta.group_members` / `meta.members`) when wrapper entities expose no direct `ip_address`.
 
 ## Component migration interaction contract (P3-S01)
 
@@ -128,6 +136,8 @@ Implemented guard controls in `custom_components/spectra_ls` include:
 - guarded manual route-write trial path (no broad autonomous write loop),
 - debounce and reentrancy protections,
 - route-decision eligibility gate (`route_linkplay_tcp` only in P3-S01),
+- explicit route-safety diagnostics (`route_safety_validation`) that verify selected route target matches active target and host resolution remains fail-closed,
+- explicit shadow-attribute exposure of `route_safety_validation` on `sensor.shadow_active_target` so Developer Tools templates can consume route-safety verdicts directly without reconstructing from `route_trace`,
 - correlation-id and last-attempt diagnostics (`write_controls`).
 
 Compatibility posture:

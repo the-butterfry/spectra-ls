@@ -1,6 +1,8 @@
 # Description: Template entities for ma_control_hub runtime routing, metadata, and now-playing state surfaces.
-# Version: 2026.04.21.37
-# Last updated: 2026-04-21
+# Version: 2026.04.23.6
+# Last updated: 2026-04-23
+# PARITY DIRECTIVE (until full cutover): any behavior/contract change here requires same-slice custom-component parity review,
+# explicit implemented/shim/defer disposition in docs/CHANGELOG.md, and version-metadata review on both runtime and component tracks.
 # HUB MUST-READ: Contract parser methodology.
 # - For complex attributes (`rooms`, `candidates_json`, etc.), prefer native sequence/mapping values first.
 # - Only parse string JSON when trimmed payload starts with `[` or `{` and is not unknown/unavailable/none/''.
@@ -1140,7 +1142,6 @@
       state: >-
         {% set target = states('input_select.ma_active_target') %}
         {% set valid_target = target not in ['none','unknown','unavailable',''] %}
-        {% set fallback_enabled = is_state('input_boolean.ma_control_fallback_enabled','on') %}
         {% set active_path = states('sensor.ma_active_control_path') %}
         {% set control_capable = is_state('binary_sensor.ma_active_control_capable','on') %}
         {% set rooms_raw = state_attr('sensor.spectra_ls_rooms_json','rooms_json') | default([], true) %}
@@ -1167,19 +1168,49 @@
         {% endif %}
         {% set members = state_attr(target,'group_members') or state_attr(target,'members') or [] %}
         {% set target_host = '' %}
-        {% if valid_target and control_capable and active_path == 'linkplay_tcp' %}
-          {% set target_entries = (rooms | selectattr('entity','equalto', target) | list) %}
-          {% set target_entry = (target_entries[0] if (target_entries | length) > 0 else none) %}
-          {% if target_entry is not none and target_entry.tcp_host is defined and target_entry.tcp_host not in ['','unknown','unavailable'] %}
-            {% set target_host = target_entry.tcp_host %}
+        {% if valid_target %}
+          {% set target_ip = state_attr(target,'ip_address') or '' %}
+          {% if target_ip not in ['','none','unknown','unavailable','None', none] %}
+            {% set target_host = target_ip %}
           {% endif %}
         {% endif %}
         {% if target_host == '' and valid_target %}
-          {% set target_ip = state_attr(target,'ip_address') or '' %}
-          {% set target_state = states(target) | lower if states[target] is not none else '' %}
-          {% set target_active = target_state in ['playing','paused'] %}
-          {% if target_ip not in ['','none','unknown','unavailable','None', none] and (control_capable or active_path == 'linkplay_tcp' or target_active) %}
-            {% set target_host = target_ip %}
+          {% set target_entries = (rooms | selectattr('entity','equalto', target) | list) %}
+          {% set target_entry = (target_entries[0] if (target_entries | length) > 0 else none) %}
+          {% if target_entry is not none and target_entry.tcp_host is defined and target_entry.tcp_host not in ['','unknown','unavailable'] %}
+            {% set target_host_raw = (target_entry.tcp_host | string | trim) %}
+            {% set target_host = (target_host_raw.split(':')[0] if ':' in target_host_raw else target_host_raw) %}
+          {% endif %}
+          {% if target_host == '' and target_entry is not none %}
+            {% set meta_entity = (target_entry.meta if target_entry.meta is defined else '') %}
+            {% set meta_ip = (state_attr(meta_entity,'ip_address') if meta_entity not in ['','none','unknown','unavailable'] and states[meta_entity] is not none else '') %}
+            {% if meta_ip not in ['','none','unknown','unavailable','None', none] %}
+              {% set target_host = meta_ip %}
+            {% endif %}
+            {% if target_host == '' and meta_entity not in ['','none','unknown','unavailable'] and states[meta_entity] is not none %}
+              {% set meta_members = state_attr(meta_entity,'group_members') or state_attr(meta_entity,'members') or [] %}
+              {% set ns_meta = namespace(host='') %}
+              {% for mm in meta_members %}
+                {% if ns_meta.host == '' and mm not in ['','none','unknown','unavailable'] and states[mm] is not none %}
+                  {% set mm_ip = state_attr(mm,'ip_address') or '' %}
+                  {% if mm_ip not in ['','none','unknown','unavailable','None', none] %}
+                    {% set ns_meta.host = mm_ip %}
+                  {% endif %}
+                {% endif %}
+              {% endfor %}
+              {% if ns_meta.host != '' %}
+                {% set target_host = ns_meta.host %}
+              {% endif %}
+            {% endif %}
+          {% endif %}
+        {% endif %}
+        {% if target_host == '' and valid_target %}
+          {% set player_raw = state_attr('sensor.ma_active_player_id_resolved','player_json') | default('{}', true) %}
+          {% set player = player_raw if (player_raw is mapping) else ((player_raw | from_json) if (player_raw is string and (player_raw | trim).startswith('{')) else {}) %}
+          {% set player_entity = (player.entity_id if player is mapping and player.entity_id is defined else '') %}
+          {% set player_host = (state_attr(player_entity,'ip_address') if player_entity not in ['','none','unknown','unavailable'] and states[player_entity] is not none else '') %}
+          {% if player_host not in ['','none','unknown','unavailable','None', none] %}
+            {% set target_host = player_host %}
           {% endif %}
         {% endif %}
         {% if target_host != '' %}
@@ -1187,47 +1218,13 @@
         {% else %}
           {% set hosts = [] %}
           {% for m in members %}
-            {% for r in rooms %}
-              {% if r.entity is defined and r.entity == m and r.tcp_host is defined and r.tcp_host not in ['','unknown','unavailable'] %}
-                {% set hosts = hosts + [r.tcp_host] %}
+            {% if m not in ['','none','unknown','unavailable'] and states[m] is not none %}
+              {% set m_ip = state_attr(m,'ip_address') or '' %}
+              {% if m_ip not in ['','none','unknown','unavailable','None', none] %}
+                {% set hosts = hosts + [m_ip] %}
               {% endif %}
-            {% endfor %}
+            {% endif %}
           {% endfor %}
-          {% if hosts | length == 0 and fallback_enabled %}
-            {% set primary_entity = states('input_text.spectra_ls_target_primary_entity') %}
-            {% set room_entity = states('input_text.spectra_ls_target_room_entity') %}
-            {% set primary_host = states('input_text.spectra_ls_target_primary_tcp_host') %}
-            {% set room_host = states('input_text.spectra_ls_target_room_tcp_host') %}
-            {% if valid_target and target == primary_entity and primary_host not in ['','unknown','unavailable','none'] %}
-              {% set hosts = [primary_host] %}
-            {% elif valid_target and target == room_entity and room_host not in ['','unknown','unavailable','none'] %}
-              {% set hosts = [room_host] %}
-            {% endif %}
-          {% endif %}
-          {% if hosts | length == 0 and fallback_enabled %}
-            {% set candidates = [states('sensor.ma_detected_receiver_entity'), states('sensor.ma_active_meta_entity'), target] %}
-            {% set ns = namespace(picked='') %}
-            {% for c in candidates %}
-              {% if ns.picked == '' and c not in ['','none','unknown','unavailable'] %}
-                {% set c_state = states(c) %}
-                {% if c_state not in ['unknown','unavailable',''] %}
-                  {% set ip = state_attr(c,'ip_address') or '' %}
-                  {% set model = state_attr(c,'device_model') or '' %}
-                  {% set role = state_attr(c,'group_role') or '' %}
-                  {% set gstate = state_attr(c,'group_state') or '' %}
-                  {% set purpose = state_attr(c,'integration_purpose') or '' %}
-                  {% set ma_ok = state_attr(c,'music_assistant_compatible') %}
-                  {% set is_linkplay = (ip not in ['','None', none]) and ((ma_ok is true) or (model not in ['','None', none]) or (role not in ['','None', none]) or (gstate not in ['','None', none]) or (purpose not in ['','None', none])) %}
-                  {% if is_linkplay %}
-                    {% set ns.picked = ip %}
-                  {% endif %}
-                {% endif %}
-              {% endif %}
-            {% endfor %}
-            {% if ns.picked != '' %}
-              {% set hosts = [ns.picked] %}
-            {% endif %}
-          {% endif %}
           {{ hosts | unique | join(',') if (hosts | length) > 0 else '' }}
         {% endif %}
     - name: MA Active Control Path
@@ -1258,18 +1255,24 @@
           {% elif rooms is not sequence %}
             {% set rooms = [] %}
           {% endif %}
-          {% set entry = (rooms | selectattr('entity','equalto', target) | list | first) %}
+          {% set entries = (rooms | selectattr('entity','equalto', target) | list) %}
+          {% set entry = (entries[0] if (entries | length) > 0 else none) %}
           {% set hardware_family = (entry.hardware_family if entry is not none and entry.hardware_family is defined else '') | lower %}
           {% set path_hint = (entry.control_path if entry is not none and entry.control_path is defined else '') | lower %}
           {% set control_capable_hint = (entry.control_capable if entry is not none and entry.control_capable is defined else '') %}
           {% set cap_l = (control_capable_hint | string | lower) %}
+          {% set entry_host_raw = (entry.tcp_host if entry is not none and entry.tcp_host is defined else '') | string | trim %}
+          {% set entry_host = (entry_host_raw.split(':')[0] if ':' in entry_host_raw else entry_host_raw) %}
+          {% set entry_host_ok = entry_host not in ['','none','unknown','unavailable','None', none] %}
+          {% set contract_hosts = states('sensor.ma_control_hosts') %}
+          {% set contract_host_ok = contract_hosts not in ['','none','unknown','unavailable','None', none] %}
           {% set ip = state_attr(target,'ip_address') or '' %}
           {% set model = (state_attr(target,'device_model') or '') | lower %}
           {% set manufacturer = (state_attr(target,'manufacturer') or '') | lower %}
           {% set purpose = (state_attr(target,'integration_purpose') or '') | lower %}
           {% set ma_ok = state_attr(target,'music_assistant_compatible') %}
           {% set hint = (hardware_family ~ ' ' ~ model ~ ' ' ~ manufacturer ~ ' ' ~ purpose ~ ' ' ~ target) %}
-          {% set inferred = 'linkplay_tcp' if (ip not in ['','none','unknown','unavailable','None', none] and ((ma_ok is true) or ('arylic' in hint) or ('linkplay' in hint) or ('up2stream' in hint))) else 'other' %}
+          {% set inferred = 'linkplay_tcp' if (contract_host_ok or entry_host_ok or (ip not in ['','none','unknown','unavailable','None', none] and ((ma_ok is true) or ('arylic' in hint) or ('linkplay' in hint) or ('up2stream' in hint)))) else 'other' %}
           {% set path = (path_hint if path_hint in ['linkplay_tcp','other'] else inferred) %}
           {% set control_capable = (cap_l in ['1','true','yes','on']) if cap_l not in ['','none','unknown','unavailable'] else (path == 'linkplay_tcp') %}
           {{ path if control_capable else 'other' }}
@@ -1473,6 +1476,22 @@
     - name: MA Control Port
       state: >-
         8899
+    - name: MA Control Transport
+      state: >-
+        {% set v = states('text_sensor.spectra_ls_system_arylic_http_transport') %}
+        {% if v in ['','none','unknown','unavailable'] %}
+          {{ 'unknown' }}
+        {% else %}
+          {{ v }}
+        {% endif %}
+    - name: MA Control Transport Scheme
+      state: >-
+        {% set v = states('text_sensor.spectra_ls_system_arylic_http_scheme') %}
+        {% if v in ['http','https'] %}
+          {{ v }}
+        {% else %}
+          {{ 'unknown' }}
+        {% endif %}
     - name: MA Active Friendly
       state: >-
         {% set t = states('input_select.ma_active_target') %}
@@ -1613,7 +1632,8 @@
           {% elif rooms is not sequence %}
             {% set rooms = [] %}
           {% endif %}
-          {% set entry = (rooms | selectattr('entity','equalto', target) | list | first) %}
+          {% set entries = (rooms | selectattr('entity','equalto', target) | list) %}
+          {% set entry = (entries[0] if (entries | length) > 0 else none) %}
           {% set cap_hint = (entry.control_capable if entry is not none and entry.control_capable is defined else '') %}
           {% set cap_l = (cap_hint | string | lower) %}
           {% set path = states('sensor.ma_active_control_path') %}

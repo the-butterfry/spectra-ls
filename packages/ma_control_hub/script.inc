@@ -1,6 +1,6 @@
 # Description: Music Assistant control hub scripts (target options, auto-select, control helpers).
-# Version: 2026.04.18.12
-# Last updated: 2026-04-18
+# Version: 2026.04.23.1
+# Last updated: 2026-04-23
 # Update version/date whenever you change this file.
 # HUB MUST-READ: Contract parser methodology.
 # - For complex attributes (`rooms`, `candidates_json`, etc.), prefer native sequence/mapping values first.
@@ -26,10 +26,17 @@ ma_update_target_options:
           {% elif rooms_raw is string %}
             {% set raw_trim = rooms_raw | trim %}
             {% set raw_trim_l = raw_trim | lower %}
-              {% if raw_trim_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
+            {% if raw_trim_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
               {% set parsed = raw_trim | from_json %}
               {% if parsed is sequence and parsed is not string and parsed is not mapping %}
                 {{ parsed }}
+              {% elif parsed is mapping %}
+                {% set mapped = (parsed.rooms if parsed.rooms is defined else (parsed.result if parsed.result is defined else [])) %}
+                {% if mapped is sequence and mapped is not string and mapped is not mapping %}
+                  {{ mapped }}
+                {% else %}
+                  {{ [] }}
+                {% endif %}
               {% else %}
                 {{ [] }}
               {% endif %}
@@ -69,8 +76,7 @@ ma_update_target_options:
                   and (ent | regex_match('^media_player\\.'))
                   and states[ent] is not none
                   and ent not in excluded_targets
-                  and control_path == 'linkplay_tcp'
-                  and control_capable %}
+              and ip not in ['','none','unknown','unavailable','None', none] %}
               {% set ns.list = ns.list + [ent] %}
             {% endif %}
           {% endfor %}

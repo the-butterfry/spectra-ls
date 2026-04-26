@@ -1,6 +1,6 @@
 # Description: Audio controls package for Spectra LS System (TCP-only) with host-resolved control routing.
-# Version: 2026.04.20.8
-# Last updated: 2026-04-20
+# Version: 2026.04.23.1
+# Last updated: 2026-04-23
 # Update version/date whenever you change this file.
 
 binary_sensor:
@@ -387,33 +387,9 @@ sensor:
     on_value:
       - lambda: |-
           int port = (int) x;
-          if (port <= 0) port = (int) ${arylic_tcp_port};
+          if (port <= 0 || port > 65534) port = (int) ${arylic_tcp_port};
           id(arylic_control_port) = port;
           ESP_LOGI("ma", "control_port=%d", port);
-  - platform: homeassistant
-    id: ha_audio_position
-    entity_id: ${ha_ma_active_position}
-    internal: true
-    accuracy_decimals: 1
-    on_value:
-      - lambda: |-
-          const uint32_t now = millis();
-          const float prev = id(ha_audio_pos_last_value);
-          id(ha_audio_pos_last_value) = x;
-          const float delta = x - prev;
-          const float abs_delta = delta < 0.0f ? -delta : delta;
-          const bool first_sample = (id(ha_audio_pos_last_ms) == 0);
-          if (first_sample || abs_delta >= 0.05f) {
-            id(ha_audio_pos_last_ms) = now;
-          }
-  - platform: homeassistant
-    id: ha_audio_duration
-    entity_id: ${ha_ma_active_duration}
-    internal: true
-    accuracy_decimals: 1
-    on_value:
-      - lambda: |-
-          id(ha_audio_duration_value) = x;
 number:
   - platform: template
     name: "EQ Low"
@@ -692,38 +668,22 @@ text_sensor:
     on_value:
       - lambda: |-
           const uint32_t now = millis();
+          static uint32_t last_invalid_log_ms = 0;
+          auto should_log_invalid = [&]() -> bool {
+            if (now - last_invalid_log_ms < 5000) return false;
+            last_invalid_log_ms = now;
+            return true;
+          };
           std::string hosts = x.c_str();
           std::string low = hosts;
           for (auto &c : low) c = (char) ::tolower(c);
           if (hosts.empty() || low == "unknown" || low == "unavailable" || low == "none") {
-            const uint32_t hold_ms = 10000;
-            const bool pending = id(control_target_pending_until_ms) > now;
-            const bool recently_valid = id(arylic_control_hosts_last_valid_ms) > 0 && (now - id(arylic_control_hosts_last_valid_ms)) < hold_ms;
-            const bool locked = id(control_target_prompt_blocked);
-            bool target_ok = false;
-            if (id(ma_active_target).has_state()) {
-              std::string target = id(ma_active_target).state.c_str();
-              std::string t_low = target;
-              for (auto &c : t_low) c = (char) ::tolower(c);
-              if (!target.empty() && t_low != "unknown" && t_low != "unavailable" && t_low != "none") {
-                target_ok = true;
-              }
-            }
-            if (locked) {
-              ESP_LOGW("ma", "control_hosts invalid (locked; keep last '%s')", id(arylic_control_hosts).c_str());
-              return;
-            }
-            if (target_ok) {
-              ESP_LOGW("ma", "control_hosts invalid (active target; keep last '%s')", id(arylic_control_hosts).c_str());
-              return;
-            }
-            if (pending || recently_valid) {
-              ESP_LOGW("ma", "control_hosts invalid (keep last '%s')", id(arylic_control_hosts).c_str());
-              return;
-            }
             id(arylic_control_hosts).clear();
             id(arylic_control_host).clear();
-            ESP_LOGW("ma", "control_hosts cleared (invalid update '%s')", hosts.c_str());
+            id(control_target_pending_until_ms) = 0;
+            if (should_log_invalid()) {
+              ESP_LOGW("ma", "control_hosts cleared fail-closed (invalid update '%s')", hosts.c_str());
+            }
             return;
           }
           id(arylic_control_hosts) = hosts;
@@ -738,37 +698,22 @@ text_sensor:
     on_value:
       - lambda: |-
           const uint32_t now = millis();
+          static uint32_t last_invalid_log_ms = 0;
+          auto should_log_invalid = [&]() -> bool {
+            if (now - last_invalid_log_ms < 5000) return false;
+            last_invalid_log_ms = now;
+            return true;
+          };
           std::string host = x.c_str();
           std::string low = host;
           for (auto &c : low) c = (char) ::tolower(c);
           if (host.empty() || low == "unknown" || low == "unavailable" || low == "none") {
-            const uint32_t hold_ms = 10000;
-            const bool pending = id(control_target_pending_until_ms) > now;
-            const bool recently_valid = id(arylic_control_hosts_last_valid_ms) > 0 && (now - id(arylic_control_hosts_last_valid_ms)) < hold_ms;
-            const bool locked = id(control_target_prompt_blocked);
-            bool target_ok = false;
-            if (id(ma_active_target).has_state()) {
-              std::string target = id(ma_active_target).state.c_str();
-              std::string t_low = target;
-              for (auto &c : t_low) c = (char) ::tolower(c);
-              if (!target.empty() && t_low != "unknown" && t_low != "unavailable" && t_low != "none") {
-                target_ok = true;
-              }
-            }
-            if (locked) {
-              ESP_LOGW("ma", "control_host invalid (locked; keep last '%s')", id(arylic_control_host).c_str());
-              return;
-            }
-            if (target_ok) {
-              ESP_LOGW("ma", "control_host invalid (active target; keep last '%s')", id(arylic_control_host).c_str());
-              return;
-            }
-            if (pending || recently_valid) {
-              ESP_LOGW("ma", "control_host invalid (keep last '%s')", id(arylic_control_host).c_str());
-              return;
-            }
+            id(arylic_control_hosts).clear();
             id(arylic_control_host).clear();
-            ESP_LOGW("ma", "control_host cleared (invalid update '%s')", host.c_str());
+            id(control_target_pending_until_ms) = 0;
+            if (should_log_invalid()) {
+              ESP_LOGW("ma", "control_host cleared fail-closed (invalid update '%s')", host.c_str());
+            }
             return;
           }
           id(arylic_control_host) = host;
@@ -778,6 +723,87 @@ text_sensor:
           id(arylic_control_hosts_last_valid_ms) = now;
           id(control_target_pending_until_ms) = 0;
           ESP_LOGI("ma", "control_host=%s", host.c_str());
+  - platform: homeassistant
+    id: ha_audio_position
+    entity_id: ${ha_ma_active_position}
+    internal: true
+    on_value:
+      - lambda: |-
+          const uint32_t now = millis();
+          static uint32_t last_invalid_log_ms = 0;
+          std::string raw = x.c_str();
+          std::string low = raw;
+          for (auto &c : low) c = (char) ::tolower(c);
+          if (raw.empty() || low == "unknown" || low == "unavailable" || low == "none" || low == "null") {
+            if (now - last_invalid_log_ms > 15000) {
+              last_invalid_log_ms = now;
+              ESP_LOGW("ha_state", "ha_audio_position ignored non-numeric '%s'", raw.c_str());
+            }
+            return;
+          }
+          char *end = nullptr;
+          float parsed = ::strtof(raw.c_str(), &end);
+          if (end == raw.c_str()) {
+            if (now - last_invalid_log_ms > 15000) {
+              last_invalid_log_ms = now;
+              ESP_LOGW("ha_state", "ha_audio_position parse failed '%s'", raw.c_str());
+            }
+            return;
+          }
+          while (*end == ' ' || *end == '\t' || *end == '\n' || *end == '\r') end++;
+          if (*end != '\0') {
+            if (now - last_invalid_log_ms > 15000) {
+              last_invalid_log_ms = now;
+              ESP_LOGW("ha_state", "ha_audio_position parse trailing '%s'", raw.c_str());
+            }
+            return;
+          }
+          if (parsed < 0.0f) parsed = 0.0f;
+          const float prev = id(ha_audio_pos_last_value);
+          id(ha_audio_pos_last_value) = parsed;
+          const float delta = parsed - prev;
+          const float abs_delta = delta < 0.0f ? -delta : delta;
+          const bool first_sample = (id(ha_audio_pos_last_ms) == 0);
+          if (first_sample || abs_delta >= 0.05f) {
+            id(ha_audio_pos_last_ms) = now;
+          }
+  - platform: homeassistant
+    id: ha_audio_duration
+    entity_id: ${ha_ma_active_duration}
+    internal: true
+    on_value:
+      - lambda: |-
+          const uint32_t now = millis();
+          static uint32_t last_invalid_log_ms = 0;
+          std::string raw = x.c_str();
+          std::string low = raw;
+          for (auto &c : low) c = (char) ::tolower(c);
+          if (raw.empty() || low == "unknown" || low == "unavailable" || low == "none" || low == "null") {
+            if (now - last_invalid_log_ms > 15000) {
+              last_invalid_log_ms = now;
+              ESP_LOGW("ha_state", "ha_audio_duration ignored non-numeric '%s'", raw.c_str());
+            }
+            return;
+          }
+          char *end = nullptr;
+          float parsed = ::strtof(raw.c_str(), &end);
+          if (end == raw.c_str()) {
+            if (now - last_invalid_log_ms > 15000) {
+              last_invalid_log_ms = now;
+              ESP_LOGW("ha_state", "ha_audio_duration parse failed '%s'", raw.c_str());
+            }
+            return;
+          }
+          while (*end == ' ' || *end == '\t' || *end == '\n' || *end == '\r') end++;
+          if (*end != '\0') {
+            if (now - last_invalid_log_ms > 15000) {
+              last_invalid_log_ms = now;
+              ESP_LOGW("ha_state", "ha_audio_duration parse trailing '%s'", raw.c_str());
+            }
+            return;
+          }
+          if (parsed < 0.0f) parsed = 0.0f;
+          id(ha_audio_duration_value) = parsed;
   - platform: homeassistant
     id: ha_audio_title
     entity_id: ${ha_ma_active_title}

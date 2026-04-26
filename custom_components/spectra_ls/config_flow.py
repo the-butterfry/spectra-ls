@@ -1,5 +1,5 @@
-# Description: Config and options flow for Spectra LS shadow parity integration with Phase 6/8 control-center fast-remap settings.
-# Version: 2026.04.22.4
+# Description: Config and options flow for Spectra LS shadow parity integration with simplified single-step remap settings UX.
+# Version: 2026.04.22.8
 # Last updated: 2026-04-22
 
 from __future__ import annotations
@@ -63,6 +63,38 @@ class SpectraLsOptionsFlow(config_entries.OptionsFlow):
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         self._config_entry = config_entry
 
+    @staticmethod
+    def _preset_selector_options() -> list[selector.SelectOptionDict]:
+        """Return labeled preset options for guided quick-remap UX."""
+        return [
+            selector.SelectOptionDict(value="media_default", label="Media default (volume / play / mute)"),
+            selector.SelectOptionDict(value="scene_focus", label="Scene focus (quick scene trigger)"),
+            selector.SelectOptionDict(value="target_navigation", label="Target navigation (cycle targets)"),
+            selector.SelectOptionDict(value="custom", label="Custom mapping (manual controls)"),
+        ]
+
+    @staticmethod
+    def _turn_action_selector_options() -> list[selector.SelectOptionDict]:
+        """Return labeled encoder-turn action options."""
+        labels = {
+            "volume": "Volume",
+            "brightness": "Brightness",
+            "target_cycle": "Target cycle",
+            "source_cycle": "Source cycle",
+        }
+        return [selector.SelectOptionDict(value=val, label=labels.get(val, val)) for val in CONTROL_CENTER_ACTIONS]
+
+    @staticmethod
+    def _press_action_selector_options() -> list[selector.SelectOptionDict]:
+        """Return labeled encoder press/long-press action options."""
+        labels = {
+            "play_pause": "Play / pause",
+            "mute_toggle": "Mute toggle",
+            "scene_quick_trigger": "Scene quick trigger",
+            "no_op": "Do nothing",
+        }
+        return [selector.SelectOptionDict(value=val, label=labels.get(val, val)) for val in CONTROL_CENTER_PRESS_ACTIONS]
+
     def _suggest_default_scene_for_quick_trigger(self, current_scene_value: str) -> str:
         """Suggest a first scene binding for button 1 when still unconfigured."""
         normalized = str(current_scene_value or "").strip().lower()
@@ -89,15 +121,15 @@ class SpectraLsOptionsFlow(config_entries.OptionsFlow):
         return patched
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None):
-        """Configure control-center input mappings and scene bindings."""
+        """Single-step settings form for remap and scene bindings."""
         if user_input is not None:
-            normalized = normalize_control_center_settings(self._apply_selected_preset(user_input))
+            merged = normalize_control_center_settings({**self._config_entry.options, **user_input})
+            normalized = normalize_control_center_settings(self._apply_selected_preset(merged))
             return self.async_create_entry(title="", data=normalized)
 
         existing = normalize_control_center_settings(self._config_entry.options)
         defaults = dict(CONTROL_CENTER_DEFAULTS)
         defaults.update(existing)
-        defaults[OPT_BUTTON_1_SCENE] = self._suggest_default_scene_for_quick_trigger(defaults[OPT_BUTTON_1_SCENE])
 
         scene_selector = selector.EntitySelector(
             selector.EntitySelectorConfig(
@@ -105,6 +137,8 @@ class SpectraLsOptionsFlow(config_entries.OptionsFlow):
                 multiple=False,
             )
         )
+
+        defaults[OPT_BUTTON_1_SCENE] = self._suggest_default_scene_for_quick_trigger(defaults[OPT_BUTTON_1_SCENE])
 
         return self.async_show_form(
             step_id="init",
@@ -116,7 +150,7 @@ class SpectraLsOptionsFlow(config_entries.OptionsFlow):
                         default=defaults[OPT_MAPPING_PRESET],
                     ): selector.SelectSelector(
                         selector.SelectSelectorConfig(
-                            options=list(CONTROL_CENTER_MAPPING_PRESETS),
+                            options=self._preset_selector_options(),
                             mode=selector.SelectSelectorMode.DROPDOWN,
                         )
                     ),
@@ -125,7 +159,7 @@ class SpectraLsOptionsFlow(config_entries.OptionsFlow):
                         default=defaults[OPT_ENCODER_TURN_ACTION],
                     ): selector.SelectSelector(
                         selector.SelectSelectorConfig(
-                            options=list(CONTROL_CENTER_ACTIONS),
+                            options=self._turn_action_selector_options(),
                             mode=selector.SelectSelectorMode.DROPDOWN,
                         )
                     ),
@@ -134,7 +168,7 @@ class SpectraLsOptionsFlow(config_entries.OptionsFlow):
                         default=defaults[OPT_ENCODER_PRESS_ACTION],
                     ): selector.SelectSelector(
                         selector.SelectSelectorConfig(
-                            options=list(CONTROL_CENTER_PRESS_ACTIONS),
+                            options=self._press_action_selector_options(),
                             mode=selector.SelectSelectorMode.DROPDOWN,
                         )
                     ),
@@ -143,7 +177,7 @@ class SpectraLsOptionsFlow(config_entries.OptionsFlow):
                         default=defaults[OPT_ENCODER_LONG_PRESS_ACTION],
                     ): selector.SelectSelector(
                         selector.SelectSelectorConfig(
-                            options=list(CONTROL_CENTER_PRESS_ACTIONS),
+                            options=self._press_action_selector_options(),
                             mode=selector.SelectSelectorMode.DROPDOWN,
                         )
                     ),

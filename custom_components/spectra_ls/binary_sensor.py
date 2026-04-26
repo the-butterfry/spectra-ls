@@ -1,6 +1,6 @@
-# Description: Binary sensor entities for Spectra LS shadow parity routing surfaces with Phase 3 write-control and Phase 4 diagnostics attributes (F4-S01/F4-S03).
-# Version: 2026.04.20.9
-# Last updated: 2026-04-20
+# Description: Binary sensor entities for Spectra LS shadow parity routing surfaces with Phase 3 write-control, Phase 4 diagnostics attributes, and Phase 6 control-center settings visibility.
+# Version: 2026.04.23.1
+# Last updated: 2026-04-23
 
 from __future__ import annotations
 
@@ -39,10 +39,12 @@ class SpectraLsShadowControlCapableBinarySensor(CoordinatorEntity, BinarySensorE
             "route_trace": data.get("route_trace", {}),
             "contract_validation": data.get("contract_validation", {}),
             "selection_handoff_validation": data.get("selection_handoff_validation", {}),
+            "route_safety_validation": data.get("route_safety_validation", {}),
             "metadata_prep_validation": data.get("metadata_prep_validation", {}),
             "capability_profile_validation": data.get("capability_profile_validation", {}),
             "action_catalog_validation": data.get("action_catalog_validation", {}),
             "crossfade_balance_validation": data.get("crossfade_balance_validation", {}),
+            "control_center_validation": data.get("control_center_validation", {}),
             "write_controls": data.get("write_controls", {}),
         }
 

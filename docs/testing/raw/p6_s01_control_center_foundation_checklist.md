@@ -1,5 +1,5 @@
 <!-- Description: Deterministic operator checklist for Phase 6 Slice-01 control-center foundation activation and closeout readiness (P6-S01). -->
-<!-- Version: 2026.04.21.2 -->
+<!-- Version: 2026.04.21.3 -->
 <!-- Last updated: 2026-04-21 -->
 
 # P6-S01 Control-Center Foundation — Checklist
@@ -133,7 +133,46 @@ verdict:
    rationale: all runtime and governance gates pass for bounded foundation execution baseline; final closeout packet remains pending completion of in-slice foundation tasks.
 ```
 
-Disposition: P6-S01 remains `Active` and execution-ready with a validated baseline packet.
+Disposition: baseline packet accepted; closeout packet pending final evidence capture.
+
+## P6-S01 closeout evidence (Run-2)
+
+```text
+P6-S01 Foundation Evidence Record
+---------------------------------
+run_id: p6s01-2026-04-21-run2
+captured_at: 2026-04-21 20:17:21.077121-07:00
+operator: cory
+
+gate_checks:
+   p5_handoff_gate: PASS
+   runtime_safety_baseline_gate: PASS
+   read_only_first_ux_gate: PASS
+   compatibility_gate: PASS
+   rollback_gate: PASS
+
+foundation_snapshot:
+   authority_mode: legacy
+   route_decision: route_linkplay_tcp
+   contract_valid: true
+   missing_required: 0
+   unresolved_required: 0
+   unresolved_sources: 0
+   mismatches: 0
+   freshness_age_s: 47.4
+
+stop_conditions:
+   triggered: false
+   reason: none
+
+verdict:
+   outcome: PASS
+   p6_s01_closeout_eligible: true
+   next_slice_ready: true
+   rationale: all foundation gates pass with deterministic runtime safety posture and preserved legacy authority boundary.
+```
+
+Disposition: P6-S01 closeout packet accepted; slice is eligible for `Validated` promotion in phase ledgers.
 
 ## Artifact linkage
 

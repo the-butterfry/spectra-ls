@@ -1,6 +1,6 @@
 # Description: Spectra LS UI/menu input handling + UI fonts + now-playing helper sensors.
-# Version: 2026.04.20.1
-# Last updated: 2026-04-20
+# Version: 2026.04.22.1
+# Last updated: 2026-04-22
 # Update version/date whenever you change this file.
 #
 # Sections:
@@ -160,6 +160,41 @@ script:
           const int LV_LIGHT_ADJUST = ${menu_level_lighting_adjust};
           const int LV_LIGHT_TOGGLE = ${menu_level_lighting_toggle};
           const int LV_META = ${menu_level_meta_select};
+          const int LV_CONTROL_TARGET = ${menu_level_control_target_select};
+          auto trim_ascii = [](std::string &value) {
+            size_t start = value.find_first_not_of(" \t\n\r");
+            size_t end = value.find_last_not_of(" \t\n\r");
+            if (start == std::string::npos || end == std::string::npos) {
+              value.clear();
+              return;
+            }
+            value = value.substr(start, end - start + 1);
+          };
+          auto parse_options = [&](const std::string &raw) -> std::vector<std::string> {
+            std::vector<std::string> out;
+            if (raw.empty()) return out;
+            std::string token;
+            bool in_quote = false;
+            char quote_char = 0;
+            for (char ch : raw) {
+              if (ch == '\\') continue;
+              if ((ch == '\'' || ch == '"')) {
+                if (!in_quote) { in_quote = true; quote_char = ch; continue; }
+                if (quote_char == ch) { in_quote = false; continue; }
+              }
+              if (!in_quote && (ch == '[' || ch == ']')) continue;
+              if (!in_quote && ch == ',') {
+                trim_ascii(token);
+                if (!token.empty()) out.push_back(token);
+                token.clear();
+                continue;
+              }
+              token.push_back(ch);
+            }
+            trim_ascii(token);
+            if (!token.empty()) out.push_back(token);
+            return out;
+          };
           const uint32_t now = millis();
           id(control_target_prompt_commit) = false;
           id(control_target_prompt_entity) = "";
@@ -216,6 +251,11 @@ script:
           const int menu_level5_count = room_count + 1;
           const int menu_level6_count = target_count + 1;
           const int menu_level9_count = meta_count + ${menu_count_meta_base};
+          std::vector<std::string> control_target_labels;
+          if (id(ha_control_target_labels).has_state()) {
+            control_target_labels = parse_options(id(ha_control_target_labels).state.c_str());
+          }
+          const int menu_level10_count = ((int) control_target_labels.size()) + 1;
 
           if (id(menu_level) > LV_MAIN) {
             int back_count = 0;
@@ -225,6 +265,7 @@ script:
             else if (id(menu_level) == LV_LIGHT_ADJUST) back_count = ${menu_count_lighting_adjust};
             else if (id(menu_level) == LV_LIGHT_TOGGLE) back_count = (id(selected_target) == 0) ? ${menu_count_lighting_toggle_all} : ${menu_count_lighting_toggle_target};
             else if (id(menu_level) == LV_META) back_count = menu_level9_count;
+            else if (id(menu_level) == LV_CONTROL_TARGET) back_count = menu_level10_count;
             if (back_count > 0 && id(menu_index) == (back_count - 1)) {
               if (id(menu_level) == LV_GEAR) {
                 id(menu_level) = LV_MAIN;
@@ -248,6 +289,9 @@ script:
               } else if (id(menu_level) == LV_META) {
                 id(menu_level) = LV_MAIN;
                 id(menu_index) = 2;
+              } else if (id(menu_level) == LV_CONTROL_TARGET) {
+                id(menu_level) = LV_GEAR;
+                id(menu_index) = 0;
               }
               return;
             }
@@ -274,9 +318,34 @@ script:
           }
           if (id(menu_level) == LV_GEAR) {
             if (id(menu_index) == 0) {
+              id(menu_level) = LV_CONTROL_TARGET;
+              id(menu_index) = 0;
+            } else if (id(menu_index) == 1) {
               id(menu_level) = LV_META;
               id(menu_index) = 0;
             } else {
+              id(menu_level) = LV_MAIN;
+              id(menu_index) = 2;
+            }
+            return;
+          }
+          if (id(menu_level) == LV_CONTROL_TARGET) {
+            const int back_idx = menu_level10_count - 1;
+            if (id(menu_index) == back_idx) {
+              id(menu_level) = LV_GEAR;
+              id(menu_index) = 0;
+              return;
+            }
+            std::vector<std::string> control_target_entities;
+            if (id(ha_control_target_entities).has_state()) {
+              control_target_entities = parse_options(id(ha_control_target_entities).state.c_str());
+            }
+            const int pick_idx = id(menu_index);
+            if (pick_idx >= 0 && pick_idx < (int) control_target_entities.size()) {
+              id(control_target_prompt_entity) = control_target_entities[pick_idx];
+              id(control_target_prompt_commit) = true;
+              id(control_target_popup_active) = true;
+              id(apply_control_target_selection).execute();
               id(menu_level) = LV_MAIN;
               id(menu_index) = 2;
             }
@@ -462,6 +531,7 @@ binary_sensor:
           const int LV_LIGHT_ADJUST = ${menu_level_lighting_adjust};
           const int LV_LIGHT_TOGGLE = ${menu_level_lighting_toggle};
           const int LV_META = ${menu_level_meta_select};
+          const int LV_CONTROL_TARGET = ${menu_level_control_target_select};
           if (id(control_target_prompt_active)) {
             id(control_target_prompt_active) = false;
             id(control_target_prompt_manual) = false;
@@ -477,6 +547,11 @@ binary_sensor:
           if (id(menu_level) == LV_META) {
             id(menu_level) = LV_MAIN;
             id(menu_index) = 2;
+            return;
+          }
+          if (id(menu_level) == LV_CONTROL_TARGET) {
+            id(menu_level) = LV_GEAR;
+            id(menu_index) = 0;
             return;
           }
           if (id(menu_level) >= LV_LIGHT_TOGGLE) {
@@ -561,6 +636,41 @@ sensor:
           const int LV_LIGHT_ADJUST = ${menu_level_lighting_adjust};
           const int LV_LIGHT_TOGGLE = ${menu_level_lighting_toggle};
           const int LV_META = ${menu_level_meta_select};
+          const int LV_CONTROL_TARGET = ${menu_level_control_target_select};
+          auto trim_ascii = [](std::string &value) {
+            size_t start = value.find_first_not_of(" \t\n\r");
+            size_t end = value.find_last_not_of(" \t\n\r");
+            if (start == std::string::npos || end == std::string::npos) {
+              value.clear();
+              return;
+            }
+            value = value.substr(start, end - start + 1);
+          };
+          auto parse_options = [&](const std::string &raw) -> std::vector<std::string> {
+            std::vector<std::string> out;
+            if (raw.empty()) return out;
+            std::string token;
+            bool in_quote = false;
+            char quote_char = 0;
+            for (char ch : raw) {
+              if (ch == '\\') continue;
+              if ((ch == '\'' || ch == '"')) {
+                if (!in_quote) { in_quote = true; quote_char = ch; continue; }
+                if (quote_char == ch) { in_quote = false; continue; }
+              }
+              if (!in_quote && (ch == '[' || ch == ']')) continue;
+              if (!in_quote && ch == ',') {
+                trim_ascii(token);
+                if (!token.empty()) out.push_back(token);
+                token.clear();
+                continue;
+              }
+              token.push_back(ch);
+            }
+            trim_ascii(token);
+            if (!token.empty()) out.push_back(token);
+            return out;
+          };
           // Menu authoring contract: always map raw encoder deltas through shared
           // top-level direction policy (`sls_menu_nav` + `${menu_encoder_nav_sign}`).
           const int raw_delta = (int) x;
@@ -583,6 +693,11 @@ sensor:
           const int menu_level5_count = room_count + 1;
           const int menu_level6_count = target_count + 1;
           const int menu_level9_count = meta_count + ${menu_count_meta_base};
+          std::vector<std::string> control_target_labels;
+          if (id(ha_control_target_labels).has_state()) {
+            control_target_labels = parse_options(id(ha_control_target_labels).state.c_str());
+          }
+          const int menu_level10_count = ((int) control_target_labels.size()) + 1;
           if (!id(menu_active)) {
             id(menu_active) = true;
             id(menu_level) = LV_MAIN;
@@ -597,6 +712,7 @@ sensor:
           else if (id(menu_level) == LV_LIGHT_ADJUST) count = ${menu_count_lighting_adjust};
           else if (id(menu_level) == LV_LIGHT_TOGGLE) count = (id(selected_target) == 0) ? ${menu_count_lighting_toggle_all} : ${menu_count_lighting_toggle_target};
           else if (id(menu_level) == LV_META) count = menu_level9_count;
+          else if (id(menu_level) == LV_CONTROL_TARGET) count = menu_level10_count;
           if (count <= 0) return;
           id(menu_index) = sls_menu_nav::step_index(id(menu_index), delta, count);
 

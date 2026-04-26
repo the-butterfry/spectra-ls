@@ -1,10 +1,16 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.21.1 -->
-<!-- Last updated: 2026-04-21 -->
+<!-- Version: 2026.04.22.1 -->
+<!-- Last updated: 2026-04-22 -->
 
 # Changelog
 
+## 2026-04-22
+
+- HA/AC Manual Mode Basics (`packages/dst_tuya_ac.yaml`): add stable fan-only and dry/dehumidify mode controls (`switch.ac_fan`, `switch.ac_dryer`, `fan.ac_fan`) with direct Tuya mode scripts that first park DST to `off` to avoid controller tug-of-war/flapping; add `input_boolean.ac_fan_override` for simple frontend/manual mode visibility.
+
 ## 2026-04-21
+
+- HA/AC Manual Override Hold Rollback (`packages/dst_tuya_ac.yaml`): revert the newly added hold helpers/guards/auto-clear flow after regression feedback (DST flapping / non-functional behavior observed in runtime). Control path restored to last known stable cool-only baseline pending root-cause redesign.
 
 - HA/AC Manual Override Hold (`packages/dst_tuya_ac.yaml`): add an explicit 24-hour manual override hold (`input_boolean.ac_manual_override_hold` + `input_datetime.ac_manual_override_until`) with auto-clear automation and guarded DST write paths/scripts so user-driven Tuya mode changes can be preserved temporarily without racey controller tug-of-war.
 

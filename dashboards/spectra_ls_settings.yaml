@@ -1,0 +1,100 @@
+# Description: Home Assistant Lovelace sidebar dashboard for Spectra L/S operator settings and visibility.
+# Version: 2026.04.22.2
+# Last updated: 2026-04-22
+
+title: Spectra L/S Settings
+views:
+  - title: Settings
+    path: settings
+    icon: mdi:knob
+    badges: []
+    cards:
+      - type: markdown
+        title: Spectra L/S
+        content: |
+          Configure Spectra from a full sidebar page (not a tiny modal).
+
+          Primary path:
+          **Settings → Devices & Services → Integrations → Spectra LS → Configure**
+
+          This page keeps live readiness and mapping results visible while you tune.
+
+      - type: entities
+        title: Readiness and last action
+        show_header_toggle: false
+        entities:
+          - entity: sensor.control_center_readiness
+            name: Control center readiness
+          - entity: sensor.control_center_last_attempt_status
+            name: Last mapped-input attempt
+          - entity: sensor.shadow_active_target
+            name: Active target (shadow)
+          - entity: sensor.shadow_active_control_path
+            name: Active control path (shadow)
+
+      - type: entities
+        title: Runtime compatibility helpers
+        show_header_toggle: false
+        entities:
+          - entity: input_select.ma_active_target
+            name: Active audio target
+          - entity: input_select.control_board_room
+            name: Lighting room
+          - entity: input_select.control_board_target
+            name: Lighting target
+
+      - type: markdown
+        title: Quick actions
+        content: |
+          Run safe one-click checks directly from this page.
+
+          These controls are bounded to dry-run or rollback-safe presets.
+
+      - type: horizontal-stack
+        cards:
+          - type: button
+            name: Dry-run encoder press
+            icon: mdi:gesture-tap-button
+            tap_action:
+              action: call-service
+              service: spectra_ls.execute_control_center_input
+              data:
+                input_event: encoder_press
+                dry_run: true
+          - type: button
+            name: Dry-run encoder turn
+            icon: mdi:rotate-right
+            tap_action:
+              action: call-service
+              service: spectra_ls.execute_control_center_input
+              data:
+                input_event: encoder_turn
+                dry_run: true
+                delta: 1
+
+      - type: horizontal-stack
+        cards:
+          - type: button
+            name: Apply media preset
+            icon: mdi:tune-variant
+            tap_action:
+              action: call-service
+              service: spectra_ls.set_control_center_settings
+              data:
+                mapping_preset: media_default
+                read_only_mode: true
+          - type: button
+            name: Apply target-nav preset
+            icon: mdi:playlist-edit
+            tap_action:
+              action: call-service
+              service: spectra_ls.set_control_center_settings
+              data:
+                mapping_preset: target_navigation
+                read_only_mode: true
+
+      - type: markdown
+        title: Advanced path
+        content: |
+          Full manual remap remains here:
+          **Settings → Devices & Services → Integrations → Spectra LS → Configure**

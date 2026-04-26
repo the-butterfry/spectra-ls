@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.22.111 -->
+<!-- Version: 2026.04.22.120 -->
 <!-- Last updated: 2026-04-22 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -1074,9 +1074,62 @@ Run-14 execution update (2026-04-22):
 - Diagnostics lane: added active preset + effective mapping visibility in control-center readiness/attempt diagnostics for quick operator verification after remap.
 - Execution disposition: run-14 packet accepted; runtime track unchanged compatibility baseline, component track advanced P8-S03 operator remap implementation.
 
+Run-15 execution update (2026-04-22):
+
+- Component UX maturity lane: refactored integration settings to a guided two-step flow (quick preset/safety step + conditional advanced custom-mapping step) so common remaps complete faster while custom mapping remains one click away.
+- Selector ergonomics lane: replaced raw option-value style with explicit human-readable option labels for presets and encoder action choices to better match mature HA integration settings UX patterns.
+- Execution disposition: run-15 packet accepted; runtime track unchanged compatibility baseline, component track implemented guided remap flow ergonomics hardening.
+
+Run-16 execution update (2026-04-22):
+
+- Setup-lane clarity lane: added an explicit first-step chooser in integration options so operators select `Quick setup` or `Advanced mapping` before entering remap fields.
+- Flow-structure lane: split options UX into dedicated quick and advanced steps (`init -> quick/advanced`) so the common preset path is fast while manual mapping remains a focused advanced path.
+- Execution disposition: run-16 packet accepted; runtime track unchanged compatibility baseline, component track implemented explicit lane separation for settings UX.
+
+Run-17 execution update (2026-04-22):
+
+- Label-clarity lane: refined setup/action selector labels for quicker scanability and lower operator ambiguity.
+- Default-lane lane: set smarter setup-lane default (`advanced` when existing preset is `custom`, otherwise `quick`) so re-opened settings land in the expected path.
+- Execution disposition: run-17 packet accepted; runtime track unchanged compatibility baseline, component track implemented settings-flow polish.
+
+Run-18 execution update (2026-04-22):
+
+- Corrective UX lane: simplify integration Configure UX from multi-lane flow back to a single-step settings form to reduce operator confusion.
+- Sidebar surface lane: add a real Home Assistant sidebar dashboard entry (`Spectra L/S`) for persistent settings/readiness visibility outside the modal configure dialog.
+- Execution disposition: run-18 packet accepted; runtime track unchanged compatibility baseline, component track implemented usability/navigation correction.
+
+Run-19 execution update (2026-04-22):
+
+- Sidebar reliability lane: correct sidebar dashboard sensor bindings to match real registered entity IDs and eliminate post-restart `Entity not found` cards.
+- Execution disposition: run-19 packet accepted; runtime track unchanged compatibility baseline, component track implemented dashboard reliability correction.
+
+Run-20 execution update (2026-04-22):
+
+- MA exploration lane: publish a future-focused technical note that consolidates Music Assistant plugin/provider extension routes, capability constraints, and recommended integration path for Spectra audio-side ownership.
+- Fast-cutover planning lane: queue the next bounded phase slice to execute immediately after UX usefulness closure, with explicit gates, stop conditions, rollback posture, and evidence packet requirements.
+- Execution disposition: run-20 packet accepted; runtime track compatibility-shimmed, component track deferred-with-rationale as the queued next slice.
+
+Run-21 execution update (2026-04-22):
+
+- UX completion lane: finish the sidebar usability pass by replacing dev-tools-only quick actions with direct one-click action buttons for dry-run probes and rollback-safe preset application.
+- Operator flow lane: align wiki/setup docs to the click-first sidebar workflow and mark the current UX-stage lane complete.
+- Execution disposition: run-21 packet accepted; `P8-S03` promoted to validated, and `P8-S04` moved from queued to active planning/execution prep.
+
+Run-22 execution update (2026-04-22):
+
+- P8-S04 activation lane: publish deterministic monitor + checklist artifacts for MA-native plugin/provider fast-cutover gate-prep windows (pre/in/post).
+- Evidence lane: add explicit rollback-safe stop conditions and packet fields so first MA probe can be classified PASS/WARN/FAIL without ad hoc interpretation.
+- Execution disposition: run-22 packet accepted; `P8-S04` is now active with execution artifacts published.
+
+Run-23 execution update (2026-04-22):
+
+- Run-2 packet lane: publish a strict in-window execution packet for `P8-S04` with explicit `run_id`, `selected_path=player_provider`, dry-run-first probe posture, and artifact-reference capture fields.
+- Governance lane: keep promotion blocked at Run-2 by policy until post-window rollback proof is captured in a subsequent record.
+- Execution disposition: run-23 packet accepted; P8-S04 Run-2 is execution-ready.
+
 ### Phase 8 follow-on slice card — P8-S03 (fast input-remap UX in HA settings)
 
-Status: **Active**
+Status: **Validated**
 
 Scope:
 
@@ -1112,6 +1165,48 @@ GitHub/developer declaration (policy mirror):
 
 - Legacy runtime path is sealed as rollback-safe compatibility baseline.
 - Custom component path is primary for net-new feature/control-plane growth.
+
+### Phase 8 next slice card — P8-S04 (MA-native audio plugin feasibility + fast cutover packet)
+
+Status: **Active (execution packet published)**
+
+Scope:
+
+- **In:**
+  - consolidate MA-native extension options into one implementation-ready path,
+  - define a bounded Spectra audio-side plugin/provider scaffold plan,
+  - publish a fast cutover packet with explicit rollback and evidence controls.
+- **Out:**
+  - immediate authority flip in this planning slice,
+  - cross-domain helper/entity retirement,
+  - unbounded runtime ownership expansion.
+
+Primary planning artifact:
+
+- `docs/notes/NOTES-ma-audio-plugin-cutover-plan.md`
+
+Execution artifacts:
+
+- `docs/testing/raw/p8_s04_ma_plugin_cutover_readiness_monitor.jinja`
+- `docs/testing/raw/p8_s04_ma_plugin_cutover_readiness_checklist.md`
+
+Activation gates (required):
+
+1. P8-S03 UX usefulness closure accepted (operator-confirmed usable baseline).
+2. Legacy rollback baseline remains clean (`authority_mode=legacy`, contract/parity clean).
+3. Chosen MA integration route is explicitly mapped as implemented/shimmed/deferred across both tracks.
+4. Pre/in/post evidence capture template is defined before any authority-touching implementation.
+
+Two-track disposition target (for execution start):
+
+- **Track A (runtime):** compatibility-shimmed rollback baseline retained during plugin feasibility/probe windows.
+- **Track B (component):** implement MA-native audio plugin/provider scaffold and diagnostics-first control-path probes.
+
+P1/P2/P3 impact check:
+
+- **P1:** unchanged read-only parity surfaces.
+- **P2:** unchanged registry/router ownership in this planning queue step.
+- **P3:** unchanged single-writer boundary; any authority move stays explicitly gated for execution windows.
 
 Deferred H1 note (report/log/heal):
 

@@ -1,5 +1,5 @@
 <!-- Description: Practical setup/deploy/integration guide for Spectra on Home Assistant with clear operator outcomes and failure actions. -->
-<!-- Version: 2026.04.22.10 -->
+<!-- Version: 2026.04.22.14 -->
 <!-- Last updated: 2026-04-22 -->
 
 # User Setup, Deploy, and HA Integration
@@ -24,6 +24,7 @@ Target outcome:
 ### Automated (when healthy)
 
 - Target discovery and route metadata publication.
+- Control-host resolution from MA/HA discovery surfaces (`sensor.ma_control_hosts` / `sensor.ma_control_host`) with fail-closed runtime gating until valid hosts are present.
 - Runtime surface synchronization between HA helper/catalog entities and control UI.
 - Wiki publishing (if `WIKI_FINE_GRAINED_PAT` is configured and workflow succeeds).
 
@@ -47,8 +48,12 @@ Target outcome:
 ### Required
 
 - Home Assistant host/address details for your environment.
-- Device IPs/hostnames where auto-discovery cannot resolve.
 - Environment-specific secret values in `secrets.yaml` or local secrets include.
+
+Discovery contract note:
+
+- Spectra runtime no longer ships install-specific target host/IP bootstrap defaults.
+- If discovery surfaces are unresolved or invalid, control writes remain blocked (fail-closed) until valid hosts are published.
 
 ### Optional / workflow tooling
 
@@ -66,20 +71,23 @@ Target outcome:
 
 You can now stage core control-center mappings from the Spectra integration itself:
 
+- **Sidebar settings page (new):** Home Assistant sidebar -> `Spectra L/S` (dashboard-backed settings surface).
+- This gives you a persistent full page for readiness/mapping visibility while tuning, instead of relying only on the small configure modal.
+- Sidebar page now includes direct one-click action controls for safe checks/preset application:
+  - `Dry-run encoder press`
+  - `Dry-run encoder turn`
+  - `Apply media preset`
+  - `Apply target-nav preset`
+
 - **Fast remap path (today):** Home Assistant -> Settings -> Devices & Services -> Integrations -> `Spectra LS` -> Configure.
-- This is currently the primary operator UX for quick input-function remapping (not a custom Lovelace panel yet).
+- This remains the canonical settings write path and is now intentionally kept simple.
 
 - Integration options (Configure on `Spectra LS`) now include:
-  - mapping preset (`media_default`, `scene_focus`, `target_navigation`, `custom`),
-  - encoder turn action,
-  - encoder press action,
-  - encoder long-press action,
-  - button 1–4 scene bindings,
-  - read-only mode toggle for rollout safety.
+  - **Single-step form:** read-only mode + mapping preset + encoder turn/press/long-press actions + button 1–4 scene bindings.
 - Recommended fast-remap workflow:
   1. choose a mapping preset,
-  2. save,
-  3. optionally switch to `custom` for per-input fine-tuning,
+  2. adjust any per-input actions/scenes you want,
+  3. save,
   4. confirm active mapping via `sensor.spectra_ls_control_center_readiness` attributes.
 - Scene bindings now use scene-aware selectors in options flow (instead of free-text only), and button-1 quick-trigger defaults are pre-suggested when scenes are discoverable.
 - Service path is also available for automation/operator workflows:

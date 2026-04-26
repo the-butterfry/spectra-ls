@@ -1,6 +1,6 @@
 # Description: Spectra LS OLED-only peripherals package (no LED rings) for Control Board v2.
-# Version: 2026.04.21.22
-# Last updated: 2026-04-21
+# Version: 2026.04.22.1
+# Last updated: 2026-04-22
 # Update version/date whenever you change this file.
 esphome:
   name: ${device_name}
@@ -1168,6 +1168,8 @@ display:
       static std::vector<std::string> room_opts;
       static std::string meta_opts_raw;
       static std::vector<std::string> meta_opts;
+      static std::string control_target_label_opts_raw;
+      static std::vector<std::string> control_target_label_opts;
 
       auto pick_best_options_raw = [&](const std::string &primary_raw, const std::string &secondary_raw) {
         const auto primary = parse_options(primary_raw);
@@ -1210,6 +1212,14 @@ display:
       if (meta_opts_state != meta_opts_raw) {
         meta_opts_raw = meta_opts_state;
         meta_opts = parse_options(meta_opts_raw);
+      }
+      std::string control_target_label_opts_state;
+      if (id(ha_control_target_labels).has_state()) {
+        control_target_label_opts_state = id(ha_control_target_labels).state.c_str();
+      }
+      if (control_target_label_opts_state != control_target_label_opts_raw) {
+        control_target_label_opts_raw = control_target_label_opts_state;
+        control_target_label_opts = parse_options(control_target_label_opts_raw);
       }
       auto pick_room_label = [&](int idx, const std::string &fallback) -> std::string {
         if (idx >= 0 && idx < (int) room_opts.size() && !room_opts[idx].empty()) {
@@ -1536,7 +1546,16 @@ display:
         }
         meta_dynamic.push_back("Back");
 
+        std::vector<std::string> control_target_dynamic;
+        if (!control_target_label_opts.empty()) {
+          for (auto &label : control_target_label_opts) control_target_dynamic.push_back(label);
+        } else {
+          control_target_dynamic.push_back("No targets (HA)");
+        }
+        control_target_dynamic.push_back("Back");
+
         std::vector<std::string> gear_dynamic;
+        gear_dynamic.push_back("Control Target");
         gear_dynamic.push_back("Meta Select");
         gear_dynamic.push_back("Back");
         const char **items = menu_main;
@@ -1560,6 +1579,11 @@ display:
         }
         else if (menu_level_render == ${menu_level_meta_select}) {
           dynamic_items = meta_dynamic;
+          count = (int) dynamic_items.size();
+          use_dynamic_list = true;
+        }
+        else if (menu_level_render == ${menu_level_control_target_select}) {
+          dynamic_items = control_target_dynamic;
           count = (int) dynamic_items.size();
           use_dynamic_list = true;
         }
@@ -1748,6 +1772,46 @@ display:
             it.printf(0, h - menu_h, id(font_menu), "${menu_debug_label}");
           }
           log_loop_section("menu_meta", section_start_ms);
+          return;
+        }
+        if (menu_level_render == ${menu_level_control_target_select}) {
+          it.printf(w / 2, 0, id(font_menu), COLOR_ON, TextAlign::TOP_CENTER, "Control Target");
+          const int list_h = ${menu_line_height_list};
+          const int highlight_extra = 3;
+          bool needs_wrap = false;
+          for (auto &item : dynamic_items) {
+            if (needs_wrap_two_lines(id(font_menu), item, 0)) {
+              needs_wrap = true;
+              break;
+            }
+          }
+          const int row_h = needs_wrap ? ((list_h * 2) + highlight_extra) : (list_h + highlight_extra);
+          const int list_step = row_h;
+          const int list_pad = ${menu_line_height};
+          int max_visible = (h - list_pad - row_h) / list_step + 1;
+          if (max_visible < 1) max_visible = 1;
+          int start = 0;
+          if (count > max_visible) {
+            if (idx >= start + max_visible) start = idx - max_visible + 1;
+            if (idx < start) start = idx;
+            if (start > (count - max_visible)) start = count - max_visible;
+            if (start < 0) start = 0;
+          }
+          int row = 0;
+          for (int i = start; i < count && row < max_visible; i++, row++) {
+            const int y = list_pad + (row * list_step);
+            std::string label = dynamic_items[i];
+            if (i == idx) {
+              it.filled_rectangle(0, y, w, row_h, COLOR_ON);
+              draw_center_wrapped(id(font_menu), list_h, y + 1, row_h - 1, label, COLOR_OFF, 0);
+            } else {
+              draw_center_wrapped(id(font_menu), list_h, y + 1, row_h - 1, label, COLOR_ON, 0);
+            }
+          }
+          if (${menu_debug}) {
+            it.printf(0, h - menu_h, id(font_menu), "${menu_debug_label}");
+          }
+          log_loop_section("menu_control_target", section_start_ms);
           return;
         }
         const int list_h = ${menu_line_height_list};

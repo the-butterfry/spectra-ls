@@ -1,6 +1,6 @@
 # Description: Data coordinator for Spectra LS parity diagnostics, Phase 3 guarded routing write-path controls, Phase 4 diagnostics scaffolding (F4-S01/F4-S03), Phase 5 metadata trial contract auditing, and Phase 6/8 control-center settings, fast-remap, and execution visibility.
-# Version: 2026.04.22.26
-# Last updated: 2026-04-22
+# Version: 2026.04.23.1
+# Last updated: 2026-04-23
 
 from __future__ import annotations
 
@@ -403,6 +403,61 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "required_automation_ids": required_automation_ids,
                 "missing_automation_ids": missing_automation_ids,
             },
+        }
+
+    def _build_route_safety_validation(
+        self,
+        *,
+        parity: dict[str, Any],
+        route_trace: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Build explicit route-safety diagnostics for active-target binding + fail-closed host posture."""
+        active_target = str(parity.get("active_target", "") or "").strip()
+        control_hosts = str(parity.get("control_hosts", "") or "").strip()
+        route_decision = str(route_trace.get("decision", "") or "").strip()
+
+        selected_target = route_trace.get("selected_target", {})
+        selected_target = selected_target if isinstance(selected_target, dict) else {}
+        selected_target_id = str(selected_target.get("target", "") or "").strip()
+        selected_target_host = str(selected_target.get("host", "") or "").strip()
+
+        active_target_resolved = self._is_resolved_state(active_target)
+        control_hosts_resolved = self._is_resolved_state(control_hosts)
+        selected_target_matches_active = (
+            active_target_resolved
+            and self._is_resolved_state(selected_target_id)
+            and selected_target_id == active_target
+        )
+        selected_target_host_resolved = self._is_resolved_state(selected_target_host)
+
+        blocking_reasons: list[str] = []
+        if active_target_resolved and not selected_target_matches_active:
+            blocking_reasons.append("selected_target_mismatch")
+        if route_decision == "route_linkplay_tcp" and not selected_target_host_resolved:
+            blocking_reasons.append("selected_target_host_unresolved")
+        if not control_hosts_resolved:
+            blocking_reasons.append("control_hosts_unresolved")
+
+        verdict = "PASS"
+        if "selected_target_mismatch" in blocking_reasons:
+            verdict = "FAIL"
+        elif "selected_target_host_unresolved" in blocking_reasons:
+            verdict = "WARN"
+
+        return {
+            "verdict": verdict,
+            "route_decision": route_decision,
+            "active_target": active_target,
+            "selected_target": selected_target_id,
+            "selected_target_host": selected_target_host,
+            "ready_for_cutover": verdict == "PASS" and selected_target_host_resolved,
+            "checks": {
+                "active_target_resolved": active_target_resolved,
+                "selected_target_matches_active": selected_target_matches_active,
+                "selected_target_host_resolved": selected_target_host_resolved,
+                "control_hosts_resolved": control_hosts_resolved,
+            },
+            "blocking_reasons": blocking_reasons,
         }
 
     @staticmethod
@@ -1103,6 +1158,10 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             route_trace=route_trace,
             contract_validation=contract_validation,
         )
+        route_safety_validation = self._build_route_safety_validation(
+            parity=parity,
+            route_trace=route_trace,
+        )
         metadata_prep_validation = self._build_metadata_prep_validation(
             route_trace=route_trace,
             contract_validation=contract_validation,
@@ -1133,6 +1192,7 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "route_trace": route_trace,
             "contract_validation": contract_validation,
             "selection_handoff_validation": selection_handoff_validation,
+            "route_safety_validation": route_safety_validation,
             "metadata_prep_validation": metadata_prep_validation,
             "capability_profile_validation": capability_profile_validation,
             "action_catalog_validation": action_catalog_validation,

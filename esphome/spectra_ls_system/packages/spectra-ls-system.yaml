@@ -1,6 +1,6 @@
 # Description: Spectra LS core state + globals + system intervals + shared scripts.
-# Version: 2026.04.21.1
-# Last updated: 2026-04-21
+# Version: 2026.04.23.2
+# Last updated: 2026-04-23
 # Update version/date whenever you change this file.
 #
 # Sections:
@@ -199,6 +199,10 @@ globals:
     type: std::string
     restore_value: no
     initial_value: '"${arylic_http_scheme}"'
+  - id: arylic_http_host_active
+    type: std::string
+    restore_value: no
+    initial_value: '""'
   - id: arylic_http_port_active
     type: int
     restore_value: no
@@ -226,11 +230,11 @@ globals:
   - id: arylic_control_host
     type: std::string
     restore_value: no
-    initial_value: '"${arylic_tcp_host}"'
+    initial_value: '""'
   - id: arylic_control_hosts
     type: std::string
     restore_value: no
-    initial_value: '"${arylic_tcp_host}"'
+    initial_value: '""'
   - id: arylic_control_port
     type: int
     restore_value: no
@@ -1093,6 +1097,39 @@ http_request:
   timeout: 1s
   verify_ssl: false
 
+text_sensor:
+  - platform: template
+    name: "Arylic HTTP Transport"
+    id: arylic_http_transport
+    internal: false
+    update_interval: 10s
+    lambda: |-
+      std::string scheme = id(arylic_http_scheme_active);
+      std::string host = id(arylic_http_host_active);
+      int port = id(arylic_http_port_active);
+      auto clean = [](std::string value) {
+        for (auto &c : value) c = (char) ::tolower(c);
+        return value;
+      };
+      std::string low_scheme = clean(scheme);
+      std::string low_host = clean(host);
+      if (scheme.empty() || host.empty()) return std::string("unknown");
+      if (low_scheme == "unknown" || low_scheme == "unavailable" || low_scheme == "none") return std::string("unknown");
+      if (low_host == "unknown" || low_host == "unavailable" || low_host == "none") return std::string("unknown");
+      if (port <= 0 || port > 65534) return std::string("unknown");
+      return scheme + "://" + host + ":" + std::to_string(port);
+  - platform: template
+    name: "Arylic HTTP Scheme"
+    id: arylic_http_scheme
+    internal: false
+    update_interval: 10s
+    lambda: |-
+      std::string scheme = id(arylic_http_scheme_active);
+      std::string low = scheme;
+      for (auto &c : low) c = (char) ::tolower(c);
+      if (low == "http" || low == "https") return low;
+      return std::string("unknown");
+
 # === System intervals ===
 interval:
   - interval: ${arylic_http_poll_ms}ms
@@ -1109,14 +1146,59 @@ interval:
                     if (!http_enabled) return false;
                     if (id(arylic_http_inflight)) return false;
                     if (id(arylic_http_pause_until_ms) > now) return false;
+
+                    auto clean = [](std::string value) -> std::string {
+                      size_t start = value.find_first_not_of(" \t");
+                      size_t end = value.find_last_not_of(" \t");
+                      if (start == std::string::npos || end == std::string::npos) return std::string();
+                      value = value.substr(start, end - start + 1);
+                      std::string low = value;
+                      for (auto &c : low) c = (char) ::tolower(c);
+                      if (low.empty() || low == "unknown" || low == "unavailable" || low == "none" || low == "null") {
+                        return std::string();
+                      }
+                      return value;
+                    };
+
+                    auto first_csv = [&](const std::string &csv) -> std::string {
+                      if (csv.empty()) return std::string();
+                      size_t comma = csv.find(',');
+                      if (comma == std::string::npos) return clean(csv);
+                      return clean(csv.substr(0, comma));
+                    };
+
+                    std::string probe_host = clean(id(arylic_control_host));
+                    if (probe_host.empty()) {
+                      probe_host = first_csv(id(arylic_control_hosts));
+                    }
+                    if (probe_host.empty()) {
+                      probe_host = clean("${arylic_http_host}");
+                    }
+                    if (probe_host.empty()) {
+                      return false;
+                    }
+
+                    if (probe_host != id(arylic_http_host_active)) {
+                      id(arylic_http_host_active) = probe_host;
+                      id(arylic_http_scheme_active) = "${arylic_http_scheme}";
+                      id(arylic_http_port_active) = ${arylic_http_port};
+                      id(arylic_http_fail_count) = 0;
+                      id(arylic_http_pause_until_ms) = 0;
+                      ESP_LOGI("arylic_http", "probe host switched -> %s (start %s:%d)",
+                               id(arylic_http_host_active).c_str(),
+                               id(arylic_http_scheme_active).c_str(),
+                               id(arylic_http_port_active));
+                    }
+
                     id(arylic_http_inflight) = true;
                     return true;
                 then:
                   - http_request.get:
                       url: !lambda |-
+                        if (id(arylic_http_host_active).empty()) id(arylic_http_host_active) = "${arylic_http_host}";
                         if (id(arylic_http_scheme_active).empty()) id(arylic_http_scheme_active) = "${arylic_http_scheme}";
                         if (id(arylic_http_port_active) <= 0) id(arylic_http_port_active) = ${arylic_http_port};
-                        const std::string url = id(arylic_http_scheme_active) + "://${arylic_http_host}:" +
+                        const std::string url = id(arylic_http_scheme_active) + "://" + id(arylic_http_host_active) + ":" +
                                                 std::to_string(id(arylic_http_port_active)) +
                                                 "/httpapi.asp?command=getPlayerStatus";
                         return url;
@@ -1137,14 +1219,14 @@ interval:
                                   id(arylic_http_fail_count) = 0;
                                   id(arylic_http_pause_until_ms) = millis() + 1000;
                                   ESP_LOGW("arylic_http", "probe fallback switch host=%s -> %s:%d",
-                                           "${arylic_http_host}",
+                                           id(arylic_http_host_active).c_str(),
                                            id(arylic_http_scheme_active).c_str(),
                                            id(arylic_http_port_active));
                                   return;
                                 }
                                 ESP_LOGW("arylic_http", "getPlayerStatus http=%d host=%s scheme=%s port=%s (backoff %ums, fail=%d)",
                                          response->status_code,
-                                         "${arylic_http_host}", id(arylic_http_scheme_active).c_str(), std::to_string(id(arylic_http_port_active)).c_str(),
+                                         id(arylic_http_host_active).c_str(), id(arylic_http_scheme_active).c_str(), std::to_string(id(arylic_http_port_active)).c_str(),
                                          (unsigned) backoff_ms, fails);
                                 return;
                               }
@@ -1279,13 +1361,16 @@ interval:
                               if (should_log) {
                                 id(arylic_http_last_log_ms) = now_ms;
                                 ESP_LOGI("arylic_http",
-                                         "status=%s src=%s vol=%d mute=%d pos=%d/%d title='%s' artist='%s' album='%s'",
+                                         "status=%s src=%s vol=%d mute=%d pos=%d/%d transport=%s://%s:%d title='%s' artist='%s' album='%s'",
                                          status.empty() ? "" : status.c_str(),
                                          src.c_str(),
                                          vol,
                                          mute,
                                          curpos,
                                          totlen,
+                                         id(arylic_http_scheme_active).c_str(),
+                                         id(arylic_http_host_active).c_str(),
+                                         id(arylic_http_port_active),
                                          title.c_str(),
                                          artist.c_str(),
                                          album.c_str());
@@ -1330,13 +1415,13 @@ interval:
                                 id(arylic_http_fail_count) = 0;
                                 id(arylic_http_pause_until_ms) = millis() + 1000;
                                 ESP_LOGW("arylic_http", "probe fallback switch host=%s -> %s:%d",
-                                         "${arylic_http_host}",
+                                         id(arylic_http_host_active).c_str(),
                                          id(arylic_http_scheme_active).c_str(),
                                          id(arylic_http_port_active));
                                 return;
                               }
                               ESP_LOGW("arylic_http", "getPlayerStatus error host=%s scheme=%s port=%s (backoff %ums, fail=%d)",
-                                       "${arylic_http_host}", id(arylic_http_scheme_active).c_str(), std::to_string(id(arylic_http_port_active)).c_str(),
+                                       id(arylic_http_host_active).c_str(), id(arylic_http_scheme_active).c_str(), std::to_string(id(arylic_http_port_active)).c_str(),
                                        (unsigned) backoff_ms, fails);
 
   - interval: ${arylic_lr_http_poll_ms}ms
@@ -1499,13 +1584,16 @@ interval:
                               if (should_log) {
                                 id(arylic_http_last_log_ms) = now_ms;
                                 ESP_LOGI("arylic_lr",
-                                         "status=%s src=%s vol=%d mute=%d pos=%d/%d title='%s' artist='%s' album='%s'",
+                                         "status=%s src=%s vol=%d mute=%d pos=%d/%d transport=%s://%s:%d title='%s' artist='%s' album='%s'",
                                          status.empty() ? "" : status.c_str(),
                                          src.c_str(),
                                          vol,
                                          mute,
                                          curpos,
                                          totlen,
+                                         id(arylic_lr_http_scheme_active).c_str(),
+                                         "${arylic_lr_http_host}",
+                                         id(arylic_lr_http_port_active),
                                          title.c_str(),
                                          artist.c_str(),
                                          album.c_str());

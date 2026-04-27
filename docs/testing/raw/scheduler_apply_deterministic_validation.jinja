@@ -1,0 +1,604 @@
+{# Description: Raw copy/paste Jinja template for deterministic scheduler-apply validation (decision + guarded apply + handoff inventory) with explicit MA boot-wait guidance, component-shadow entity preference hardening, contract-invalid/no-candidate operator guidance, live decision-source fallback when last scheduler decision is never_attempted, control-capable helper-fallback eligibility alignment, runtime control-expected reason visibility, stable-helper/no-candidate action clarification, hotspot-triage diagnostics surfaces, core-health weighted verdict scoring, and additive MA-players refresh/capability-feed checks. #}
+{# Version: 2026.04.27.43 #}
+{# Last updated: 2026-04-27 #}
+
+{# =========================
+  Scheduler Apply Deterministic Validation (Component)
+  Purpose:
+    - Validate scheduler readiness + decision/apply audit payloads.
+    - Confirm helper membership/authority/debounce guard posture.
+    - Surface legacy-only handoff dependency scaffold status.
+  Usage:
+    1) Optional prep actions in this order:
+       - spectra_ls.validate_scheduler
+       - spectra_ls.run_scheduler_choice
+       - spectra_ls.apply_scheduler_choice (dry_run true first)
+       - spectra_ls.run_metadata_trial_bridge_scaffold (for resolver/trial alignment)
+    2) Paste in Developer Tools -> Template.
+    3) Use PASS/WARN/FAIL output to classify readiness and blockers.
+  ========================= #}
+
+{% set invalid = ['', 'none', 'unknown', 'unavailable', 'None', none] %}
+
+{% set component_shadow_entity = 'sensor.shadow_active_target' %}
+{% set legacy_shadow_entity = 'sensor.spectra_ls_shadow_active_target' %}
+{% set component_shadow_exists = states[component_shadow_entity] is not none %}
+{% set legacy_shadow_exists = states[legacy_shadow_entity] is not none %}
+
+{% set shadow_entity = component_shadow_entity if component_shadow_exists else legacy_shadow_entity %}
+{% set shadow_selection_reason = 'component_preferred' if component_shadow_exists else 'legacy_fallback_component_missing' %}
+{% if component_shadow_exists and legacy_shadow_exists %}
+  {% set component_write_controls = state_attr(component_shadow_entity, 'write_controls') %}
+  {% set legacy_write_controls = state_attr(legacy_shadow_entity, 'write_controls') %}
+  {% if component_write_controls is not mapping and legacy_write_controls is mapping %}
+    {% set shadow_entity = legacy_shadow_entity %}
+    {% set shadow_selection_reason = 'compat_fallback_component_write_controls_missing' %}
+  {% elif component_write_controls is mapping %}
+    {% set shadow_selection_reason = 'component_preferred_write_controls_present' %}
+  {% endif %}
+{% endif %}
+{% set shadow_exists = states[shadow_entity] is not none %}
+
+{% set write_controls = state_attr(shadow_entity, 'write_controls') if shadow_exists else {} %}
+{% if write_controls is not mapping %}{% set write_controls = {} %}{% endif %}
+
+{% set scheduler_validation = state_attr(shadow_entity, 'scheduler_validation') if shadow_exists else {} %}
+{% if scheduler_validation is not mapping %}{% set scheduler_validation = {} %}{% endif %}
+
+{% set handoff_inventory = state_attr(shadow_entity, 'handoff_inventory') if shadow_exists else {} %}
+{% if handoff_inventory is not mapping %}{% set handoff_inventory = {} %}{% endif %}
+
+{% set metadata_bridge_validation = state_attr(shadow_entity, 'metadata_bridge_validation') if shadow_exists else {} %}
+{% if metadata_bridge_validation is not mapping %}{% set metadata_bridge_validation = {} %}{% endif %}
+
+{% set contract_validation = state_attr(shadow_entity, 'contract_validation') if shadow_exists else {} %}
+{% if contract_validation is not mapping %}{% set contract_validation = {} %}{% endif %}
+
+{% set metadata_prep_validation = state_attr(shadow_entity, 'metadata_prep_validation') if shadow_exists else {} %}
+{% if metadata_prep_validation is not mapping %}{% set metadata_prep_validation = {} %}{% endif %}
+
+{% set route_trace = state_attr(shadow_entity, 'route_trace') if shadow_exists else {} %}
+{% if route_trace is not mapping %}{% set route_trace = {} %}{% endif %}
+
+{% set registry = state_attr(shadow_entity, 'registry') if shadow_exists else {} %}
+{% if registry is not mapping %}{% set registry = {} %}{% endif %}
+{% set registry_entries = (registry.entries if registry.entries is defined and registry.entries is mapping else {}) %}
+
+{% set scheduler_decision = write_controls.scheduler_last_decision if write_controls.scheduler_last_decision is defined else {} %}
+{% if scheduler_decision is not mapping %}{% set scheduler_decision = {} %}{% endif %}
+{% set decision_source = 'scheduler_last_decision' %}
+{% set scheduler_default_decision = scheduler_validation.default_decision if scheduler_validation.default_decision is defined and scheduler_validation.default_decision is mapping else {} %}
+{% set scheduler_last_status = (scheduler_decision.status if scheduler_decision.status is defined else '') %}
+{% set scheduler_last_selected = (scheduler_decision.selected_target if scheduler_decision.selected_target is defined else '') %}
+{% set use_default_decision = scheduler_last_status in ['never_attempted', ''] or scheduler_last_selected in invalid %}
+{% if use_default_decision and scheduler_default_decision is mapping and scheduler_default_decision | length > 0 %}
+  {% set scheduler_decision = scheduler_default_decision %}
+  {% set decision_source = 'scheduler_validation.default_decision' %}
+{% endif %}
+{% set scheduler_decision_reason = (scheduler_decision.reason if scheduler_decision.reason is defined else 'n/a') %}
+
+{% set scheduler_apply = write_controls.scheduler_last_apply if write_controls.scheduler_last_apply is defined else {} %}
+{% if scheduler_apply is not mapping %}{% set scheduler_apply = {} %}{% endif %}
+
+{% set target_options_attempt = write_controls.target_options_last_attempt if write_controls.target_options_last_attempt is defined else {} %}
+{% if target_options_attempt is not mapping %}{% set target_options_attempt = {} %}{% endif %}
+
+{% set auto_select_attempt = write_controls.auto_select_last_attempt if write_controls.auto_select_last_attempt is defined else {} %}
+{% if auto_select_attempt is not mapping %}{% set auto_select_attempt = {} %}{% endif %}
+
+{% set metadata_resolver_attempt = write_controls.metadata_resolver_last_attempt if write_controls.metadata_resolver_last_attempt is defined else {} %}
+{% if metadata_resolver_attempt is not mapping %}{% set metadata_resolver_attempt = {} %}{% endif %}
+
+{% set metadata_bridge_attempt = write_controls.metadata_bridge_last_attempt if write_controls.metadata_bridge_last_attempt is defined else {} %}
+{% if metadata_bridge_attempt is not mapping %}{% set metadata_bridge_attempt = {} %}{% endif %}
+
+{% set authority_mode = (write_controls.authority_mode if write_controls.authority_mode is defined else '') %}
+{% set helper_entity = 'input_select.ma_active_target' %}
+{% set helper_exists = states[helper_entity] is not none %}
+{% set helper_state = states(helper_entity) if helper_exists else 'missing' %}
+{% set helper_options = state_attr(helper_entity, 'options') if helper_exists else [] %}
+{% if helper_options is not sequence or helper_options is string %}{% set helper_options = [] %}{% endif %}
+
+{% set selected_target = (scheduler_decision.selected_target if scheduler_decision.selected_target is defined else '') %}
+{% set apply_target = (scheduler_apply.selected_target if scheduler_apply.selected_target is defined else '') %}
+{% set apply_status = (scheduler_apply.status if scheduler_apply.status is defined else 'never_attempted') %}
+{% set apply_reason = (scheduler_apply.reason if scheduler_apply.reason is defined else 'no apply attempts captured') %}
+{% set apply_dry_run = (scheduler_apply.dry_run if scheduler_apply.dry_run is defined else true) %}
+{% set apply_force = (scheduler_apply.force if scheduler_apply.force is defined else false) %}
+
+{% set validation_verdict = (scheduler_validation.verdict if scheduler_validation.verdict is defined else 'missing') %}
+{% set scheduler_ready = (scheduler_validation.ready_for_scheduler_use if scheduler_validation.ready_for_scheduler_use is defined else false) %}
+{% set candidate_count = (scheduler_decision.candidate_count if scheduler_decision.candidate_count is defined else 0) %}
+{% set ranked = (scheduler_decision.ranked_candidates if scheduler_decision.ranked_candidates is defined and scheduler_decision.ranked_candidates is sequence and scheduler_decision.ranked_candidates is not string else []) %}
+{% set bridge_verdict = (metadata_bridge_validation.verdict if metadata_bridge_validation.verdict is defined else 'missing') %}
+{% set bridge_ready = (metadata_bridge_validation.ready_for_bridge if metadata_bridge_validation.ready_for_bridge is defined else false) %}
+{% set scheduler_waiting_for_ma_boot = (scheduler_validation.waiting_for_ma_boot if scheduler_validation.waiting_for_ma_boot is defined else false) %}
+{% set scheduler_wait_reason = (scheduler_validation.ma_boot_wait_reason if scheduler_validation.ma_boot_wait_reason is defined else '') %}
+{% set scheduler_blocking_reasons = (scheduler_validation.blocking_reasons if scheduler_validation.blocking_reasons is defined and scheduler_validation.blocking_reasons is sequence and scheduler_validation.blocking_reasons is not string else []) %}
+{% set bridge_waiting_for_ma_boot = (metadata_bridge_validation.waiting_for_ma_boot if metadata_bridge_validation.waiting_for_ma_boot is defined else false) or (metadata_bridge_attempt.status is defined and metadata_bridge_attempt.status == 'waiting_for_ma_boot') %}
+{% set bridge_wait_reason = (metadata_bridge_validation.ma_boot_wait_reason if metadata_bridge_validation.ma_boot_wait_reason is defined else (metadata_bridge_attempt.reason if metadata_bridge_attempt.reason is defined else '')) %}
+{% set auto_select_status = (auto_select_attempt.status if auto_select_attempt.status is defined else 'never_attempted') %}
+{% set auto_select_selected_target = (auto_select_attempt.selected_target if auto_select_attempt.selected_target is defined else '') %}
+
+{% set no_control_capable_state = states('binary_sensor.ma_no_control_capable_hosts') %}
+{% set no_control_capable_reason = state_attr('binary_sensor.ma_no_control_capable_hosts','reason') %}
+
+{% set esp_handoff_entity = 'sensor.spectra_ls_system_esp_control_handoff_status' %}
+{% set esp_target_entity = 'sensor.spectra_ls_system_esp_control_target' %}
+{% set esp_oled_entity = 'sensor.spectra_ls_system_esp_oled_status' %}
+{% set esp_handoff_raw = states(esp_handoff_entity) %}
+{% set esp_target_raw = states(esp_target_entity) %}
+{% set esp_oled_raw = states(esp_oled_entity) %}
+{% set esp_handoff_available = esp_handoff_raw not in invalid %}
+{% set esp_target_available = esp_target_raw not in invalid %}
+{% set esp_oled_available = esp_oled_raw not in invalid %}
+{% set esp_telemetry_available = esp_handoff_available or esp_target_available or esp_oled_available %}
+{% set runtime_control_host = states('sensor.ma_control_host') %}
+{% set runtime_control_hosts = states('sensor.ma_control_hosts') %}
+{% set runtime_active_friendly = states('sensor.ma_active_friendly') %}
+{% set runtime_active_source = states('sensor.ma_active_source') %}
+{% set runtime_active_app = states('sensor.ma_active_app') %}
+{% set now_playing_entity = states('sensor.now_playing_entity') %}
+{% set active_meta_entity = states('sensor.ma_active_meta_entity') %}
+{% set by_host_entity = states('sensor.ma_active_target_by_host') %}
+
+{% set esp_handoff_status = esp_handoff_raw if esp_handoff_available else '' %}
+{% if esp_handoff_status in invalid %}
+  {% if helper_state in invalid %}
+    {% set esp_handoff_status = 'no_target' %}
+  {% elif runtime_control_host not in invalid or runtime_control_hosts not in invalid %}
+    {% set esp_handoff_status = 'ready' %}
+  {% else %}
+    {% set esp_handoff_status = 'no_host' %}
+  {% endif %}
+{% endif %}
+
+{% set esp_target_status = esp_target_raw if esp_target_available else '' %}
+{% if esp_target_status in invalid %}
+  {% if runtime_active_friendly not in invalid %}
+    {% set esp_target_status = runtime_active_friendly %}
+  {% elif helper_state not in invalid %}
+    {% set esp_target_status = helper_state %}
+  {% else %}
+    {% set esp_target_status = 'none' %}
+  {% endif %}
+{% endif %}
+
+{% set esp_oled_status = esp_oled_raw if esp_oled_available else 'not_exposed' %}
+{% set esp_oled_title = (esp_oled_status.split('audio|oled:', 1)[1] if esp_oled_status is string and esp_oled_status.startswith('audio|oled:') else '') %}
+
+{% set now_playing_song = states('sensor.now_playing_title') %}
+{% set now_playing_album = states('sensor.now_playing_album') %}
+{% set now_playing_artist = states('sensor.now_playing_artist') %}
+
+{% set meta_stale_s = states('input_number.ma_meta_stale_s') | float(45) %}
+{% set now_playing_state_raw = states('sensor.now_playing_state') %}
+{% set now_playing_state_norm = now_playing_state_raw | lower %}
+{% set np_entity_for_freshness = now_playing_entity if now_playing_entity not in invalid and states[now_playing_entity] is not none else '' %}
+{% set np_pos_updated = state_attr(np_entity_for_freshness, 'media_position_updated_at') if np_entity_for_freshness not in invalid else none %}
+{% set np_pos_ts = as_timestamp(np_pos_updated) if np_pos_updated not in invalid else none %}
+{% set np_pos_age_s = (as_timestamp(now()) - np_pos_ts) if np_pos_ts is not none else none %}
+{% set np_recent_progress = np_pos_age_s is not none and np_pos_age_s <= meta_stale_s %}
+{% set np_play_state_attr = (state_attr(np_entity_for_freshness, 'play_state') | lower) if np_entity_for_freshness not in invalid else '' %}
+{% set np_is_playing_attr = state_attr(np_entity_for_freshness, 'is_playing') if np_entity_for_freshness not in invalid else none %}
+{% set np_is_paused_attr = state_attr(np_entity_for_freshness, 'is_paused') if np_entity_for_freshness not in invalid else none %}
+{% set np_playing_signal = now_playing_state_norm == 'playing' or np_play_state_attr in ['play', 'playing'] or np_is_playing_attr is true %}
+{% set np_paused_signal = now_playing_state_norm == 'paused' or np_play_state_attr in ['pause', 'paused'] or np_is_paused_attr is true %}
+{% set now_playing_fresh_signal = np_playing_signal or (np_paused_signal and np_recent_progress) %}
+
+{% set oled_song = now_playing_song if now_playing_fresh_signal and now_playing_song not in invalid else '-' %}
+{% set oled_album = now_playing_album if now_playing_fresh_signal and now_playing_album not in invalid else '-' %}
+{% set oled_artist = now_playing_artist if now_playing_fresh_signal and now_playing_artist not in invalid else '-' %}
+
+{% set helper_entry = (registry_entries[helper_state] if helper_state not in invalid and helper_state in registry_entries and registry_entries[helper_state] is mapping else {}) %}
+{% set helper_entry_control_capable = (helper_entry.control_capable if helper_entry.control_capable is defined else false) %}
+{% set helper_entry_host = (helper_entry.host if helper_entry.host is defined else '') %}
+{% set helper_entry_host_resolved = helper_entry_host not in invalid %}
+{% set helper_fallback_eligible = helper_entry is mapping and helper_entry | length > 0 and helper_entry_control_capable and helper_entry_host_resolved %}
+
+{% set source_entity = 'sensor.ma_active_source' %}
+{% set source_value = runtime_active_source if runtime_active_source not in invalid else '' %}
+{% set source_reason = 'ma_active_source' if source_value not in invalid else '' %}
+{% if source_value in invalid and now_playing_entity not in invalid and states[now_playing_entity] is not none %}
+  {% set np_source = state_attr(now_playing_entity, 'source') %}
+  {% if np_source not in invalid %}
+    {% set source_value = np_source %}
+    {% set source_entity = now_playing_entity %}
+    {% set source_reason = 'now_playing_entity.source' %}
+  {% endif %}
+{% endif %}
+{% if source_value in invalid and helper_state not in invalid and states[helper_state] is not none %}
+  {% set helper_source = state_attr(helper_state, 'source') %}
+  {% if helper_source not in invalid %}
+    {% set source_value = helper_source %}
+    {% set source_entity = helper_state %}
+    {% set source_reason = 'helper_target.source' %}
+  {% endif %}
+{% endif %}
+{% if source_value in invalid and active_meta_entity not in invalid and states[active_meta_entity] is not none %}
+  {% set meta_source = state_attr(active_meta_entity, 'source') %}
+  {% if meta_source not in invalid %}
+    {% set source_value = meta_source %}
+    {% set source_entity = active_meta_entity %}
+    {% set source_reason = 'active_meta_entity.source' %}
+  {% endif %}
+{% endif %}
+{% if source_value in invalid and runtime_active_app not in invalid %}
+  {% set source_value = runtime_active_app %}
+  {% set source_entity = 'sensor.ma_active_app' %}
+  {% set source_reason = 'ma_active_app_fallback' %}
+{% endif %}
+{% if source_value in invalid %}
+  {% set source_value = 'unresolved' %}
+  {% set source_entity = 'n/a' %}
+  {% set source_reason = 'no_resolved_source' %}
+{% endif %}
+
+{% set modality = source_value | lower %}
+{% set modality_class = 'other' %}
+{% if modality in ['airplay','airplay 2'] or 'airplay' in modality %}
+  {% set modality_class = 'airplay' %}
+{% elif modality in ['bluetooth'] or 'bluetooth' in modality %}
+  {% set modality_class = 'bluetooth' %}
+{% elif 'line' in modality and 'in' in modality %}
+  {% set modality_class = 'line_in' %}
+{% elif 'optical' in modality or 'spdif' in modality %}
+  {% set modality_class = 'optical' %}
+{% elif 'wifi' in modality or 'wi-fi' in modality or 'network' in modality or 'cast' in modality or 'stream' in modality %}
+  {% set modality_class = 'wifi_stream' %}
+{% endif %}
+
+{% set control_host_candidates = [] %}
+{% if helper_state not in invalid and states[helper_state] is not none %}
+  {% set control_host_candidates = control_host_candidates + [helper_state] %}
+{% endif %}
+{% if by_host_entity not in invalid and states[by_host_entity] is not none and by_host_entity not in control_host_candidates %}
+  {% set control_host_candidates = control_host_candidates + [by_host_entity] %}
+{% endif %}
+{% if now_playing_entity not in invalid and states[now_playing_entity] is not none and now_playing_entity not in control_host_candidates %}
+  {% set control_host_candidates = control_host_candidates + [now_playing_entity] %}
+{% endif %}
+{% if active_meta_entity not in invalid and states[active_meta_entity] is not none and active_meta_entity not in control_host_candidates %}
+  {% set control_host_candidates = control_host_candidates + [active_meta_entity] %}
+{% endif %}
+
+{% set ns_sources = namespace(values=[]) %}
+{% for ent in control_host_candidates %}
+  {% set list_raw = state_attr(ent, 'source_list') %}
+  {% if list_raw is sequence and list_raw is not string and list_raw is not mapping %}
+    {% for opt in list_raw %}
+      {% set opt_s = (opt | string | trim) %}
+      {% if opt_s not in invalid and opt_s not in ns_sources.values %}
+        {% set ns_sources.values = ns_sources.values + [opt_s] %}
+      {% endif %}
+    {% endfor %}
+  {% endif %}
+{% endfor %}
+{% set available_sources = ns_sources.values %}
+
+{% set modality_player = helper_state if helper_state not in invalid else (by_host_entity if by_host_entity not in invalid else (now_playing_entity if now_playing_entity not in invalid else 'unresolved')) %}
+
+{% set primary_source_options = [] %}
+{% if modality_player not in invalid and states[modality_player] is not none %}
+  {% set primary_raw = state_attr(modality_player, 'source_list') %}
+  {% if primary_raw is sequence and primary_raw is not string and primary_raw is not mapping %}
+    {% set ns_primary = namespace(values=[]) %}
+    {% for opt in primary_raw %}
+      {% set opt_s = (opt | string | trim) %}
+      {% if opt_s not in invalid and opt_s not in ns_primary.values %}
+        {% set ns_primary.values = ns_primary.values + [opt_s] %}
+      {% endif %}
+    {% endfor %}
+    {% set primary_source_options = ns_primary.values %}
+  {% endif %}
+{% endif %}
+
+{% set source_options_entity = modality_player if primary_source_options | length > 0 else 'union_fallback' %}
+{% set available_sources = primary_source_options if primary_source_options | length > 0 else available_sources %}
+
+{% if selected_target in invalid and scheduler_ready and helper_state not in invalid and helper_state in helper_options and helper_fallback_eligible %}
+  {% set selected_target = helper_state %}
+  {% set candidate_count = 1 if candidate_count | int(0) == 0 else candidate_count %}
+  {% if ranked | length == 0 %}
+    {% set ranked = [{'target': helper_state, 'score': 0.0, 'resolver_module': 'template_helper_current_fallback', 'host': helper_entry_host, 'control_capable': helper_entry_control_capable}] %}
+    {% set decision_source = 'template_helper_current_fallback' %}
+  {% endif %}
+{% endif %}
+
+{% set selected_in_options = selected_target not in invalid and selected_target in helper_options %}
+{% set apply_target_in_options = apply_target not in invalid and apply_target in helper_options %}
+{% set helper_matches_apply = apply_target not in invalid and helper_state == apply_target %}
+
+{% set route_decision = (scheduler_validation.route_decision if scheduler_validation.route_decision is defined else (route_trace.decision if route_trace.decision is defined else '')) %}
+{% set contract_missing_required = (contract_validation.missing_required if contract_validation.missing_required is defined and contract_validation.missing_required is sequence and contract_validation.missing_required is not string else []) %}
+{% set contract_unresolved_required = (contract_validation.unresolved_required if contract_validation.unresolved_required is defined and contract_validation.unresolved_required is sequence and contract_validation.unresolved_required is not string else []) %}
+{% set contract_soft_surface_warnings = (contract_validation.soft_surface_warnings if contract_validation.soft_surface_warnings is defined and contract_validation.soft_surface_warnings is sequence and contract_validation.soft_surface_warnings is not string else []) %}
+{% set metadata_prep_blocking_reasons = (metadata_prep_validation.blocking_reasons if metadata_prep_validation.blocking_reasons is defined and metadata_prep_validation.blocking_reasons is sequence and metadata_prep_validation.blocking_reasons is not string else []) %}
+{% set metadata_prep_verdict = (metadata_prep_validation.verdict if metadata_prep_validation.verdict is defined else 'missing') %}
+{% set registry_entry_count = registry_entries | count %}
+{% set top_candidate = (ranked[0] if ranked | length > 0 and ranked[0] is mapping else {}) %}
+
+{% set hotspot_score = 0 %}
+{% if selected_target in invalid %}{% set hotspot_score = hotspot_score + 1 %}{% endif %}
+{% if contract_missing_required | length > 0 or contract_unresolved_required | length > 0 %}{% set hotspot_score = hotspot_score + 1 %}{% endif %}
+{% if contract_soft_surface_warnings | length > 0 %}{% set hotspot_score = hotspot_score + 1 %}{% endif %}
+{% if metadata_prep_blocking_reasons | length > 0 %}{% set hotspot_score = hotspot_score + 1 %}{% endif %}
+{% if bridge_ready == false %}{% set hotspot_score = hotspot_score + 1 %}{% endif %}
+{% set hotspot_level = 'low' if hotspot_score <= 1 else ('medium' if hotspot_score <= 3 else 'high') %}
+
+{% set handoff_summary = handoff_inventory.summary if handoff_inventory.summary is defined and handoff_inventory.summary is mapping else {} %}
+{% set legacy_map = handoff_inventory.legacy_dependency_map if handoff_inventory.legacy_dependency_map is defined and handoff_inventory.legacy_dependency_map is sequence and handoff_inventory.legacy_dependency_map is not string else [] %}
+{% set component_scaffolds = handoff_inventory.component_scaffolds if handoff_inventory.component_scaffolds is defined and handoff_inventory.component_scaffolds is mapping else {} %}
+{% set target_options_plan = component_scaffolds.target_options_plan if component_scaffolds.target_options_plan is defined and component_scaffolds.target_options_plan is mapping else {} %}
+{% set registry_capability_targets = target_options_plan.registry_capability_targets if target_options_plan.registry_capability_targets is defined and target_options_plan.registry_capability_targets is sequence and target_options_plan.registry_capability_targets is not string else [] %}
+
+{% set target_options_corr = (target_options_attempt.correlation_id if target_options_attempt.correlation_id is defined else '') %}
+{% set auto_select_corr = (auto_select_attempt.correlation_id if auto_select_attempt.correlation_id is defined else '') %}
+{% set players_change_options_refresh_seen = target_options_corr is string and ('players-change-options-' in target_options_corr) %}
+{% set players_change_auto_select_seen = auto_select_corr is string and ('state-change:sensor.ma_players-auto-select' in auto_select_corr) %}
+{% set players_change_refresh_sequence_seen = players_change_options_refresh_seen and players_change_auto_select_seen %}
+
+{% set score = 0 %}
+{% set score_misses = namespace(items=[]) %}
+{% if shadow_exists %}{% set score = score + 1 %}{% endif %}
+{% if not shadow_exists %}{% set score_misses.items = score_misses.items + ['shadow_entity_missing'] %}{% endif %}
+{% if helper_exists %}{% set score = score + 1 %}{% endif %}
+{% if not helper_exists %}{% set score_misses.items = score_misses.items + ['helper_entity_missing'] %}{% endif %}
+{% if validation_verdict in ['PASS','WARN','FAIL'] %}{% set score = score + 1 %}{% endif %}
+{% if validation_verdict not in ['PASS','WARN','FAIL'] %}{% set score_misses.items = score_misses.items + ['validation_verdict_missing'] %}{% endif %}
+{% if candidate_count | int(0) >= 0 %}{% set score = score + 1 %}{% endif %}
+{% if selected_target not in invalid %}{% set score = score + 1 %}{% endif %}
+{% if selected_target in invalid %}{% set score_misses.items = score_misses.items + ['selected_target_unresolved'] %}{% endif %}
+{% if selected_in_options %}{% set score = score + 1 %}{% endif %}
+{% if not selected_in_options %}{% set score_misses.items = score_misses.items + ['selected_target_not_in_helper_options'] %}{% endif %}
+{% if authority_mode in ['legacy','component'] %}{% set score = score + 1 %}{% endif %}
+{% if authority_mode not in ['legacy','component'] %}{% set score_misses.items = score_misses.items + ['authority_mode_unknown'] %}{% endif %}
+{% if apply_status not in invalid %}{% set score = score + 1 %}{% endif %}
+{% if apply_status in invalid %}{% set score_misses.items = score_misses.items + ['apply_status_missing'] %}{% endif %}
+{% if legacy_map | length > 0 %}{% set score = score + 1 %}{% endif %}
+{% if legacy_map | length == 0 %}{% set score_misses.items = score_misses.items + ['handoff_legacy_map_empty'] %}{% endif %}
+{% if handoff_summary.total is defined %}{% set score = score + 1 %}{% endif %}
+{% if handoff_summary.total is not defined %}{% set score_misses.items = score_misses.items + ['handoff_summary_missing'] %}{% endif %}
+
+{% set core_health_ready = shadow_exists and helper_exists and scheduler_ready and validation_verdict == 'PASS' and selected_target not in invalid and selected_in_options %}
+{% set advisory_only_gap = score >= 8 and core_health_ready %}
+
+{% set verdict = 'PASS' if advisory_only_gap or (score >= 9 and scheduler_ready) else ('WARN' if score >= 7 else 'FAIL') %}
+{% set score_percent = ((score | int(0)) * 10) %}
+{% set score_bar_len = 16 %}
+{% set score_fill = (((score | int(0)) * score_bar_len) / 10) | round(0, 'floor') | int %}
+{% set score_empty = score_bar_len - score_fill %}
+{% set score_bar = ('#' * score_fill) ~ ('-' * score_empty) %}
+{% set target_short = (selected_target.split('.')[-1] if selected_target not in invalid and '.' in selected_target else (selected_target if selected_target not in invalid else 'none')) %}
+{% set route_short = (route_decision if route_decision not in invalid else 'missing') %}
+{% set host_short = (runtime_control_host if runtime_control_host not in invalid else (top_candidate.host if top_candidate is mapping and top_candidate.host is defined and top_candidate.host not in invalid else 'none')) %}
+{% set next_hint = 'WAIT_MA' if (scheduler_waiting_for_ma_boot or bridge_waiting_for_ma_boot) else ('FIX_HOST' if (esp_handoff_status in ['pending_refresh','no_host']) else ('RUN_BRIDGE' if (metadata_bridge_validation.verdict is defined and metadata_bridge_validation.verdict != 'PASS') else ('READY' if (validation_verdict == 'PASS' and scheduler_ready and bridge_ready and selected_in_options) else 'CHECK_WARNS'))) %}
+
+{% set control_host_blocker = 'NONE' %}
+{% set control_host_blocker_reason = 'ESP control host path is healthy for this snapshot' %}
+{% if scheduler_waiting_for_ma_boot or bridge_waiting_for_ma_boot %}
+  {% set control_host_blocker = 'WAITING_FOR_MA_BOOT' %}
+  {% set control_host_blocker_reason = 'Music Assistant startup surfaces are not fully ready yet' %}
+{% elif esp_handoff_status in ['pending_refresh', 'no_host'] %}
+  {% if authority_mode != 'component' and helper_state not in invalid and selected_target not in invalid and helper_state != selected_target %}
+    {% set control_host_blocker = 'LEGACY_AUTHORITY_TARGET_MISMATCH' %}
+    {% set control_host_blocker_reason = 'Authority is legacy and helper-selected target differs from scheduler-selected target' %}
+  {% elif helper_state in invalid %}
+    {% set control_host_blocker = 'HELPER_TARGET_UNRESOLVED' %}
+    {% set control_host_blocker_reason = 'input_select.ma_active_target is unresolved, so host handoff cannot bind a target' %}
+  {% elif runtime_control_host in invalid and runtime_control_hosts in invalid %}
+    {% set control_host_blocker = 'CONTROL_HOST_UNRESOLVED' %}
+    {% set control_host_blocker_reason = 'sensor.ma_control_host and sensor.ma_control_hosts are unresolved' %}
+  {% else %}
+    {% set control_host_blocker = 'ESP_HANDOFF_NOT_READY' %}
+    {% set control_host_blocker_reason = 'ESP handoff status is not ready; host propagation still pending' %}
+  {% endif %}
+{% endif %}
+
+{% macro oled_row(value) -%}
+  {%- set s = (value | string) -%}
+  {%- if s | length > 32 -%}
+    {{ s[:32] }}
+  {%- else -%}
+    {{ '%-32s' | format(s) }}
+  {%- endif -%}
+{%- endmacro %}
+
+### Scheduler Apply Deterministic Validation
+- Result: **{{ verdict }}**
+- Score: **{{ score }}/10**
+- Core health ready: **{{ core_health_ready }}**
+- Score gaps: **{{ score_misses.items if score_misses.items | length > 0 else [] }}**
+- Timestamp: **{{ now() }}**
+
+### ESP Control Host Diagnostics (grouped)
+```text
+[STATE]
+RESULT / SCORE       : {{ verdict }} / {{ score }}/10
+CONTROL HOST BLOCKER : {{ control_host_blocker }}
+BLOCKER REASON       : {{ control_host_blocker_reason }}
+ESP HANDOFF STATUS   : {{ esp_handoff_status }}
+NEXT HINT            : {{ next_hint }}
+
+[CONTROL PATH]
+AUTHORITY MODE       : {{ authority_mode if authority_mode not in invalid else 'unknown' }}
+HELPER TARGET        : {{ helper_state }}
+SCHEDULER TARGET     : {{ selected_target if selected_target not in invalid else 'none' }}
+ROUTE / APPLY        : {{ route_short }} / {{ apply_status }}
+CANDIDATES / HOTSPOT : {{ candidate_count }} / {{ hotspot_level }}
+SCHED / BRIDGE       : {{ validation_verdict }} / {{ bridge_verdict }}
+
+[HOST SURFACES]
+MA CONTROL HOST      : {{ runtime_control_host if runtime_control_host not in invalid else 'unresolved' }}
+MA CONTROL HOSTS     : {{ runtime_control_hosts if runtime_control_hosts not in invalid else 'unresolved' }}
+PLAYBACK PLAYER      : {{ modality_player }}
+SOURCE OPTIONS ENTITY: {{ source_options_entity }}
+
+[MEDIA SOURCE CONTEXT]
+SOURCE ENTITY        : {{ source_entity }}
+SOURCE VALUE         : {{ source_value }}
+SOURCE REASON        : {{ source_reason }}
+PLAYBACK MODALITY    : {{ modality_class }}
+AVAILABLE SOURCES    : {{ available_sources if available_sources | length > 0 else ['none_exposed'] }}
+```
+
+### OLED 128x64 Representation (compact text frame)
+```text
+┌────────────────────────────────┐
+│{{ oled_row('Song  : ' ~ oled_song) }}│
+│{{ oled_row('Album : ' ~ oled_album) }}│
+│{{ oled_row('Artist: ' ~ oled_artist) }}│
+└────────────────────────────────┘
+```
+- OLED metadata fresh signal: **{{ now_playing_fresh_signal }}**
+- OLED metadata age (s): **{{ np_pos_age_s | round(1) if np_pos_age_s is not none else 'n/a' }}** (threshold={{ meta_stale_s }})
+
+### Scheduler readiness + decision
+- Shadow entity: **{{ shadow_entity }}** (exists={{ shadow_exists }})
+- Shadow selection reason: **{{ shadow_selection_reason }}**
+- Scheduler validation verdict: **{{ validation_verdict }}** (ready={{ scheduler_ready }})
+- Scheduler waiting for MA boot: **{{ scheduler_waiting_for_ma_boot }}**{% if scheduler_waiting_for_ma_boot and scheduler_wait_reason not in invalid %} ({{ scheduler_wait_reason }}){% endif %}
+- Scheduler blocking reasons: **{{ scheduler_blocking_reasons }}**
+- Decision source: **{{ decision_source }}**
+- Decision reason: **{{ scheduler_decision_reason }}**
+- Route decision: **{{ route_decision if route_decision not in invalid else 'missing' }}**
+- Candidate count: **{{ candidate_count }}**
+- Selected target: **{{ selected_target if selected_target not in invalid else 'none' }}**
+- Selected target in helper options: **{{ selected_in_options }}**
+- Ranked candidates (top 5): **{{ ranked[:5] if ranked | length > 0 else [] }}**
+
+### Hotspot triage signals
+- Hotspot level: **{{ hotspot_level }}** (score={{ hotspot_score }})
+- Registry entries discovered: **{{ registry_entry_count }}**
+- Contract hard missing required: **{{ contract_missing_required }}**
+- Contract hard unresolved required: **{{ contract_unresolved_required }}**
+- Contract soft-surface warnings: **{{ contract_soft_surface_warnings }}**
+- Runtime no-control-capable state: **{{ no_control_capable_state if no_control_capable_state not in invalid else 'unknown' }}**
+- Runtime no-control-capable reason: **{{ no_control_capable_reason if no_control_capable_reason not in invalid else 'n/a' }}**
+- Metadata prep verdict: **{{ metadata_prep_verdict }}**
+- Metadata prep blocking reasons: **{{ metadata_prep_blocking_reasons }}**
+{% if top_candidate is mapping and top_candidate | length > 0 %}
+- Top candidate target: **{{ top_candidate.target if top_candidate.target is defined else 'unknown' }}**
+- Top candidate host: **{{ top_candidate.host if top_candidate.host is defined else 'unknown' }}**
+- Top candidate control_capable: **{{ top_candidate.control_capable if top_candidate.control_capable is defined else 'unknown' }}**
+- Top candidate score: **{{ top_candidate.score if top_candidate.score is defined else 'unknown' }}**
+- Top candidate availability quality: **{{ top_candidate.availability_quality if top_candidate.availability_quality is defined else 'unknown' }}**
+{% else %}
+- Top candidate summary: **none available**
+{% endif %}
+
+### Guarded apply status
+- Authority mode: **{{ authority_mode if authority_mode not in invalid else 'unknown' }}**
+- Helper entity: **{{ helper_entity }}** (exists={{ helper_exists }})
+- Helper current state: **{{ helper_state }}**
+- Helper options count: **{{ helper_options | length }}**
+- Last apply status: **{{ apply_status }}**
+- Last apply reason: **{{ apply_reason }}**
+- Last apply target: **{{ apply_target if apply_target not in invalid else 'none' }}**
+- Apply target in helper options: **{{ apply_target_in_options }}**
+- Helper currently equals apply target: **{{ helper_matches_apply }}**
+- Last apply dry_run: **{{ apply_dry_run }}**
+- Last apply force: **{{ apply_force }}**
+- Last apply requested/completed:
+  - requested_at: **{{ scheduler_apply.requested_at if scheduler_apply.requested_at is defined else 'n/a' }}**
+  - completed_at: **{{ scheduler_apply.completed_at if scheduler_apply.completed_at is defined else 'n/a' }}**
+
+### ESP handoff + OLED status
+- ESP telemetry available: **{{ esp_telemetry_available }}**
+- ESP handoff entity/source: **{{ esp_handoff_entity if esp_handoff_available else 'runtime_fallback(sensor.ma_control_host/sensor.ma_control_hosts)' }}**
+- ESP handoff status: **{{ esp_handoff_status }}**
+- ESP control target entity/source: **{{ esp_target_entity if esp_target_available else 'runtime_fallback(sensor.ma_active_friendly/input_select.ma_active_target)' }}**
+- ESP control target: **{{ esp_target_status }}**
+- ESP OLED entity/source: **{{ esp_oled_entity if esp_oled_available else 'not_exposed' }}**
+- ESP OLED status: **{{ esp_oled_status }}**
+
+### Legacy handoff inventory scaffold
+- Inventory schema: **{{ handoff_inventory.schema_version if handoff_inventory.schema_version is defined else 'missing' }}**
+- Total dependencies: **{{ handoff_summary.total if handoff_summary.total is defined else 0 }}**
+- Implemented scaffolds: **{{ handoff_summary.implemented if handoff_summary.implemented is defined else 0 }}**
+- Planned scaffolds: **{{ handoff_summary.planned if handoff_summary.planned is defined else 0 }}**
+- Deferred scaffolds: **{{ handoff_summary.deferred if handoff_summary.deferred is defined else 0 }}**
+- Full handoff ready: **{{ handoff_summary.ready_for_full_handoff if handoff_summary.ready_for_full_handoff is defined else false }}**
+
+### Component scaffold attempt telemetry
+- Target-options scaffold status: **{{ target_options_attempt.status if target_options_attempt.status is defined else 'never_attempted' }}**
+- Target-options scaffold reason: **{{ target_options_attempt.reason if target_options_attempt.reason is defined else 'n/a' }}**
+- Target-options scaffold correlation id: **{{ target_options_corr if target_options_corr not in invalid else 'n/a' }}**
+- Auto-select scaffold status: **{{ auto_select_attempt.status if auto_select_attempt.status is defined else 'never_attempted' }}**
+- Auto-select scaffold reason: **{{ auto_select_attempt.reason if auto_select_attempt.reason is defined else 'n/a' }}**
+- Auto-select scaffold correlation id: **{{ auto_select_corr if auto_select_corr not in invalid else 'n/a' }}**
+- Metadata-resolver scaffold status: **{{ metadata_resolver_attempt.status if metadata_resolver_attempt.status is defined else 'never_attempted' }}**
+- Metadata-resolver scaffold reason: **{{ metadata_resolver_attempt.reason if metadata_resolver_attempt.reason is defined else 'n/a' }}**
+- Metadata-bridge scaffold status: **{{ metadata_bridge_attempt.status if metadata_bridge_attempt.status is defined else 'never_attempted' }}**
+- Metadata-bridge scaffold reason: **{{ metadata_bridge_attempt.reason if metadata_bridge_attempt.reason is defined else 'n/a' }}**
+
+### MA-players refresh parity + capability-feed checks (additive)
+- Players-change options refresh observed: **{{ players_change_options_refresh_seen }}**
+- Players-change auto-select observed: **{{ players_change_auto_select_seen }}**
+- Players-change sequencing observed (options -> auto-select): **{{ players_change_refresh_sequence_seen }}**
+- Capability-aware registry targets in options plan: **{{ registry_capability_targets | count }}**
+- Capability-aware registry target sample: **{{ registry_capability_targets[:5] if registry_capability_targets | count > 0 else [] }}**
+
+### Resolver-authority + metadata-trial bridge validation
+- Bridge verdict: **{{ metadata_bridge_validation.verdict if metadata_bridge_validation.verdict is defined else 'missing' }}**
+- Bridge ready: **{{ metadata_bridge_validation.ready_for_bridge if metadata_bridge_validation.ready_for_bridge is defined else false }}**
+- Bridge resolver status: **{{ metadata_bridge_validation.resolver_status if metadata_bridge_validation.resolver_status is defined else 'never_attempted' }}**
+- Bridge trial status: **{{ metadata_bridge_validation.trial_status if metadata_bridge_validation.trial_status is defined else 'never_attempted' }}**
+- Bridge blocking reasons: **{{ metadata_bridge_validation.blocking_reasons if metadata_bridge_validation.blocking_reasons is defined else [] }}**
+- Bridge waiting for MA boot: **{{ bridge_waiting_for_ma_boot }}**{% if bridge_waiting_for_ma_boot and bridge_wait_reason not in invalid %} ({{ bridge_wait_reason }}){% endif %}
+- Bridge auto target-recovery stage status: **{{ metadata_bridge_attempt.stages.auto_select_scaffold.status if metadata_bridge_attempt.stages is defined and metadata_bridge_attempt.stages is mapping and metadata_bridge_attempt.stages.auto_select_scaffold is defined and metadata_bridge_attempt.stages.auto_select_scaffold is mapping and metadata_bridge_attempt.stages.auto_select_scaffold.status is defined else 'never_attempted' }}**
+- Bridge auto target-recovery reason: **{{ metadata_bridge_attempt.stages.auto_select_scaffold.reason if metadata_bridge_attempt.stages is defined and metadata_bridge_attempt.stages is mapping and metadata_bridge_attempt.stages.auto_select_scaffold is defined and metadata_bridge_attempt.stages.auto_select_scaffold is mapping and metadata_bridge_attempt.stages.auto_select_scaffold.reason is defined else 'n/a' }}**
+- Bridge recovered selected target: **{{ metadata_bridge_attempt.stages.auto_select_scaffold.selected_target if metadata_bridge_attempt.stages is defined and metadata_bridge_attempt.stages is mapping and metadata_bridge_attempt.stages.auto_select_scaffold is defined and metadata_bridge_attempt.stages.auto_select_scaffold is mapping and metadata_bridge_attempt.stages.auto_select_scaffold.selected_target is defined else 'n/a' }}**
+
+### Legacy-only feature map (component scaffold status)
+{% if legacy_map | length == 0 %}
+- none
+{% else %}
+| Feature | Legacy surface | Component scaffold | Scheduler relevance |
+|---|---|---|---|
+{% for row in legacy_map %}
+| {{ row.feature if row.feature is defined else 'unknown' }} | `{{ row.legacy_surface if row.legacy_surface is defined else 'unknown' }}` | {{ row.component_scaffold_status if row.component_scaffold_status is defined else 'unknown' }} | {{ row.scheduler_relevance if row.scheduler_relevance is defined else 'unknown' }} |
+{% endfor %}
+{% endif %}
+
+### Deterministic next action
+{% if not shadow_exists %}
+- Shadow sensor missing. Ensure `custom_components/spectra_ls` is loaded and entity registry has either `sensor.shadow_active_target` (current) or `sensor.spectra_ls_shadow_active_target` (compatibility).
+{% elif scheduler_waiting_for_ma_boot or bridge_waiting_for_ma_boot %}
+- Waiting for Music Assistant startup signals. Re-run this template after MA player list/control targets are available; avoid forcing apply/recovery during this boot window.
+{% elif no_control_capable_reason == 'target_not_control_expected' %}
+- Active runtime target is currently not expected to expose a direct control host. Treat as non-actionable host warning suppression state unless your target contract should be control-capable.
+{% elif esp_handoff_status in ['pending_refresh', 'no_host'] and selected_target not in invalid %}
+- Scheduler selection is present but ESP handoff is not ready (`{{ esp_handoff_status }}`). Refresh/check `sensor.ma_control_hosts` and `sensor.ma_control_host`, then re-run this template after host surfaces settle.
+{% elif 'no_scheduler_candidate' in scheduler_blocking_reasons and helper_state not in invalid and auto_select_status == 'noop_already_selected' and (auto_select_selected_target in invalid or auto_select_selected_target == helper_state) %}
+- Active target is stable in helper state but currently has no resolved control-capable scheduler route (typical for non-TCP playback targets like AppleTV wrappers). Select a control-capable target (or restore host contract for this target) before expecting scheduler candidate output.
+{% elif 'contract_invalid' in scheduler_blocking_reasons and 'no_scheduler_candidate' in scheduler_blocking_reasons %}
+- Scheduler has no valid control-capable candidate because required control contracts are unresolved (commonly control-host feed fail-closed). Verify `sensor.ma_control_hosts`/`sensor.ma_control_host` are resolved before apply attempts.
+{% elif validation_verdict == 'FAIL' %}
+- Scheduler validation failed. Run `spectra_ls.validate_scheduler` and resolve contract/registry blockers before apply attempts.
+{% elif hotspot_level == 'high' and metadata_prep_blocking_reasons | length > 0 %}
+- Hotspot level is high with metadata-prep blockers. Resolve metadata prep blockers first, then rerun bridge scaffold and this template.
+{% elif authority_mode == 'component' and not players_change_refresh_sequence_seen and auto_select_status in ['write_applied','noop_already_selected','dry_run_ok'] and auto_select_corr is string and ('state-change:sensor.ma_players-auto-select' in auto_select_corr) %}
+- MA-player-change auto-select is visible but options-refresh sequencing was not observed in attempt telemetry. Re-run `spectra_ls.build_target_options_scaffold` then trigger MA-player-change path and re-check this template.
+{% elif contract_soft_surface_warnings | length > 0 and selected_target not in invalid and selected_in_options %}
+- Target selection is stable, but host contract soft warnings are present. Monitor `sensor.ma_control_hosts` / `sensor.ma_control_host` quality before non-dry-run actions.
+{% elif selected_target in invalid %}
+- No selected scheduler candidate in current snapshot. Check decision reason for helper-fallback rejection or host/control-capability gaps, then rerun `spectra_ls.run_scheduler_choice` after contract/profile recovery.
+{% elif validation_verdict == 'PASS' and scheduler_ready and bridge_verdict == 'PASS' and bridge_ready and candidate_count | int(0) > 0 and selected_in_options %}
+- All green in this snapshot: scheduler + bridge are PASS and target/options are aligned. No action required.
+{% elif validation_verdict == 'PASS' and scheduler_ready and selected_target not in invalid and selected_in_options %}
+- Scheduler readiness is healthy and selected target/options are aligned. No scheduler-choice action required in this snapshot.
+{% elif authority_mode != 'component' %}
+- Apply is guard-blocked by authority. Run `spectra_ls.run_metadata_trial_bridge_scaffold` (it now performs automatic component-authority target recovery before trial checks).
+{% elif not selected_in_options %}
+- Selected target is not in helper options. Run `spectra_ls.run_metadata_trial_bridge_scaffold` to auto-sync options and recover a control-capable target.
+{% elif apply_status in ['blocked_authority','blocked_debounce','blocked_reentrancy','blocked_option_mismatch','blocked_no_candidate'] %}
+- Last apply was guard-blocked. Run `spectra_ls.run_metadata_trial_bridge_scaffold` to auto-recover target/options, then re-run this template.
+{% elif metadata_bridge_validation.verdict is defined and metadata_bridge_validation.verdict != 'PASS' %}
+- Run `spectra_ls.run_metadata_trial_bridge_scaffold` with dry-run defaults; it auto-recovers target/options first, then reports remaining bridge blockers.
+{% elif apply_status in ['dry_run_ok','noop_already_selected','write_applied'] %}
+- Scheduler apply path is healthy in this snapshot.
+{% else %}
+- Run one-shot deterministic sequence: run_metadata_trial_bridge_scaffold (automatic target recovery -> resolver -> trial), then re-run this template.
+{% endif %}
+

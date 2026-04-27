@@ -1,6 +1,6 @@
 # Description: Spectra LS core state + globals + system intervals + shared scripts.
-# Version: 2026.04.23.2
-# Last updated: 2026-04-23
+# Version: 2026.04.27.4
+# Last updated: 2026-04-27
 # Update version/date whenever you change this file.
 #
 # Sections:
@@ -1073,6 +1073,10 @@ globals:
     type: uint32_t
     restore_value: no
     initial_value: "0"
+  - id: control_target_ha_reconnect_guard_until_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
   - id: arylic_control_hosts_last_valid_ms
     type: uint32_t
     restore_value: no
@@ -1129,6 +1133,58 @@ text_sensor:
       for (auto &c : low) c = (char) ::tolower(c);
       if (low == "http" || low == "https") return low;
       return std::string("unknown");
+  - platform: template
+    name: "ESP Control Handoff Status"
+    id: esp_control_handoff_status
+    internal: false
+    update_interval: 1s
+    lambda: |-
+      const uint32_t now = millis();
+
+      auto normalize = [](std::string value) {
+        for (auto &c : value) c = (char) ::tolower(c);
+        return value;
+      };
+
+      auto is_resolved = [&](const std::string &value) {
+        const std::string low = normalize(value);
+        return !(low.empty() || low == "none" || low == "unknown" || low == "unavailable");
+      };
+
+      const std::string target = id(ma_active_target).has_state() ? id(ma_active_target).state.c_str() : "";
+      const std::string hosts = id(ma_control_hosts).has_state() ? id(ma_control_hosts).state.c_str() : "";
+      const std::string host = id(ma_control_host).has_state() ? id(ma_control_host).state.c_str() : "";
+
+      if (!is_resolved(target)) return std::string("no_target");
+      if (is_resolved(host) || is_resolved(hosts)) return std::string("ready");
+      if (id(control_target_pending_until_ms) > now) return std::string("pending_refresh");
+      return std::string("no_host");
+  - platform: template
+    name: "ESP Control Target"
+    id: esp_control_target
+    internal: false
+    update_interval: 1s
+    lambda: |-
+      std::string friendly = id(ma_active_friendly).has_state() ? id(ma_active_friendly).state.c_str() : "";
+      std::string target = id(ma_active_target).has_state() ? id(ma_active_target).state.c_str() : "";
+      if (!friendly.empty()) return friendly;
+      if (!target.empty()) return target;
+      return std::string("none");
+  - platform: template
+    name: "ESP OLED Status"
+    id: esp_oled_status
+    internal: false
+    update_interval: 1s
+    lambda: |-
+      std::string mode = id(screen_mode) == 0 ? "lighting" : "audio";
+      if (id(menu_active)) {
+        return mode + "|menu:lvl=" + std::to_string(id(menu_level));
+      }
+
+      std::string line = id(now_playing_title).has_state() ? id(now_playing_title).state.c_str() : "";
+      if (line.empty()) line = "-";
+      if (line.size() > 32) line = line.substr(0, 32);
+      return mode + "|oled:" + line;
 
 # === System intervals ===
 interval:

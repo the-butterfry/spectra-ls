@@ -1,6 +1,6 @@
 # Description: Audio controls package for Spectra LS System (TCP-only) with host-resolved control routing.
-# Version: 2026.04.23.1
-# Last updated: 2026-04-23
+# Version: 2026.04.27.7
+# Last updated: 2026-04-27
 # Update version/date whenever you change this file.
 
 binary_sensor:
@@ -150,39 +150,37 @@ sensor:
           then:
             - lambda: |-
                 static uint32_t last_log = 0;
-
-                static uint32_t last_send_log = 0;
                 float pct = (float) x;
                 if (pct > 100.0f) {
-
                   pct = (pct / 65535.0f) * 100.0f;
                 }
                 if (pct < 0.0f) pct = 0.0f;
                 if (pct > 100.0f) pct = 100.0f;
+
                 int max_vol = (int) ${audio_max_volume_pct};
                 if (max_vol <= 0 || max_vol > 100) max_vol = 100;
                 int target = (int) (pct * (float) max_vol / 100.0f + 0.5f);
                 if (target < 0) target = 0;
                 if (target > max_vol) target = max_vol;
+
                 const uint32_t now = millis();
                 const bool pot_changed = (target != id(pot_volume_target));
                 id(np_disp_vol) = target;
                 id(np_disp_vol_from_pot) = true;
                 id(pot_volume_pct_cached) = (int) (pct + 0.5f);
                 id(pot_volume_pct_last_ms) = now;
+
                 const uint32_t idle_ms = now - id(last_input_ms);
                 const uint32_t blank_ms = id(menu_active) ? (uint32_t) ${menu_blank_idle_ms} : (uint32_t) ${screensaver_idle_ms};
                 bool screen_awake = (blank_ms == 0) || (idle_ms < blank_ms);
-                const bool audio_wake_active = id(audio_wake_until_ms) > 0 && now < id(audio_wake_until_ms);
-                if (audio_wake_active) screen_awake = true;
-                auto state_is_playing = [](const std::string &s) {
-                  std::string low = s;
-                  for (auto &c : low) c = (char) ::tolower(c);
-                  return low == "playing";
-                };
+                if (id(audio_wake_until_ms) > 0 && now < id(audio_wake_until_ms)) {
+                  screen_awake = true;
+                }
                 bool playing = id(arylic_playing).has_state() && id(arylic_playing).state;
-                if (!playing && id(ha_audio_state).has_state() && state_is_playing(id(ha_audio_state).state.c_str())) {
-                  playing = true;
+                if (!playing && id(ha_audio_state).has_state()) {
+                  std::string s = id(ha_audio_state).state.c_str();
+                  for (auto &c : s) c = (char) ::tolower(c);
+                  if (s == "playing") playing = true;
                 }
                 if (playing) screen_awake = true;
                 if (screen_awake && pot_changed) {
@@ -192,81 +190,8 @@ sensor:
                   ESP_LOGI("input", "Volume pot raw=%d target=%d screen_awake=%d", (int) x, target, screen_awake ? 1 : 0);
                   last_log = now;
                 }
-                const uint32_t min_interval = (uint32_t) ${volume_pot_send_interval_ms};
-                const uint32_t settle_ms = (uint32_t) ${volume_pot_settle_ms};
-                const int jump_steps = (int) ${volume_pot_jump_steps};
-                if (target != id(arylic_volume_cached) && screen_awake) {
-                  id(audio_wake_until_ms) = now + ${audio_wake_hold_ms};
-                }
-                id(pot_volume_target) = target;
-                id(pot_volume_last_ms) = now;
-                if (target == id(arylic_last_vol_sent_target) && !id(pot_volume_deferred)) {
-                  return;
-                }
-                const uint32_t next_interval_ms = id(arylic_last_vol_sent_ms) + min_interval;
-                const uint32_t settle_ready_ms = id(pot_volume_last_ms) + settle_ms;
-                const bool jump = (abs(target - id(arylic_last_vol_sent_target)) >= jump_steps);
-                if (!jump && (now < next_interval_ms || now < settle_ready_ms)) {
-                  if (now - last_send_log > (uint32_t) ${input_send_log_interval_ms}) {
-                    ESP_LOGI("input", "Pot defer arylic VOL target=%d last_sent=%u now=%u", target,
-                             (unsigned) id(arylic_last_vol_sent_ms), (unsigned) now);
-                    last_send_log = now;
-                  }
-                  id(arylic_volume_cached) = target;
-                  id(pot_volume_deferred) = true;
-                  id(pot_volume_deferred_until_ms) = (next_interval_ms > settle_ready_ms)
-                                                    ? next_interval_ms
-                                                    : settle_ready_ms;
-                  return;
-                }
-                if (now < next_interval_ms) {
-                  if (now - last_send_log > (uint32_t) ${input_send_log_interval_ms}) {
-                    ESP_LOGI("input", "Pot defer arylic VOL target=%d last_sent=%u now=%u", target,
-                             (unsigned) id(arylic_last_vol_sent_ms), (unsigned) now);
-                    last_send_log = now;
-                  }
-                  id(arylic_volume_cached) = target;
-                  id(pot_volume_deferred) = true;
-                  id(pot_volume_deferred_until_ms) = next_interval_ms;
-                  return;
-                }
-                if (now - last_send_log > (uint32_t) ${input_send_log_interval_ms}) {
-                  ESP_LOGI("input", "Pot send arylic VOL target=%d last_sent=%u now=%u", target,
-                           (unsigned) id(arylic_last_vol_sent_ms), (unsigned) now);
-                  last_send_log = now;
-                }
-                const bool needs_prompt = false;
-                auto pick_hosts = [&]() -> std::string {
-                  if (!id(arylic_control_hosts).empty()) return id(arylic_control_hosts);
-                  if (!id(arylic_control_host).empty()) return id(arylic_control_host);
-                  return std::string();
-                };
-                auto log_block = [&](const char *reason) {
-                  static uint32_t last_log_ms = 0;
-                  if (now - last_log_ms < (uint32_t) ${audio_gate_log_interval_ms}) return;
-                  last_log_ms = now;
-                  const bool ambiguous = id(ma_control_ambiguous).has_state() && id(ma_control_ambiguous).state;
-                  ESP_LOGW("audio_gate", "pot blocked (%s) needs_prompt=%d hosts='%s' host='%s' amb=%d",
-                           reason,
-                           needs_prompt ? 1 : 0,
-                           id(arylic_control_hosts).c_str(),
-                           id(arylic_control_host).c_str(),
-                           ambiguous ? 1 : 0);
-                };
-                const std::string hosts = pick_hosts();
-                if (hosts.empty()) {
-                  id(audio_wake_until_ms) = now + ${audio_wake_hold_ms};
-                  log_block("no_hosts");
-                  return;
-                }
-                const bool tcp_ok = esphome::arylic_tcp::send_volume_multi(hosts, (uint16_t) id(arylic_control_port), target);
-                if (!tcp_ok && now - last_send_log > (uint32_t) ${input_send_log_interval_ms}) {
-                  ESP_LOGW("arylic_tcp", "VOL send failed target=%d", target);
-                }
-                id(arylic_last_vol_sent_ms) = now;
-                id(arylic_last_vol_sent_target) = target;
-                id(arylic_volume_cached) = target;
-                id(pot_volume_deferred) = false;
+
+                id(arylic_pot_apply_target).execute(3, target);
   - platform: rp2040_uart
     rp2040_uart_id: rp2040_uart_hub
     type: analog
@@ -278,17 +203,22 @@ sensor:
     on_value:
       - lambda: |-
           id(adc_raw_0) = (int) x;
-      - lambda: |-
-          float pct = (float) x;
-          if (pct > 100.0f) pct = (pct / 65535.0f) * 100.0f;
-          if (pct < 0.0f) pct = 0.0f;
-          if (pct > 100.0f) pct = 100.0f;
-          const int eq_min = (int) ${eq_min};
-          const int eq_max = (int) ${eq_max};
-          const int span = eq_max - eq_min;
-          const float target_f = (float) eq_min + (pct / 100.0f) * (float) span;
-          int target = (int) ((target_f >= 0.0f) ? (target_f + 0.5f) : (target_f - 0.5f));
-          id(arylic_eq_apply_target).execute(0, target);
+      - if:
+          condition:
+            lambda: |-
+              return !id(calibration_active);
+          then:
+            - lambda: |-
+                float pct = (float) x;
+                if (pct > 100.0f) pct = (pct / 65535.0f) * 100.0f;
+                if (pct < 0.0f) pct = 0.0f;
+                if (pct > 100.0f) pct = 100.0f;
+                const int eq_min = (int) ${eq_min};
+                const int eq_max = (int) ${eq_max};
+                const int span = eq_max - eq_min;
+                const float target_f = (float) eq_min + (pct / 100.0f) * (float) span;
+                int target = (int) ((target_f >= 0.0f) ? (target_f + 0.5f) : (target_f - 0.5f));
+                id(arylic_pot_apply_target).execute(0, target);
   - platform: rp2040_uart
     rp2040_uart_id: rp2040_uart_hub
     type: analog
@@ -300,17 +230,22 @@ sensor:
     on_value:
       - lambda: |-
           id(adc_raw_4) = (int) x;
-      - lambda: |-
-          float pct = (float) x;
-          if (pct > 100.0f) pct = (pct / 65535.0f) * 100.0f;
-          if (pct < 0.0f) pct = 0.0f;
-          if (pct > 100.0f) pct = 100.0f;
-          const int eq_min = (int) ${eq_min};
-          const int eq_max = (int) ${eq_max};
-          const int span = eq_max - eq_min;
-          const float target_f = (float) eq_min + (pct / 100.0f) * (float) span;
-          int target = (int) ((target_f >= 0.0f) ? (target_f + 0.5f) : (target_f - 0.5f));
-          id(arylic_eq_apply_target).execute(1, target);
+      - if:
+          condition:
+            lambda: |-
+              return !id(calibration_active);
+          then:
+            - lambda: |-
+                float pct = (float) x;
+                if (pct > 100.0f) pct = (pct / 65535.0f) * 100.0f;
+                if (pct < 0.0f) pct = 0.0f;
+                if (pct > 100.0f) pct = 100.0f;
+                const int eq_min = (int) ${eq_min};
+                const int eq_max = (int) ${eq_max};
+                const int span = eq_max - eq_min;
+                const float target_f = (float) eq_min + (pct / 100.0f) * (float) span;
+                int target = (int) ((target_f >= 0.0f) ? (target_f + 0.5f) : (target_f - 0.5f));
+                id(arylic_pot_apply_target).execute(1, target);
   - platform: rp2040_uart
     rp2040_uart_id: rp2040_uart_hub
     type: analog
@@ -322,17 +257,22 @@ sensor:
     on_value:
       - lambda: |-
           id(adc_raw_3) = (int) x;
-      - lambda: |-
-          float pct = (float) x;
-          if (pct > 100.0f) pct = (pct / 65535.0f) * 100.0f;
-          if (pct < 0.0f) pct = 0.0f;
-          if (pct > 100.0f) pct = 100.0f;
-          const int eq_min = (int) ${eq_min};
-          const int eq_max = (int) ${eq_max};
-          const int span = eq_max - eq_min;
-          const float target_f = (float) eq_min + (pct / 100.0f) * (float) span;
-          int target = (int) ((target_f >= 0.0f) ? (target_f + 0.5f) : (target_f - 0.5f));
-          id(arylic_eq_apply_target).execute(2, target);
+      - if:
+          condition:
+            lambda: |-
+              return !id(calibration_active);
+          then:
+            - lambda: |-
+                float pct = (float) x;
+                if (pct > 100.0f) pct = (pct / 65535.0f) * 100.0f;
+                if (pct < 0.0f) pct = 0.0f;
+                if (pct > 100.0f) pct = 100.0f;
+                const int eq_min = (int) ${eq_min};
+                const int eq_max = (int) ${eq_max};
+                const int span = eq_max - eq_min;
+                const float target_f = (float) eq_min + (pct / 100.0f) * (float) span;
+                int target = (int) ((target_f >= 0.0f) ? (target_f + 0.5f) : (target_f - 0.5f));
+                id(arylic_pot_apply_target).execute(2, target);
   - platform: template
     name: "Arylic Volume"
     id: arylic_volume
@@ -627,11 +567,62 @@ text_sensor:
     internal: true
     on_value:
       - lambda: |-
-          std::string value = x.c_str();
+          static std::string last_target;
+          const uint32_t now = millis();
+          std::string target = x.c_str();
+          if (target != last_target) {
+            ESP_LOGI("ma", "active_target changed; refreshing host cache old='%s' new='%s'", last_target.c_str(), target.c_str());
+            id(arylic_control_hosts).clear();
+            id(arylic_control_host).clear();
+            id(control_target_pending_until_ms) = now + 6000;
+            last_target = target;
+          } else {
+            id(control_target_pending_until_ms) = now + 4000;
+          }
+          std::string value = target;
           if (value.empty()) value = "-";
           ESP_LOGI("ma", "active_target=%s", value.c_str());
-          id(control_target_pending_until_ms) = millis() + 4000;
           // Control host/port resolved by HA (sensor.ma_control_hosts / sensor.ma_control_port).
+      - if:
+          condition:
+            lambda: |-
+              // Reconnect race guard: HA may reboot while ESP uptime remains high.
+              // Only force-update ma_control_* after API reconnect grace has elapsed
+              // and required template-backed feeds are initialized.
+              const uint32_t now = millis();
+              const bool reconnect_grace_active = id(control_target_ha_reconnect_guard_until_ms) > now;
+              const bool targets_ready = id(ha_control_target_labels).has_state() &&
+                                         id(ha_control_target_entities).has_state();
+              const bool hosts_ready = id(ma_control_hosts).has_state() && id(ma_control_host).has_state();
+              if (reconnect_grace_active) return false;
+              if (!targets_ready || !hosts_ready) return false;
+              return true;
+          then:
+            - homeassistant.service:
+                service: homeassistant.update_entity
+                data:
+                  entity_id: sensor.ma_control_targets
+            - homeassistant.service:
+                service: homeassistant.update_entity
+                data:
+                  entity_id: sensor.ma_control_hosts
+            - homeassistant.service:
+                service: homeassistant.update_entity
+                data:
+                  entity_id: sensor.ma_control_host
+          else:
+            - lambda: |-
+                const uint32_t now = millis();
+                const bool reconnect_grace_active = id(control_target_ha_reconnect_guard_until_ms) > now;
+                const bool targets_ready = id(ha_control_target_labels).has_state() &&
+                                           id(ha_control_target_entities).has_state();
+                const bool hosts_ready = id(ma_control_hosts).has_state() && id(ma_control_host).has_state();
+                ESP_LOGW("ma",
+                         "reconnect guard: skip ma_control_* forced update (grace=%d targets_ready=%d hosts_ready=%d uptime=%u)",
+                         reconnect_grace_active ? 1 : 0,
+                         targets_ready ? 1 : 0,
+                         hosts_ready ? 1 : 0,
+                         (unsigned) now);
   - platform: homeassistant
     id: ma_active_friendly
     entity_id: sensor.ma_active_friendly
@@ -678,6 +669,16 @@ text_sensor:
           std::string low = hosts;
           for (auto &c : low) c = (char) ::tolower(c);
           if (hosts.empty() || low == "unknown" || low == "unavailable" || low == "none") {
+            const bool pending_refresh = id(control_target_pending_until_ms) > now;
+            const bool has_recent_valid = id(arylic_control_hosts_last_valid_ms) > 0 &&
+                                          (now - id(arylic_control_hosts_last_valid_ms)) < 10000;
+            const bool has_cached = !id(arylic_control_hosts).empty();
+            if (has_cached && (pending_refresh || has_recent_valid)) {
+              if (should_log_invalid()) {
+                ESP_LOGW("ma", "control_hosts invalid update '%s' while refreshing; keeping cached '%s'", hosts.c_str(), id(arylic_control_hosts).c_str());
+              }
+              return;
+            }
             id(arylic_control_hosts).clear();
             id(arylic_control_host).clear();
             id(control_target_pending_until_ms) = 0;
@@ -685,6 +686,9 @@ text_sensor:
               ESP_LOGW("ma", "control_hosts cleared fail-closed (invalid update '%s')", hosts.c_str());
             }
             return;
+          }
+          if (hosts != id(arylic_control_hosts)) {
+            ESP_LOGI("ma", "control_hosts refreshed old='%s' new='%s'", id(arylic_control_hosts).c_str(), hosts.c_str());
           }
           id(arylic_control_hosts) = hosts;
           id(arylic_control_host) = hosts;
@@ -708,6 +712,17 @@ text_sensor:
           std::string low = host;
           for (auto &c : low) c = (char) ::tolower(c);
           if (host.empty() || low == "unknown" || low == "unavailable" || low == "none") {
+            const bool pending_refresh = id(control_target_pending_until_ms) > now;
+            const bool has_recent_valid = id(arylic_control_hosts_last_valid_ms) > 0 &&
+                                          (now - id(arylic_control_hosts_last_valid_ms)) < 10000;
+            const bool has_cached = !id(arylic_control_hosts).empty() || !id(arylic_control_host).empty();
+            if (has_cached && (pending_refresh || has_recent_valid)) {
+              if (should_log_invalid()) {
+                ESP_LOGW("ma", "control_host invalid update '%s' while refreshing; keeping cached hosts='%s' host='%s'",
+                         host.c_str(), id(arylic_control_hosts).c_str(), id(arylic_control_host).c_str());
+              }
+              return;
+            }
             id(arylic_control_hosts).clear();
             id(arylic_control_host).clear();
             id(control_target_pending_until_ms) = 0;
@@ -715,6 +730,9 @@ text_sensor:
               ESP_LOGW("ma", "control_host cleared fail-closed (invalid update '%s')", host.c_str());
             }
             return;
+          }
+          if (host != id(arylic_control_host)) {
+            ESP_LOGI("ma", "control_host refreshed old='%s' new='%s'", id(arylic_control_host).c_str(), host.c_str());
           }
           id(arylic_control_host) = host;
           if (id(arylic_control_hosts).empty()) {
@@ -869,37 +887,6 @@ interval:
           if (!id(pot_volume_deferred)) return;
           const uint32_t now = millis();
           if (now < id(pot_volume_deferred_until_ms)) return;
-          const bool needs_prompt = false;
-          auto pick_hosts = [&]() -> std::string {
-            if (!id(arylic_control_hosts).empty()) return id(arylic_control_hosts);
-            if (!id(arylic_control_host).empty()) return id(arylic_control_host);
-            return std::string();
-          };
-          auto log_block = [&](const char *reason) {
-            static uint32_t last_log_ms = 0;
-            if (now - last_log_ms < (uint32_t) ${audio_gate_log_interval_ms}) return;
-            last_log_ms = now;
-            const bool ambiguous = id(ma_control_ambiguous).has_state() && id(ma_control_ambiguous).state;
-            ESP_LOGW("audio_gate", "pot deferred blocked (%s) needs_prompt=%d hosts='%s' host='%s' amb=%d",
-                     reason,
-                     needs_prompt ? 1 : 0,
-                     id(arylic_control_hosts).c_str(),
-                     id(arylic_control_host).c_str(),
-                     ambiguous ? 1 : 0);
-          };
-          const std::string hosts = pick_hosts();
-          bool playing = id(arylic_playing).has_state() && id(arylic_playing).state;
-          if (!playing && id(ha_audio_state).has_state()) {
-            std::string s = id(ha_audio_state).state.c_str();
-            for (auto &c : s) c = (char) ::tolower(c);
-            if (s == "playing") playing = true;
-          }
-          if (hosts.empty()) {
-            id(audio_wake_until_ms) = now + ${audio_wake_hold_ms};
-            log_block("no_hosts");
-            id(pot_volume_deferred) = false;
-            return;
-          }
           const int target = id(pot_volume_target);
           if (target < 0) {
             id(pot_volume_deferred) = false;
@@ -907,10 +894,7 @@ interval:
           }
           ESP_LOGI("input", "Pot deferred send arylic VOL target=%d last_sent=%u now=%u", target,
                    (unsigned) id(arylic_last_vol_sent_ms), (unsigned) now);
-          const bool tcp_ok = esphome::arylic_tcp::send_volume_multi(hosts, (uint16_t) id(arylic_control_port), target);
-          if (!tcp_ok) {
-            ESP_LOGW("arylic_tcp", "VOL send failed target=%d", target);
-          }
+          id(arylic_set_volume).execute(target);
           id(arylic_last_vol_sent_ms) = now;
           id(arylic_last_vol_sent_target) = target;
           id(arylic_volume_cached) = target;
@@ -988,18 +972,29 @@ script:
           id(lighting_adjust_mode) = 0;
       - script.execute: compute_display_state
 
-  - id: arylic_eq_apply_target
+  - id: arylic_pot_apply_target
     mode: restart
     parameters:
       channel: int
       target: int
     then:
       - lambda: |-
+          // UNIVERSAL POT APPLY PIPELINE
+          // channel 0=bass, 1=mid, 2=treble, 3=volume
+          // Cleanup note: volume's previous bespoke on_value send path is detached;
+          // remove residual volume dead-end tuning branches after verification soak.
           const int eq_min = (int) ${eq_min};
           const int eq_max = (int) ${eq_max};
+          int max_vol = (int) ${audio_max_volume_pct};
+          if (max_vol <= 0 || max_vol > 100) max_vol = 100;
           int clamped = target;
-          if (clamped < eq_min) clamped = eq_min;
-          if (clamped > eq_max) clamped = eq_max;
+          if (channel == 3) {
+            if (clamped < 0) clamped = 0;
+            if (clamped > max_vol) clamped = max_vol;
+          } else {
+            if (clamped < eq_min) clamped = eq_min;
+            if (clamped > eq_max) clamped = eq_max;
+          }
 
           int current = 0;
           switch (channel) {
@@ -1012,6 +1007,13 @@ script:
             case 2:
               current = id(arylic_eq_high_cached);
               break;
+            case 3:
+              current = id(arylic_volume_cached);
+              if (current < 0 && id(arylic_volume).has_state()) {
+                current = (int) id(arylic_volume).state;
+              }
+              if (current < 0) current = 0;
+              break;
             default:
               return;
           }
@@ -1022,9 +1024,15 @@ script:
 
           const int delta = abs(clamped - current);
           const uint32_t now = millis();
-          const uint32_t min_interval = (uint32_t) ${eq_pot_send_interval_ms};
-          const uint32_t settle_ms = (uint32_t) ${eq_pot_settle_ms};
-          const int jump_steps = (int) ${eq_pot_jump_steps};
+          const uint32_t min_interval = (channel == 3)
+                                          ? (uint32_t) ${volume_pot_send_interval_ms}
+                                          : (uint32_t) ${eq_pot_send_interval_ms};
+          const uint32_t settle_ms = (channel == 3)
+                                       ? (uint32_t) ${volume_pot_settle_ms}
+                                       : (uint32_t) ${eq_pot_settle_ms};
+          const int jump_steps = (channel == 3)
+                                   ? (int) ${volume_pot_jump_steps}
+                                   : (int) ${eq_pot_jump_steps};
 
           uint32_t next_interval_ms = 0;
           uint32_t settle_ready_ms = 0;
@@ -1051,6 +1059,13 @@ script:
               next_interval_ms = id(arylic_eq_high_last_sent_ms) + min_interval;
               settle_ready_ms = id(eq_high_last_change_ms) + settle_ms;
               break;
+            case 3:
+              id(arylic_volume_cached) = clamped;
+              id(pot_volume_target) = clamped;
+              id(pot_volume_last_ms) = now;
+              next_interval_ms = id(arylic_last_vol_sent_ms) + min_interval;
+              settle_ready_ms = id(pot_volume_last_ms) + settle_ms;
+              break;
           }
 
           const bool jump = (delta >= jump_steps);
@@ -1069,6 +1084,10 @@ script:
                 id(arylic_eq_high_deferred) = true;
                 id(arylic_eq_high_deferred_until_ms) = defer_until;
                 break;
+              case 3:
+                id(pot_volume_deferred) = true;
+                id(pot_volume_deferred_until_ms) = defer_until;
+                break;
             }
             return;
           }
@@ -1086,6 +1105,10 @@ script:
               case 2:
                 id(arylic_eq_high_deferred) = true;
                 id(arylic_eq_high_deferred_until_ms) = next_interval_ms;
+                break;
+              case 3:
+                id(pot_volume_deferred) = true;
+                id(pot_volume_deferred_until_ms) = next_interval_ms;
                 break;
             }
             return;
@@ -1106,6 +1129,11 @@ script:
               id(arylic_eq_high_last_sent_ms) = now;
               id(arylic_eq_high_deferred) = false;
               id(arylic_set_treble).execute(clamped);
+              break;
+            case 3:
+              id(arylic_last_vol_sent_ms) = now;
+              id(pot_volume_deferred) = false;
+              id(arylic_set_volume).execute(clamped);
               break;
           }
 

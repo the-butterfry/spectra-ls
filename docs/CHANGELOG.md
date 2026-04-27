@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.27.290 -->
+<!-- Version: 2026.04.27.291 -->
 <!-- Last updated: 2026-04-27 -->
 
 # Changelog
 
 ## 2026-04-27
+
+- Validation/Deterministic Scheduler Template OLED Stale-Metadata Fail-Closed Guard (`docs/testing/raw/scheduler_apply_deterministic_validation.jinja`): harden the compact OLED text-frame diagnostics path so title/album/artist fields no longer render long-stale now-playing metadata indefinitely. The template now computes a freshness signal from active now-playing entity playback-state + `media_position_updated_at` recency and only displays now-playing text when metadata is fresh/active; otherwise the frame degrades to `-` placeholders instead of preserving stale values. Runtime track disposition: compatibility-shimmed (diagnostics template only; no runtime write-path mutation). Custom-component track disposition: compatibility-shimmed (template-level stale-visibility correction only). P1/P2/P3 impact: no source-of-truth ownership change; diagnostics truthfulness hardening only. README/wiki parity: no material repo-state change.
 
 - Runtime+Component/Startup Handoff Deadspot Reduction (`packages/ma_control_hub/automation.inc`, `custom_components/spectra_ls/coordinator.py`, `docs/architecture/CONTROL-HUB-ARCHITECTURE.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): reduce observed 3–4 minute post-boot control handoff latency by tightening startup and retry cadence on both tracks. Runtime startup target-options refresh now starts sooner (`15s` startup delay), periodic cadence is tightened (`/1` minute instead of `/5`), and last-valid target restore now re-attempts on early MA/control-target feed changes (instead of startup-only one-shot). Component startup auto-recovery cadence is also tightened (shorter initial/retry delays and reduced max wait window) so bridge/selection recovery reacts faster to MA readiness transitions. Runtime track disposition: implemented (startup/refresh deadspot reduction). Custom-component track disposition: implemented (startup auto-recovery cadence hardening). P1/P2/P3 impact: no source-of-truth ownership change; bounded startup-latency and recovery responsiveness hardening only. README/wiki parity: no material repo-state change.
 

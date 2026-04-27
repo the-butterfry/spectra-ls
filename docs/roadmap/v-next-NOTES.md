@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.27.133 -->
+<!-- Version: 2026.04.27.134 -->
 <!-- Last updated: 2026-04-27 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -140,6 +140,14 @@ Latest run update (2026-04-27, HA-reboot-safe ESP forced-refresh guard hardening
 - Runtime track disposition: implemented (reconnect-safe forced-refresh guard hardening).
 - Component track disposition: checked/not-applicable (component path does not originate these ESP-side force-update calls).
 - P1/P2/P3 impact check: no source-of-truth ownership change; startup/reconnect race hardening only.
+
+Latest run update (2026-04-27, startup handoff deadspot reduction):
+
+- Runtime startup/refresh cadence hardened in `packages/ma_control_hub/automation.inc` to reduce post-boot deadspots: startup refresh delay reduced to 15s, periodic refresh tightened from `/5` to `/1`, and restore-last-valid target now re-attempts on early `ma_players`/`ma_control_targets` feed changes instead of startup-only timing.
+- Component startup auto-recovery cadence hardened in `custom_components/spectra_ls/coordinator.py`: initial delay reduced to 4s, retry interval reduced to 8s, and max wait cycles reduced to 20 for faster MA-readiness convergence.
+- Runtime track disposition: implemented (handoff latency deadspot reduction).
+- Component track disposition: implemented (startup recovery responsiveness hardening).
+- P1/P2/P3 impact check: no source-of-truth ownership change; bounded startup-latency and retry-cadence hardening only.
 
 ### P1/P2 validation snapshot (2026-04-19)
 

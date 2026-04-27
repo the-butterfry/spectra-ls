@@ -1,6 +1,6 @@
 # Description: MA control hub automations for startup sync, target selection, and override lifecycle.
-# Version: 2026.04.21.3
-# Last updated: 2026-04-21
+# Version: 2026.04.27.3
+# Last updated: 2026-04-27
 # HUB MUST-READ: Contract parser methodology.
 # - For complex attributes (`rooms`, `candidates_json`, etc.), prefer native sequence/mapping values first.
 # - Only parse string JSON when trimmed payload starts with `[` or `{` and is not unknown/unavailable/none/''.
@@ -14,13 +14,17 @@
       event: start
     - platform: state
       entity_id: sensor.ma_players
+    - platform: state
+      entity_id: sensor.ma_detected_receiver_entity
+    - platform: state
+      entity_id: sensor.now_playing_entity
     - platform: time_pattern
-      minutes: "/5"
+      minutes: "/1"
   action:
     - choose:
         - conditions: "{{ trigger.platform == 'homeassistant' }}"
           sequence:
-            - delay: "00:01:00"
+            - delay: "00:00:15"
     - choose:
         - conditions:
             - condition: template
@@ -125,8 +129,18 @@
   trigger:
     - platform: homeassistant
       event: start
+    - platform: state
+      entity_id: sensor.ma_players
+    - platform: state
+      entity_id: sensor.ma_control_targets
   action:
-    - delay: "00:00:10"
+    - choose:
+        - conditions: "{{ trigger.platform == 'homeassistant' }}"
+          sequence:
+            - delay: "00:00:10"
+        - conditions: "{{ trigger.platform == 'state' }}"
+          sequence:
+            - delay: "00:00:02"
     - choose:
         - conditions: >-
             {% set current = states('input_select.ma_active_target') %}
@@ -145,7 +159,7 @@
     - platform: state
       entity_id: binary_sensor.ma_no_control_capable_hosts
       to: "on"
-      for: "00:00:15"
+      for: "00:00:30"
     - platform: state
       entity_id: binary_sensor.ma_no_control_capable_hosts
       to: "off"
@@ -153,6 +167,16 @@
     - choose:
         - conditions: "{{ trigger.to_state is not none and trigger.to_state.state == 'on' }}"
           sequence:
+            - service: script.turn_on
+              data:
+                entity_id: script.ma_update_target_options
+            - service: script.turn_on
+              data:
+                entity_id: script.ma_auto_select
+            - delay: "00:00:10"
+            - condition: state
+              entity_id: binary_sensor.ma_no_control_capable_hosts
+              state: "on"
             - service: persistent_notification.create
               data:
                 notification_id: spectra_ls_no_control_capable_hosts
@@ -163,7 +187,7 @@
                   Control capable: {{ states('binary_sensor.ma_active_control_capable') }}\n
                   Control hosts: {{ states('sensor.ma_control_hosts') if states('sensor.ma_control_hosts') not in ['','none','unknown','unavailable'] else 'none' }}\n
                   Reason: {{ state_attr('binary_sensor.ma_no_control_capable_hosts','reason') | default('unknown', true) }}\n
-                  Suggested action: confirm active target eligibility and rerun MA target/options refresh.
+                  Suggested action: auto-refresh already attempted; if this persists, confirm active target eligibility and rerun MA target/options refresh.
         - conditions: "{{ trigger.to_state is not none and trigger.to_state.state == 'off' }}"
           sequence:
             - service: persistent_notification.dismiss

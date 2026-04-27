@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.27.132 -->
+<!-- Version: 2026.04.27.133 -->
 <!-- Last updated: 2026-04-27 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -203,6 +203,14 @@ Latest run update (2026-04-27, HA-reboot-safe ESP forced-refresh guard hardening
 - Runtime track disposition: implemented (reconnect-safe forced-refresh guard hardening).
 - Component track disposition: checked/not-applicable (component path does not originate these ESP-side force-update calls).
 - P1/P2/P3 impact check: no source-of-truth ownership change; startup/reconnect race hardening only.
+
+Latest run update (2026-04-27, startup handoff deadspot reduction):
+
+- Runtime cadence in `packages/ma_control_hub/automation.inc` is tightened to reduce startup deadspots: startup refresh delay reduced to 15s, periodic refresh increased to 1-minute cadence (`/1`), and restore-last-valid now re-attempts on early MA/control-target feed state changes.
+- Component startup auto-recovery cadence in `custom_components/spectra_ls/coordinator.py` is tightened: initial delay reduced to 4s, retry interval reduced to 8s, and max wait cycles reduced to 20 for faster readiness retries.
+- Runtime track disposition: implemented (startup/handoff latency reduction).
+- Component track disposition: implemented (startup recovery cadence hardening).
+- P1/P2/P3 impact check: no source-of-truth ownership change; bounded startup latency/recovery responsiveness hardening only.
 
 ## P1/P2 validation snapshot (2026-04-19)
 

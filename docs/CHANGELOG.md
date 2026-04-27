@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.27.289 -->
+<!-- Version: 2026.04.27.290 -->
 <!-- Last updated: 2026-04-27 -->
 
 # Changelog
 
 ## 2026-04-27
+
+- Runtime+Component/Startup Handoff Deadspot Reduction (`packages/ma_control_hub/automation.inc`, `custom_components/spectra_ls/coordinator.py`, `docs/architecture/CONTROL-HUB-ARCHITECTURE.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): reduce observed 3–4 minute post-boot control handoff latency by tightening startup and retry cadence on both tracks. Runtime startup target-options refresh now starts sooner (`15s` startup delay), periodic cadence is tightened (`/1` minute instead of `/5`), and last-valid target restore now re-attempts on early MA/control-target feed changes (instead of startup-only one-shot). Component startup auto-recovery cadence is also tightened (shorter initial/retry delays and reduced max wait window) so bridge/selection recovery reacts faster to MA readiness transitions. Runtime track disposition: implemented (startup/refresh deadspot reduction). Custom-component track disposition: implemented (startup auto-recovery cadence hardening). P1/P2/P3 impact: no source-of-truth ownership change; bounded startup-latency and recovery responsiveness hardening only. README/wiki parity: no material repo-state change.
 
 - ESPHome/HA Reboot-Safe Control-Handoff Refresh Guard (`esphome/spectra_ls_system.yaml`, `esphome/spectra_ls_system/packages/spectra-ls-system.yaml`, `esphome/spectra_ls_system/packages/spectra-ls-audio-tcp.yaml`, `docs/architecture/CONTROL-HUB-ARCHITECTURE.md`): replace ESP-uptime-only startup gating for active-target forced `homeassistant.update_entity` calls with a Home Assistant API reconnect grace window plus readiness checks on target/host template feeds before issuing forced refreshes for `sensor.ma_control_targets`, `sensor.ma_control_hosts`, and `sensor.ma_control_host`. This prevents HA-restart race windows (ESP remained up, HA rebooted) from triggering template assertion failures while preserving immediate forced-refresh behavior once HA reconnect settles and feeds are initialized. Runtime track disposition: implemented (reboot-safe forced-refresh guard hardening in active ESP runtime path). Custom-component track disposition: checked/not-applicable (component path does not originate ESP-side `homeassistant.update_entity` calls for these template entities). P1/P2/P3 impact: no source-of-truth ownership change; startup/reconnect race hardening only. README/wiki parity: no material repo-state change.
 

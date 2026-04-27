@@ -1,5 +1,5 @@
 <!-- Description: Retroactive architecture and feature documentation for the MA control hub package split. -->
-<!-- Version: 2026.04.27.50 -->
+<!-- Version: 2026.04.27.51 -->
 <!-- Last updated: 2026-04-27 -->
 
 # MA Control Hub Architecture (Retroactive Baseline)
@@ -65,6 +65,7 @@ Defined by `automation.inc`:
 
 - startup option refresh and auto-select
 - continuous auto-select loop (with guard conditions)
+- startup cadence hardening for handoff responsiveness: startup refresh delay reduced to 15s, periodic refresh tightened to 1-minute cadence, and restore-last-valid retries now re-arm on early MA/control-target feed changes (not startup-only one-shot)
 - last-valid target persistence
 - ambiguity lock + stale-unlock handling
 - startup restore of last-valid target
@@ -261,6 +262,7 @@ Metadata bridge alignment note:
 - startup bridge sequencing now restores write authority to the pre-run mode on all exit paths (including blocked target-recovery stages), preventing stale `component` authority residue after failed startup attempts.
 - startup recovery now has an explicit legacy no-mix guard: when authority is `legacy`, component bridge sequencing is skipped (`skipped_legacy_authority`) so startup does not perform component-owned helper mutations in legacy single-writer windows.
 - startup recovery now also has a component no-mix guard: when authority is `component`, startup executes component-only options/auto-select recovery and skips legacy-trial bridge transitions (`skipped_component_startup_no_mix`) to avoid cross-authority boot sequencing.
+- startup auto-recovery cadence is latency-hardened: initial delay reduced to 4s, retry interval reduced to 8s, and max wait cycles reduced to 20 so component boot recovery does not sit in multi-minute deadspots before retrying MA-readiness checks.
 - startup boot-readiness gating now requires resolved control-host surface and initialized active-target helper options (at least one non-`none` option) in addition to MA players/control-target readiness, reducing premature bridge-attempt exhaustion during reboot churn.
 - startup boot-readiness gating is additionally hardened for host-surface lag: unresolved `sensor.ma_control_hosts` by itself no longer keeps startup in perpetual MA-boot wait when MA players/control-targets and helper options are otherwise ready.
 - startup auto-select recovery now supports a guarded helper-current fallback (`input_select.ma_active_target` resolved and present in options) when candidate scaffolds are temporarily empty, preventing avoidable `blocked_no_candidate` bridge-stage failures during reboot churn.

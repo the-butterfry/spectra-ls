@@ -1,5 +1,5 @@
 {# Description: Raw copy/paste Jinja template for deterministic scheduler-apply validation (decision + guarded apply + handoff inventory) with explicit MA boot-wait guidance, component-shadow entity preference hardening, contract-invalid/no-candidate operator guidance, live decision-source fallback when last scheduler decision is never_attempted, control-capable helper-fallback eligibility alignment, runtime control-expected reason visibility, stable-helper/no-candidate action clarification, hotspot-triage diagnostics surfaces, core-health weighted verdict scoring, and additive MA-players refresh/capability-feed checks. #}
-{# Version: 2026.04.27.43 #}
+{# Version: 2026.04.27.44 #}
 {# Last updated: 2026-04-27 #}
 
 {# =========================
@@ -172,9 +172,9 @@
 {% set now_playing_artist = states('sensor.now_playing_artist') %}
 
 {% set meta_stale_s = states('input_number.ma_meta_stale_s') | float(45) %}
-{% set now_playing_state_raw = states('sensor.now_playing_state') %}
-{% set now_playing_state_norm = now_playing_state_raw | lower %}
+{% set paused_hide_s = 600 %}
 {% set np_entity_for_freshness = now_playing_entity if now_playing_entity not in invalid and states[now_playing_entity] is not none else '' %}
+{% set np_entity_state_norm = (states(np_entity_for_freshness) | lower) if np_entity_for_freshness not in invalid else '' %}
 {% set np_pos_updated = state_attr(np_entity_for_freshness, 'media_position_updated_at') if np_entity_for_freshness not in invalid else none %}
 {% set np_pos_ts = as_timestamp(np_pos_updated) if np_pos_updated not in invalid else none %}
 {% set np_pos_age_s = (as_timestamp(now()) - np_pos_ts) if np_pos_ts is not none else none %}
@@ -182,13 +182,19 @@
 {% set np_play_state_attr = (state_attr(np_entity_for_freshness, 'play_state') | lower) if np_entity_for_freshness not in invalid else '' %}
 {% set np_is_playing_attr = state_attr(np_entity_for_freshness, 'is_playing') if np_entity_for_freshness not in invalid else none %}
 {% set np_is_paused_attr = state_attr(np_entity_for_freshness, 'is_paused') if np_entity_for_freshness not in invalid else none %}
-{% set np_playing_signal = now_playing_state_norm == 'playing' or np_play_state_attr in ['play', 'playing'] or np_is_playing_attr is true %}
-{% set np_paused_signal = now_playing_state_norm == 'paused' or np_play_state_attr in ['pause', 'paused'] or np_is_paused_attr is true %}
+{% set np_fallback_state_norm = (states('sensor.now_playing_state') | lower) %}
+{% set np_playing_signal = np_entity_state_norm == 'playing' or np_play_state_attr in ['play', 'playing'] or np_is_playing_attr is true %}
+{% set np_paused_signal = np_entity_state_norm == 'paused' or np_play_state_attr in ['pause', 'paused'] or np_is_paused_attr is true %}
+{% if np_entity_for_freshness in invalid %}
+  {% set np_playing_signal = np_fallback_state_norm == 'playing' %}
+  {% set np_paused_signal = np_fallback_state_norm == 'paused' %}
+{% endif %}
+{% set np_paused_stale_hidden = np_paused_signal and (np_pos_age_s is none or np_pos_age_s > paused_hide_s) %}
 {% set now_playing_fresh_signal = np_playing_signal or (np_paused_signal and np_recent_progress) %}
 
-{% set oled_song = now_playing_song if now_playing_fresh_signal and now_playing_song not in invalid else '-' %}
-{% set oled_album = now_playing_album if now_playing_fresh_signal and now_playing_album not in invalid else '-' %}
-{% set oled_artist = now_playing_artist if now_playing_fresh_signal and now_playing_artist not in invalid else '-' %}
+{% set oled_song = now_playing_song if now_playing_fresh_signal and not np_paused_stale_hidden and now_playing_song not in invalid else '-' %}
+{% set oled_album = now_playing_album if now_playing_fresh_signal and not np_paused_stale_hidden and now_playing_album not in invalid else '-' %}
+{% set oled_artist = now_playing_artist if now_playing_fresh_signal and not np_paused_stale_hidden and now_playing_artist not in invalid else '-' %}
 
 {% set helper_entry = (registry_entries[helper_state] if helper_state not in invalid and helper_state in registry_entries and registry_entries[helper_state] is mapping else {}) %}
 {% set helper_entry_control_capable = (helper_entry.control_capable if helper_entry.control_capable is defined else false) %}
@@ -442,8 +448,8 @@ PLAYBACK MODALITY    : {{ modality_class }}
 AVAILABLE SOURCES    : {{ available_sources if available_sources | length > 0 else ['none_exposed'] }}
 ```
 
-### OLED 128x64 Representation (compact text frame)
-```text
+### OLED on Spectra L/S hardware
+```
 ┌────────────────────────────────┐
 │{{ oled_row('Song  : ' ~ oled_song) }}│
 │{{ oled_row('Album : ' ~ oled_album) }}│
@@ -452,6 +458,7 @@ AVAILABLE SOURCES    : {{ available_sources if available_sources | length > 0 el
 ```
 - OLED metadata fresh signal: **{{ now_playing_fresh_signal }}**
 - OLED metadata age (s): **{{ np_pos_age_s | round(1) if np_pos_age_s is not none else 'n/a' }}** (threshold={{ meta_stale_s }})
+- OLED paused stale-hide active: **{{ np_paused_stale_hidden }}** (paused_hide_s={{ paused_hide_s }})
 
 ### Scheduler readiness + decision
 - Shadow entity: **{{ shadow_entity }}** (exists={{ shadow_exists }})

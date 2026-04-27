@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.27.291 -->
+<!-- Version: 2026.04.27.292 -->
 <!-- Last updated: 2026-04-27 -->
 
 # Changelog
 
 ## 2026-04-27
+
+- Validation/Deterministic Scheduler Template Stale-Paused Entity-Truth Gate Hardening (`docs/testing/raw/scheduler_apply_deterministic_validation.jinja`): fix residual virtual-screen stale metadata exposure by deriving OLED freshness from the resolved now-playing entity’s own state/attributes (`state`, `play_state`, `is_playing`, `is_paused`, `media_position_updated_at`) instead of trusting `sensor.now_playing_state` alone. Add an explicit paused stale-hide window (`600s`) so long-paused metadata cannot remain visible in Song/Album/Artist rows. Runtime track disposition: compatibility-shimmed (diagnostics template behavior only; no runtime write-path mutation). Custom-component track disposition: compatibility-shimmed (template-level stale-visibility correction only). P1/P2/P3 impact: no source-of-truth ownership change; diagnostics truthfulness hardening only. README/wiki parity: no material repo-state change.
 
 - Validation/Deterministic Scheduler Template OLED Stale-Metadata Fail-Closed Guard (`docs/testing/raw/scheduler_apply_deterministic_validation.jinja`): harden the compact OLED text-frame diagnostics path so title/album/artist fields no longer render long-stale now-playing metadata indefinitely. The template now computes a freshness signal from active now-playing entity playback-state + `media_position_updated_at` recency and only displays now-playing text when metadata is fresh/active; otherwise the frame degrades to `-` placeholders instead of preserving stale values. Runtime track disposition: compatibility-shimmed (diagnostics template only; no runtime write-path mutation). Custom-component track disposition: compatibility-shimmed (template-level stale-visibility correction only). P1/P2/P3 impact: no source-of-truth ownership change; diagnostics truthfulness hardening only. README/wiki parity: no material repo-state change.
 

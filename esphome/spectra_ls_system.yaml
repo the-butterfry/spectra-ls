@@ -1,6 +1,6 @@
 # Description: Main ESPHome config for Spectra LS System main ESPHome config (ESP32-S3 + RP2040 UART + Arylic TCP).
-# Version: 2026.04.20.12
-# Last updated: 2026-04-20
+# Version: 2026.04.27.13
+# Last updated: 2026-04-27
 # Update version/date whenever you change this file.
 #
 # Setup checklist:
@@ -117,6 +117,12 @@ logger:
     cpu_usage: INFO
 
 api:
+  on_client_connected:
+    then:
+      - lambda: |-
+          const uint32_t now = millis();
+          id(control_target_ha_reconnect_guard_until_ms) = now + 45000;
+          ESP_LOGI("ma", "ha api reconnect guard armed for ma_control_* forced refresh (%u ms)", 45000u);
 
 ota:
   - platform: esphome

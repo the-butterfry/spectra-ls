@@ -1,12 +1,16 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.22.120 -->
-<!-- Last updated: 2026-04-22 -->
+<!-- Version: 2026.04.27.133 -->
+<!-- Last updated: 2026-04-27 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
 
 > Scope: Hardware-driven UX redesign for Spectra LS Control Board v2.
 > Audience: Implementation agent working across RP2040 CircuitPython + ESPHome packages + HA helpers.
 > Status: Draft plan. Update as decisions solidify.
+
+Operator local deployment note (non-contract, do not hardcode in product logic):
+
+- Current Spectra ESP node management IP: `192.168.10.40`.
 
 ## Custom-Component Parallel Program (Required)
 
@@ -69,6 +73,73 @@ Each feature slice is only complete when both tracks are dispositioned:
 | P7-S03 | 7 | Validated (legacy retained as rollback-safe metadata authority baseline with post-window proof accepted) | Validated (bounded metadata-domain authority-flip execution lane complete) | Completed (Run-1 pre/in PASS + Run-2 post PASS) | High | Validated |
 | P7-S04 | 7 | Validated (rollback-safe legacy authority baseline preserved at closeout capture) | Validated (phase-exit closeout packet completed and accepted) | Completed (Run-1 closeout PASS/READY 4/4) | High | Validated |
 | P8-S01 | 8 | Validated (legacy sealed baseline readiness gate completed with pre/in/post PASS packet) | Validated (post-cutover governance/readiness lane completed for starter gate) | Completed (Run-1/Run-2/Run-3 PASS; promoted) | High | Validated |
+
+Latest run update (2026-04-26, parity build-out slice):
+
+- Selection lifecycle parity migration advanced with component-side lock lifecycle behavior now mirrored for migration windows:
+  - lock-on-ambiguous-select parity handling,
+  - stale-meta unlock parity handling (5s hold semantics),
+  - component auto-select loop parity triggers on legacy-equivalent state transitions.
+- Runtime track disposition: compatibility-shimmed (legacy automations remain rollback baseline).
+- Component track disposition: implemented (guarded parity lifecycle behavior in coordinator).
+- P1/P2/P3 impact check: no source-of-truth ownership flip; bounded selection-domain migration behavior only.
+
+Latest run update (2026-04-26, parity correctness/cleanup follow-up):
+
+- Closed `GAP-20260426-auto-select-loop-watched-options-filter` by aligning component global watcher semantics to legacy watched-options membership behavior.
+- Removed unnecessary `media_player.*` watcher filter in component global state-change handling (useless restriction removed; existing guardrails still enforce safe execution).
+- Runtime track disposition: implemented (legacy baseline unchanged).
+- Component track disposition: implemented (gap closure + behavior cleanup).
+
+Latest run update (2026-04-26, no-control feedback lifecycle parity):
+
+- Closed parity gap for legacy `ma_feedback_no_control_capable_hosts` lifecycle in component migration windows.
+- Component now mirrors bounded lifecycle semantics under component authority: 30s degrade hold, one-shot self-heal (component target-options + auto-select scaffolds), post-heal 10s persistence check, and persistent notification create/dismiss (`spectra_ls_no_control_capable_hosts`).
+- Runtime track disposition: compatibility-shimmed (legacy automation retained as rollback baseline).
+- Component track disposition: implemented (feedback lifecycle parity + guarded adaptation).
+- P1/P2/P3 impact check: no source-of-truth ownership flip; bounded parity and operator feedback resilience hardening only.
+
+Latest run update (2026-04-26, MA-players options-refresh parity):
+
+- Closed parity gap where legacy MA-player-change lifecycle refreshed options before auto-select while component listener previously ran auto-select-only.
+- Component now runs additive players-change sequencing in component-authority windows: target-options scaffold refresh first, then guarded auto-select loop.
+- Candidate synthesis was extended additively (no rewrite) with capability-aware registry/profile feeds (`control_capable`, host resolved, supported control path, availability quality).
+- Runtime track disposition: compatibility-shimmed (legacy automation retained as rollback baseline).
+- Component track disposition: implemented (players-change sequencing parity + additive capability-aware candidate feed).
+- P1/P2/P3 impact check: no source-of-truth ownership change; bounded parity and options freshness hardening only.
+
+Latest run update (2026-04-26, legacy handoff-latency optimization):
+
+- Runtime handoff cadence hardened for legacy-authority operation by adding event-driven target-options/auto-select refresh triggers on detected-receiver and now-playing-entity changes, reducing dependence on `/5` periodic refresh windows.
+- ESP-side active-target change handling now performs an optimistic host-refresh push (`update_entity` for `sensor.ma_control_targets`, `sensor.ma_control_hosts`, and `sensor.ma_control_host`) so control-host convergence reaches ESP immediately after helper target shifts.
+- Runtime track disposition: implemented (handoff latency reduction).
+- Component track disposition: compatibility-shimmed (no component ownership/contract change in this slice).
+- P1/P2/P3 impact check: no source-of-truth ownership change; runtime handoff responsiveness hardening only.
+
+Latest run update (2026-04-27, component parity + ESP handoff telemetry):
+
+- Component state-change parity now mirrors legacy handoff-trigger intent for additional entity changes used in runtime acceleration: detected receiver and now-playing entity updates now run the same component players-change refresh sequencing path (target-options refresh -> guarded auto-select) as MA-players changes.
+- ESP now exports HA-visible telemetry surfaces for deterministic handoff diagnostics: control handoff status, resolved control target, and OLED/UI status.
+- Deterministic scheduler validation template now reports ESP handoff/target/OLED status with runtime fallback visibility when ESP telemetry entities are unavailable.
+- Runtime track disposition: implemented (ESP telemetry observability expansion).
+- Component track disposition: implemented (trigger parity expansion).
+- P1/P2/P3 impact check: no source-of-truth ownership change; parity + observability hardening only.
+
+Latest run update (2026-04-27, startup no-mix + ESP diagnostics source/modality expansion):
+
+- Component startup recovery now enforces no-mix sequencing for component authority windows: startup runs component-only options/auto-select scaffolds and skips legacy-trial bridge transitions (`skipped_component_startup_no_mix`) to prevent cross-authority boot windows.
+- Deterministic scheduler validation diagnostics now include explicit source provenance and playback modality context in ESP diagnostics (resolved source entity/value/reason, playback player/modality classification, and available source options harvested from control-host candidate entities).
+- Runtime track disposition: implemented (diagnostics surface expansion consumed from existing runtime contracts; no ownership/authority expansion).
+- Component track disposition: implemented (startup no-mix recovery hardening + richer operator diagnostics visibility).
+- P1/P2/P3 impact check: no source-of-truth ownership change; startup safety and observability hardening only.
+
+Latest run update (2026-04-27, HA-reboot-safe ESP forced-refresh guard hardening):
+
+- Runtime ESP handoff acceleration path now gates active-target-triggered forced `homeassistant.update_entity` calls for `sensor.ma_control_targets`, `sensor.ma_control_hosts`, and `sensor.ma_control_host` behind HA API reconnect grace + template-feed readiness checks.
+- This removes the HA-reboot race where ESP uptime remained high and uptime-only guard logic still forced template updates during HA template initialization windows.
+- Runtime track disposition: implemented (reconnect-safe forced-refresh guard hardening).
+- Component track disposition: checked/not-applicable (component path does not originate these ESP-side force-update calls).
+- P1/P2/P3 impact check: no source-of-truth ownership change; startup/reconnect race hardening only.
 
 ### P1/P2 validation snapshot (2026-04-19)
 
@@ -1096,6 +1167,30 @@ Run-23 execution update (2026-04-22):
 - Run-2 packet lane: publish a strict in-window execution packet for `P8-S04` with explicit `run_id`, `selected_path=player_provider`, dry-run-first probe posture, and artifact-reference capture fields.
 - Governance lane: keep promotion blocked at Run-2 by policy until post-window rollback proof is captured in a subsequent record.
 - Execution disposition: run-23 packet accepted; P8-S04 Run-2 is execution-ready.
+
+Run-24 execution update (2026-04-26):
+
+- Runtime MA-ops lane: added fast MA backend profile switching contract in `ma_control_hub` (`beta`/`stable`/`manual`) with profile-aware API URL resolution and explicit effective-profile sensor visibility for rapid Beta↔Stable test loops.
+- Component diagnostics lane: added parity-visibility snapshot fields for MA backend profile/effective URL in `custom_components/spectra_ls` without ownership expansion.
+- Execution disposition: run-24 packet accepted; two-track disposition is runtime `implemented`, component `compatibility-shimmed`. P1/P2/P3 impact check: no ownership/source-of-truth flip; additive operator workflow hardening only.
+
+Run-25 execution update (2026-04-26):
+
+- Runtime host-routing lane: harden `ma_control_hub` control-host derivation for wrapper targets by adding direct alias-entity lookup before static host fallback (detected receiver, active meta, now-playing, active-player entity, and friendly-name alias candidates with direct/member `ip_address`).
+- Component parity lane: mirror the same host-discovery order in `custom_components/spectra_ls` registry (direct target/member resolution + alias-friendly fallback) so route-trace diagnostics stay lock-step with runtime host resolution semantics.
+- Execution disposition: run-25 packet accepted; two-track disposition is runtime `implemented`, component `implemented`. P1/P2/P3 impact check: no ownership/source-of-truth flip; host-routing correctness hardening only.
+
+Run-26 execution update (2026-04-26):
+
+- Component parity hardening lane: metadata-prep readiness now uses a signal-ready title gate so transient title lag does not force false blocker states when fresh-play + active-meta context is present; metadata-candidate readiness now falls back to resolver best-candidate context when candidate payload shape is delayed.
+- Maturity/progression lane: handoff inventory status transitions for `target_options_builder`, `auto_select_pipeline`, and `metadata_resolver_authority` now move to `implemented` only after successful guarded scaffold attempts (instead of static scaffold-plan presence), making next-slice parity progress explicit.
+- Execution disposition: run-26 packet accepted; two-track disposition runtime `compatibility-shimmed`, component `implemented`. P1/P2/P3 impact: no ownership/source-of-truth cutover change; metadata readiness and parity-progress signal correctness hardening only.
+
+Run-27 execution update (2026-04-26):
+
+- Selection-ownership migration lane: implemented component-native executable services for legacy selection lifecycle parity (`cycle_active_target`, `restore_last_valid_target`, `track_last_valid_target`) with guarded authority/reentrancy/debounce semantics and attempt telemetry in `write_controls`.
+- Startup-recovery lane: startup auto-recovery now invokes bounded component restore-last-valid behavior when component authority is active (dry-run otherwise), reducing manual post-restart selection repair steps while preserving fail-closed legacy baseline.
+- Execution disposition: run-27 packet accepted; two-track disposition runtime `compatibility-shimmed`, component `implemented`. P1/P2/P3 impact: no source-of-truth ownership flip; bounded selection-domain migration progression only.
 
 ### Phase 8 follow-on slice card — P8-S03 (fast input-remap UX in HA settings)
 

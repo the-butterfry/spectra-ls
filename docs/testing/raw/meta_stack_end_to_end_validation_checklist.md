@@ -1,5 +1,5 @@
 <!-- Description: Deterministic end-to-end checklist for Spectra LS metadata-stack stale-healing, policy diagnostics, and ESP UI auto-only behavior validation. -->
-<!-- Version: 2026.04.27.1 -->
+<!-- Version: 2026.04.27.2 -->
 <!-- Last updated: 2026-04-27 -->
 
 # Meta Stack End-to-End Validation Checklist
@@ -120,3 +120,16 @@ verdict:
 - OTA proof: `INFO OTA successful`
 - Git sync proof: `HEAD 301538a` and `origin/main 301538a`
 - Status: baseline infrastructure healthy after Step-5 ESP auto-only menu gating.
+
+### Run-1 stale-window decoupling slice (2026-04-27)
+
+- Slice: dual-threshold stale-policy hardening (`ma_meta_stale_s` for playing freshness, `ma_meta_paused_hide_s` for paused hold/hide) across runtime + component + diagnostics templates.
+- Testing surfaces logged:
+  - `docs/testing/raw/scheduler_apply_deterministic_validation.jinja`
+  - `docs/testing/raw/p5_s02_metadata_functionality_monitor.jinja`
+  - `docs/testing/raw/stale_meta_root_cause_diagnostic.jinja`
+- In-slice verification captured:
+  - Static problems check on touched files (no new template/yaml/docs errors; known environment import-resolution warnings only for `homeassistant.*` in workspace context).
+  - Git sync proof: `HEAD 6ede5bf` and `origin/main 6ede5bf`.
+- Runtime template packet status: **pending operator/runtime capture** (pre/in/post template renders not executed in this code-only slice).
+- Status: code + diagnostics parity hardening completed and pushed; next closeout action is a fresh runtime template packet capture on the three required surfaces.

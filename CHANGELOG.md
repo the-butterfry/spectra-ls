@@ -1,8 +1,28 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.22.1 -->
-<!-- Last updated: 2026-04-22 -->
+<!-- Version: 2026.04.26.1 -->
+<!-- Last updated: 2026-04-26 -->
 
 # Changelog
+
+## 2026-04-26
+
+### Meta Auto-Only Stale-Clear Fix (P5-S02 — stale metadata persists after extended idle)
+
+**Problem:** After extended periods of inactivity (user away all day, all players idle/off), stale media metadata (title/artist/album) continued to show on the OLED/display. Root cause: `sensor.ma_active_meta_entity` unconditionally fell back to the active target entity `t` regardless of its play state; and `sensor.now_playing_entity` had no freshness gate on the resolver path and allowed three unconditional fallbacks to rescue stale entities.
+
+**Runtime track (implemented):** `packages/ma_control_hub/template.inc`
+
+- `sensor.ma_active_meta_entity`: Replace unconditional `{% set meta_candidate = t %}` else-branch with a fresh-play-signal guard — only accept target entity `t` as a meta source if it is `playing` or `paused` within `stale_s` seconds; return `''` (empty) for idle/off/stopped or stale-paused targets. Also change final output from `meta_candidate if meta_valid else t` to `meta_candidate if meta_valid else ''` — no unconditional `t` rescue.
+- `sensor.now_playing_entity`: Add freshness gate for the resolver entity path (`res_valid_fresh = res_valid and (res_playing or (res_paused and res_page < 600))`). Remove three unconditional trailing fallbacks (`by_host`, bare `preferred`, `states(input_select.ma_active_target)`) that could rescue stale entities when no fresh signal exists. Output `''` when no fresh candidate.
+
+**Component track (implemented):** `custom_components/spectra_ls/coordinator.py`
+
+- `_build_now_playing_signal`: Add `long_idle_stale_hidden` boolean to signal payload — `True` when entity is not in playing or paused state (idle/off/stopped), covers the "came home after all day" scenario. Added to all sentinel early-return dicts for safe `.get()` access.
+- `_build_metadata_prep_validation`: Extract `long_idle_stale_hidden` from signal; add `long_idle_stale_hidden` blocking reason and `WARN` verdict path; expose `now_playing_long_idle_stale_hidden` in `checks` dict for diagnostic visibility.
+
+**Behavior contract:** `sensor.ma_active_meta_entity` and `sensor.now_playing_entity` now emit empty/`''` instead of stale entity IDs when all candidate entities are idle/off or paused beyond `stale_s`. OLED/display sensors downstream that consume these will naturally clear when their source is empty.
+
+**Two-track disposition:** runtime: implemented; component: implemented.
 
 ## 2026-04-22
 

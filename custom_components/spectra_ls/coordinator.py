@@ -1748,6 +1748,7 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "recent_progress": False,
                 "fresh_play_signal": False,
                 "paused_without_fresh_signal": False,
+                "long_idle_stale_hidden": False,
             }
 
         state = self.hass.states.get(entity_id)
@@ -1762,6 +1763,7 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "recent_progress": False,
                 "fresh_play_signal": False,
                 "paused_without_fresh_signal": False,
+                "long_idle_stale_hidden": False,
             }
 
         state_norm = self._normalize_state(state.state)
@@ -1784,6 +1786,9 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         fresh_play_signal = playing_signal or (paused_signal and recent_progress)
         paused_without_fresh_signal = paused_signal and not recent_progress
+        # Entity is not playing or paused at all — idle/off/stopped with no active signal.
+        # This catches the "came home after all day" stale display case.
+        long_idle_stale_hidden = not playing_signal and not paused_signal
 
         return {
             "resolved": True,
@@ -1795,6 +1800,7 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "recent_progress": recent_progress,
             "fresh_play_signal": fresh_play_signal,
             "paused_without_fresh_signal": paused_without_fresh_signal,
+            "long_idle_stale_hidden": long_idle_stale_hidden,
         }
 
     def _metadata_candidate_payload_ready(self) -> bool:
@@ -1897,6 +1903,7 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         candidate_payload_ready = self._metadata_candidate_payload_ready()
         now_playing_signal = self._build_now_playing_signal(now_playing_entity)
         paused_without_fresh_signal = bool(now_playing_signal.get("paused_without_fresh_signal", False))
+        long_idle_stale_hidden = bool(now_playing_signal.get("long_idle_stale_hidden", False))
         now_playing_fresh_play_signal = bool(now_playing_signal.get("fresh_play_signal", False))
         now_playing_title_signal_ready = now_playing_title_resolved or (
             now_playing_fresh_play_signal and active_meta_entity_resolved
@@ -1940,6 +1947,8 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             blocking_reasons.append("authority_mode_not_legacy")
         if paused_without_fresh_signal and now_playing_title_resolved:
             blocking_reasons.append("paused_without_recent_progress")
+        elif long_idle_stale_hidden and now_playing_title_resolved:
+            blocking_reasons.append("long_idle_stale_hidden")
         elif not now_playing_fresh_play_signal and now_playing_title_resolved:
             blocking_reasons.append("no_fresh_play_signal")
 
@@ -1956,6 +1965,8 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         elif not no_authority_expansion:
             verdict = "WARN"
         elif paused_without_fresh_signal and now_playing_title_resolved:
+            verdict = "WARN"
+        elif long_idle_stale_hidden and now_playing_title_resolved:
             verdict = "WARN"
         elif not now_playing_title_signal_ready or not candidate_payload_ready:
             verdict = "WARN"
@@ -1984,6 +1995,7 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "no_authority_expansion": no_authority_expansion,
                 "now_playing_fresh_play_signal": now_playing_fresh_play_signal,
                 "now_playing_paused_without_fresh_signal": paused_without_fresh_signal,
+                "now_playing_long_idle_stale_hidden": long_idle_stale_hidden,
             },
             "values": {
                 "active_meta_entity": active_meta_entity,

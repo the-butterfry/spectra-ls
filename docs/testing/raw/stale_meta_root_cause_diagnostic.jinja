@@ -1,6 +1,6 @@
 {# Description: Raw copy/paste Jinja template to diagnose stale now-playing metadata source and cause. #}
-{# Version: 2026.04.20.3 #}
-{# Last updated: 2026-04-20 #}
+{# Version: 2026.04.27.1 #}
+{# Last updated: 2026-04-27 #}
 
 {# =========================
   Stale Metadata Root-Cause Diagnostic
@@ -26,6 +26,8 @@
 {% set now_playing_state = states('sensor.now_playing_state') | lower %}
 {% set now_playing_title = states('sensor.now_playing_title') %}
 {% set now_playing_source = states('sensor.now_playing_source') %}
+{% set meta_stale_s = states('input_number.ma_meta_stale_s') | float(45) %}
+{% set paused_hide_s = states('input_number.ma_meta_paused_hide_s') | float(600) %}
 
 {% set invalid = ['', 'none', 'unknown', 'unavailable', none] %}
 {% set candidate_entities_raw = [active_meta_entity, now_playing_entity, active_target] %}
@@ -52,9 +54,28 @@
     {% set play_state_attr = (state_attr(ent, 'play_state') or '') | lower %}
     {% set is_playing_attr = state_attr(ent, 'is_playing') %}
     {% set is_paused_attr = state_attr(ent, 'is_paused') %}
-    {% set active_signal = (ent_state in ['playing', 'paused']) or (play_state_attr in ['play', 'playing', 'pause', 'paused']) or (is_playing_attr is true) or (is_paused_attr is true) %}
-    {% set freshness = 'fresh' if pos_age_s is not none and pos_age_s <= 30 else ('aging' if pos_age_s is not none and pos_age_s <= 300 else 'stale_or_missing') %}
-    {% set stale_risk = (has_meta and freshness == 'stale_or_missing' and ent_state not in ['playing']) %}
+    {% set playing_signal = ent_state == 'playing' or play_state_attr in ['play', 'playing'] or (is_playing_attr is true) %}
+    {% set paused_signal = ent_state == 'paused' or play_state_attr in ['pause', 'paused'] or (is_paused_attr is true) %}
+    {% set has_progress_clock = pos_age_s is not none %}
+    {% set playing_recent = pos_age_s is not none and pos_age_s <= meta_stale_s %}
+    {% set paused_recent = pos_age_s is not none and pos_age_s <= paused_hide_s %}
+    {% set playing_fresh = playing_signal and ((not has_progress_clock) or playing_recent) %}
+    {% set paused_fresh = paused_signal and paused_recent %}
+    {% set active_signal = playing_fresh or paused_fresh %}
+    {% if playing_signal and not playing_fresh %}
+      {% set freshness = 'playing_stale' %}
+    {% elif paused_signal and paused_fresh %}
+      {% set freshness = 'paused_fresh' %}
+    {% elif paused_signal and not paused_fresh %}
+      {% set freshness = 'paused_stale' %}
+    {% elif playing_fresh %}
+      {% set freshness = 'playing_fresh' %}
+    {% elif pos_age_s is not none %}
+      {% set freshness = 'idle_or_unknown_with_clock' %}
+    {% else %}
+      {% set freshness = 'no_progress_clock' %}
+    {% endif %}
+    {% set stale_risk = has_meta and ((playing_signal and not playing_fresh) or (paused_signal and not paused_fresh) or (not playing_signal and not paused_signal)) %}
     {% set ns.rows = ns.rows + [{
       'entity': ent,
       'state': ent_state,
@@ -67,6 +88,8 @@
       'is_paused_attr': is_paused_attr,
       'has_meta': has_meta,
       'active_signal': active_signal,
+      'playing_signal': playing_signal,
+      'paused_signal': paused_signal,
       'pos_age_s': pos_age_s,
       'freshness': freshness,
       'stale_risk': stale_risk,
@@ -90,9 +113,11 @@
 {% set stale_reason = 'no_clear_reason' %}
 {% if now_playing_title in invalid and now_playing_state in ['idle', 'stopped', 'off', 'unknown', 'unavailable'] %}
   {% set stale_reason = 'no_active_media_but_np_surface_still_selected' %}
+{% elif winner_row is mapping and winner_row.playing_signal and winner_row.freshness == 'playing_stale' %}
+  {% set stale_reason = 'playing_signal_without_fresh_progress' %}
 {% elif winner_row is mapping and winner_row.stale_risk %}
   {% set stale_reason = 'winner_has_old_meta_without_fresh_play_signal' %}
-{% elif winner_row is mapping and winner_row.state in ['paused'] and winner_row.freshness != 'fresh' %}
+{% elif winner_row is mapping and winner_row.state in ['paused'] and winner_row.freshness in ['paused_stale', 'no_progress_clock'] %}
   {% set stale_reason = 'paused_meta_held_without_recent_progress' %}
 {% elif winner_row is mapping and winner_row.state in ['idle', 'stopped', 'off'] and winner_row.has_meta %}
   {% set stale_reason = 'idle_or_stopped_entity_still_carries_meta_fields' %}
@@ -106,6 +131,7 @@
 - Now playing state/title/source: **{{ now_playing_state }}** / **{{ now_playing_title if now_playing_title not in invalid else 'n/a' }}** / **{{ now_playing_source if now_playing_source not in invalid else 'n/a' }}**
 - Suspected winner entity: **{{ winner if winner not in invalid else 'n/a' }}**
 - Stale reason classification: **{{ stale_reason }}**
+- Threshold policy: **playing <= {{ meta_stale_s }}s, paused <= {{ paused_hide_s }}s**
 
 ### Candidate entity breakdown
 {% if ns.rows | length == 0 %}
@@ -135,5 +161,6 @@
 
 ### Suggested next checks
 - If stale reason is `winner_has_old_meta_without_fresh_play_signal`, inspect the winning entity for stale `media_title/media_artist` retention.
+- If stale reason is `playing_signal_without_fresh_progress`, treat this as ghost-broadcaster risk and verify progress-clock freshness vs `input_number.ma_meta_stale_s`.
 - If stale reason is `paused_meta_held_without_recent_progress`, verify `media_position_updated_at` and upstream play-state transitions.
 - If stale reason is `idle_or_stopped_entity_still_carries_meta_fields`, clear/normalize source-side metadata or tighten resolver precedence.

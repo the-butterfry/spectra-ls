@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.27.136 -->
+<!-- Version: 2026.04.27.137 -->
 <!-- Last updated: 2026-04-27 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -120,11 +120,18 @@ Latest run update (2026-04-27, component parity + ESP handoff telemetry):
 
 Latest run update (2026-04-27, ghost-broadcaster healing + policy diagnostics):
 
-- Runtime metadata winner logic now treats stale-progress `playing` entities as non-fresh when a progress clock is present (fail-closed), aligning resolver/preferred/active-target freshness windows to canonical `input_number.ma_meta_paused_hide_s`.
+- Runtime metadata winner logic now treats stale-progress `playing` entities as non-fresh when a progress clock is present (fail-closed), with explicit dual-threshold policy windows: `input_number.ma_meta_stale_s` for `playing` freshness and `input_number.ma_meta_paused_hide_s` for paused hold/hide behavior.
 - Component metadata prep now mirrors the same stale-playing suppression semantics and exposes canonical policy + suppression reason diagnostics for operator triage.
 - Runtime track disposition: implemented (freshness gate hardening for stale-playing broadcaster cases).
 - Component track disposition: implemented (matching suppression semantics + policy diagnostics surface).
 - P1/P2/P3 impact check: no source-of-truth ownership change; parity/decision-correctness hardening only.
+
+Latest run update (2026-04-27, stale-window decoupling parity hardening):
+
+- Completed parity-safe stale-window decoupling across runtime + component + validation templates so `playing` freshness no longer inherits the longer paused-hide window.
+- Runtime track disposition: implemented (active-meta/now-playing winner gates now apply `ma_meta_stale_s` for `playing` freshness and `ma_meta_paused_hide_s` for paused hold/hide).
+- Component track disposition: implemented (`_build_now_playing_signal` + metadata-prep diagnostics now expose/use dual thresholds with explicit recent-play vs recent-paused signals).
+- P1/P2/P3 impact check: no source-of-truth ownership change; deterministic stale suppression correctness hardening only.
 
 Latest run update (2026-04-27, metadata-stack rolling validation ledger activation):
 

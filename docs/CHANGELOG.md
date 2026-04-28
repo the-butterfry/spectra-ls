@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.27.295 -->
+<!-- Version: 2026.04.27.296 -->
 <!-- Last updated: 2026-04-27 -->
 
 # Changelog
 
 ## 2026-04-27
+
+- Runtime+Component/Meta Freshness Dual-Threshold Policy Hardening (`packages/ma_control_hub/template.inc`, `custom_components/spectra_ls/coordinator.py`, `custom_components/spectra_ls/sensor.py`, `docs/testing/raw/scheduler_apply_deterministic_validation.jinja`, `docs/testing/raw/stale_meta_root_cause_diagnostic.jinja`, `docs/architecture/CONTROL-HUB-ARCHITECTURE.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`, `docs/notes/NOTES-engineering-rigor.md`): split metadata freshness gating into two explicit windows instead of one blended window: `ma_meta_stale_s` for `playing` progress freshness and `ma_meta_paused_hide_s` for paused hold/hide behavior. This removes residual ghost-broadcaster lag (playing-with-stale-progress lingering too long) while preserving longer paused visibility policy, and keeps runtime/component/diagnostic templates in parity with explicit suppression semantics. Runtime track disposition: implemented (resolver/now-playing freshness logic updated to dual-threshold policy). Custom-component track disposition: implemented (now-playing signal + metadata policy diagnostics updated to matching dual-threshold policy). P1/P2/P3 impact: no source-of-truth ownership change; parity/decision-correctness hardening only. README/wiki parity: no material repo-state change.
 
 - Validation Governance/Meta Stack Closeout Checklist Activation (`docs/testing/raw/meta_stack_end_to_end_validation_checklist.md`, `docs/testing/DEVTOOLS-TEMPLATES.local.md`, `docs/notes/NOTES-engineering-rigor.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): add an explicit rolling validation/test recording contract for the active metadata-stack work so each remaining slice captures deterministic pre/in/post evidence and final closeout proof in one reusable packet (runtime + component + ESP/OLED + stale-healing checks). This formalizes “record while implementing” discipline and prevents end-of-work evidence gaps. Runtime track disposition: compatibility-shimmed (governance/docs-only activation; no runtime contract mutation). Custom-component track disposition: compatibility-shimmed (governance/docs-only activation; no component behavior mutation). P1/P2/P3 impact: no source-of-truth ownership change; validation-evidence discipline hardening only. README/wiki parity: no material repo-state change.
 

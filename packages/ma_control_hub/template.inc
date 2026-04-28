@@ -1,7 +1,6 @@
 # Description: Template entities for ma_control_hub runtime routing, metadata, and now-playing state surfaces.
-# Version: 2026.04.27.2
+# Version: 2026.04.27.3
 # Last updated: 2026-04-27
-# Last updated: 2026-04-26
 # PARITY DIRECTIVE (until full cutover): any behavior/contract change here requires same-slice custom-component parity review,
 # explicit implemented/shim/defer disposition in docs/CHANGELOG.md, and version-metadata review on both runtime and component tracks.
 # HUB MUST-READ: Contract parser methodology.
@@ -635,7 +634,8 @@
           {% set conf_min = states('input_number.ma_meta_confidence_min') | int(4) %}
           {% set detected_ok = detected not in ['','none','unknown','unavailable'] and detected_conf >= conf_min %}
           {% set mapped = (entry.meta if entry is not none and entry.meta is defined and entry.meta not in ['','none','unknown','unavailable'] else '') %}
-          {% set stale_s = states('input_number.ma_meta_stale_s') | float(45) %}
+          {% set playing_stale_s = states('input_number.ma_meta_stale_s') | float(45) %}
+          {% set paused_hide_s = states('input_number.ma_meta_paused_hide_s') | float(600) %}
           {% set mapped_valid = mapped not in ['','none','unknown','unavailable'] and states[mapped] is not none %}
           {% set mapped_state = (states(mapped) | lower) if mapped_valid else '' %}
           {% set mapped_play_state = ((state_attr(mapped,'play_state') if mapped_valid else '') | lower) %}
@@ -644,10 +644,12 @@
           {% set mapped_pos_updated = (state_attr(mapped,'media_position_updated_at') if mapped_valid else none) %}
           {% set mapped_pos_ts = as_timestamp(mapped_pos_updated) if mapped_pos_updated is not none else 0 %}
           {% set mapped_pos_age = (as_timestamp(now()) - mapped_pos_ts) if mapped_pos_ts > 0 else 9999 %}
-          {% set mapped_recent = mapped_pos_age < stale_s %}
+          {% set mapped_recent_play = mapped_pos_age < playing_stale_s %}
+          {% set mapped_recent_pause = mapped_pos_age < paused_hide_s %}
           {% set mapped_playing_signal = mapped_state == 'playing' or mapped_play_state in ['play','playing'] or (mapped_is_playing is true) %}
           {% set mapped_paused_signal = mapped_state == 'paused' or mapped_play_state in ['pause','paused'] or (mapped_is_paused is true) %}
-          {% set mapped_active = mapped_playing_signal or (mapped_paused_signal and mapped_recent) %}
+          {% set mapped_playing_fresh = mapped_playing_signal and (mapped_pos_ts == 0 or mapped_recent_play) %}
+          {% set mapped_active = mapped_playing_fresh or (mapped_paused_signal and mapped_recent_pause) %}
           {% set kitchen_meta = 'media_player.kitchen_wiim' %}
           {% set kitchen_state = states(kitchen_meta) | lower %}
           {% set kitchen_active = kitchen_state in ['playing','paused'] %}
@@ -657,7 +659,7 @@
           {% set kitchen_pos_updated = state_attr(kitchen_meta,'media_position_updated_at') %}
           {% set kitchen_pos_ts = as_timestamp(kitchen_pos_updated) if kitchen_pos_updated is not none else 0 %}
           {% set kitchen_pos_age = (as_timestamp(now()) - kitchen_pos_ts) if kitchen_pos_ts > 0 else 9999 %}
-          {% set kitchen_stream_active = kitchen_pos_age < 30 %}
+          {% set kitchen_stream_active = kitchen_pos_age < playing_stale_s %}
           {% if override_on and override_entity not in ['','none','unknown','unavailable'] %}
             {% set meta_candidate = override_entity %}
           {% elif t == 'media_player.kitchen_speakers' and (kitchen_stream_active or kitchen_active) and kitchen_has_meta and not detected_ok %}
@@ -676,11 +678,12 @@
             {% set t_pup = state_attr(t,'media_position_updated_at') if t not in ['','none','unknown','unavailable'] else none %}
             {% set t_pts = as_timestamp(t_pup) if t_pup is not none else 0 %}
             {% set t_page = (as_timestamp(now()) - t_pts) if t_pts > 0 else 9999 %}
-            {% set t_recent = t_page < paused_hide_s %}
+            {% set t_recent_play = t_page < playing_stale_s %}
+            {% set t_recent_pause = t_page < paused_hide_s %}
             {% set t_playing = t_st == 'playing' or t_ps in ['play','playing'] or (t_ip is true) %}
             {% set t_paused = t_st == 'paused' or t_ps in ['pause','paused'] or (t_ipa is true) %}
-            {% set t_playing_fresh = t_playing and (t_pts == 0 or t_recent) %}
-            {% set meta_candidate = t if (t_playing_fresh or (t_paused and t_recent)) else '' %}
+            {% set t_playing_fresh = t_playing and (t_pts == 0 or t_recent_play) %}
+            {% set meta_candidate = t if (t_playing_fresh or (t_paused and t_recent_pause)) else '' %}
           {% endif %}
           {% set meta_state = states(meta_candidate) if meta_candidate not in ['','none','unknown','unavailable'] else '' %}
           {% set meta_valid = meta_candidate not in ['','none','unknown','unavailable'] and meta_state not in ['unknown','unavailable',''] %}
@@ -949,13 +952,20 @@
         {% set t = states('input_select.ma_active_target') %}
         {% set t_valid = t not in ['','unknown','unavailable','none'] and states[t] is not none %}
         {% set t_state = (states(t) | lower) if t_valid else '' %}
+        {% set playing_stale_s = states('input_number.ma_meta_stale_s') | float(45) %}
         {% set paused_hide_s = states('input_number.ma_meta_paused_hide_s') | float(600) %}
         {% set t_pos_updated = (state_attr(t,'media_position_updated_at') if t_valid else none) %}
         {% set t_pos_ts = as_timestamp(t_pos_updated) if t_pos_updated is not none else 0 %}
         {% set t_pos_age = (as_timestamp(now()) - t_pos_ts) if t_pos_ts > 0 else 9999 %}
-        {% set t_recent = t_pos_age < paused_hide_s %}
-        {% set t_playing_fresh = t_state == 'playing' and (t_pos_ts == 0 or t_recent) %}
-        {% set t_active = t_playing_fresh or (t_state == 'paused' and t_recent) %}
+        {% set t_recent_play = t_pos_age < playing_stale_s %}
+        {% set t_recent_pause = t_pos_age < paused_hide_s %}
+        {% set t_ps = ((state_attr(t,'play_state') if t_valid else '') | lower) %}
+        {% set t_ip = (state_attr(t,'is_playing') if t_valid else none) %}
+        {% set t_ipa = (state_attr(t,'is_paused') if t_valid else none) %}
+        {% set t_playing = t_state == 'playing' or t_ps in ['play','playing'] or (t_ip is true) %}
+        {% set t_paused = t_state == 'paused' or t_ps in ['pause','paused'] or (t_ipa is true) %}
+        {% set t_playing_fresh = t_playing and (t_pos_ts == 0 or t_recent_play) %}
+        {% set t_active = t_playing_fresh or (t_paused and t_recent_pause) %}
         {% set t_title = (state_attr(t,'media_title') if t_valid else '') or '' %}
         {% set t_artist = (state_attr(t,'media_artist') if t_valid else '') or '' %}
         {% set t_has_meta = t_title not in ['', 'None', none] or t_artist not in ['', 'None', none] %}
@@ -970,11 +980,17 @@
         {% set pref_pos_updated = (state_attr(preferred,'media_position_updated_at') if pref_valid else none) %}
         {% set pref_pos_ts = as_timestamp(pref_pos_updated) if pref_pos_updated is not none else 0 %}
         {% set pref_pos_age = (as_timestamp(now()) - pref_pos_ts) if pref_pos_ts > 0 else 9999 %}
-        {% set pref_recent = pref_pos_age < paused_hide_s %}
+        {% set pref_recent_play = pref_pos_age < playing_stale_s %}
+        {% set pref_recent_pause = pref_pos_age < paused_hide_s %}
+        {% set pref_ps = ((state_attr(preferred,'play_state') if pref_valid else '') | lower) %}
+        {% set pref_ip = (state_attr(preferred,'is_playing') if pref_valid else none) %}
+        {% set pref_ipa = (state_attr(preferred,'is_paused') if pref_valid else none) %}
+        {% set pref_playing = pref_state == 'playing' or pref_ps in ['play','playing'] or (pref_ip is true) %}
+        {% set pref_paused = pref_state == 'paused' or pref_ps in ['pause','paused'] or (pref_ipa is true) %}
         {% set pref_has_meta = pref_title not in ['', 'None', none] or pref_artist not in ['', 'None', none] %}
-        {% set pref_playing_fresh = pref_state == 'playing' and (pref_pos_ts == 0 or pref_recent) %}
-        {% set pref_active = pref_playing_fresh or (pref_state == 'paused' and pref_recent) %}
-        {# Freshness gate for resolver: resolver entity must be playing or recently paused (within 600s). #}
+        {% set pref_playing_fresh = pref_playing and (pref_pos_ts == 0 or pref_recent_play) %}
+        {% set pref_active = pref_playing_fresh or (pref_paused and pref_recent_pause) %}
+        {# Freshness gate for resolver: playing uses ma_meta_stale_s, paused uses ma_meta_paused_hide_s. #}
         {# Stale resolver entries must not rescue idle/off targets. #}
         {% set res_st = (states(resolver) | lower) if res_valid else '' %}
         {% set res_ps = ((state_attr(resolver,'play_state') if res_valid else '') | lower) %}
@@ -985,12 +1001,13 @@
         {% set res_page = (as_timestamp(now()) - res_pts) if res_pts > 0 else 9999 %}
         {% set res_playing = res_st == 'playing' or res_ps in ['play','playing'] or (res_ip is true) %}
         {% set res_paused = res_st == 'paused' or res_ps in ['pause','paused'] or (res_ipa is true) %}
-        {% set res_recent = res_page < paused_hide_s %}
-        {% set res_playing_fresh = res_playing and (res_pts == 0 or res_recent) %}
-        {% set res_valid_fresh = res_valid and (res_playing_fresh or (res_paused and res_recent)) %}
+        {% set res_recent_play = res_page < playing_stale_s %}
+        {% set res_recent_pause = res_page < paused_hide_s %}
+        {% set res_playing_fresh = res_playing and (res_pts == 0 or res_recent_play) %}
+        {% set res_valid_fresh = res_valid and (res_playing_fresh or (res_paused and res_recent_pause)) %}
         {% if res_valid_fresh %}
           {{ resolver }}
-        {% elif pref_valid and (pref_active or pref_recent) %}
+        {% elif pref_valid and (pref_active or pref_recent_pause) %}
           {{ preferred }}
         {% elif t_valid and t_active and (t_has_meta or ma_title not in ['','unknown','unavailable','none']) %}
           {{ t }}

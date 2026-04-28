@@ -1,5 +1,5 @@
 <!-- Description: Engineering rigor baseline for custom-component migration decisions, contract inventory, and explicit tough-spot tracking. -->
-<!-- Version: 2026.04.27.1 -->
+<!-- Version: 2026.04.27.2 -->
 <!-- Last updated: 2026-04-27 -->
 
 # NOTES — Engineering Rigor Baseline
@@ -89,3 +89,18 @@ Still required on every P3 trial:
 
 - rerun parity templates and capture fresh outputs in-slice,
 - verify no flapping and no mismatches before widening scope.
+
+## Active rolling validation/test ledger (metadata stack)
+
+The active metadata stack now uses a single deterministic closeout checklist:
+
+- `docs/testing/raw/meta_stack_end_to_end_validation_checklist.md`
+
+Required discipline for all remaining slices in this lane:
+
+1. capture pre-change baseline,
+2. capture in-change probe evidence,
+3. capture stale-root-cause probe evidence when stale/ghost behavior appears,
+4. capture post-change closeout proof (build + OTA + git sync).
+
+No metadata-stack slice is considered complete without a recorded evidence packet row in that checklist.

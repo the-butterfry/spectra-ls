@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.27.134 -->
+<!-- Version: 2026.04.27.135 -->
 <!-- Last updated: 2026-04-27 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -132,6 +132,14 @@ Latest run update (2026-04-27, ghost-broadcaster healing + policy diagnostics):
 - Runtime track disposition: implemented (matching template-side freshness hardening; no ownership change).
 - Component track disposition: implemented (suppression semantics + policy diagnostics exposure).
 - P1/P2/P3 impact check: no source-of-truth ownership change; parity/decision-correctness hardening only.
+
+Latest run update (2026-04-27, metadata-stack rolling validation ledger activation):
+
+- Added a single metadata-stack closeout checklist artifact (`docs/testing/raw/meta_stack_end_to_end_validation_checklist.md`) and linked it in the DevTools template index for repeatable operator use.
+- Engineering-rigor contract now requires per-slice evidence packet capture (pre/in/post plus stale-root-cause and closeout proof lines) while metadata-stack implementation continues.
+- Runtime track disposition: compatibility-shimmed (governance/docs activation only; no runtime mutation).
+- Component track disposition: compatibility-shimmed (governance/docs activation only; no component mutation).
+- P1/P2/P3 impact check: no source-of-truth ownership change; validation discipline hardening only.
 | P3-S01 | 3 | Validated (legacy write authority retained behind switch) | Validated (guard framework + manual routing write trial services) | Validated | Medium | Validated |
 | P3-S02 | 3 | Validated (selection scripts/automations compatibility shim validation) | Validated (one-shot validation sequence + selection handoff diagnostics) | Validated (single-capable waiver) | High | Validated |
 | P3-S03 | 3 | Validated (metadata ownership explicitly deferred to legacy compatibility mode) | Validated (metadata prep diagnostics + one-shot sequence + listener-safe validation template) | Validated (diagnostics-only) | Medium | Validated |

@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.27.294 -->
+<!-- Version: 2026.04.27.295 -->
 <!-- Last updated: 2026-04-27 -->
 
 # Changelog
 
 ## 2026-04-27
+
+- Validation Governance/Meta Stack Closeout Checklist Activation (`docs/testing/raw/meta_stack_end_to_end_validation_checklist.md`, `docs/testing/DEVTOOLS-TEMPLATES.local.md`, `docs/notes/NOTES-engineering-rigor.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): add an explicit rolling validation/test recording contract for the active metadata-stack work so each remaining slice captures deterministic pre/in/post evidence and final closeout proof in one reusable packet (runtime + component + ESP/OLED + stale-healing checks). This formalizes “record while implementing” discipline and prevents end-of-work evidence gaps. Runtime track disposition: compatibility-shimmed (governance/docs-only activation; no runtime contract mutation). Custom-component track disposition: compatibility-shimmed (governance/docs-only activation; no component behavior mutation). P1/P2/P3 impact: no source-of-truth ownership change; validation-evidence discipline hardening only. README/wiki parity: no material repo-state change.
 
 - ESP UI/Meta Menu Auto-Only Gating (`esphome/spectra_ls_system/packages/spectra-ls-ui.yaml`, `esphome/spectra_ls_system/substitutions.yaml`): hide manual metadata source picks from normal hardware menu flow while preserving existing hidden emergency fallback contracts (`input_boolean.ma_meta_override_active`, `input_text.ma_meta_override_entity`) and existing Auto behavior (clear override + clear entity). Added explicit compile-time UI gate (`meta_manual_picker_enabled`) defaulting to disabled so production UX remains auto-first and stale-safe, with maintenance-only opt-in if needed. Runtime track disposition: implemented (ESP menu behavior hardening). Custom-component track disposition: checked/not-applicable (component write-path/services remain unchanged; emergency fallback contract retained). P1/P2/P3 impact: no source-of-truth ownership change; operator UX gating hardening only. README/wiki parity: no material repo-state change.
 

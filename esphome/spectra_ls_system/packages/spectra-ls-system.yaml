@@ -1,5 +1,5 @@
 # Description: Spectra LS core state + globals + system intervals + shared scripts.
-# Version: 2026.04.27.4
+# Version: 2026.04.27.5
 # Last updated: 2026-04-27
 # Update version/date whenever you change this file.
 #
@@ -1005,6 +1005,18 @@ globals:
     type: std::string
     restore_value: no
     initial_value: '""'
+  - id: non_music_preview_key
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: non_music_preview_until_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: non_music_force_blank
+    type: bool
+    restore_value: no
+    initial_value: "false"
   - id: source_popup_label
     type: std::string
     restore_value: no

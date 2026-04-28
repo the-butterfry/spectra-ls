@@ -1,5 +1,5 @@
 <!-- Description: Retroactive architecture and feature documentation for the MA control hub package split. -->
-<!-- Version: 2026.04.27.52 -->
+<!-- Version: 2026.04.27.53 -->
 <!-- Last updated: 2026-04-27 -->
 
 # MA Control Hub Architecture (Retroactive Baseline)
@@ -88,6 +88,7 @@ Defined by `template.inc`:
 - component gate visibility: metadata-prep diagnostics include explicit gate scoring and blocking reasons for authority/freshness failures
 - active control path/capability/host derivation
 - ambiguity/staleness/confidence binary surfaces
+- ESP OLED media-priority policy: runtime display path is music-first; non-music TV/video metadata may render as a bounded preview (`non_music_preview_ms`, default 10s) and then force-blank to prevent stale TV carryover/stickiness
 - friendly labels and helper projection sensors
 - ESP-facing handoff note: on active-target changes, ESP requests immediate HA recompute for control-target/host surfaces (`sensor.ma_control_targets`, `sensor.ma_control_hosts`, `sensor.ma_control_host`) to reduce host handoff latency, but forced recompute is reconnect-safe gated (HA API reconnect grace window + template-feed readiness checks) to avoid HA reboot startup assertion races.
 - ESP exported handoff telemetry: ESP now publishes HA-visible diagnostics sensors for handoff status, resolved control target, and OLED/UI status (`sensor.spectra_ls_system_esp_control_handoff_status`, `sensor.spectra_ls_system_esp_control_target`, `sensor.spectra_ls_system_esp_oled_status`) for deterministic operator validation.

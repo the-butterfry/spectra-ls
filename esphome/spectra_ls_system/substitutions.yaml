@@ -1,5 +1,5 @@
 # Description: Spectra LS System substitutions for ESPHome main config and packages.
-# Version: 2026.04.27.1
+# Version: 2026.04.27.2
 # Last updated: 2026-04-27
 # Spectra LS substitutions scoped to spectra_ls_system.
 # Use absolute paths for assets so this file can move with spectra_ls_system.
@@ -259,6 +259,7 @@ meta_playing_grace_ms: "15000"
 meta_refresh_ms: "1500"
 meta_refresh_tick_ms: "250"
 meta_pause_timeout_ms: "60000"
+non_music_preview_ms: "10000"
 meta_override_reset_ms: "120000"
 meta_popup_ms: "3500"
 source_popup_ms: "5000"

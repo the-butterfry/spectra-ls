@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.27.135 -->
+<!-- Version: 2026.04.27.136 -->
 <!-- Last updated: 2026-04-27 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -125,6 +125,14 @@ Latest run update (2026-04-27, ghost-broadcaster healing + policy diagnostics):
 - Runtime track disposition: implemented (freshness gate hardening for stale-playing broadcaster cases).
 - Component track disposition: implemented (matching suppression semantics + policy diagnostics surface).
 - P1/P2/P3 impact check: no source-of-truth ownership change; parity/decision-correctness hardening only.
+
+Latest run update (2026-04-27, metadata-stack rolling validation ledger activation):
+
+- Published deterministic rolling evidence checklist for metadata-stack completion packets (`docs/testing/raw/meta_stack_end_to_end_validation_checklist.md`) and linked it into operator DevTools docs (`docs/testing/DEVTOOLS-TEMPLATES.local.md`).
+- Engineering rigor baseline now requires pre/in/post + stale-root-cause + closeout proof recording for each remaining metadata slice.
+- Runtime track disposition: compatibility-shimmed (governance/docs activation only; no runtime contract mutation).
+- Component track disposition: compatibility-shimmed (governance/docs activation only; no component behavior mutation).
+- P1/P2/P3 impact check: no source-of-truth ownership change; validation-evidence discipline hardening only.
 
 - Component state-change parity now mirrors legacy handoff-trigger intent for additional entity changes used in runtime acceleration: detected receiver and now-playing entity updates now run the same component players-change refresh sequencing path (target-options refresh -> guarded auto-select) as MA-players changes.
 - ESP now exports HA-visible telemetry surfaces for deterministic handoff diagnostics: control handoff status, resolved control target, and OLED/UI status.

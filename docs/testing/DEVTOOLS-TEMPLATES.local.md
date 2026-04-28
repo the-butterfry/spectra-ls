@@ -1,11 +1,23 @@
 <!-- Description: Copy/paste Home Assistant Dev Tools template diagnostics for Spectra LS System. -->
-<!-- Version: 2026.04.19.20 -->
-<!-- Last updated: 2026-04-19 -->
+<!-- Version: 2026.04.27.1 -->
+<!-- Last updated: 2026-04-27 -->
 
 # Spectra LS System — Dev Tools Template Validation
 
 > Tracked diagnostics guide for repeatable Spectra LS system validation.  
 > Use each template by copying into **Home Assistant → Developer Tools → Template**.
+
+## 0) Scheduler Apply Deterministic Validation (Component)
+
+Raw copy/paste path (no markdown fences):
+
+- `docs/testing/raw/scheduler_apply_deterministic_validation.jinja`
+
+## 0A) Meta Stack End-to-End Validation Checklist (Rolling)
+
+- `docs/testing/raw/meta_stack_end_to_end_validation_checklist.md`
+
+Use this checklist to record pre/in/post validation evidence while implementing metadata-stack slices so closeout proof is complete when work ends.
 
 ## 1) Overall Spectra LS Health Check (Comprehensive)
 

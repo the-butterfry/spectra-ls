@@ -1,6 +1,6 @@
 # Description: Spectra LS System substitutions for ESPHome main config and packages.
-# Version: 2026.04.22.3
-# Last updated: 2026-04-22
+# Version: 2026.04.27.1
+# Last updated: 2026-04-27
 # Spectra LS substitutions scoped to spectra_ls_system.
 # Use absolute paths for assets so this file can move with spectra_ls_system.
 
@@ -34,7 +34,7 @@ dns2_ip: 1.1.1.1
 # - jump_steps: large moves bypass defer path for immediate response.
 volume_pot_send_interval_ms: "25"
 volume_pot_settle_ms: "50"
-volume_pot_jump_steps: "1"
+volume_pot_jump_steps: "3"
 eq_pot_send_interval_ms: "90"
 eq_pot_settle_ms: "60"
 eq_pot_jump_steps: "1"
@@ -61,7 +61,7 @@ arylic_tcp_burst_max_sends: "5"
 arylic_tcp_queue_len: "16"
 arylic_tcp_worker_stack: "4096"
 arylic_tcp_worker_prio: "1"
-arylic_tcp_log_interval_ms: "500"
+arylic_tcp_log_interval_ms: "800"
 
 # === Arylic / LinkPlay Endpoints + Routing ===
 # Purpose: primary endpoint and optional HTTP status polling controls.
@@ -289,6 +289,9 @@ arylic_source_cycle_codes: "NET,BT,LINE-IN,LINE-IN2"
 arylic_source_cycle_labels: "Wi-Fi,Bluetooth,Line In 1,Line In 2"
 # New physical button for meta source override
 meta_select_button_id: "40"
+# Auto-first UX: keep manual meta picker hidden from normal menu flow.
+# Maintenance-only override: set to "true" locally when explicit manual picker access is needed.
+meta_manual_picker_enabled: "false"
 meta_source_label_auto: "Auto"
 meta_source_label_arylic: "Device A"
 meta_source_label_1: "Source 1"

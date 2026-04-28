@@ -1,5 +1,5 @@
 # Description: Constants for Spectra LS custom integration shadow parity, Phase 3 guarded routing write-path controls, Phase 4 diagnostics scaffolding (F4-S01/F4-S03), Phase 5 metadata trial contract service, and Phase 6/8 control-center settings and fast-remap preset contracts including startup MA-readiness gating constants and selection-ownership migration services.
-# Version: 2026.04.27.1
+# Version: 2026.04.27.2
 # Last updated: 2026-04-27
 
 from __future__ import annotations
@@ -19,6 +19,7 @@ SERVICE_METADATA_WRITE_TRIAL = "metadata_write_trial"
 SERVICE_RUN_P3_S01_SEQUENCE = "run_p3_s01_sequence"
 SERVICE_RUN_P3_S02_SEQUENCE = "run_p3_s02_sequence"
 SERVICE_VALIDATE_METADATA_PREP = "validate_metadata_prep"
+SERVICE_VALIDATE_METADATA_POLICY = "validate_metadata_policy"
 SERVICE_RUN_P5_S02_SEQUENCE = "run_p5_s02_sequence"
 SERVICE_RUN_P3_S03_SEQUENCE = "run_p3_s03_sequence"
 SERVICE_VALIDATE_CAPABILITY_PROFILE = "validate_capability_profile"
@@ -70,20 +71,24 @@ LEGACY_META_OVERRIDE_ENTITY = "input_text.ma_meta_override_entity"
 LEGACY_META_STALE = "binary_sensor.ma_meta_stale"
 LEGACY_META_PAUSED_HIDE_S = "input_number.ma_meta_paused_hide_s"
 LEGACY_META_STALE_S = "input_number.ma_meta_stale_s"
+LEGACY_META_CONFIDENCE_MIN = "input_number.ma_meta_confidence_min"
 
 # --- Auto-metadata policy defaults ---
 # These are the canonical fallback values used when the HA helper is unavailable.
 # All tuneable thresholds should read from their HA helper first and fall back to these.
-META_POLICY_DEFAULTS: dict[str, float | bool] = {
+META_POLICY_DEFAULTS: dict[str, Any] = {
+    "mode": "auto",              # Auto-only metadata UX posture
     "meta_stale_s": 45.0,        # Short freshness window for play/pause signal freshness
     "paused_hide_s": 600.0,      # Extended idle clear: hide metadata after paused this long
     "confidence_min": 4.0,       # Minimum confidence score for meta candidate acceptance
     "clear_when_no_active_playback": True,  # Fail-closed: clear display when no fresh signal
+    "control_host_coupling": True,          # Metadata confidence remains coupled to host/route readiness
 }
 
 # Suppression reason tokens — used in both runtime (jinja comment context) and component diagnostics.
 # Keep these in sync with the reason strings emitted by _build_now_playing_signal.
 META_SUPPRESSION_PLAYING = "playing"                      # Entity is actively playing — no suppression
+META_SUPPRESSION_PLAYING_STALE = "playing_stale_hidden"   # Entity reports playing but progress clock is stale
 META_SUPPRESSION_PAUSED_FRESH = "paused_fresh"            # Paused but within paused_hide_s — still shown
 META_SUPPRESSION_PAUSED_STALE = "paused_stale_hidden"     # Paused beyond paused_hide_s — hidden
 META_SUPPRESSION_LONG_IDLE = "long_idle_stale_hidden"     # Entity is idle/off/stopped — hidden

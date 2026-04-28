@@ -1,6 +1,6 @@
 <!-- Description: Engineering rigor baseline for custom-component migration decisions, contract inventory, and explicit tough-spot tracking. -->
-<!-- Version: 2026.04.19.1 -->
-<!-- Last updated: 2026-04-19 -->
+<!-- Version: 2026.04.27.1 -->
+<!-- Last updated: 2026-04-27 -->
 
 # NOTES — Engineering Rigor Baseline
 
@@ -75,6 +75,10 @@ Static contract inventory snapshot:
 4. **Authority boundary risk (High)**
    - Legacy template graph mixes routing + selection + metadata concerns; unsafe to hand off all at once.
    - Mitigation: enforce P3 sub-slices with routing-only first, then selection, metadata later.
+
+5. **Ghost-broadcaster stale-playing risk (High)**
+   - Some players can continue reporting `playing` while effectively stale (progress clock not moving), causing stale metadata to remain selected/displayed.
+   - Mitigation: enforce freshness-aware `playing` gates when progress clocks are present (runtime + component parity), align preferred/resolver freshness windows to `input_number.ma_meta_paused_hide_s`, and publish explicit suppression reasons (`playing_stale_hidden`, `paused_stale_hidden`, `long_idle_stale_hidden`) for deterministic operator triage.
 
 ## P1/P2 validation checkpoint status
 

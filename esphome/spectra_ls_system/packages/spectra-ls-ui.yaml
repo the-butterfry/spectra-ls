@@ -1,6 +1,6 @@
 # Description: Spectra LS UI/menu input handling + UI fonts + now-playing helper sensors.
-# Version: 2026.04.22.1
-# Last updated: 2026-04-22
+# Version: 2026.04.27.1
+# Last updated: 2026-04-27
 # Update version/date whenever you change this file.
 #
 # Sections:
@@ -93,11 +93,13 @@ script:
           if (target_primary > 0) target_count = target_primary;
           else if (target_catalog > 0) target_count = target_catalog;
 
-            int meta_count = 0;
+          int meta_count = 0;
+          if (${meta_manual_picker_enabled}) {
             if (id(ha_meta_candidates_names).has_state()) {
               const int parsed = parse_options_count(id(ha_meta_candidates_names).state.c_str());
               if (parsed > 0) meta_count = parsed;
             }
+          }
 
           id(menu_room_count) = room_count;
           id(menu_target_count) = target_count;
@@ -248,9 +250,10 @@ script:
             target_count = (id(menu_light_room) == 0) ? ${menu_target_fallback_room0_count} : ${menu_target_fallback_other_count};
           }
           int meta_count = id(menu_meta_count);
+          const bool meta_manual_enabled = ${meta_manual_picker_enabled};
           const int menu_level5_count = room_count + 1;
           const int menu_level6_count = target_count + 1;
-          const int menu_level9_count = meta_count + ${menu_count_meta_base};
+          const int menu_level9_count = (meta_manual_enabled ? meta_count : 0) + ${menu_count_meta_base};
           std::vector<std::string> control_target_labels;
           if (id(ha_control_target_labels).has_state()) {
             control_target_labels = parse_options(id(ha_control_target_labels).state.c_str());
@@ -463,6 +466,7 @@ script:
             std::vector<std::string> names = parse_options(names_raw);
             const int count = menu_level9_count;
             const int back_idx = count - 1;
+            const bool meta_manual_enabled = ${meta_manual_picker_enabled};
             if (id(menu_index) == 0) {
               id(meta_menu_selected_enable) = false;
               id(meta_menu_selected_entity) = "";
@@ -475,6 +479,11 @@ script:
               return;
             }
             if (id(menu_index) == back_idx) {
+              id(menu_level) = LV_MAIN;
+              id(menu_index) = 2;
+              return;
+            }
+            if (!meta_manual_enabled) {
               id(menu_level) = LV_MAIN;
               id(menu_index) = 2;
               return;
@@ -690,9 +699,10 @@ sensor:
             target_count = (id(menu_light_room) == 0) ? ${menu_target_fallback_room0_count} : ${menu_target_fallback_other_count};
           }
           int meta_count = id(menu_meta_count);
+          const bool meta_manual_enabled = ${meta_manual_picker_enabled};
           const int menu_level5_count = room_count + 1;
           const int menu_level6_count = target_count + 1;
-          const int menu_level9_count = meta_count + ${menu_count_meta_base};
+          const int menu_level9_count = (meta_manual_enabled ? meta_count : 0) + ${menu_count_meta_base};
           std::vector<std::string> control_target_labels;
           if (id(ha_control_target_labels).has_state()) {
             control_target_labels = parse_options(id(ha_control_target_labels).state.c_str());

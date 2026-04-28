@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.27.296 -->
+<!-- Version: 2026.04.27.297 -->
 <!-- Last updated: 2026-04-27 -->
 
 # Changelog
 
 ## 2026-04-27
+
+- Validation/Meta Stack Step-3 Full Runtime DT Packet (`docs/testing/raw/meta_stack_step3_full_validation.jinja`, `docs/testing/DEVTOOLS-TEMPLATES.local.md`, `docs/testing/raw/meta_stack_end_to_end_validation_checklist.md`): add a single one-paste Developer Tools template that aggregates scheduler status, metadata-prep policy/suppression signals, stale root-cause classification, and ESP handoff/UI gate checks into one Step-3 runtime assessment surface. This is validation-surface hardening only (no runtime/component behavior mutation) and closes the prior gap where Step-3 evidence required manually stitching multiple templates. Runtime track disposition: compatibility-shimmed (diagnostics/template-only). Custom-component track disposition: compatibility-shimmed (diagnostics/template-only). P1/P2/P3 impact: no source-of-truth ownership change; validation observability hardening only. README/wiki parity: no material repo-state change.
 
 - Runtime+Component/Meta Freshness Dual-Threshold Policy Hardening (`packages/ma_control_hub/template.inc`, `custom_components/spectra_ls/coordinator.py`, `custom_components/spectra_ls/sensor.py`, `docs/testing/raw/scheduler_apply_deterministic_validation.jinja`, `docs/testing/raw/stale_meta_root_cause_diagnostic.jinja`, `docs/architecture/CONTROL-HUB-ARCHITECTURE.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`, `docs/notes/NOTES-engineering-rigor.md`): split metadata freshness gating into two explicit windows instead of one blended window: `ma_meta_stale_s` for `playing` progress freshness and `ma_meta_paused_hide_s` for paused hold/hide behavior. This removes residual ghost-broadcaster lag (playing-with-stale-progress lingering too long) while preserving longer paused visibility policy, and keeps runtime/component/diagnostic templates in parity with explicit suppression semantics. Runtime track disposition: implemented (resolver/now-playing freshness logic updated to dual-threshold policy). Custom-component track disposition: implemented (now-playing signal + metadata policy diagnostics updated to matching dual-threshold policy). P1/P2/P3 impact: no source-of-truth ownership change; parity/decision-correctness hardening only. README/wiki parity: no material repo-state change.
 

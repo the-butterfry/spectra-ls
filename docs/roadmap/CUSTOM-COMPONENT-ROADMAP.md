@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.27.135 -->
+<!-- Version: 2026.04.27.136 -->
 <!-- Last updated: 2026-04-27 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -132,6 +132,14 @@ Latest run update (2026-04-27, ghost-broadcaster healing + policy diagnostics):
 - Runtime track disposition: implemented (matching template-side freshness hardening; no ownership change).
 - Component track disposition: implemented (suppression semantics + policy diagnostics exposure).
 - P1/P2/P3 impact check: no source-of-truth ownership change; parity/decision-correctness hardening only.
+
+Latest run update (2026-04-27, stale-window decoupling parity hardening):
+
+- Metadata freshness windows are now explicitly decoupled in parity logic: `ma_meta_stale_s` for `playing` freshness and `ma_meta_paused_hide_s` for paused hold/hide behavior.
+- Component diagnostics now publish dual-window signal posture (recent play vs recent paused) to keep stale-suppression analysis deterministic across runtime/component tracks.
+- Runtime track disposition: implemented (template winner gating uses dual thresholds).
+- Component track disposition: implemented (coordinator now-playing signal + metadata-prep diagnostics use and expose dual thresholds).
+- P1/P2/P3 impact check: no source-of-truth ownership change; stale-suppression correctness and parity hardening only.
 
 Latest run update (2026-04-27, metadata-stack rolling validation ledger activation):
 

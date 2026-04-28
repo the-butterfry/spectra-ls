@@ -1,6 +1,5 @@
 # Description: Data coordinator for Spectra LS parity diagnostics, Phase 3 guarded routing write-path controls, Phase 4 diagnostics scaffolding (F4-S01/F4-S03), Phase 5 metadata trial contract auditing, and Phase 6/8 control-center settings, fast-remap, execution visibility, startup auto-recovery orchestration (latency-hardened cadence), and selection-lock lifecycle parity migration (ambiguity lock, stale unlock, auto-select loop).
-# Version: 2026.04.27.37
-# Last updated: 2026-04-27
+# Version: 2026.04.27.38
 # Last updated: 2026-04-27
 
 from __future__ import annotations
@@ -1789,11 +1788,14 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "is_paused_attr": None,
                 "position_age_s": None,
                 "recent_progress": False,
+                "recent_play_progress": False,
+                "recent_paused_progress": False,
                 "fresh_play_signal": False,
                 "playing_without_fresh_signal": False,
                 "paused_without_fresh_signal": False,
                 "long_idle_stale_hidden": False,
                 "suppression_reason": META_SUPPRESSION_ENTITY_MISSING,
+                "meta_stale_s": float(META_POLICY_DEFAULTS["meta_stale_s"]),
                 "paused_hide_s": float(META_POLICY_DEFAULTS["paused_hide_s"]),
             }
 
@@ -1807,11 +1809,14 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "is_paused_attr": None,
                 "position_age_s": None,
                 "recent_progress": False,
+                "recent_play_progress": False,
+                "recent_paused_progress": False,
                 "fresh_play_signal": False,
                 "playing_without_fresh_signal": False,
                 "paused_without_fresh_signal": False,
                 "long_idle_stale_hidden": False,
                 "suppression_reason": META_SUPPRESSION_ENTITY_MISSING,
+                "meta_stale_s": float(META_POLICY_DEFAULTS["meta_stale_s"]),
                 "paused_hide_s": float(META_POLICY_DEFAULTS["paused_hide_s"]),
             }
 
@@ -1820,15 +1825,21 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         is_playing_attr = state.attributes.get("is_playing")
         is_paused_attr = state.attributes.get("is_paused")
         pos_age_s = self._timestamp_age_seconds(state.attributes.get("media_position_updated_at"))
+        # Read meta_stale_s from HA helper; fall back to META_POLICY_DEFAULTS if unavailable.
+        meta_stale_s_state = self.hass.states.get(LEGACY_META_STALE_S)
+        meta_stale_s = float(meta_stale_s_state.state) if (
+            meta_stale_s_state is not None
+            and meta_stale_s_state.state not in ("", "unknown", "unavailable")
+        ) else float(META_POLICY_DEFAULTS["meta_stale_s"])
         # Read paused_hide_s from HA helper; fall back to META_POLICY_DEFAULTS if unavailable.
         paused_hide_s_state = self.hass.states.get(LEGACY_META_PAUSED_HIDE_S)
         paused_hide_s = float(paused_hide_s_state.state) if (
             paused_hide_s_state is not None
             and paused_hide_s_state.state not in ("", "unknown", "unavailable")
         ) else float(META_POLICY_DEFAULTS["paused_hide_s"])
-        # recent_progress uses paused_hide_s so that the "still fresh" window for paused
-        # entities matches the user-configured hide threshold rather than a hardcoded constant.
-        recent_progress = pos_age_s is not None and pos_age_s <= paused_hide_s
+        # Dual-window policy: playing freshness uses meta_stale_s; paused hold/hide uses paused_hide_s.
+        recent_play_progress = pos_age_s is not None and pos_age_s <= meta_stale_s
+        recent_paused_progress = pos_age_s is not None and pos_age_s <= paused_hide_s
         has_progress_clock = pos_age_s is not None
 
         playing_signal = (
@@ -1842,10 +1853,10 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             or is_paused_attr is True
         )
 
-        playing_with_fresh_signal = playing_signal and (not has_progress_clock or recent_progress)
-        playing_without_fresh_signal = playing_signal and has_progress_clock and not recent_progress
-        fresh_play_signal = playing_with_fresh_signal or (paused_signal and recent_progress)
-        paused_without_fresh_signal = paused_signal and not recent_progress
+        playing_with_fresh_signal = playing_signal and (not has_progress_clock or recent_play_progress)
+        playing_without_fresh_signal = playing_signal and has_progress_clock and not recent_play_progress
+        fresh_play_signal = playing_with_fresh_signal or (paused_signal and recent_paused_progress)
+        paused_without_fresh_signal = paused_signal and not recent_paused_progress
         # Entity is not playing or paused at all — idle/off/stopped with no active signal.
         # This catches the "came home after all day" stale display case.
         long_idle_stale_hidden = not playing_signal and not paused_signal
@@ -1853,7 +1864,7 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # Canonical suppression reason — single field that explains why metadata is hidden.
         if playing_with_fresh_signal:
             suppression_reason = META_SUPPRESSION_PLAYING
-        elif paused_signal and recent_progress:
+        elif paused_signal and recent_paused_progress:
             suppression_reason = META_SUPPRESSION_PAUSED_FRESH
         elif playing_without_fresh_signal:
             suppression_reason = META_SUPPRESSION_PLAYING_STALE
@@ -1871,12 +1882,15 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "is_playing_attr": is_playing_attr,
             "is_paused_attr": is_paused_attr,
             "position_age_s": round(pos_age_s, 1) if isinstance(pos_age_s, float) else None,
-            "recent_progress": recent_progress,
+            "recent_progress": recent_paused_progress,
+            "recent_play_progress": recent_play_progress,
+            "recent_paused_progress": recent_paused_progress,
             "fresh_play_signal": fresh_play_signal,
             "playing_without_fresh_signal": playing_without_fresh_signal,
             "paused_without_fresh_signal": paused_without_fresh_signal,
             "long_idle_stale_hidden": long_idle_stale_hidden,
             "suppression_reason": suppression_reason,
+            "meta_stale_s": meta_stale_s,
             "paused_hide_s": paused_hide_s,
         }
 
@@ -2076,6 +2090,8 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "route_trace_present": route_trace_present,
                 "no_authority_expansion": no_authority_expansion,
                 "now_playing_fresh_play_signal": now_playing_fresh_play_signal,
+                "now_playing_recent_play_progress": now_playing_signal.get("recent_play_progress"),
+                "now_playing_recent_paused_progress": now_playing_signal.get("recent_paused_progress"),
                 "now_playing_playing_without_fresh_signal": playing_without_fresh_signal,
                 "now_playing_paused_without_fresh_signal": paused_without_fresh_signal,
                 "now_playing_long_idle_stale_hidden": long_idle_stale_hidden,
@@ -2087,6 +2103,7 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "now_playing_state": now_playing_state,
                 "now_playing_title": now_playing_title,
                 "now_playing_position_age_s": now_playing_signal.get("position_age_s"),
+                "meta_stale_s": now_playing_signal.get("meta_stale_s"),
                 "paused_hide_s": now_playing_signal.get("paused_hide_s"),
             },
         }

@@ -1,6 +1,6 @@
 # Description: MA control hub numeric thresholds and control tuning helpers.
-# Version: 2026.04.17.1
-# Last updated: 2026-04-17
+# Version: 2026.04.27.1
+# Last updated: 2026-04-27
 # HUB MUST-READ: Contract parser methodology.
 # - For complex attributes (`rooms`, `candidates_json`, etc.), prefer native sequence/mapping values first.
 # - Only parse string JSON when trimmed payload starts with `[` or `{` and is not unknown/unavailable/none/''.
@@ -26,6 +26,14 @@ ma_meta_stale_s:
   max: 300
   step: 1
   initial: 45
+ma_meta_paused_hide_s:
+  # How long (seconds) a paused entity's metadata is kept before being hidden on all display surfaces.
+  # Default 600 (10 minutes). Increase to keep metadata visible longer after pause; decrease for faster clear.
+  name: MA Meta Paused Hide (s)
+  min: 30
+  max: 3600
+  step: 30
+  initial: 600
 ma_pos_stall_s:
   name: MA Position Stall (s)
   min: 5

@@ -1,5 +1,6 @@
 # Description: Template entities for ma_control_hub runtime routing, metadata, and now-playing state surfaces.
-# Version: 2026.04.26.5
+# Version: 2026.04.27.1
+# Last updated: 2026-04-27
 # Last updated: 2026-04-26
 # PARITY DIRECTIVE (until full cutover): any behavior/contract change here requires same-slice custom-component parity review,
 # explicit implemented/shim/defer disposition in docs/CHANGELOG.md, and version-metadata review on both runtime and component tracks.
@@ -677,7 +678,7 @@
             {% set t_page = (as_timestamp(now()) - t_pts) if t_pts > 0 else 9999 %}
             {% set t_playing = t_st == 'playing' or t_ps in ['play','playing'] or (t_ip is true) %}
             {% set t_paused = t_st == 'paused' or t_ps in ['pause','paused'] or (t_ipa is true) %}
-            {% set meta_candidate = t if (t_playing or (t_paused and t_page < stale_s)) else '' %}
+            {% set meta_candidate = t if (t_playing or (t_paused and t_page < paused_hide_s)) else '' %}
           {% endif %}
           {% set meta_state = states(meta_candidate) if meta_candidate not in ['','none','unknown','unavailable'] else '' %}
           {% set meta_valid = meta_candidate not in ['','none','unknown','unavailable'] and meta_state not in ['unknown','unavailable',''] %}
@@ -974,7 +975,8 @@
         {% set res_page = (as_timestamp(now()) - res_pts) if res_pts > 0 else 9999 %}
         {% set res_playing = res_st == 'playing' or res_ps in ['play','playing'] or (res_ip is true) %}
         {% set res_paused = res_st == 'paused' or res_ps in ['pause','paused'] or (res_ipa is true) %}
-        {% set res_valid_fresh = res_valid and (res_playing or (res_paused and res_page < 600)) %}
+        {% set paused_hide_s = states('input_number.ma_meta_paused_hide_s') | float(600) %}
+        {% set res_valid_fresh = res_valid and (res_playing or (res_paused and res_page < paused_hide_s)) %}
         {% if res_valid_fresh %}
           {{ resolver }}
         {% elif pref_valid and (pref_active or pref_recent) %}

@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.27.134 -->
+<!-- Version: 2026.04.27.135 -->
 <!-- Last updated: 2026-04-27 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -117,6 +117,14 @@ Latest run update (2026-04-26, legacy handoff-latency optimization):
 - P1/P2/P3 impact check: no source-of-truth ownership change; runtime handoff responsiveness hardening only.
 
 Latest run update (2026-04-27, component parity + ESP handoff telemetry):
+
+Latest run update (2026-04-27, ghost-broadcaster healing + policy diagnostics):
+
+- Runtime metadata winner logic now treats stale-progress `playing` entities as non-fresh when a progress clock is present (fail-closed), aligning resolver/preferred/active-target freshness windows to canonical `input_number.ma_meta_paused_hide_s`.
+- Component metadata prep now mirrors the same stale-playing suppression semantics and exposes canonical policy + suppression reason diagnostics for operator triage.
+- Runtime track disposition: implemented (freshness gate hardening for stale-playing broadcaster cases).
+- Component track disposition: implemented (matching suppression semantics + policy diagnostics surface).
+- P1/P2/P3 impact check: no source-of-truth ownership change; parity/decision-correctness hardening only.
 
 - Component state-change parity now mirrors legacy handoff-trigger intent for additional entity changes used in runtime acceleration: detected receiver and now-playing entity updates now run the same component players-change refresh sequencing path (target-options refresh -> guarded auto-select) as MA-players changes.
 - ESP now exports HA-visible telemetry surfaces for deterministic handoff diagnostics: control handoff status, resolved control target, and OLED/UI status.

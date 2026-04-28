@@ -1,6 +1,6 @@
-# Description: Spectra LS custom integration setup for shadow parity, Phase 3 guarded routing write-path services, Phase 4 diagnostics scaffolding services (F4-S01/F4-S03), Phase 5 metadata trial contract service wiring, and Phase 6 control-center settings/execution services.
-# Version: 2026.04.23.1
-# Last updated: 2026-04-23
+# Description: Spectra LS custom integration setup for shadow parity, Phase 3 guarded routing write-path services, Phase 4 diagnostics scaffolding services (F4-S01/F4-S03), Phase 5 metadata trial contract service wiring, and Phase 6 control-center settings/execution services including bounded startup auto-recovery scheduling and selection-ownership migration services.
+# Version: 2026.04.27.1
+# Last updated: 2026-04-27
 
 from __future__ import annotations
 
@@ -26,6 +26,7 @@ from .const import (
     SERVICE_SET_WRITE_AUTHORITY,
     SERVICE_VALIDATE_CONTRACTS,
     SERVICE_VALIDATE_METADATA_PREP,
+    SERVICE_VALIDATE_METADATA_POLICY,
     SERVICE_RUN_P3_S03_SEQUENCE,
     SERVICE_VALIDATE_CAPABILITY_PROFILE,
     SERVICE_RUN_F4_S01_SEQUENCE,
@@ -35,6 +36,16 @@ from .const import (
     SERVICE_RUN_F4_S03_SEQUENCE,
     SERVICE_EXECUTE_CONTROL_CENTER_INPUT,
     SERVICE_SET_CONTROL_CENTER_SETTINGS,
+    SERVICE_VALIDATE_SCHEDULER,
+    SERVICE_RUN_SCHEDULER_CHOICE,
+    SERVICE_APPLY_SCHEDULER_CHOICE,
+    SERVICE_BUILD_TARGET_OPTIONS_SCAFFOLD,
+    SERVICE_RUN_METADATA_RESOLVER_SCAFFOLD,
+    SERVICE_RUN_METADATA_TRIAL_BRIDGE_SCAFFOLD,
+    SERVICE_RUN_AUTO_SELECT_SCAFFOLD,
+    SERVICE_CYCLE_ACTIVE_TARGET,
+    SERVICE_RESTORE_LAST_VALID_TARGET,
+    SERVICE_TRACK_LAST_VALID_TARGET,
     normalize_control_center_settings,
 )
 from .coordinator import SpectraLsShadowCoordinator
@@ -90,6 +101,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         dry_run = bool(call.data.get("dry_run", True))
         expected_target = str(call.data.get("expected_target", "")).strip() or None
         expected_route = str(call.data.get("expected_route", "")).strip() or None
+        expected_meta_entity = str(call.data.get("expected_meta_entity", "")).strip() or None
         correlation_id = str(call.data.get("correlation_id", "")).strip() or None
 
         await coordinator.async_metadata_write_trial(
@@ -99,6 +111,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             dry_run=dry_run,
             expected_target=expected_target,
             expected_route=expected_route,
+            expected_meta_entity=expected_meta_entity,
             correlation_id=correlation_id,
         )
 
@@ -130,6 +143,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await coordinator.async_validate_selection_handoff()
 
     async def _service_validate_metadata_prep(_call: ServiceCall) -> None:
+        await coordinator.async_validate_metadata_prep()
+
+    async def _service_validate_metadata_policy(_call: ServiceCall) -> None:
+        # Policy status is synthesized from helper entities + metadata-prep checks;
+        # refresh + prep validation keeps diagnostics consistent for operators.
         await coordinator.async_validate_metadata_prep()
 
     async def _service_run_p3_s03_sequence(call: ServiceCall) -> None:
@@ -258,6 +276,133 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 _LOGGER.exception("F4-S03 sequence failed at stage '%s'", stage)
                 raise HomeAssistantError(f"F4-S03 sequence failed at stage '{stage}': {err}") from err
 
+    async def _service_validate_scheduler(_call: ServiceCall) -> None:
+        await coordinator.async_validate_scheduler()
+
+    async def _service_run_scheduler_choice(call: ServiceCall) -> None:
+        require_control_capable = bool(call.data.get("require_control_capable", True))
+        prefer_fresh = bool(call.data.get("prefer_fresh", True))
+        max_results = int(call.data.get("max_results", 5) or 5)
+        target_hint = str(call.data.get("target_hint", "") or "").strip()
+        correlation_id = str(call.data.get("correlation_id", "") or "").strip() or None
+        await coordinator.async_run_scheduler_choice(
+            require_control_capable=require_control_capable,
+            prefer_fresh=prefer_fresh,
+            max_results=max_results,
+            target_hint=target_hint,
+            correlation_id=correlation_id,
+        )
+
+    async def _service_apply_scheduler_choice(call: ServiceCall) -> None:
+        require_control_capable = bool(call.data.get("require_control_capable", True))
+        prefer_fresh = bool(call.data.get("prefer_fresh", True))
+        max_results = int(call.data.get("max_results", 5) or 5)
+        target_hint = str(call.data.get("target_hint", "") or "").strip()
+        dry_run = bool(call.data.get("dry_run", True))
+        force = bool(call.data.get("force", False))
+        correlation_id = str(call.data.get("correlation_id", "") or "").strip() or None
+        await coordinator.async_apply_scheduler_choice(
+            require_control_capable=require_control_capable,
+            prefer_fresh=prefer_fresh,
+            max_results=max_results,
+            target_hint=target_hint,
+            dry_run=dry_run,
+            force=force,
+            correlation_id=correlation_id,
+        )
+
+    async def _service_build_target_options_scaffold(call: ServiceCall) -> None:
+        dry_run = bool(call.data.get("dry_run", True))
+        force = bool(call.data.get("force", False))
+        include_none = bool(call.data.get("include_none", True))
+        correlation_id = str(call.data.get("correlation_id", "") or "").strip() or None
+        await coordinator.async_build_target_options_scaffold(
+            dry_run=dry_run,
+            force=force,
+            include_none=include_none,
+            correlation_id=correlation_id,
+        )
+
+    async def _service_run_auto_select_scaffold(call: ServiceCall) -> None:
+        dry_run = bool(call.data.get("dry_run", True))
+        force = bool(call.data.get("force", False))
+        sync_options_if_missing = bool(call.data.get("sync_options_if_missing", False))
+        include_none = bool(call.data.get("include_none", True))
+        correlation_id = str(call.data.get("correlation_id", "") or "").strip() or None
+        await coordinator.async_run_auto_select_scaffold(
+            dry_run=dry_run,
+            force=force,
+            sync_options_if_missing=sync_options_if_missing,
+            include_none=include_none,
+            correlation_id=correlation_id,
+        )
+
+    async def _service_run_metadata_resolver_scaffold(call: ServiceCall) -> None:
+        dry_run = bool(call.data.get("dry_run", True))
+        force = bool(call.data.get("force", False))
+        correlation_id = str(call.data.get("correlation_id", "") or "").strip() or None
+        await coordinator.async_run_metadata_resolver_scaffold(
+            dry_run=dry_run,
+            force=force,
+            correlation_id=correlation_id,
+        )
+
+    async def _service_run_metadata_trial_bridge_scaffold(call: ServiceCall) -> None:
+        window_id = str(call.data.get("window_id", "") or "").strip()
+        reason = str(call.data.get("reason", "") or "").strip()
+        resolver_dry_run = bool(call.data.get("resolver_dry_run", True))
+        trial_dry_run = bool(call.data.get("trial_dry_run", True))
+        force = bool(call.data.get("force", False))
+        expected_target = str(call.data.get("expected_target", "") or "").strip() or None
+        expected_route = str(call.data.get("expected_route", "") or "").strip() or None
+        expected_meta_entity = str(call.data.get("expected_meta_entity", "") or "").strip() or None
+        correlation_id = str(call.data.get("correlation_id", "") or "").strip() or None
+
+        await coordinator.async_run_metadata_trial_bridge_scaffold(
+            window_id=window_id,
+            reason=reason,
+            resolver_dry_run=resolver_dry_run,
+            trial_dry_run=trial_dry_run,
+            force=force,
+            expected_target=expected_target,
+            expected_route=expected_route,
+            expected_meta_entity=expected_meta_entity,
+            correlation_id=correlation_id,
+        )
+
+    async def _service_cycle_active_target(call: ServiceCall) -> None:
+        dry_run = bool(call.data.get("dry_run", True))
+        force = bool(call.data.get("force", False))
+        include_none = bool(call.data.get("include_none", True))
+        correlation_id = str(call.data.get("correlation_id", "") or "").strip() or None
+        await coordinator.async_cycle_active_target(
+            dry_run=dry_run,
+            force=force,
+            include_none=include_none,
+            correlation_id=correlation_id,
+        )
+
+    async def _service_restore_last_valid_target(call: ServiceCall) -> None:
+        dry_run = bool(call.data.get("dry_run", True))
+        force = bool(call.data.get("force", False))
+        correlation_id = str(call.data.get("correlation_id", "") or "").strip() or None
+        await coordinator.async_restore_last_valid_target(
+            dry_run=dry_run,
+            force=force,
+            correlation_id=correlation_id,
+        )
+
+    async def _service_track_last_valid_target(call: ServiceCall) -> None:
+        dry_run = bool(call.data.get("dry_run", True))
+        force = bool(call.data.get("force", False))
+        correlation_id = str(call.data.get("correlation_id", "") or "").strip() or None
+        await coordinator.async_track_last_valid_target(
+            dry_run=dry_run,
+            force=force,
+            correlation_id=correlation_id,
+            source="service_track_last_valid_target",
+        )
+
     async def _service_set_control_center_settings(call: ServiceCall) -> None:
         raw_patch = {key: call.data.get(key) for key in CONTROL_CENTER_DEFAULTS.keys() if key in call.data}
         merged = normalize_control_center_settings({**entry.options, **raw_patch})
@@ -296,6 +441,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.services.async_register(DOMAIN, SERVICE_RUN_P3_S02_SEQUENCE, _service_run_p3_s02_sequence)
     if not hass.services.has_service(DOMAIN, SERVICE_VALIDATE_METADATA_PREP):
         hass.services.async_register(DOMAIN, SERVICE_VALIDATE_METADATA_PREP, _service_validate_metadata_prep)
+    if not hass.services.has_service(DOMAIN, SERVICE_VALIDATE_METADATA_POLICY):
+        hass.services.async_register(DOMAIN, SERVICE_VALIDATE_METADATA_POLICY, _service_validate_metadata_policy)
     if not hass.services.has_service(DOMAIN, SERVICE_RUN_P3_S03_SEQUENCE):
         hass.services.async_register(DOMAIN, SERVICE_RUN_P3_S03_SEQUENCE, _service_run_p3_s03_sequence)
     if not hass.services.has_service(DOMAIN, SERVICE_RUN_P5_S02_SEQUENCE):
@@ -324,6 +471,50 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             SERVICE_EXECUTE_CONTROL_CENTER_INPUT,
             _service_execute_control_center_input,
         )
+    if not hass.services.has_service(DOMAIN, SERVICE_VALIDATE_SCHEDULER):
+        hass.services.async_register(DOMAIN, SERVICE_VALIDATE_SCHEDULER, _service_validate_scheduler)
+    if not hass.services.has_service(DOMAIN, SERVICE_RUN_SCHEDULER_CHOICE):
+        hass.services.async_register(DOMAIN, SERVICE_RUN_SCHEDULER_CHOICE, _service_run_scheduler_choice)
+    if not hass.services.has_service(DOMAIN, SERVICE_APPLY_SCHEDULER_CHOICE):
+        hass.services.async_register(DOMAIN, SERVICE_APPLY_SCHEDULER_CHOICE, _service_apply_scheduler_choice)
+    if not hass.services.has_service(DOMAIN, SERVICE_BUILD_TARGET_OPTIONS_SCAFFOLD):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_BUILD_TARGET_OPTIONS_SCAFFOLD,
+            _service_build_target_options_scaffold,
+        )
+    if not hass.services.has_service(DOMAIN, SERVICE_RUN_AUTO_SELECT_SCAFFOLD):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_RUN_AUTO_SELECT_SCAFFOLD,
+            _service_run_auto_select_scaffold,
+        )
+    if not hass.services.has_service(DOMAIN, SERVICE_RUN_METADATA_RESOLVER_SCAFFOLD):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_RUN_METADATA_RESOLVER_SCAFFOLD,
+            _service_run_metadata_resolver_scaffold,
+        )
+    if not hass.services.has_service(DOMAIN, SERVICE_RUN_METADATA_TRIAL_BRIDGE_SCAFFOLD):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_RUN_METADATA_TRIAL_BRIDGE_SCAFFOLD,
+            _service_run_metadata_trial_bridge_scaffold,
+        )
+    if not hass.services.has_service(DOMAIN, SERVICE_CYCLE_ACTIVE_TARGET):
+        hass.services.async_register(DOMAIN, SERVICE_CYCLE_ACTIVE_TARGET, _service_cycle_active_target)
+    if not hass.services.has_service(DOMAIN, SERVICE_RESTORE_LAST_VALID_TARGET):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_RESTORE_LAST_VALID_TARGET,
+            _service_restore_last_valid_target,
+        )
+    if not hass.services.has_service(DOMAIN, SERVICE_TRACK_LAST_VALID_TARGET):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_TRACK_LAST_VALID_TARGET,
+            _service_track_last_valid_target,
+        )
 
     try:
         await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
@@ -331,6 +522,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await coordinator.async_shutdown()
         hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
         raise
+
+    await coordinator.async_schedule_startup_recovery()
 
     return True
 
@@ -364,6 +557,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 hass.services.async_remove(DOMAIN, SERVICE_RUN_P3_S02_SEQUENCE)
             if hass.services.has_service(DOMAIN, SERVICE_VALIDATE_METADATA_PREP):
                 hass.services.async_remove(DOMAIN, SERVICE_VALIDATE_METADATA_PREP)
+            if hass.services.has_service(DOMAIN, SERVICE_VALIDATE_METADATA_POLICY):
+                hass.services.async_remove(DOMAIN, SERVICE_VALIDATE_METADATA_POLICY)
             if hass.services.has_service(DOMAIN, SERVICE_RUN_P3_S03_SEQUENCE):
                 hass.services.async_remove(DOMAIN, SERVICE_RUN_P3_S03_SEQUENCE)
             if hass.services.has_service(DOMAIN, SERVICE_RUN_P5_S02_SEQUENCE):
@@ -384,4 +579,24 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 hass.services.async_remove(DOMAIN, SERVICE_SET_CONTROL_CENTER_SETTINGS)
             if hass.services.has_service(DOMAIN, SERVICE_EXECUTE_CONTROL_CENTER_INPUT):
                 hass.services.async_remove(DOMAIN, SERVICE_EXECUTE_CONTROL_CENTER_INPUT)
+            if hass.services.has_service(DOMAIN, SERVICE_VALIDATE_SCHEDULER):
+                hass.services.async_remove(DOMAIN, SERVICE_VALIDATE_SCHEDULER)
+            if hass.services.has_service(DOMAIN, SERVICE_RUN_SCHEDULER_CHOICE):
+                hass.services.async_remove(DOMAIN, SERVICE_RUN_SCHEDULER_CHOICE)
+            if hass.services.has_service(DOMAIN, SERVICE_APPLY_SCHEDULER_CHOICE):
+                hass.services.async_remove(DOMAIN, SERVICE_APPLY_SCHEDULER_CHOICE)
+            if hass.services.has_service(DOMAIN, SERVICE_BUILD_TARGET_OPTIONS_SCAFFOLD):
+                hass.services.async_remove(DOMAIN, SERVICE_BUILD_TARGET_OPTIONS_SCAFFOLD)
+            if hass.services.has_service(DOMAIN, SERVICE_RUN_AUTO_SELECT_SCAFFOLD):
+                hass.services.async_remove(DOMAIN, SERVICE_RUN_AUTO_SELECT_SCAFFOLD)
+            if hass.services.has_service(DOMAIN, SERVICE_RUN_METADATA_RESOLVER_SCAFFOLD):
+                hass.services.async_remove(DOMAIN, SERVICE_RUN_METADATA_RESOLVER_SCAFFOLD)
+            if hass.services.has_service(DOMAIN, SERVICE_RUN_METADATA_TRIAL_BRIDGE_SCAFFOLD):
+                hass.services.async_remove(DOMAIN, SERVICE_RUN_METADATA_TRIAL_BRIDGE_SCAFFOLD)
+            if hass.services.has_service(DOMAIN, SERVICE_CYCLE_ACTIVE_TARGET):
+                hass.services.async_remove(DOMAIN, SERVICE_CYCLE_ACTIVE_TARGET)
+            if hass.services.has_service(DOMAIN, SERVICE_RESTORE_LAST_VALID_TARGET):
+                hass.services.async_remove(DOMAIN, SERVICE_RESTORE_LAST_VALID_TARGET)
+            if hass.services.has_service(DOMAIN, SERVICE_TRACK_LAST_VALID_TARGET):
+                hass.services.async_remove(DOMAIN, SERVICE_TRACK_LAST_VALID_TARGET)
     return unload_ok

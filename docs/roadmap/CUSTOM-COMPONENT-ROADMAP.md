@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.27.133 -->
+<!-- Version: 2026.04.27.134 -->
 <!-- Last updated: 2026-04-27 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -124,6 +124,14 @@ Latest run update (2026-04-26, parity correctness/cleanup follow-up):
 - Closed auto-select loop watcher parity gap (`GAP-20260426-auto-select-loop-watched-options-filter`) by removing component-side `media_player.*`-only watcher restriction and restoring legacy-equivalent watched-options membership semantics.
 - Runtime track disposition: implemented (legacy behavior unchanged).
 - Component track disposition: implemented (gap closure + useless-filter cleanup complete).
+
+Latest run update (2026-04-27, ghost-broadcaster healing + policy diagnostics):
+
+- Component metadata freshness classification now explicitly recognizes stale-progress `playing` entities (when progress clocks exist) as suppressible stale states instead of always-fresh play states.
+- Added first-class diagnostics exposure for canonical meta policy + suppression reason posture, including service-driven refresh support for deterministic triage workflows.
+- Runtime track disposition: implemented (matching template-side freshness hardening; no ownership change).
+- Component track disposition: implemented (suppression semantics + policy diagnostics exposure).
+- P1/P2/P3 impact check: no source-of-truth ownership change; parity/decision-correctness hardening only.
 | P3-S01 | 3 | Validated (legacy write authority retained behind switch) | Validated (guard framework + manual routing write trial services) | Validated | Medium | Validated |
 | P3-S02 | 3 | Validated (selection scripts/automations compatibility shim validation) | Validated (one-shot validation sequence + selection handoff diagnostics) | Validated (single-capable waiver) | High | Validated |
 | P3-S03 | 3 | Validated (metadata ownership explicitly deferred to legacy compatibility mode) | Validated (metadata prep diagnostics + one-shot sequence + listener-safe validation template) | Validated (diagnostics-only) | Medium | Validated |

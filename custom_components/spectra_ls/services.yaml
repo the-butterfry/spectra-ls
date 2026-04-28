@@ -1,6 +1,264 @@
-# Description: Service definitions for Spectra LS Phase 2/3 diagnostics, Phase 4 Slice-01/Slice-03 diagnostics scaffolding, Phase 5 metadata trial contract, and Phase 6/8 control-center settings, fast-remap presets, and execution.
-# Version: 2026.04.22.13
-# Last updated: 2026-04-22
+# Description: Service definitions for Spectra LS Phase 2/3 diagnostics, Phase 4 Slice-01/Slice-03 diagnostics scaffolding, Phase 5 metadata trial contract, and Phase 6/8 control-center settings, fast-remap presets, selection-ownership migration services, and execution.
+# Version: 2026.04.27.1
+# Last updated: 2026-04-27
+
+validate_scheduler:
+  name: Validate scheduler
+  description: Refresh and expose scheduler readiness diagnostics from host/profile/empirical feeds.
+
+run_scheduler_choice:
+  name: Run scheduler choice
+  description: Rank and select target choices from host/profile/empirical data using scheduler policy inputs.
+  fields:
+    require_control_capable:
+      name: Require control capable
+      description: If true, only include control-capable candidates.
+      required: false
+      selector:
+        boolean:
+    prefer_fresh:
+      name: Prefer fresh availability
+      description: If true, prioritize candidates with fresher availability signals.
+      required: false
+      selector:
+        boolean:
+    max_results:
+      name: Max results
+      description: Number of ranked candidates to retain in decision payload.
+      required: false
+      selector:
+        number:
+          min: 1
+          max: 20
+          step: 1
+    target_hint:
+      name: Target hint
+      description: Optional target hint string to bias ranking toward matching entities.
+      required: false
+      selector:
+        text:
+    correlation_id:
+      name: Correlation ID
+      description: Optional correlation tag for this scheduler run.
+      required: false
+      selector:
+        text:
+
+apply_scheduler_choice:
+  name: Apply scheduler choice
+  description: Run scheduler ranking and (optionally dry-run) apply selected target to input_select.ma_active_target with authority/debounce safeguards.
+  fields:
+    require_control_capable:
+      name: Require control capable
+      description: If true, only include control-capable candidates.
+      required: false
+      selector:
+        boolean:
+    prefer_fresh:
+      name: Prefer fresh availability
+      description: If true, prioritize candidates with fresher availability signals.
+      required: false
+      selector:
+        boolean:
+    max_results:
+      name: Max results
+      description: Number of ranked candidates to retain in decision payload.
+      required: false
+      selector:
+        number:
+          min: 1
+          max: 20
+          step: 1
+    target_hint:
+      name: Target hint
+      description: Optional target hint string to bias ranking toward matching entities.
+      required: false
+      selector:
+        text:
+    dry_run:
+      name: Dry run
+      description: If true, compute decision and validate guards without writing helper state.
+      required: false
+      selector:
+        boolean:
+    force:
+      name: Force
+      description: If true, bypass debounce/reentrancy soft guards for explicit operator-forced attempts.
+      required: false
+      selector:
+        boolean:
+    correlation_id:
+      name: Correlation ID
+      description: Optional correlation tag for this scheduler apply run.
+      required: false
+      selector:
+        text:
+
+build_target_options_scaffold:
+  name: Build target-options scaffold
+  description: Build component-native target-options plan and optionally apply helper options with guarded write semantics.
+  fields:
+    dry_run:
+      name: Dry run
+      description: If true, compute scaffold plan without applying helper options.
+      required: false
+      selector:
+        boolean:
+    force:
+      name: Force
+      description: If true, bypass debounce/reentrancy soft guards for explicit operator-forced attempts.
+      required: false
+      selector:
+        boolean:
+    include_none:
+      name: Include none option
+      description: If true, include `none` sentinel in proposed helper options.
+      required: false
+      selector:
+        boolean:
+    correlation_id:
+      name: Correlation ID
+      description: Optional correlation tag for this target-options scaffold run.
+      required: false
+      selector:
+        text:
+
+run_auto_select_scaffold:
+  name: Run auto-select scaffold
+  description: Run component-native auto-select planning and optionally apply selected target with guarded semantics.
+  fields:
+    dry_run:
+      name: Dry run
+      description: If true, compute/validate selection without helper mutation.
+      required: false
+      selector:
+        boolean:
+    force:
+      name: Force
+      description: If true, bypass debounce/reentrancy soft guards for explicit operator-forced attempts.
+      required: false
+      selector:
+        boolean:
+    sync_options_if_missing:
+      name: Sync options if missing
+      description: If true, auto-sync helper options from scaffold plan before applying selected target.
+      required: false
+      selector:
+        boolean:
+    include_none:
+      name: Include none option
+      description: If true and syncing options, include `none` sentinel in options payload.
+      required: false
+      selector:
+        boolean:
+    correlation_id:
+      name: Correlation ID
+      description: Optional correlation tag for this auto-select scaffold run.
+      required: false
+      selector:
+        text:
+
+cycle_active_target:
+  name: Cycle active target
+  description: Cycle input_select.ma_active_target to the next option using component-guarded semantics and optional override activation.
+  fields:
+    dry_run:
+      name: Dry run
+      description: If true, compute/validate next cycle target without writing helper state.
+      required: false
+      selector:
+        boolean:
+    force:
+      name: Force
+      description: If true, bypass debounce/reentrancy soft guards for explicit operator-forced attempts.
+      required: false
+      selector:
+        boolean:
+    include_none:
+      name: Include none option
+      description: If false, skip `none` sentinel when computing next cycle target.
+      required: false
+      selector:
+        boolean:
+    correlation_id:
+      name: Correlation ID
+      description: Optional correlation tag for this cycle attempt.
+      required: false
+      selector:
+        text:
+
+restore_last_valid_target:
+  name: Restore last valid target
+  description: Restore input_select.ma_active_target from input_text.ma_last_valid_target when active selection is unresolved.
+  fields:
+    dry_run:
+      name: Dry run
+      description: If true, validate restore candidate/guards without writing helper state.
+      required: false
+      selector:
+        boolean:
+    force:
+      name: Force
+      description: If true, allow restore attempt even when current target is already resolved.
+      required: false
+      selector:
+        boolean:
+    correlation_id:
+      name: Correlation ID
+      description: Optional correlation tag for this restore attempt.
+      required: false
+      selector:
+        text:
+
+track_last_valid_target:
+  name: Track last valid target
+  description: Persist current input_select.ma_active_target value into input_text.ma_last_valid_target with guarded semantics.
+  fields:
+    dry_run:
+      name: Dry run
+      description: If true, validate tracking guards without writing helper state.
+      required: false
+      selector:
+        boolean:
+    force:
+      name: Force
+      description: If true, bypass debounce/reentrancy soft guards for explicit operator-forced attempts.
+      required: false
+      selector:
+        boolean:
+    correlation_id:
+      name: Correlation ID
+      description: Optional correlation tag for this tracking attempt.
+      required: false
+      selector:
+        text:
+
+run_metadata_resolver_scaffold:
+  name: Run metadata-resolver scaffold
+  description: Run component-native metadata resolver planning and optionally apply override helpers with guarded semantics.
+  fields:
+    dry_run:
+      name: Dry run
+      description: If true, compute/validate metadata resolver selection without helper mutation.
+      required: false
+      selector:
+        boolean:
+    force:
+      name: Force
+      description: If true, bypass debounce/reentrancy soft guards for explicit operator-forced attempts.
+      required: false
+      selector:
+        boolean:
+    correlation_id:
+      name: Correlation ID
+      description: Optional correlation tag for this metadata-resolver scaffold run.
+      required: false
+      selector:
+        text:
+
+validate_metadata_policy:
+  name: Validate metadata policy
+  description: Refresh canonical auto-metadata policy/suppression diagnostics for ghost-broadcaster triage.
 
 execute_control_center_input:
   name: Execute control-center input
@@ -220,9 +478,74 @@ metadata_write_trial:
       required: false
       selector:
         text:
+    expected_meta_entity:
+      name: Expected meta entity
+      description: Optional expected metadata entity for resolver-bridge alignment validation.
+      required: false
+      selector:
+        text:
     correlation_id:
       name: Correlation ID
       description: Optional correlation tag for this metadata trial request.
+      required: false
+      selector:
+        text:
+
+run_metadata_trial_bridge_scaffold:
+  name: Run metadata trial bridge scaffold
+  description: Run automatic target-recovery + resolver-authority gating + metadata trial bridge alignment sequence with deterministic stage telemetry.
+  fields:
+    window_id:
+      name: Window ID
+      description: Optional bounded-window identifier (auto-generated when omitted).
+      required: false
+      selector:
+        text:
+    reason:
+      name: Reason
+      description: Optional operator reason captured in bridge and trial audit payloads.
+      required: false
+      selector:
+        text:
+    resolver_dry_run:
+      name: Resolver dry run
+      description: If true, run resolver scaffold stage in dry-run mode.
+      required: false
+      selector:
+        boolean:
+    trial_dry_run:
+      name: Trial dry run
+      description: If true, run metadata trial stage in dry-run mode.
+      required: false
+      selector:
+        boolean:
+    force:
+      name: Force
+      description: If true, bypass debounce/reentrancy soft guards for resolver scaffold stage.
+      required: false
+      selector:
+        boolean:
+    expected_target:
+      name: Expected target
+      description: Optional expected active target for trial fail-closed checks.
+      required: false
+      selector:
+        text:
+    expected_route:
+      name: Expected route
+      description: Optional expected route decision for trial fail-closed checks.
+      required: false
+      selector:
+        text:
+    expected_meta_entity:
+      name: Expected meta entity
+      description: Optional expected metadata entity for resolver/trial bridge checks.
+      required: false
+      selector:
+        text:
+    correlation_id:
+      name: Correlation ID
+      description: Optional correlation tag for this bridge sequence.
       required: false
       selector:
         text:

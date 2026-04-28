@@ -1,5 +1,6 @@
 # Description: Data coordinator for Spectra LS parity diagnostics, Phase 3 guarded routing write-path controls, Phase 4 diagnostics scaffolding (F4-S01/F4-S03), Phase 5 metadata trial contract auditing, and Phase 6/8 control-center settings, fast-remap, execution visibility, startup auto-recovery orchestration (latency-hardened cadence), and selection-lock lifecycle parity migration (ambiguity lock, stale unlock, auto-select loop).
-# Version: 2026.04.27.35
+# Version: 2026.04.27.36
+# Last updated: 2026-04-27
 # Last updated: 2026-04-27
 
 from __future__ import annotations
@@ -25,6 +26,7 @@ from .const import (
     LEGACY_META_DETECTED_ENTITY,
     LEGACY_META_OVERRIDE_ACTIVE,
     LEGACY_META_OVERRIDE_ENTITY,
+    LEGACY_META_PAUSED_HIDE_S,
     LEGACY_META_RESOLVER,
     LEGACY_CONTROL_HOST,
     LEGACY_CONTROL_TARGETS,
@@ -43,6 +45,13 @@ from .const import (
     LEGACY_ROOMS_JSON,
     LEGACY_ROOMS_RAW,
     LEGACY_SURFACES,
+    META_POLICY_DEFAULTS,
+    META_SUPPRESSION_ENTITY_MISSING,
+    META_SUPPRESSION_LONG_IDLE,
+    META_SUPPRESSION_NO_FRESH_SIGNAL,
+    META_SUPPRESSION_PAUSED_FRESH,
+    META_SUPPRESSION_PAUSED_STALE,
+    META_SUPPRESSION_PLAYING,
     WRITE_AUTH_ALLOWED,
     WRITE_AUTH_COMPONENT,
     WRITE_AUTH_LEGACY,
@@ -1749,6 +1758,8 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "fresh_play_signal": False,
                 "paused_without_fresh_signal": False,
                 "long_idle_stale_hidden": False,
+                "suppression_reason": META_SUPPRESSION_ENTITY_MISSING,
+                "paused_hide_s": float(META_POLICY_DEFAULTS["paused_hide_s"]),
             }
 
         state = self.hass.states.get(entity_id)
@@ -1764,6 +1775,8 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "fresh_play_signal": False,
                 "paused_without_fresh_signal": False,
                 "long_idle_stale_hidden": False,
+                "suppression_reason": META_SUPPRESSION_ENTITY_MISSING,
+                "paused_hide_s": float(META_POLICY_DEFAULTS["paused_hide_s"]),
             }
 
         state_norm = self._normalize_state(state.state)
@@ -1771,7 +1784,15 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         is_playing_attr = state.attributes.get("is_playing")
         is_paused_attr = state.attributes.get("is_paused")
         pos_age_s = self._timestamp_age_seconds(state.attributes.get("media_position_updated_at"))
-        recent_progress = pos_age_s is not None and pos_age_s <= 300
+        # Read paused_hide_s from HA helper; fall back to META_POLICY_DEFAULTS if unavailable.
+        paused_hide_s_state = self.hass.states.get(LEGACY_META_PAUSED_HIDE_S)
+        paused_hide_s = float(paused_hide_s_state.state) if (
+            paused_hide_s_state is not None
+            and paused_hide_s_state.state not in ("", "unknown", "unavailable")
+        ) else float(META_POLICY_DEFAULTS["paused_hide_s"])
+        # recent_progress uses paused_hide_s so that the "still fresh" window for paused
+        # entities matches the user-configured hide threshold rather than a hardcoded constant.
+        recent_progress = pos_age_s is not None and pos_age_s <= paused_hide_s
 
         playing_signal = (
             state_norm == "playing"
@@ -1790,6 +1811,18 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # This catches the "came home after all day" stale display case.
         long_idle_stale_hidden = not playing_signal and not paused_signal
 
+        # Canonical suppression reason — single field that explains why metadata is hidden.
+        if playing_signal:
+            suppression_reason = META_SUPPRESSION_PLAYING
+        elif paused_signal and recent_progress:
+            suppression_reason = META_SUPPRESSION_PAUSED_FRESH
+        elif paused_without_fresh_signal:
+            suppression_reason = META_SUPPRESSION_PAUSED_STALE
+        elif long_idle_stale_hidden:
+            suppression_reason = META_SUPPRESSION_LONG_IDLE
+        else:
+            suppression_reason = META_SUPPRESSION_NO_FRESH_SIGNAL
+
         return {
             "resolved": True,
             "state": state_norm,
@@ -1801,6 +1834,8 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "fresh_play_signal": fresh_play_signal,
             "paused_without_fresh_signal": paused_without_fresh_signal,
             "long_idle_stale_hidden": long_idle_stale_hidden,
+            "suppression_reason": suppression_reason,
+            "paused_hide_s": paused_hide_s,
         }
 
     def _metadata_candidate_payload_ready(self) -> bool:
@@ -1996,6 +2031,7 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "now_playing_fresh_play_signal": now_playing_fresh_play_signal,
                 "now_playing_paused_without_fresh_signal": paused_without_fresh_signal,
                 "now_playing_long_idle_stale_hidden": long_idle_stale_hidden,
+                "now_playing_suppression_reason": now_playing_signal.get("suppression_reason", ""),
             },
             "values": {
                 "active_meta_entity": active_meta_entity,
@@ -2003,6 +2039,7 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "now_playing_state": now_playing_state,
                 "now_playing_title": now_playing_title,
                 "now_playing_position_age_s": now_playing_signal.get("position_age_s"),
+                "paused_hide_s": now_playing_signal.get("paused_hide_s"),
             },
         }
 

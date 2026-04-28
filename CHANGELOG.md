@@ -1,8 +1,28 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.26.1 -->
-<!-- Last updated: 2026-04-26 -->
+<!-- Version: 2026.04.27.1 -->
+<!-- Last updated: 2026-04-27 -->
 
 # Changelog
+
+## 2026-04-27
+
+### Meta Auto Policy Model — Step 2: Canonical `paused_hide_s` + suppression reasons
+
+**Problem addressed:** `paused_hide_s` was hardcoded to `600` in three independent locations (diagnostic jinja, `template.inc` resolver gate, `coordinator.py` `_build_now_playing_signal`). No single tunable source of truth existed, and the component had no named suppression reason field to explain *why* metadata was being hidden.
+
+**Runtime track (implemented):** `packages/ma_control_hub/`
+
+- `input_number.inc`: Add `ma_meta_paused_hide_s` helper (default 600s, range 30–3600, step 30). This is now the single tunable source for the extended idle/paused-hide threshold.
+- `template.inc` `sensor.ma_active_meta_entity`: Add `paused_hide_s` read from helper alongside existing `stale_s`; fix fresh-guard to use `paused_hide_s` (not `stale_s`) for the paused threshold — semantically correct since `stale_s` is the short play-freshness window.
+- `template.inc` `sensor.now_playing_entity`: Replace hardcoded `600` in resolver freshness gate with `states('input_number.ma_meta_paused_hide_s') | float(600)`.
+
+**Component track (implemented):** `custom_components/spectra_ls/`
+
+- `const.py`: Add `LEGACY_META_PAUSED_HIDE_S`, `LEGACY_META_STALE_S` entity refs; add `META_POLICY_DEFAULTS` dict (canonical fallback values for `meta_stale_s`, `paused_hide_s`, `confidence_min`, `clear_when_no_active_playback`); add named suppression reason constants (`META_SUPPRESSION_PLAYING`, `META_SUPPRESSION_PAUSED_FRESH`, `META_SUPPRESSION_PAUSED_STALE`, `META_SUPPRESSION_LONG_IDLE`, `META_SUPPRESSION_NO_FRESH_SIGNAL`, `META_SUPPRESSION_ENTITY_MISSING`).
+- `coordinator.py` `_build_now_playing_signal`: Read `paused_hide_s` from `input_number.ma_meta_paused_hide_s` at runtime (falls back to `META_POLICY_DEFAULTS`); add `suppression_reason` field to return payload using named constants; expose `paused_hide_s` value in return payload for diagnostic visibility; add `suppression_reason` to early-return sentinel dicts.
+- `coordinator.py` `_build_metadata_prep_validation`: Expose `now_playing_suppression_reason` in `checks` dict; expose `paused_hide_s` in `values` dict.
+
+**Two-track disposition:** runtime: implemented; component: implemented.
 
 ## 2026-04-26
 

@@ -1,6 +1,6 @@
-# Description: Constants for Spectra LS custom integration shadow parity, Phase 3 guarded routing write-path controls, Phase 4 diagnostics scaffolding (F4-S01/F4-S03), Phase 5 metadata trial contract service, and Phase 6/8 control-center settings and fast-remap preset contracts.
-# Version: 2026.04.22.15
-# Last updated: 2026-04-22
+# Description: Constants for Spectra LS custom integration shadow parity, Phase 3 guarded routing write-path controls, Phase 4 diagnostics scaffolding (F4-S01/F4-S03), Phase 5 metadata trial contract service, and Phase 6/8 control-center settings and fast-remap preset contracts including startup MA-readiness gating constants and selection-ownership migration services.
+# Version: 2026.04.27.1
+# Last updated: 2026-04-27
 
 from __future__ import annotations
 
@@ -29,6 +29,16 @@ SERVICE_VALIDATE_CROSSFADE_BALANCE = "validate_crossfade_balance"
 SERVICE_RUN_F4_S03_SEQUENCE = "run_f4_s03_sequence"
 SERVICE_SET_CONTROL_CENTER_SETTINGS = "set_control_center_settings"
 SERVICE_EXECUTE_CONTROL_CENTER_INPUT = "execute_control_center_input"
+SERVICE_VALIDATE_SCHEDULER = "validate_scheduler"
+SERVICE_RUN_SCHEDULER_CHOICE = "run_scheduler_choice"
+SERVICE_APPLY_SCHEDULER_CHOICE = "apply_scheduler_choice"
+SERVICE_BUILD_TARGET_OPTIONS_SCAFFOLD = "build_target_options_scaffold"
+SERVICE_RUN_AUTO_SELECT_SCAFFOLD = "run_auto_select_scaffold"
+SERVICE_RUN_METADATA_RESOLVER_SCAFFOLD = "run_metadata_resolver_scaffold"
+SERVICE_RUN_METADATA_TRIAL_BRIDGE_SCAFFOLD = "run_metadata_trial_bridge_scaffold"
+SERVICE_CYCLE_ACTIVE_TARGET = "cycle_active_target"
+SERVICE_RESTORE_LAST_VALID_TARGET = "restore_last_valid_target"
+SERVICE_TRACK_LAST_VALID_TARGET = "track_last_valid_target"
 
 PLATFORMS: tuple[Platform, ...] = (
     Platform.SENSOR,
@@ -49,15 +59,48 @@ WRITE_DEBOUNCE_SECONDS = 2.0
 LEGACY_ACTIVE_TARGET = "sensor.ma_active_target"
 LEGACY_ACTIVE_CONTROL_PATH = "sensor.ma_active_control_path"
 LEGACY_ACTIVE_CONTROL_CAPABLE = "binary_sensor.ma_active_control_capable"
+LEGACY_CONTROL_AMBIGUOUS = "binary_sensor.ma_control_ambiguous"
+LEGACY_NO_CONTROL_CAPABLE_HOSTS = "binary_sensor.ma_no_control_capable_hosts"
 LEGACY_ACTIVE_TARGET_HELPER = "input_select.ma_active_target"
 LEGACY_ACTIVE_META_ENTITY = "sensor.ma_active_meta_entity"
+LEGACY_META_RESOLVER = "sensor.ma_meta_resolver"
+LEGACY_META_DETECTED_ENTITY = "sensor.ma_meta_detected_entity"
+LEGACY_META_OVERRIDE_ACTIVE = "input_boolean.ma_meta_override_active"
+LEGACY_META_OVERRIDE_ENTITY = "input_text.ma_meta_override_entity"
+LEGACY_META_STALE = "binary_sensor.ma_meta_stale"
+LEGACY_META_PAUSED_HIDE_S = "input_number.ma_meta_paused_hide_s"
+LEGACY_META_STALE_S = "input_number.ma_meta_stale_s"
+
+# --- Auto-metadata policy defaults ---
+# These are the canonical fallback values used when the HA helper is unavailable.
+# All tuneable thresholds should read from their HA helper first and fall back to these.
+META_POLICY_DEFAULTS: dict[str, float | bool] = {
+    "meta_stale_s": 45.0,        # Short freshness window for play/pause signal freshness
+    "paused_hide_s": 600.0,      # Extended idle clear: hide metadata after paused this long
+    "confidence_min": 4.0,       # Minimum confidence score for meta candidate acceptance
+    "clear_when_no_active_playback": True,  # Fail-closed: clear display when no fresh signal
+}
+
+# Suppression reason tokens — used in both runtime (jinja comment context) and component diagnostics.
+# Keep these in sync with the reason strings emitted by _build_now_playing_signal.
+META_SUPPRESSION_PLAYING = "playing"                      # Entity is actively playing — no suppression
+META_SUPPRESSION_PAUSED_FRESH = "paused_fresh"            # Paused but within paused_hide_s — still shown
+META_SUPPRESSION_PAUSED_STALE = "paused_stale_hidden"     # Paused beyond paused_hide_s — hidden
+META_SUPPRESSION_LONG_IDLE = "long_idle_stale_hidden"     # Entity is idle/off/stopped — hidden
+META_SUPPRESSION_NO_FRESH_SIGNAL = "no_fresh_play_signal" # No usable play/pause signal at all — hidden
+META_SUPPRESSION_ENTITY_MISSING = "entity_missing"        # Entity not in HA state machine — hidden
+LEGACY_OVERRIDE_ACTIVE = "input_boolean.ma_override_active"
+LEGACY_LAST_VALID_TARGET = "input_text.ma_last_valid_target"
 LEGACY_NOW_PLAYING_ENTITY = "sensor.now_playing_entity"
 LEGACY_NOW_PLAYING_STATE = "sensor.now_playing_state"
 LEGACY_NOW_PLAYING_TITLE = "sensor.now_playing_title"
 LEGACY_META_CANDIDATES = "sensor.ma_meta_candidates"
+LEGACY_MA_PLAYERS = "sensor.ma_players"
 LEGACY_CONTROL_HOSTS = "sensor.ma_control_hosts"
 LEGACY_CONTROL_HOST = "sensor.ma_control_host"
 LEGACY_CONTROL_TARGETS = "sensor.ma_control_targets"
+LEGACY_SERVER_PROFILE = "input_select.ma_server_profile"
+LEGACY_SERVER_PROFILE_EFFECTIVE = "sensor.ma_server_profile_effective"
 LEGACY_ROOMS_JSON = "sensor.spectra_ls_rooms_json"
 LEGACY_ROOMS_RAW = "sensor.spectra_ls_rooms_raw"
 

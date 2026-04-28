@@ -1,0 +1,149 @@
+{# Description: Full copy/paste Developer Tools template for Step-3 metadata-stack runtime validation (scheduler + metadata policy + stale root-cause + ESP UX gate). #}
+{# Version: 2026.04.27.1 #}
+{# Last updated: 2026-04-27 #}
+
+{# =========================
+  Meta Stack Step-3 Full Validation (Runtime)
+  Purpose:
+    - One-shot validation packet for Step 3 (parity re-check / test & assess)
+    - Combines scheduler readiness, metadata policy/suppression, stale-source triage,
+      and ESP auto-only UX gate checks in one render.
+  Usage:
+    1) Optional refresh actions before rendering:
+       - spectra_ls.validate_metadata_policy
+       - spectra_ls.validate_metadata_prep
+       - spectra_ls.validate_contracts
+    2) Paste into Home Assistant -> Developer Tools -> Template
+    3) Capture output for pre / in / post records
+  ========================= #}
+
+{% set invalid = ['', 'none', 'unknown', 'unavailable', 'None', none] %}
+
+{% set s_target_primary = 'sensor.shadow_active_target' %}
+{% set s_target_fallback = 'sensor.spectra_ls_shadow_active_target' %}
+{% set primary_has_attrs = state_attr(s_target_primary, 'route_trace') is not none or state_attr(s_target_primary, 'captured_at') is not none %}
+{% set fallback_has_attrs = state_attr(s_target_fallback, 'route_trace') is not none or state_attr(s_target_fallback, 'captured_at') is not none %}
+{% set s_target = s_target_primary if primary_has_attrs else (s_target_fallback if fallback_has_attrs else s_target_primary) %}
+
+{% set route_trace = state_attr(s_target, 'route_trace') or {} %}
+{% set contract = state_attr(s_target, 'contract_validation') or {} %}
+{% set metadata_prep = state_attr(s_target, 'metadata_prep_validation') or {} %}
+{% set scheduler_validation = state_attr(s_target, 'scheduler_validation') or {} %}
+{% set write_controls = state_attr(s_target, 'write_controls') or {} %}
+
+{% set authority_mode = write_controls.authority_mode if write_controls is mapping and write_controls.authority_mode is defined else 'missing' %}
+{% set route_decision = route_trace.decision if route_trace is mapping and route_trace.decision is defined else '' %}
+{% set contract_valid = contract.valid if contract is mapping and contract.valid is defined else false %}
+{% set missing_required = contract.missing_required if contract is mapping and contract.missing_required is defined and contract.missing_required is sequence and contract.missing_required is not string else [] %}
+{% set unresolved_required = contract.unresolved_required if contract is mapping and contract.unresolved_required is defined and contract.unresolved_required is sequence and contract.unresolved_required is not string else [] %}
+
+{% set scheduler_verdict = scheduler_validation.verdict if scheduler_validation is mapping and scheduler_validation.verdict is defined else 'missing' %}
+{% set scheduler_ready = scheduler_validation.ready_for_scheduler_use if scheduler_validation is mapping and scheduler_validation.ready_for_scheduler_use is defined else false %}
+{% set scheduler_blocking = scheduler_validation.blocking_reasons if scheduler_validation is mapping and scheduler_validation.blocking_reasons is defined and scheduler_validation.blocking_reasons is sequence and scheduler_validation.blocking_reasons is not string else [] %}
+
+{% set metadata_verdict = metadata_prep.verdict if metadata_prep is mapping and metadata_prep.verdict is defined else 'missing' %}
+{% set metadata_ready = metadata_prep.ready_for_metadata_handoff if metadata_prep is mapping and metadata_prep.ready_for_metadata_handoff is defined else false %}
+{% set metadata_checks = metadata_prep.checks if metadata_prep is mapping and metadata_prep.checks is defined and metadata_prep.checks is mapping else {} %}
+{% set metadata_values = metadata_prep.values if metadata_prep is mapping and metadata_prep.values is defined and metadata_prep.values is mapping else {} %}
+{% set suppression_reason = metadata_checks.now_playing_suppression_reason if metadata_checks.now_playing_suppression_reason is defined else 'n/a' %}
+{% set np_fresh = metadata_checks.now_playing_fresh_play_signal if metadata_checks.now_playing_fresh_play_signal is defined else false %}
+{% set np_play_stale = metadata_checks.now_playing_playing_without_fresh_signal if metadata_checks.now_playing_playing_without_fresh_signal is defined else false %}
+{% set np_paused_stale = metadata_checks.now_playing_paused_without_fresh_signal if metadata_checks.now_playing_paused_without_fresh_signal is defined else false %}
+{% set np_long_idle_hidden = metadata_checks.now_playing_long_idle_stale_hidden if metadata_checks.now_playing_long_idle_stale_hidden is defined else false %}
+{% set np_recent_play = metadata_checks.now_playing_recent_play_progress if metadata_checks.now_playing_recent_play_progress is defined else 'n/a' %}
+{% set np_recent_paused = metadata_checks.now_playing_recent_paused_progress if metadata_checks.now_playing_recent_paused_progress is defined else 'n/a' %}
+{% set np_entity = metadata_values.now_playing_entity if metadata_values.now_playing_entity is defined else states('sensor.now_playing_entity') %}
+{% set np_state = states('sensor.now_playing_state') | lower %}
+{% set np_title = states('sensor.now_playing_title') %}
+{% set np_age_s = metadata_values.now_playing_position_age_s if metadata_values.now_playing_position_age_s is defined else 'n/a' %}
+{% set meta_stale_s = metadata_values.meta_stale_s if metadata_values.meta_stale_s is defined else states('input_number.ma_meta_stale_s') | float(45) %}
+{% set paused_hide_s = metadata_values.paused_hide_s if metadata_values.paused_hide_s is defined else states('input_number.ma_meta_paused_hide_s') | float(600) %}
+
+{% set esp_handoff = states('sensor.spectra_ls_system_esp_control_handoff_status') %}
+{% set esp_target = states('sensor.spectra_ls_system_esp_control_target') %}
+{% set esp_oled = states('sensor.spectra_ls_system_esp_oled_status') %}
+{% set esp_handoff_ok = esp_handoff not in invalid and esp_handoff in ['ready','pending_refresh','no_target','no_host'] %}
+{% set esp_auto_only_gate = is_state('input_boolean.ma_meta_override_active','off') and states('input_text.ma_meta_override_entity') in invalid %}
+
+{% set stale_reason = 'no_clear_reason' %}
+{% if np_entity in invalid and np_title in invalid %}
+  {% set stale_reason = 'no_active_now_playing_entity' %}
+{% elif np_play_stale %}
+  {% set stale_reason = 'playing_signal_without_fresh_progress' %}
+{% elif np_paused_stale %}
+  {% set stale_reason = 'paused_without_recent_progress' %}
+{% elif np_long_idle_hidden and np_title not in invalid %}
+  {% set stale_reason = 'long_idle_entity_carrying_title' %}
+{% elif np_fresh %}
+  {% set stale_reason = 'fresh_signal_ok' %}
+{% endif %}
+
+{% set captured_at = state_attr(s_target, 'captured_at') | default('', true) %}
+{% set captured_ts = as_timestamp(captured_at) if captured_at not in invalid else none %}
+{% set age_s = (as_timestamp(now()) - captured_ts) if captured_ts is not none else none %}
+{% set snapshot_fresh = age_s is not none and age_s <= 300 %}
+
+{% set status = 'PASS' %}
+{% if (missing_required | length) > 0 or (unresolved_required | length) > 0 or not contract_valid %}
+  {% set status = 'FAIL' %}
+{% elif scheduler_verdict == 'FAIL' or metadata_verdict == 'FAIL' %}
+  {% set status = 'FAIL' %}
+{% elif not scheduler_ready or not metadata_ready or not snapshot_fresh or not esp_handoff_ok %}
+  {% set status = 'WARN' %}
+{% elif np_play_stale or np_paused_stale %}
+  {% set status = 'WARN' %}
+{% endif %}
+
+{% set readiness = 'READY' if status == 'PASS' else ('BLOCKED' if status == 'FAIL' else 'CAUTION') %}
+
+### Meta Stack Step-3 Full Validation
+- Result: **{{ status }}**
+- Readiness: **{{ readiness }}**
+- Timestamp: **{{ now() }}**
+- Shadow source: **{{ s_target }}**
+
+### Core contract + route
+- `authority_mode`: **{{ authority_mode }}**
+- `route_decision`: **{{ route_decision if route_decision != '' else 'n/a' }}**
+- `contract_valid`: **{{ contract_valid }}**
+- `missing_required`: **{{ missing_required | length }}**
+- `unresolved_required`: **{{ unresolved_required | length }}**
+
+### Scheduler + metadata gates
+- `scheduler_verdict / ready`: **{{ scheduler_verdict }} / {{ scheduler_ready }}**
+- `metadata_verdict / ready`: **{{ metadata_verdict }} / {{ metadata_ready }}**
+- `scheduler_blocking`: **{{ scheduler_blocking if scheduler_blocking | length > 0 else [] }}**
+
+### Stale policy + suppression (dual-threshold)
+- `suppression_reason`: **{{ suppression_reason }}**
+- `fresh_play_signal`: **{{ np_fresh }}**
+- `recent_play_progress`: **{{ np_recent_play }}**
+- `recent_paused_progress`: **{{ np_recent_paused }}**
+- `playing_without_fresh_signal`: **{{ np_play_stale }}**
+- `paused_without_fresh_signal`: **{{ np_paused_stale }}**
+- `long_idle_stale_hidden`: **{{ np_long_idle_hidden }}**
+- `now_playing_entity/state/title`: **{{ np_entity if np_entity not in invalid else 'n/a' }} / {{ np_state }} / {{ np_title if np_title not in invalid else 'n/a' }}**
+- `now_playing_position_age_s`: **{{ np_age_s }}**
+- Thresholds: **playing<= {{ meta_stale_s }}s, paused<= {{ paused_hide_s }}s**
+- Stale root-cause classification: **{{ stale_reason }}**
+
+### ESP + UX gate
+- `esp_control_handoff_status`: **{{ esp_handoff if esp_handoff not in invalid else 'n/a' }}**
+- `esp_control_target`: **{{ esp_target if esp_target not in invalid else 'n/a' }}**
+- `esp_oled_status`: **{{ esp_oled if esp_oled not in invalid else 'n/a' }}**
+- ESP telemetry available: **{{ (esp_handoff not in invalid) or (esp_target not in invalid) or (esp_oled not in invalid) }}**
+- Auto-only fallback helpers currently clear: **{{ esp_auto_only_gate }}**
+
+### Snapshot freshness
+- `captured_at`: **{{ captured_at if captured_at not in invalid else 'n/a' }}**
+- Snapshot age (s): **{{ age_s | round(1) if age_s is not none else 'n/a' }}**
+- Snapshot fresh (<=300s): **{{ snapshot_fresh }}**
+
+### Step-3 outcome guidance
+{% if status == 'PASS' %}
+- Step 3 validation packet is healthy. Record this render as runtime evidence and proceed to closeout packet assembly.
+{% elif status == 'WARN' %}
+- Step 3 is partially healthy. Resolve WARN surfaces (scheduler/metadata freshness or ESP gate) and re-render before closeout.
+{% else %}
+- Step 3 is blocked. Fix contract/gate failures first, then re-run this template.
+{% endif %}

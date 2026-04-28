@@ -1,5 +1,5 @@
 <!-- Description: Engineering rigor baseline for custom-component migration decisions, contract inventory, and explicit tough-spot tracking. -->
-<!-- Version: 2026.04.27.3 -->
+<!-- Version: 2026.04.27.4 -->
 <!-- Last updated: 2026-04-27 -->
 
 # NOTES — Engineering Rigor Baseline
@@ -102,5 +102,9 @@ Required discipline for all remaining slices in this lane:
 2. capture in-change probe evidence,
 3. capture stale-root-cause probe evidence when stale/ghost behavior appears,
 4. capture post-change closeout proof (build + OTA + git sync).
+
+Step-3 consolidated runtime assessment surface:
+
+- `docs/testing/raw/meta_stack_step3_full_validation.jinja` (single DT render covering scheduler, metadata policy/suppression, stale-root-cause classification, and ESP UX gate checks).
 
 No metadata-stack slice is considered complete without a recorded evidence packet row in that checklist.

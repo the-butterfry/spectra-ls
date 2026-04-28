@@ -1,5 +1,5 @@
 <!-- Description: Deterministic end-to-end checklist for Spectra LS metadata-stack stale-healing, policy diagnostics, and ESP UI auto-only behavior validation. -->
-<!-- Version: 2026.04.27.2 -->
+<!-- Version: 2026.04.27.3 -->
 <!-- Last updated: 2026-04-27 -->
 
 # Meta Stack End-to-End Validation Checklist
@@ -26,6 +26,7 @@ Run and capture outputs from:
 1. `docs/testing/raw/scheduler_apply_deterministic_validation.jinja`
 2. `docs/testing/raw/p5_s02_metadata_functionality_monitor.jinja`
 3. `docs/testing/raw/stale_meta_root_cause_diagnostic.jinja`
+4. `docs/testing/raw/meta_stack_step3_full_validation.jinja`
 
 Optional deep check (if ambiguity remains):
 
@@ -133,3 +134,11 @@ verdict:
   - Git sync proof: `HEAD 6ede5bf` and `origin/main 6ede5bf`.
 - Runtime template packet status: **pending operator/runtime capture** (pre/in/post template renders not executed in this code-only slice).
 - Status: code + diagnostics parity hardening completed and pushed; next closeout action is a fresh runtime template packet capture on the three required surfaces.
+
+### Run-2 step-3 execution prep (2026-04-27)
+
+- Step progression: moved to **Step 3 (runtime parity re-check/test-assess lane)**.
+- Added consolidated Step-3 runtime packet template:
+  - `docs/testing/raw/meta_stack_step3_full_validation.jinja`
+- Template index/checklist parity updated so Step-3 runs can capture scheduler + metadata policy + stale root-cause + ESP gate evidence from a single DT render.
+- Runtime render status: **awaiting live HA Developer Tools execution capture** (pre/in/post packet rows).

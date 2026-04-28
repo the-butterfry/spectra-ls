@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.27.297 -->
+<!-- Version: 2026.04.27.298 -->
 <!-- Last updated: 2026-04-27 -->
 
 # Changelog
 
 ## 2026-04-27
+
+- ESP/OLED Media Priority Policy Hardening — Music-First + Non-Music Preview/Blank (`esphome/spectra_ls_system/substitutions.yaml`, `esphome/spectra_ls_system/packages/spectra-ls-system.yaml`, `esphome/spectra_ls_system/spectra-ls-peripherals.yaml`, `docs/architecture/CONTROL-HUB-ARCHITECTURE.md`): enforce runtime OLED decision policy that prioritizes music metadata over TV/video metadata when both are present, and when only non-music content is active (for example TV episodes) renders a short preview window then blanks the OLED to prevent stale/non-music sticky carry-over. Adds a bounded preview timer contract (`non_music_preview_ms`, default 10s) and explicit display-state force-blank gate once preview expires. Runtime track disposition: implemented (ESP display/runtime behavior hardening). Custom-component track disposition: compatibility-shimmed (component metadata diagnostics unchanged; no write-authority expansion). P1/P2/P3 impact: no source-of-truth ownership change; display-policy prioritization hardening only. README/wiki parity: no material repo-state change.
 
 - Validation/Meta Stack Step-3 Full Runtime DT Packet (`docs/testing/raw/meta_stack_step3_full_validation.jinja`, `docs/testing/DEVTOOLS-TEMPLATES.local.md`, `docs/testing/raw/meta_stack_end_to_end_validation_checklist.md`): add a single one-paste Developer Tools template that aggregates scheduler status, metadata-prep policy/suppression signals, stale root-cause classification, and ESP handoff/UI gate checks into one Step-3 runtime assessment surface. This is validation-surface hardening only (no runtime/component behavior mutation) and closes the prior gap where Step-3 evidence required manually stitching multiple templates. Runtime track disposition: compatibility-shimmed (diagnostics/template-only). Custom-component track disposition: compatibility-shimmed (diagnostics/template-only). P1/P2/P3 impact: no source-of-truth ownership change; validation observability hardening only. README/wiki parity: no material repo-state change.
 

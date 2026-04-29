@@ -3,8 +3,8 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 ---
 
 <!-- Description: Workspace Copilot operating instructions for Home Assistant + ESPHome. -->
-<!-- Version: 2026.04.23.1 -->
-<!-- Last updated: 2026-04-23 -->
+<!-- Version: 2026.04.26.2 -->
+<!-- Last updated: 2026-04-26 -->
 
 # GitHub Copilot Instructions — Home Assistant + ESPHome
 
@@ -25,6 +25,7 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 ## Mandatory Workflow
 - For `esphome/spectra_ls_system/**`, read `docs/roadmap/v-next-NOTES.md` before changes.
 - For any functional change, update `docs/CHANGELOG.md` **before** code edits.
+- Keep runtime and component tracks in parity for every feature/bugfix/build-out slice: review and keep both `packages/` + `esphome/` and `custom_components/spectra_ls/` updated and working in the same slice when feasible; if strict lock-step is not feasible, require explicit shim/defer rationale plus version-metadata rationale in `docs/CHANGELOG.md` in that same change set.
 - For roadmap/migration changes, include a P1/P2/P3 impact check (what remains source-of-truth, what is parity-validated, what is deferred).
 - For any functionality or feature change, update or create the corresponding architecture/feature documentation in the same change set (for example runtime docs, control-hub docs, and cleanup/deprecation notes when relevant).
 - Keep `README.md` aligned to current `main` direction in `docs/roadmap/v-next-NOTES.md`.
@@ -46,6 +47,12 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 
 ### Top-of-file parity directive (required until cutover)
 - For actively edited dual-path files, keep an explicit top-of-file `PARITY DIRECTIVE` comment reminding that behavior/contract edits require same-slice two-track parity review and version-metadata review.
+- Required active parity cadence (no shortcuts):
+  1) parity
+  2) validate → test → debug → fix
+  3) parity (re-check both tracks after fixes)
+  4) repeat step 2 on the post-parity state until closure evidence is clean
+- Operator-step continuity rule: when the operator states the current cadence step (for example “we are on step 2”), resume from that step immediately and continue the cycle without re-baselining unless explicitly requested.
 - Minimum active anchors: `packages/ma_control_hub/template.inc` and `custom_components/spectra_ls/registry.py`; extend to other high-churn dual-path files when touched.
 - No feature is considered complete unless both tracks are mapped as: implemented, compatibility-shimmed, or explicitly deferred with rationale.
 - Keep migration compatibility first: **shadow mode → parity validation → dual-write → domain cutover → legacy retirement**.
@@ -61,6 +68,7 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
   3) `docs/CHANGELOG.md`
   4) `README.md` (or explicit `README parity: no material repo-state change` note)
 - If one of the required docs is not updated, the task is not complete.
+- No slice is complete without explicit two-track disposition + version-parity review status for runtime track and component track (`implemented`, `compatibility-shimmed`, or `deferred with rationale`).
 - If plan direction changes mid-slice, log a **Plan Delta** and update roadmap + v-next before continuing.
 
 ## Documentation System + Legend Parity (Required)

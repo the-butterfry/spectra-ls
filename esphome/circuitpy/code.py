@@ -1,6 +1,6 @@
 ## Description: RP2040 firmware for Spectra LS input scanning and UART event transport.
-## Version: 2026.04.17.7
-## Last updated: 2026-04-17
+## Version: 2026.04.26.13
+## Last updated: 2026-04-26
 #
 # RP FILE CONTRACT:
 # - Owns hardware initialization and main-loop orchestration only.
@@ -86,28 +86,37 @@ ANALOG_RAW_MAX_DEFAULT_EXTERNAL = 26367
 ANALOG_SAMPLES = 3  # oversample count per read
 ANALOG_MEDIAN_WINDOW = 3  # default rolling median window size
 ANALOG_MEDIAN_WINDOW_MAX = 5
-ANALOG_MEDIAN_WINDOW_BY_NAME = {
-    "volume_pot": 5,
-}
+ANALOG_MEDIAN_WINDOW_BY_NAME = {}
 ANALOG_FILTER_ALPHA_SLOW = 0.18  # default EMA when stable
 ANALOG_FILTER_ALPHA_FAST = 0.55  # default EMA when moving quickly
+# KNOWN-GOOD BASELINE (2026-04-26): validated by operator traces for full 0-100 sweep
+# and responsive small-movement behavior on volume + EQ path.
+# If future tuning regresses feel/endpoints, restore this constant set first.
 ANALOG_FILTER_ALPHA_SLOW_BY_NAME = {
-    "volume_pot": 0.28,
+    "eq_bass_pot": 0.28,
+    "eq_mid_pot": 0.28,
+    "eq_treble_pot": 0.28,
+    "volume_pot": 0.30,
 }
-ANALOG_FILTER_ALPHA_FAST_BY_NAME = {
-    "volume_pot": 0.55,
-}
+ANALOG_FILTER_ALPHA_FAST_BY_NAME = {}
 ANALOG_FILTER_FAST_THRESHOLD_PCT = 2.5  # default % of full-scale to switch to fast
-ANALOG_FILTER_FAST_THRESHOLD_PCT_BY_NAME = {
-    "volume_pot": 1.5,
-}
-ANALOG_RAW_MIN_CHANGE = 2  # min raw delta to reprocess
+ANALOG_FILTER_FAST_THRESHOLD_PCT_BY_NAME = {}
+ANALOG_RAW_MIN_CHANGE = 1  # min raw delta to reprocess
+# Reset median history when a strong opposite-direction raw jump is detected.
+# Applies to named pots only (volume + EQ) to keep tactile response consistent.
+ANALOG_DIRECTION_RESET_RAW_DELTA = 1200
+ANALOG_DIRECTION_FAST_WINDOW_SAMPLES = 3
+ANALOG_TAIL_CUT_RAW_STABLE_DELTA = 120
+ANALOG_TAIL_CUT_FILTER_DELTA = 900
+ANALOG_TAIL_CUT_JUMP_RESET_DELTA = 900
+ANALOG_TAIL_CUT_ENDPOINT_RAW_MAX = 320
+ANALOG_TAIL_CUT_STABLE_SNAP_SAMPLES = 1
 ANALOG_MIN_CHANGE = 2  # min output step before sending
 ANALOG_MIN_CHANGE_BY_NAME = {
-    "eq_bass_pot": 3,
-    "eq_mid_pot": 3,
-    "eq_treble_pot": 3,
-    "volume_pot": 2,
+    "eq_bass_pot": 2,
+    "eq_mid_pot": 2,
+    "eq_treble_pot": 2,
+    "volume_pot": 1,
 }
 ANALOG_IDLE_LOCK_MS = 0  # idle gate disabled
 ANALOG_IDLE_MIN_CHANGE_BY_NAME = {}
@@ -133,6 +142,9 @@ ANALOG_REVERSE_BY_NAME = {
     "eq_mid_pot": True,
     "eq_treble_pot": True,
 }
+# Treat near-zero tails as zero for named pots (volume + EQ) to stabilize endpoints
+# without swallowing small intended movement at the floor.
+ANALOG_POT_ASSUME_ZERO_MAX = 1
 CALIBRATION_ENABLED = True
 AUTOCAL_ENABLED = False
 AUTOCAL_TRIGGER_BUTTON = "home"  # PCF8575 button name (optional)
@@ -184,6 +196,7 @@ DEBUG_ANALOG_SERIAL = True
 DEBUG_ANALOG_STREAM_NAMES = ("volume_pot", "eq_bass_pot", "eq_mid_pot", "eq_treble_pot")
 DEBUG_ANALOG_STREAM_INTERVAL_MS = 120
 DEBUG_ANALOG_STREAM_MIN_DELTA = 2
+DEBUG_POT_DIRECTION_SERIAL = False
 DEBUG_SEESAW_INIT = True
 DEBUG_PCF8575_INIT = True
 DEBUG_I2C_SCAN = True
@@ -438,6 +451,37 @@ def _reinit_external_adc():
             print(f"ADS1015 reinit failed: {exc}")
         return False
 
+
+def median_window_value(values):
+    count = len(values)
+    if count == 0:
+        return 0
+    if count == 1:
+        return values[0]
+    if count == 2:
+        a = values[0]
+        b = values[1]
+        return a if a >= b else b
+    if count == 3:
+        a = values[0]
+        b = values[1]
+        c = values[2]
+        if a > b:
+            a, b = b, a
+        if b > c:
+            b, c = c, b
+        if a > b:
+            b = a
+        return b
+    if count == 4:
+        ordered = sorted(values)
+        return ordered[2]
+    if count == 5:
+        ordered = sorted(values)
+        return ordered[2]
+    ordered = sorted(values)
+    return ordered[count // 2]
+
 def build_analog_profiles():
     profiles = []
     for idx in range(len(analog_inputs)):
@@ -482,6 +526,32 @@ def maybe_log_encoder_serial(enc, message):
     if last_serial_ms is None or adafruit_ticks.ticks_diff(now, last_serial_ms) >= DEBUG_ENCODER_SERIAL_INTERVAL_MS:
         enc["last_serial_ms"] = now
         print(message)
+
+
+def maybe_log_analog_serial(idx, profile, name, raw, median_raw, calibrated, filtered_value, value, event_id):
+    if not (DEBUG_GLOBAL and DEBUG_ANALOG_SERIAL and profile["debug_stream_enabled"]):
+        return
+    now = adafruit_ticks.ticks_ms()
+    last_log_ms = analog_last_log_ms[idx]
+    last_log_value = analog_last_log_value[idx]
+    if last_log_ms is None or adafruit_ticks.ticks_diff(now, last_log_ms) >= DEBUG_ANALOG_STREAM_INTERVAL_MS:
+        if last_log_value is None or abs(value - last_log_value) >= DEBUG_ANALOG_STREAM_MIN_DELTA:
+            analog_last_log_ms[idx] = now
+            analog_last_log_value[idx] = value
+            print(
+                f"Analog {name} raw={raw} median={median_raw} cal={calibrated} "
+                f"filt={filtered_value} out={value} id={event_id}"
+            )
+
+
+def maybe_log_pot_direction(profile, name, raw, median_raw, calibrated, filtered_value, value, last_sent, event_id):
+    if not (DEBUG_GLOBAL and DEBUG_POT_DIRECTION_SERIAL and profile["is_named_pot"]):
+        return
+    direction = "up" if (last_sent is None or value > last_sent) else "down" if value < last_sent else "hold"
+    print(
+        f"POT {name} {direction} raw={raw} median={median_raw} cal={calibrated} "
+        f"filt={filtered_value} out={value} last={last_sent} id={event_id}"
+    )
 
 
 CAL_RUNTIME_CONFIG = {
@@ -548,6 +618,9 @@ last_sent_values = [None for _ in range(len(analog_inputs))]
 analog_filtered = [None for _ in range(len(analog_inputs))]
 analog_history = [[] for _ in range(len(analog_inputs))]
 analog_last_raw = [None for _ in range(len(analog_inputs))]
+analog_last_raw_delta = [0 for _ in range(len(analog_inputs))]
+analog_raw_stable_count = [0 for _ in range(len(analog_inputs))]
+analog_fast_window_remaining = [0 for _ in range(len(analog_inputs))]
 analog_last_send_ms = [None for _ in range(len(analog_inputs))]
 analog_last_log_ms = [None for _ in range(len(analog_inputs))]
 analog_last_log_value = [None for _ in range(len(analog_inputs))]
@@ -627,7 +700,23 @@ while True:
             external_adc_fail_count = 0
         last_raw = analog_last_raw[idx]
         analog_last_raw[idx] = raw
-        current_autocal_idx = cal_runtime.current_autocal_index()
+        jump_snap_now = False
+        if last_raw is not None and profile["is_named_pot"]:
+            raw_delta = raw - last_raw
+            if abs(raw_delta) >= ANALOG_TAIL_CUT_JUMP_RESET_DELTA:
+                analog_history[idx].clear()
+                analog_history[idx].append(raw)
+            last_delta = analog_last_raw_delta[idx]
+            if raw_delta != 0:
+                if last_delta != 0:
+                    direction_changed = (raw_delta > 0 and last_delta < 0) or (raw_delta < 0 and last_delta > 0)
+                    if direction_changed and abs(raw_delta) >= ANALOG_DIRECTION_RESET_RAW_DELTA:
+                        analog_history[idx].clear()
+                        analog_history[idx].append(raw)
+                        analog_fast_window_remaining[idx] = ANALOG_DIRECTION_FAST_WINDOW_SAMPLES
+                if abs(raw_delta) >= ANALOG_TAIL_CUT_JUMP_RESET_DELTA:
+                    jump_snap_now = True
+                analog_last_raw_delta[idx] = raw_delta
         if cal_runtime.process_autocal_sample(idx, raw, now):
             continue
         current_autocal_idx = cal_runtime.current_autocal_index()
@@ -650,25 +739,58 @@ while True:
             if tracked is not None:
                 cal = tracked
         event_id = analog_entry.get("event_id")
-        history = analog_history[idx]
-        history.append(raw)
         window = profile["window"]
-        if len(history) > window:
-            history.pop(0)
-        sorted_hist = sorted(history)
-        median_raw = sorted_hist[len(sorted_hist) // 2] if sorted_hist else raw
+        raw_stable = False
+        if profile["is_named_pot"] and last_raw is not None:
+            raw_stable = abs(raw - last_raw) <= ANALOG_TAIL_CUT_RAW_STABLE_DELTA
+            raw_max_default = ANALOG_RAW_MAX_DEFAULT_EXTERNAL if source == "external" else ANALOG_RAW_MAX_DEFAULT_INTERNAL
+            near_endpoint = raw <= ANALOG_TAIL_CUT_ENDPOINT_RAW_MAX or raw >= (raw_max_default - ANALOG_TAIL_CUT_ENDPOINT_RAW_MAX)
+            if near_endpoint:
+                raw_stable = True
+        if profile["is_named_pot"]:
+            if raw_stable:
+                analog_raw_stable_count[idx] += 1
+            else:
+                analog_raw_stable_count[idx] = 0
+        if raw_stable:
+            median_raw = raw
+            analog_history[idx].clear()
+            analog_history[idx].append(raw)
+        elif window <= 1:
+            median_raw = raw
+        else:
+            history = analog_history[idx]
+            history.append(raw)
+            if len(history) > window:
+                history.pop(0)
+            median_raw = median_window_value(history)
 
         calibrated = apply_calibration(median_raw, cal, CALIBRATION_ENABLED)
         calibrated = clamp_value(calibrated, 0, 65535)
+        if jump_snap_now and profile["is_named_pot"]:
+            analog_filtered[idx] = float(calibrated)
         previous = analog_filtered[idx]
         if previous is None:
             filtered = float(calibrated)
         else:
             diff = abs(calibrated - previous)
-            alpha = profile["alpha_fast"] if diff >= profile["threshold"] else profile["alpha_slow"]
+            if analog_fast_window_remaining[idx] > 0:
+                alpha = profile["alpha_fast"]
+                analog_fast_window_remaining[idx] -= 1
+            else:
+                alpha = profile["alpha_fast"] if diff >= profile["threshold"] else profile["alpha_slow"]
             filtered = previous + (alpha * (calibrated - previous))
         analog_filtered[idx] = filtered
         filtered_value = int(round(filtered))
+        if profile["is_named_pot"] and raw_stable:
+            if raw_stable and abs(filtered_value - calibrated) <= ANALOG_TAIL_CUT_FILTER_DELTA:
+                filtered = float(calibrated)
+                analog_filtered[idx] = filtered
+                filtered_value = calibrated
+            elif analog_raw_stable_count[idx] >= ANALOG_TAIL_CUT_STABLE_SNAP_SAMPLES:
+                filtered = float(calibrated)
+                analog_filtered[idx] = filtered
+                filtered_value = calibrated
 
         value = scale_analog_value(
             filtered_value,
@@ -688,6 +810,8 @@ while True:
                 value = ANALOG_PERCENT_RANGE
             if profile["reverse"]:
                 value = ANALOG_PERCENT_RANGE - value
+        if profile["is_named_pot"] and value <= ANALOG_POT_ASSUME_ZERO_MAX:
+            value = 0
         last_sent = last_sent_values[idx]
         min_change = profile["min_change"]
         idle_min_change = profile["idle_min_change"]
@@ -725,24 +849,8 @@ while True:
             analog_last_send_ms[idx] = now
         last_sent_values[idx] = value
         send_packet(TYPE_ANALOG, event_id, value)
-        if DEBUG_GLOBAL and DEBUG_ANALOG_SERIAL and profile["debug_stream_enabled"]:
-            now = adafruit_ticks.ticks_ms()
-            last_log_ms = analog_last_log_ms[idx]
-            last_log_value = analog_last_log_value[idx]
-            if last_log_ms is None or adafruit_ticks.ticks_diff(now, last_log_ms) >= DEBUG_ANALOG_STREAM_INTERVAL_MS:
-                if last_log_value is None or abs(value - last_log_value) >= DEBUG_ANALOG_STREAM_MIN_DELTA:
-                    analog_last_log_ms[idx] = now
-                    analog_last_log_value[idx] = value
-                    print(
-                        f"Analog {name} raw={raw} median={median_raw} cal={calibrated} "
-                        f"filt={filtered_value} out={value} id={event_id}"
-                    )
-        if DEBUG_GLOBAL and profile["is_named_pot"] and name != "volume_pot":
-            direction = "up" if (last_sent is None or value > last_sent) else "down" if value < last_sent else "hold"
-            print(
-                f"POT {name} {direction} raw={raw} median={median_raw} cal={calibrated} "
-                f"filt={filtered_value} out={value} last={last_sent} id={event_id}"
-            )
+        maybe_log_analog_serial(idx, profile, name, raw, median_raw, calibrated, filtered_value, value, event_id)
+        maybe_log_pot_direction(profile, name, raw, median_raw, calibrated, filtered_value, value, last_sent, event_id)
 
     # Read seesaw encoders (I2C)
     for enc in seesaw_encoders:

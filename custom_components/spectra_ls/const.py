@@ -1,6 +1,6 @@
 # Description: Constants for Spectra LS custom integration shadow parity, Phase 3 guarded routing write-path controls, Phase 4 diagnostics scaffolding (F4-S01/F4-S03), Phase 5 metadata trial contract service, and Phase 6/8 control-center settings and fast-remap preset contracts including startup MA-readiness gating constants and selection-ownership migration services.
-# Version: 2026.04.27.2
-# Last updated: 2026-04-27
+# Version: 2026.04.29.4
+# Last updated: 2026-04-29
 
 from __future__ import annotations
 
@@ -99,6 +99,9 @@ LEGACY_LAST_VALID_TARGET = "input_text.ma_last_valid_target"
 LEGACY_NOW_PLAYING_ENTITY = "sensor.now_playing_entity"
 LEGACY_NOW_PLAYING_STATE = "sensor.now_playing_state"
 LEGACY_NOW_PLAYING_TITLE = "sensor.now_playing_title"
+LEGACY_NOW_PLAYING_MEDIA_CLASS = "sensor.now_playing_media_class"
+LEGACY_NOW_PLAYING_PREVIEW_KEY = "sensor.now_playing_preview_key"
+LEGACY_NOW_PLAYING_DISPLAY_ALLOWED = "binary_sensor.now_playing_display_allowed"
 LEGACY_META_CANDIDATES = "sensor.ma_meta_candidates"
 LEGACY_MA_PLAYERS = "sensor.ma_players"
 LEGACY_CONTROL_HOSTS = "sensor.ma_control_hosts"

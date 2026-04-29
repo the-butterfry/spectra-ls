@@ -1,6 +1,6 @@
 # Description: Service definitions for Spectra LS Phase 2/3 diagnostics, Phase 4 Slice-01/Slice-03 diagnostics scaffolding, Phase 5 metadata trial contract, and Phase 6/8 control-center settings, fast-remap presets, selection-ownership migration services, and execution.
-# Version: 2026.04.27.1
-# Last updated: 2026-04-27
+# Version: 2026.04.28.1
+# Last updated: 2026-04-28
 
 validate_scheduler:
   name: Validate scheduler
@@ -258,7 +258,26 @@ run_metadata_resolver_scaffold:
 
 validate_metadata_policy:
   name: Validate metadata policy
-  description: Refresh canonical auto-metadata policy/suppression diagnostics for ghost-broadcaster triage.
+  description: Refresh canonical auto-metadata policy/suppression diagnostics and optionally dispatch MA metadata provider refresh.
+  fields:
+    trigger_provider_refresh:
+      name: Trigger provider refresh
+      description: If true, invoke `script.ma_send_metadata_to_providers` after policy refresh (default true).
+      required: false
+      selector:
+        boolean:
+    force_refresh:
+      name: Force provider refresh
+      description: If true, request provider-side force refresh in MA command args.
+      required: false
+      selector:
+        boolean:
+    refresh_reason:
+      name: Refresh reason
+      description: Optional audit reason forwarded to runtime metadata-provider refresh script.
+      required: false
+      selector:
+        text:
 
 execute_control_center_input:
   name: Execute control-center input

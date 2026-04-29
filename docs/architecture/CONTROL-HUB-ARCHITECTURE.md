@@ -1,6 +1,6 @@
 <!-- Description: Retroactive architecture and feature documentation for the MA control hub package split. -->
-<!-- Version: 2026.04.27.53 -->
-<!-- Last updated: 2026-04-27 -->
+<!-- Version: 2026.04.29.15 -->
+<!-- Last updated: 2026-04-29 -->
 
 # MA Control Hub Architecture (Retroactive Baseline)
 
@@ -55,6 +55,17 @@ Defined by `script.inc`:
 - target option synthesis now includes a live fallback discovery pass over `media_player.*` entities when MA player feeds are sparse, admitting only IP-backed control-hinted targets (`control_capable=true`, `control_path=linkplay_tcp`, or supported LinkPlay/WiiM-class identity hints) to preserve discovery-first routing without hardcoded install IDs
 - target cycling (`ma_cycle_target`)
 - auto-selection policy (`ma_auto_select`)
+- explicit MA metadata-provider refresh dispatch (`ma_send_metadata_to_providers`) via command `metadata/update_metadata` through `rest_command.ma_api_command`, using resolved now-playing MA item URI (`ma_uri` with guarded `media_content_id` fallback)
+- metadata provider item URI selection now includes MA active-player payload fallback (`sensor.ma_active_player_id_resolved.player_json.current_media.uri`) between now-playing `ma_uri` and `media_content_id` fallback, reducing false invalid-URI skips during active playback
+- provider-refresh API response telemetry persistence via helpers:
+  - `input_text.ma_metadata_provider_last_status`
+  - `input_text.ma_metadata_provider_last_response`
+  - `input_text.ma_metadata_provider_last_providers`
+  - `input_text.ma_metadata_provider_last_item_uri`
+  - `input_text.ma_metadata_provider_last_reason`
+  - `input_text.ma_metadata_provider_last_updated_at`
+- provider summary persistence is bounded/truncated for helper-length safety and now accepts both mapping and list-shaped MA response payloads for resilient provider extraction
+- runtime/component provider-refresh trigger surfaces normalize mixed-type boolean inputs (`true`/`false` strings, numeric values, booleans) to avoid accidental dispatch on string-like falsy payloads
 - explicit read-only lock for write helpers:
   - `ma_set_volume` -> disabled
   - `ma_set_balance` -> disabled
@@ -88,7 +99,14 @@ Defined by `template.inc`:
 - component gate visibility: metadata-prep diagnostics include explicit gate scoring and blocking reasons for authority/freshness failures
 - active control path/capability/host derivation
 - ambiguity/staleness/confidence binary surfaces
-- ESP OLED media-priority policy: runtime display path is music-first; non-music TV/video metadata may render as a bounded preview (`non_music_preview_ms`, default 10s) and then force-blank to prevent stale TV carryover/stickiness
+- HA-authoritative OLED media policy contract: `template.inc` now exports `sensor.now_playing_media_class` (`music`/`non_music`/`none`), `sensor.now_playing_preview_key`, and `binary_sensor.now_playing_display_allowed`; ESP consumes these contracts and does not run local app/source media-class heuristics or local preview timers
+- Now-playing app contract surface: `template.inc` exports `sensor.now_playing_app` from the selected `sensor.now_playing_entity` app context (`app_name`) to keep app provenance aligned with now-playing source/state/title surfaces.
+- Now-playing title source coherency contract: `sensor.now_playing_entity` `resolved_title` is entity-local and does not fall back to `sensor.ma_active_title`; fallback order is bounded to now-playing entity-resolved MA fields/stream metadata and current now-playing entity HA title only, preventing cross-source stale title carryover when policy class/display is non-display.
+- Music-Lite non-music policy refinement: runtime media policy uses a 30-second bounded non-music preview window and re-arms preview visibility on fresh preview-key changes, while active music context (playing or paused) remains first-class and blocks non-music preview (`music_guard_active`) so “music always wins” stays deterministic.
+- Non-music fallback classification: if `sensor.now_playing_entity` is unavailable but active playback context still exposes app/source video hints (for example YouTube/OTT/AppleTV/HDMI), media class now falls back to `non_music` and emits a fallback preview key (`fallback|source|app`) so the bounded 30s preview gate can still operate for TV-local playback surfaces with incomplete entity metadata.
+- Music-guard recency semantics are fail-closed and bounded: when `media_position_updated_at` is missing, guard recency falls back to entity `last_changed` (instead of treating missing position timestamps as active forever), preventing stale paused entities from indefinitely blocking non-music preview windows.
+- Component parity diagnostics now validate these same HA media-contract surfaces (`media_class`, `preview_key`, `display_allowed`, `music_guard_active`, preview-window timing) inside metadata-prep validation so runtime/component drift is explicit in one diagnostics lane without changing source-of-truth ownership.
+- Component now-playing freshness diagnostics use bounded recency fallback parity with runtime stale guards: when `media_position_updated_at` is missing, coordinator freshness age falls back to entity `last_changed` instead of implicitly treating the signal as fresh.
 - friendly labels and helper projection sensors
 - ESP-facing handoff note: on active-target changes, ESP requests immediate HA recompute for control-target/host surfaces (`sensor.ma_control_targets`, `sensor.ma_control_hosts`, `sensor.ma_control_host`) to reduce host handoff latency, but forced recompute is reconnect-safe gated (HA API reconnect grace window + template-feed readiness checks) to avoid HA reboot startup assertion races.
 - ESP exported handoff telemetry: ESP now publishes HA-visible diagnostics sensors for handoff status, resolved control target, and OLED/UI status (`sensor.spectra_ls_system_esp_control_handoff_status`, `sensor.spectra_ls_system_esp_control_target`, `sensor.spectra_ls_system_esp_oled_status`) for deterministic operator validation.
@@ -223,9 +241,11 @@ Service surfaces:
 - `spectra_ls.run_auto_select_scaffold` (component-native auto-select planning/apply scaffold)
 - `spectra_ls.run_metadata_resolver_scaffold` (component-native metadata resolver planning/apply scaffold)
 - `spectra_ls.run_metadata_trial_bridge_scaffold` (resolver-authority gated metadata bridge sequencing)
+- `spectra_ls.validate_metadata_policy` now supports an optional runtime MA provider-refresh dispatch (`script.ma_send_metadata_to_providers`) after metadata-prep diagnostics refresh, keeping diagnostics + refresh action in one service path
 - `spectra_ls.cycle_active_target` (component-native parity path for legacy `ma_cycle_target` behavior)
 - component-parity feedback lifecycle for host-capability degradation is available under guarded component-authority windows (30s hold -> one-shot self-heal -> 10s recheck -> persistent notification create/dismiss using `spectra_ls_no_control_capable_hosts`)
 - MA-player-change parity sequencing is additive in component authority windows: target-options scaffold refresh runs before auto-select loop, and target option candidate synthesis now consumes capability-aware registry/profile signals (control-capable + host-resolved + supported path + availability quality) without replacing existing discovery feeds
+- component registry classification is fail-closed for unsupported host families: host resolution/profile diagnostics may surface `wiim`/`generic` host types, but only supported control-path mappings are marked `control_capable=true` for routing eligibility in current scaffold
 - component state-change trigger parity now includes detected receiver + now-playing entity transitions in the same players-change refresh sequencing path (`target-options` scaffold refresh -> guarded auto-select), matching runtime handoff acceleration intent during migration windows.
 - `spectra_ls.restore_last_valid_target` (component-native parity path for legacy startup/repair restore behavior)
 - `spectra_ls.track_last_valid_target` (component-native parity path for legacy last-valid persistence behavior)

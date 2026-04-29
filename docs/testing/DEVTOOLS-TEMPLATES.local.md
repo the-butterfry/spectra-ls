@@ -1,6 +1,6 @@
 <!-- Description: Copy/paste Home Assistant Dev Tools template diagnostics for Spectra LS System. -->
-<!-- Version: 2026.04.27.2 -->
-<!-- Last updated: 2026-04-27 -->
+<!-- Version: 2026.04.29.3 -->
+<!-- Last updated: 2026-04-29 -->
 
 # Spectra LS System — Dev Tools Template Validation
 
@@ -24,6 +24,12 @@ Use this checklist to record pre/in/post validation evidence while implementing 
 - `docs/testing/raw/meta_stack_step3_full_validation.jinja`
 
 Use this one-paste template during Step 3 to test and assess scheduler + metadata policy/suppression + stale root-cause + ESP UX gate surfaces in one render.
+
+## 0C) Meta Stack Focused Scenario Matrix (One-Screen PASS/WARN)
+
+- `docs/testing/raw/meta_stack_scenario_matrix_report.jinja`
+
+Use this for rapid parity checks of focused scenarios only: music-only, non-music preview fresh/stale, music-guard-active suppression, and no-audio/video expected-unknown context.
 
 ## 1) Overall Spectra LS Health Check (Comprehensive)
 

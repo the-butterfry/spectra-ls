@@ -1,6 +1,6 @@
 # Description: Template entities for ma_control_hub runtime routing, metadata, and now-playing state surfaces.
-# Version: 2026.04.27.3
-# Last updated: 2026-04-27
+# Version: 2026.04.29.7
+# Last updated: 2026-04-29
 # PARITY DIRECTIVE (until full cutover): any behavior/contract change here requires same-slice custom-component parity review,
 # explicit implemented/shim/defer disposition in docs/CHANGELOG.md, and version-metadata review on both runtime and component tracks.
 # HUB MUST-READ: Contract parser methodology.
@@ -644,11 +644,14 @@
           {% set mapped_pos_updated = (state_attr(mapped,'media_position_updated_at') if mapped_valid else none) %}
           {% set mapped_pos_ts = as_timestamp(mapped_pos_updated) if mapped_pos_updated is not none else 0 %}
           {% set mapped_pos_age = (as_timestamp(now()) - mapped_pos_ts) if mapped_pos_ts > 0 else 9999 %}
+          {% set mapped_pos = (state_attr(mapped,'media_position') if mapped_valid else 0) | float(0) %}
+          {% set mapped_dur = (state_attr(mapped,'media_duration') if mapped_valid else 0) | float(0) %}
           {% set mapped_recent_play = mapped_pos_age < playing_stale_s %}
           {% set mapped_recent_pause = mapped_pos_age < paused_hide_s %}
           {% set mapped_playing_signal = mapped_state == 'playing' or mapped_play_state in ['play','playing'] or (mapped_is_playing is true) %}
           {% set mapped_paused_signal = mapped_state == 'paused' or mapped_play_state in ['pause','paused'] or (mapped_is_paused is true) %}
-          {% set mapped_playing_fresh = mapped_playing_signal and (mapped_pos_ts == 0 or mapped_recent_play) %}
+          {% set mapped_track_end_stuck = mapped_playing_signal and mapped_dur > 0 and mapped_pos >= (mapped_dur - 1) and mapped_pos_age > 5 %}
+          {% set mapped_playing_fresh = mapped_playing_signal and (mapped_pos_ts == 0 or mapped_recent_play) and (not mapped_track_end_stuck) %}
           {% set mapped_active = mapped_playing_fresh or (mapped_paused_signal and mapped_recent_pause) %}
           {% set kitchen_meta = 'media_player.kitchen_wiim' %}
           {% set kitchen_state = states(kitchen_meta) | lower %}
@@ -678,11 +681,14 @@
             {% set t_pup = state_attr(t,'media_position_updated_at') if t not in ['','none','unknown','unavailable'] else none %}
             {% set t_pts = as_timestamp(t_pup) if t_pup is not none else 0 %}
             {% set t_page = (as_timestamp(now()) - t_pts) if t_pts > 0 else 9999 %}
+            {% set t_pos = (state_attr(t,'media_position') if t not in ['','none','unknown','unavailable'] else 0) | float(0) %}
+            {% set t_dur = (state_attr(t,'media_duration') if t not in ['','none','unknown','unavailable'] else 0) | float(0) %}
             {% set t_recent_play = t_page < playing_stale_s %}
             {% set t_recent_pause = t_page < paused_hide_s %}
             {% set t_playing = t_st == 'playing' or t_ps in ['play','playing'] or (t_ip is true) %}
             {% set t_paused = t_st == 'paused' or t_ps in ['pause','paused'] or (t_ipa is true) %}
-            {% set t_playing_fresh = t_playing and (t_pts == 0 or t_recent_play) %}
+            {% set t_track_end_stuck = t_playing and t_dur > 0 and t_pos >= (t_dur - 1) and t_page > 5 %}
+            {% set t_playing_fresh = t_playing and (t_pts == 0 or t_recent_play) and (not t_track_end_stuck) %}
             {% set meta_candidate = t if (t_playing_fresh or (t_paused and t_recent_pause)) else '' %}
           {% endif %}
           {% set meta_state = states(meta_candidate) if meta_candidate not in ['','none','unknown','unavailable'] else '' %}
@@ -957,6 +963,8 @@
         {% set t_pos_updated = (state_attr(t,'media_position_updated_at') if t_valid else none) %}
         {% set t_pos_ts = as_timestamp(t_pos_updated) if t_pos_updated is not none else 0 %}
         {% set t_pos_age = (as_timestamp(now()) - t_pos_ts) if t_pos_ts > 0 else 9999 %}
+        {% set t_pos = (state_attr(t,'media_position') if t_valid else 0) | float(0) %}
+        {% set t_dur = (state_attr(t,'media_duration') if t_valid else 0) | float(0) %}
         {% set t_recent_play = t_pos_age < playing_stale_s %}
         {% set t_recent_pause = t_pos_age < paused_hide_s %}
         {% set t_ps = ((state_attr(t,'play_state') if t_valid else '') | lower) %}
@@ -964,7 +972,8 @@
         {% set t_ipa = (state_attr(t,'is_paused') if t_valid else none) %}
         {% set t_playing = t_state == 'playing' or t_ps in ['play','playing'] or (t_ip is true) %}
         {% set t_paused = t_state == 'paused' or t_ps in ['pause','paused'] or (t_ipa is true) %}
-        {% set t_playing_fresh = t_playing and (t_pos_ts == 0 or t_recent_play) %}
+        {% set t_track_end_stuck = t_playing and t_dur > 0 and t_pos >= (t_dur - 1) and t_pos_age > 5 %}
+        {% set t_playing_fresh = t_playing and (t_pos_ts == 0 or t_recent_play) and (not t_track_end_stuck) %}
         {% set t_active = t_playing_fresh or (t_paused and t_recent_pause) %}
         {% set t_title = (state_attr(t,'media_title') if t_valid else '') or '' %}
         {% set t_artist = (state_attr(t,'media_artist') if t_valid else '') or '' %}
@@ -980,6 +989,8 @@
         {% set pref_pos_updated = (state_attr(preferred,'media_position_updated_at') if pref_valid else none) %}
         {% set pref_pos_ts = as_timestamp(pref_pos_updated) if pref_pos_updated is not none else 0 %}
         {% set pref_pos_age = (as_timestamp(now()) - pref_pos_ts) if pref_pos_ts > 0 else 9999 %}
+        {% set pref_pos = (state_attr(preferred,'media_position') if pref_valid else 0) | float(0) %}
+        {% set pref_dur = (state_attr(preferred,'media_duration') if pref_valid else 0) | float(0) %}
         {% set pref_recent_play = pref_pos_age < playing_stale_s %}
         {% set pref_recent_pause = pref_pos_age < paused_hide_s %}
         {% set pref_ps = ((state_attr(preferred,'play_state') if pref_valid else '') | lower) %}
@@ -988,7 +999,8 @@
         {% set pref_playing = pref_state == 'playing' or pref_ps in ['play','playing'] or (pref_ip is true) %}
         {% set pref_paused = pref_state == 'paused' or pref_ps in ['pause','paused'] or (pref_ipa is true) %}
         {% set pref_has_meta = pref_title not in ['', 'None', none] or pref_artist not in ['', 'None', none] %}
-        {% set pref_playing_fresh = pref_playing and (pref_pos_ts == 0 or pref_recent_play) %}
+        {% set pref_track_end_stuck = pref_playing and pref_dur > 0 and pref_pos >= (pref_dur - 1) and pref_pos_age > 5 %}
+        {% set pref_playing_fresh = pref_playing and (pref_pos_ts == 0 or pref_recent_play) and (not pref_track_end_stuck) %}
         {% set pref_active = pref_playing_fresh or (pref_paused and pref_recent_pause) %}
         {# Freshness gate for resolver: playing uses ma_meta_stale_s, paused uses ma_meta_paused_hide_s. #}
         {# Stale resolver entries must not rescue idle/off targets. #}
@@ -999,11 +1011,14 @@
         {% set res_pup = state_attr(resolver,'media_position_updated_at') if res_valid else none %}
         {% set res_pts = as_timestamp(res_pup) if res_pup is not none else 0 %}
         {% set res_page = (as_timestamp(now()) - res_pts) if res_pts > 0 else 9999 %}
+        {% set res_pos = (state_attr(resolver,'media_position') if res_valid else 0) | float(0) %}
+        {% set res_dur = (state_attr(resolver,'media_duration') if res_valid else 0) | float(0) %}
         {% set res_playing = res_st == 'playing' or res_ps in ['play','playing'] or (res_ip is true) %}
         {% set res_paused = res_st == 'paused' or res_ps in ['pause','paused'] or (res_ipa is true) %}
         {% set res_recent_play = res_page < playing_stale_s %}
         {% set res_recent_pause = res_page < paused_hide_s %}
-        {% set res_playing_fresh = res_playing and (res_pts == 0 or res_recent_play) %}
+        {% set res_track_end_stuck = res_playing and res_dur > 0 and res_pos >= (res_dur - 1) and res_page > 5 %}
+        {% set res_playing_fresh = res_playing and (res_pts == 0 or res_recent_play) and (not res_track_end_stuck) %}
         {% set res_valid_fresh = res_valid and (res_playing_fresh or (res_paused and res_recent_pause)) %}
         {% if res_valid_fresh %}
           {{ resolver }}
@@ -1103,9 +1118,6 @@
                 {{ stream_title }}
               {% else %}
               {% set ha_title = state_attr(t,'media_title') or '' %}
-              {% set ma_active_title = states('sensor.ma_active_title') | default('', true) %}
-              {% set ma_active_tl = ma_active_title | lower %}
-              {% set ma_active_queue = ma_active_tl in ['music assistant queue','media assistant queue'] %}
               {% set ha_id = state_attr(t,'media_content_id') or '' %}
               {% set ha_tl = ha_title | lower %}
               {% set ha_il = ha_id | lower %}
@@ -1115,8 +1127,6 @@
               {% set fallback_title = (ha_title if not ha_url and not ha_queue else '') | default('', true) %}
               {% if fallback_title != '' %}
                 {{ fallback_title }}
-              {% elif ma_active_title != '' and not ma_active_queue %}
-                {{ ma_active_title }}
               {% else %}
                 {{ '' }}
               {% endif %}
@@ -1181,6 +1191,16 @@
     - name: Now Playing Source
       state: >-
         {{ state_attr('sensor.now_playing_entity','resolved_source') | default('', true) }}
+    - name: Now Playing App
+      state: >-
+        {% set t = states('sensor.now_playing_entity') %}
+        {% if t in ['','unknown','unavailable',none] %}
+          {{ '' }}
+        {% else %}
+          {% set app = (state_attr(t,'app_name') or '') | default('', true) %}
+          {% set app_l = app | lower %}
+          {{ '' if app_l in ['music assistant queue','media assistant queue'] else app }}
+        {% endif %}
     - name: Now Playing State
       state: >-
         {% set t = states('sensor.now_playing_entity') %}
@@ -1217,6 +1237,101 @@
     - name: Now Playing Friendly
       state: >-
         {{ state_attr('sensor.now_playing_entity','resolved_friendly') | default('', true) }}
+    - name: Now Playing Media Class
+      state: >-
+        {% set t = states('sensor.now_playing_entity') %}
+        {% set t_valid = t not in ['','none','unknown','unavailable'] and states[t] is not none %}
+        {% if not t_valid %}
+          {% set source_now = states('sensor.now_playing_source') | string %}
+          {% set app_now = states('sensor.now_playing_app') | string %}
+          {% set np_state = states('sensor.now_playing_state') | lower %}
+          {% set ma_state = states('sensor.ma_active_state') | lower %}
+          {% set is_active = np_state in ['playing','paused'] or ma_state in ['playing','paused'] %}
+          {% set blob = (source_now ~ ' ' ~ app_now) | lower %}
+          {% set video_hint =
+            ('tv' in blob)
+            or ('video' in blob)
+            or ('movie' in blob)
+            or ('youtube' in blob)
+            or ('netflix' in blob)
+            or ('prime video' in blob)
+            or ('appletv' in blob)
+            or ('apple tv' in blob)
+            or ('roku' in blob)
+            or ('plex' in blob)
+            or ('hdmi' in blob)
+          %}
+          {% if is_active and video_hint %}
+            {{ 'non_music' }}
+          {% else %}
+            {{ 'none' }}
+          {% endif %}
+        {% else %}
+          {% set st = (states(t) | lower) %}
+          {% set play_state = ((state_attr(t,'play_state') or '') | lower) %}
+          {% set is_playing = (state_attr(t,'is_playing') is true) %}
+          {% set is_paused = (state_attr(t,'is_paused') is true) %}
+          {% set active = st in ['playing','paused'] or play_state in ['play','playing','pause','paused'] or is_playing or is_paused %}
+          {% set title = (state_attr('sensor.now_playing_entity','resolved_title') or '') | string %}
+          {% set artist = (state_attr('sensor.now_playing_entity','resolved_artist') or '') | string %}
+          {% set album = (state_attr('sensor.now_playing_entity','resolved_album') or '') | string %}
+          {% set source = (state_attr('sensor.now_playing_entity','resolved_source') or '') | string %}
+          {% set app = (states('sensor.now_playing_app') or '') | string %}
+          {% set content_type = (state_attr(t,'media_content_type') or '') | string %}
+          {% set has_meta = (title | trim) != '' or (artist | trim) != '' or (album | trim) != '' %}
+          {% set has_context = has_meta or (source | trim) != '' or (app | trim) != '' %}
+          {% if not active or not has_context %}
+            {{ 'none' }}
+          {% else %}
+            {% set blob = ((title ~ ' ' ~ artist ~ ' ' ~ album ~ ' ' ~ source ~ ' ' ~ app) | lower) %}
+            {% set content_l = (content_type | lower) %}
+            {% set music_score = 0 %}
+            {% set video_score = 0 %}
+            {% if content_l in ['music','track','album','playlist','podcast','radio'] %}{% set music_score = music_score + 4 %}{% endif %}
+            {% if content_l in ['video','movie','tvshow','episode','channel'] %}{% set video_score = video_score + 4 %}{% endif %}
+            {% if artist | trim != '' %}{% set music_score = music_score + 2 %}{% endif %}
+            {% if album | trim != '' %}{% set music_score = music_score + 1 %}{% endif %}
+            {% if 'music assistant' in blob or 'spotify' in blob or 'tidal' in blob or 'qobuz' in blob or 'deezer' in blob or 'pandora' in blob or 'apple music' in blob or 'youtube music' in blob or 'yt music' in blob or 'plexamp' in blob or 'tunein' in blob %}{% set music_score = music_score + 3 %}{% endif %}
+            {% if 'netflix' in blob or 'hulu' in blob or 'prime video' in blob or 'disney' in blob or 'max' in blob or 'hbo' in blob or 'jellyfin' in blob or 'emby' in blob or 'kodi' in blob or 'roku' in blob or 'apple tv' in blob or 'movie' in blob or 'episode' in blob or 'season' in blob %}{% set video_score = video_score + 3 %}{% endif %}
+            {% if 'youtube' in blob and 'youtube music' not in blob and 'yt music' not in blob %}{% set video_score = video_score + 2 %}{% endif %}
+            {% if 'plex' in blob and 'plexamp' not in blob %}{% set video_score = video_score + 1 %}{% endif %}
+            {% set prev = states('sensor.now_playing_media_class') %}
+            {% set prev_valid = prev in ['music','non_music'] %}
+            {% if music_score >= (video_score + 1) %}
+              {{ 'music' }}
+            {% elif video_score > (music_score + 1) %}
+              {{ 'non_music' }}
+            {% elif prev_valid %}
+              {{ prev }}
+            {% else %}
+              {{ 'music' }}
+            {% endif %}
+          {% endif %}
+        {% endif %}
+      attributes:
+        non_music_preview_s: 30
+    - name: Now Playing Preview Key
+      state: >-
+        {% set media_class = states('sensor.now_playing_media_class') %}
+        {% set t = states('sensor.now_playing_entity') %}
+        {% if media_class != 'non_music' %}
+          {{ '' }}
+        {% else %}
+          {% if t in ['','none','unknown','unavailable'] %}
+            {% set source_now = states('sensor.now_playing_source') | string | lower | trim %}
+            {% set app_now = states('sensor.ma_active_app') | string | lower | trim %}
+            {% if source_now in ['','none','unknown','unavailable'] and app_now in ['','none','unknown','unavailable'] %}
+              {{ '' }}
+            {% else %}
+              {{ ('fallback|' ~ source_now ~ '|' ~ app_now) | trim }}
+            {% endif %}
+          {% else %}
+            {% set title = (state_attr('sensor.now_playing_entity','resolved_title') or '') | string %}
+            {% set artist = (state_attr('sensor.now_playing_entity','resolved_artist') or '') | string %}
+            {% set source = (state_attr('sensor.now_playing_entity','resolved_source') or '') | string %}
+            {{ (t ~ '|' ~ title ~ '|' ~ artist ~ '|' ~ source) | lower | trim }}
+          {% endif %}
+        {% endif %}
     - name: MA Control Hosts
       state: >-
         {% set target = states('input_select.ma_active_target') %}
@@ -1741,6 +1856,166 @@
         {% set members = state_attr(t,'group_members') or state_attr(t,'members') or [] %}
         {{ members | length }}
 - binary_sensor:
+    - name: Now Playing Display Allowed
+      state: >-
+        {% set media_class = states('sensor.now_playing_media_class') %}
+        {% set now_entity = states('sensor.now_playing_entity') %}
+        {% set playing_stale_s = states('input_number.ma_meta_stale_s') | float(45) %}
+        {% set paused_hide_s = states('input_number.ma_meta_paused_hide_s') | float(600) %}
+        {% set ns = namespace(music_guard_active=false) %}
+        {% for e in states.media_player %}
+          {% if not ns.music_guard_active %}
+            {% set ent = e.entity_id %}
+            {% if ent != now_entity %}
+              {% set st = (e.state | lower) if e is not none else '' %}
+              {% set play_state = ((e.attributes.play_state if e.attributes is defined and e.attributes.play_state is defined else '') | lower) %}
+              {% set is_playing = (e.attributes.is_playing if e.attributes is defined and e.attributes.is_playing is defined else none) %}
+              {% set is_paused = (e.attributes.is_paused if e.attributes is defined and e.attributes.is_paused is defined else none) %}
+              {% set pos_updated = (e.attributes.media_position_updated_at if e.attributes is defined and e.attributes.media_position_updated_at is defined else none) %}
+              {% set pos_ts = as_timestamp(pos_updated) if pos_updated is not none else 0 %}
+              {% set base_ts = (pos_ts if pos_ts > 0 else as_timestamp(e.last_changed)) %}
+              {% set pos_age = (as_timestamp(now()) - base_ts) if base_ts is not none else 9999 %}
+              {% set playing_signal = st == 'playing' or play_state in ['play','playing'] or (is_playing is true) %}
+              {% set paused_signal = st == 'paused' or play_state in ['pause','paused'] or (is_paused is true) %}
+              {% set playing_active = playing_signal and (pos_age < playing_stale_s) %}
+              {% set paused_active = paused_signal and (pos_age < paused_hide_s) %}
+              {% set active_music_candidate = playing_active or paused_active %}
+              {% if active_music_candidate %}
+                {% set title = (e.attributes.media_title if e.attributes is defined and e.attributes.media_title is defined else '') | string %}
+                {% set artist = (e.attributes.media_artist if e.attributes is defined and e.attributes.media_artist is defined else '') | string %}
+                {% set album = ((e.attributes.media_album_name if e.attributes is defined and e.attributes.media_album_name is defined else (e.attributes.media_album if e.attributes is defined and e.attributes.media_album is defined else ''))) | string %}
+                {% set source = (e.attributes.source if e.attributes is defined and e.attributes.source is defined else '') | string %}
+                {% set app = (e.attributes.app_name if e.attributes is defined and e.attributes.app_name is defined else '') | string %}
+                {% set content_type = (e.attributes.media_content_type if e.attributes is defined and e.attributes.media_content_type is defined else '') | string %}
+                {% set blob = ((title ~ ' ' ~ artist ~ ' ' ~ album ~ ' ' ~ source ~ ' ' ~ app ~ ' ' ~ ent) | lower) %}
+                {% set content_l = (content_type | lower) %}
+                {% set music_hint =
+                  (content_l in ['music','track','album','playlist','podcast','radio'])
+                  or ((artist | trim) != '')
+                  or ((album | trim) != '')
+                  or ('music assistant' in blob)
+                  or ('spotify' in blob)
+                  or ('tidal' in blob)
+                  or ('qobuz' in blob)
+                  or ('deezer' in blob)
+                  or ('pandora' in blob)
+                  or ('apple music' in blob)
+                  or ('youtube music' in blob)
+                  or ('yt music' in blob)
+                  or ('plexamp' in blob)
+                  or ('tunein' in blob)
+                %}
+                {% set video_hint =
+                  (content_l in ['video','movie','tvshow','episode','channel'])
+                  or ('netflix' in blob)
+                  or ('hulu' in blob)
+                  or ('prime video' in blob)
+                  or ('disney' in blob)
+                  or ('max' in blob)
+                  or ('hbo' in blob)
+                  or ('jellyfin' in blob)
+                  or ('emby' in blob)
+                  or ('kodi' in blob)
+                  or ('roku' in blob)
+                  or ('apple tv' in blob)
+                  or (('youtube' in blob) and ('youtube music' not in blob) and ('yt music' not in blob))
+                %}
+                {% if music_hint and not video_hint %}
+                  {% set ns.music_guard_active = true %}
+                {% endif %}
+              {% endif %}
+            {% endif %}
+          {% endif %}
+        {% endfor %}
+        {% if media_class == 'music' %}
+          {{ true }}
+        {% elif media_class == 'non_music' %}
+          {% set key = states('sensor.now_playing_preview_key') %}
+          {% set preview_s = (state_attr('sensor.now_playing_media_class','non_music_preview_s') or 30) | int(30) %}
+          {% if key in ['','none','unknown','unavailable'] %}
+            {{ false }}
+          {% elif ns.music_guard_active %}
+            {{ false }}
+          {% else %}
+            {% set key_age = (as_timestamp(now()) - as_timestamp(states.sensor.now_playing_preview_key.last_changed)) | float(9999) %}
+            {{ key_age < preview_s }}
+          {% endif %}
+        {% else %}
+          {{ false }}
+        {% endif %}
+      attributes:
+        non_music_preview_s: >-
+          {{ (state_attr('sensor.now_playing_media_class','non_music_preview_s') or 30) | int(30) }}
+        music_guard_active: >-
+          {% set now_entity = states('sensor.now_playing_entity') %}
+          {% set playing_stale_s = states('input_number.ma_meta_stale_s') | float(45) %}
+          {% set paused_hide_s = states('input_number.ma_meta_paused_hide_s') | float(600) %}
+          {% set ns = namespace(music_guard_active=false) %}
+          {% for e in states.media_player %}
+            {% if not ns.music_guard_active %}
+              {% set ent = e.entity_id %}
+              {% if ent != now_entity %}
+                {% set st = (e.state | lower) if e is not none else '' %}
+                {% set play_state = ((e.attributes.play_state if e.attributes is defined and e.attributes.play_state is defined else '') | lower) %}
+                {% set is_playing = (e.attributes.is_playing if e.attributes is defined and e.attributes.is_playing is defined else none) %}
+                {% set is_paused = (e.attributes.is_paused if e.attributes is defined and e.attributes.is_paused is defined else none) %}
+                {% set pos_updated = (e.attributes.media_position_updated_at if e.attributes is defined and e.attributes.media_position_updated_at is defined else none) %}
+                {% set pos_ts = as_timestamp(pos_updated) if pos_updated is not none else 0 %}
+                {% set base_ts = (pos_ts if pos_ts > 0 else as_timestamp(e.last_changed)) %}
+                {% set pos_age = (as_timestamp(now()) - base_ts) if base_ts is not none else 9999 %}
+                {% set playing_signal = st == 'playing' or play_state in ['play','playing'] or (is_playing is true) %}
+                {% set paused_signal = st == 'paused' or play_state in ['pause','paused'] or (is_paused is true) %}
+                {% set playing_active = playing_signal and (pos_age < playing_stale_s) %}
+                {% set paused_active = paused_signal and (pos_age < paused_hide_s) %}
+                {% set active_music_candidate = playing_active or paused_active %}
+                {% if active_music_candidate %}
+                  {% set title = (e.attributes.media_title if e.attributes is defined and e.attributes.media_title is defined else '') | string %}
+                  {% set artist = (e.attributes.media_artist if e.attributes is defined and e.attributes.media_artist is defined else '') | string %}
+                  {% set album = ((e.attributes.media_album_name if e.attributes is defined and e.attributes.media_album_name is defined else (e.attributes.media_album if e.attributes is defined and e.attributes.media_album is defined else ''))) | string %}
+                  {% set source = (e.attributes.source if e.attributes is defined and e.attributes.source is defined else '') | string %}
+                  {% set app = (e.attributes.app_name if e.attributes is defined and e.attributes.app_name is defined else '') | string %}
+                  {% set content_type = (e.attributes.media_content_type if e.attributes is defined and e.attributes.media_content_type is defined else '') | string %}
+                  {% set blob = ((title ~ ' ' ~ artist ~ ' ' ~ album ~ ' ' ~ source ~ ' ' ~ app ~ ' ' ~ ent) | lower) %}
+                  {% set content_l = (content_type | lower) %}
+                  {% set music_hint =
+                    (content_l in ['music','track','album','playlist','podcast','radio'])
+                    or ((artist | trim) != '')
+                    or ((album | trim) != '')
+                    or ('music assistant' in blob)
+                    or ('spotify' in blob)
+                    or ('tidal' in blob)
+                    or ('qobuz' in blob)
+                    or ('deezer' in blob)
+                    or ('pandora' in blob)
+                    or ('apple music' in blob)
+                    or ('youtube music' in blob)
+                    or ('yt music' in blob)
+                    or ('plexamp' in blob)
+                    or ('tunein' in blob)
+                  %}
+                  {% set video_hint =
+                    (content_l in ['video','movie','tvshow','episode','channel'])
+                    or ('netflix' in blob)
+                    or ('hulu' in blob)
+                    or ('prime video' in blob)
+                    or ('disney' in blob)
+                    or ('max' in blob)
+                    or ('hbo' in blob)
+                    or ('jellyfin' in blob)
+                    or ('emby' in blob)
+                    or ('kodi' in blob)
+                    or ('roku' in blob)
+                    or ('apple tv' in blob)
+                    or (('youtube' in blob) and ('youtube music' not in blob) and ('yt music' not in blob))
+                  %}
+                  {% if music_hint and not video_hint %}
+                    {% set ns.music_guard_active = true %}
+                  {% endif %}
+                {% endif %}
+              {% endif %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.music_guard_active }}
     - name: MA Active Control Capable
       state: >-
         {% set target = states('input_select.ma_active_target') %}

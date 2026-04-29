@@ -1,6 +1,6 @@
 <!-- Description: Practical setup/deploy/integration guide for Spectra on Home Assistant with clear operator outcomes and failure actions. -->
-<!-- Version: 2026.04.22.14 -->
-<!-- Last updated: 2026-04-22 -->
+<!-- Version: 2026.04.26.15 -->
+<!-- Last updated: 2026-04-26 -->
 
 # User Setup, Deploy, and HA Integration
 
@@ -98,6 +98,26 @@ You can now stage core control-center mappings from the Spectra integration itse
   - `sensor.spectra_ls_control_center_last_attempt_status`
 
 This is additive and migration-safe: runtime/source-of-truth ownership remains unchanged while Control Center settings are staged.
+
+## MA beta/stable fast-switch workflow (runtime helper contract)
+
+For rapid backend testing (for example Beta vs Stable Music Assistant), use helper entities instead of editing package files:
+
+- `input_select.ma_server_profile`
+  - `beta` → uses `input_text.ma_server_url_beta`
+  - `stable` → uses `input_text.ma_server_url_stable`
+  - `manual` → uses `input_text.ma_server_url`
+- Effective selection visibility: `sensor.ma_server_profile_effective`
+- REST/API path remains sourced from `sensor.ma_api_url`.
+
+Recommended operator flow:
+
+1. set your Beta URL in `input_text.ma_server_url_beta`,
+2. set your Stable URL in `input_text.ma_server_url_stable`,
+3. switch `input_select.ma_server_profile` between `beta` and `stable` as needed,
+4. confirm `sensor.ma_server_profile_effective` and `sensor.ma_api_url` before running checks.
+
+This keeps testing fast and reversible while preserving the discovery-first/fail-closed routing posture.
 
 Cutover note:
 

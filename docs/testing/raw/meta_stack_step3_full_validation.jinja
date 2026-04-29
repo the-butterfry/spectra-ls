@@ -1,18 +1,20 @@
 {# Description: Full copy/paste Developer Tools template for Step-3 metadata-stack runtime validation (scheduler + metadata policy + stale root-cause + ESP UX gate). #}
-{# Version: 2026.04.27.1 #}
-{# Last updated: 2026-04-27 #}
+{# Version: 2026.04.29.2 #}
+{# Last updated: 2026-04-29 #}
 
 {# =========================
   Meta Stack Step-3 Full Validation (Runtime)
   Purpose:
     - One-shot validation packet for Step 3 (parity re-check / test & assess)
     - Combines scheduler readiness, metadata policy/suppression, stale-source triage,
-      and ESP auto-only UX gate checks in one render.
+      HA-authoritative media-class contract checks, and ESP auto-only UX gate checks in one render.
   Usage:
     1) Optional refresh actions before rendering:
        - spectra_ls.validate_metadata_policy
+         (recommended payload: `trigger_provider_refresh: true`, `force_refresh: true`, `refresh_reason: step3_reboot_validation`)
        - spectra_ls.validate_metadata_prep
        - spectra_ls.validate_contracts
+       - script.ma_send_metadata_to_providers (legacy/direct fallback)
     2) Paste into Home Assistant -> Developer Tools -> Template
     3) Capture output for pre / in / post records
   ========================= #}
@@ -50,6 +52,7 @@
 {% set np_play_stale = metadata_checks.now_playing_playing_without_fresh_signal if metadata_checks.now_playing_playing_without_fresh_signal is defined else false %}
 {% set np_paused_stale = metadata_checks.now_playing_paused_without_fresh_signal if metadata_checks.now_playing_paused_without_fresh_signal is defined else false %}
 {% set np_long_idle_hidden = metadata_checks.now_playing_long_idle_stale_hidden if metadata_checks.now_playing_long_idle_stale_hidden is defined else false %}
+{% set np_track_end_stuck = metadata_checks.now_playing_playing_at_track_end_stuck if metadata_checks.now_playing_playing_at_track_end_stuck is defined else false %}
 {% set np_recent_play = metadata_checks.now_playing_recent_play_progress if metadata_checks.now_playing_recent_play_progress is defined else 'n/a' %}
 {% set np_recent_paused = metadata_checks.now_playing_recent_paused_progress if metadata_checks.now_playing_recent_paused_progress is defined else 'n/a' %}
 {% set np_entity = metadata_values.now_playing_entity if metadata_values.now_playing_entity is defined else states('sensor.now_playing_entity') %}
@@ -58,6 +61,114 @@
 {% set np_age_s = metadata_values.now_playing_position_age_s if metadata_values.now_playing_position_age_s is defined else 'n/a' %}
 {% set meta_stale_s = metadata_values.meta_stale_s if metadata_values.meta_stale_s is defined else states('input_number.ma_meta_stale_s') | float(45) %}
 {% set paused_hide_s = metadata_values.paused_hide_s if metadata_values.paused_hide_s is defined else states('input_number.ma_meta_paused_hide_s') | float(600) %}
+{% set np_entity_missing = np_entity in invalid %}
+{% set np_title_missing = np_title in invalid %}
+{% set np_player_fields_raw = state_attr('sensor.now_playing_entity','player_fields_json') | default('', true) %}
+{% set np_player_fields =
+  np_player_fields_raw if np_player_fields_raw is mapping else
+  ((np_player_fields_raw | trim | from_json) if (np_player_fields_raw is string and (np_player_fields_raw | trim).startswith('{') and (np_player_fields_raw | trim | lower) not in ['unknown','unavailable','none','']) else {})
+%}
+{% set ma_active_player_raw = state_attr('sensor.ma_active_player_id_resolved','player_json') | default('', true) %}
+{% set ma_active_player =
+  ma_active_player_raw if ma_active_player_raw is mapping else
+  ((ma_active_player_raw | trim | from_json) if (ma_active_player_raw is string and (ma_active_player_raw | trim).startswith('{') and (ma_active_player_raw | trim | lower) not in ['unknown','unavailable','none','']) else {})
+%}
+{% set ma_handoff_uri =
+  (np_player_fields.ma_uri if np_player_fields is mapping and np_player_fields.ma_uri is defined else '')
+  if (np_player_fields is mapping and np_player_fields.ma_uri is defined and (np_player_fields.ma_uri | string | trim) not in invalid)
+  else (
+    (
+      ma_active_player.current_media.uri if ma_active_player is mapping and ma_active_player.current_media is defined and ma_active_player.current_media is mapping and ma_active_player.current_media.uri is defined and (ma_active_player.current_media.uri | string | trim | lower) not in invalid
+      else (
+        state_attr(np_entity, 'media_content_id') if np_entity not in invalid and states[np_entity] is not none else ''
+      )
+    )
+  )
+%}
+{% set ma_handoff_uri_valid = (ma_handoff_uri | string | trim | lower) not in invalid and ':' in (ma_handoff_uri | string) %}
+{% set ma_provider_status = states('input_text.ma_metadata_provider_last_status') %}
+{% set ma_provider_response = states('input_text.ma_metadata_provider_last_response') %}
+{% set ma_provider_providers = states('input_text.ma_metadata_provider_last_providers') %}
+{% set ma_provider_item_uri = states('input_text.ma_metadata_provider_last_item_uri') %}
+{% set ma_provider_reason = states('input_text.ma_metadata_provider_last_reason') %}
+{% set ma_provider_updated = states('input_text.ma_metadata_provider_last_updated_at') %}
+{% set ma_provider_updated_ts = as_timestamp(ma_provider_updated) if ma_provider_updated not in invalid else none %}
+{% set ma_provider_age_s = (as_timestamp(now()) - ma_provider_updated_ts) if ma_provider_updated_ts is not none else none %}
+{% set ma_provider_visible = ma_provider_status not in invalid or ma_provider_response not in invalid or ma_provider_providers not in invalid %}
+{% set ma_provider_parse_hint =
+  'dispatch_not_attempted_or_uri_unresolved' if not ma_handoff_uri_valid and not ma_provider_visible
+  else (
+    'provider_rows_missing_in_response_payload' if ma_provider_providers in ['no_provider_rows_in_response']
+    else (
+      'request_error' if ma_provider_providers is string and ma_provider_providers.startswith('request_error_')
+      else 'ok'
+    )
+  )
+%}
+
+{% set source_now = states('sensor.now_playing_source') | lower %}
+{% set source_ma = states('sensor.ma_active_source') | lower %}
+{% set app_ma = states('sensor.ma_active_app') | lower %}
+{% set source_ctx = source_now ~ ' ' ~ source_ma ~ ' ' ~ app_ma %}
+{% set video_hint =
+  ('plex' in source_ctx) or
+  ('apple tv' in source_ctx) or
+  ('appletv' in source_ctx) or
+  ('hdmi' in source_ctx) or
+  ('tv' in source_ctx)
+%}
+
+{% set media_class_raw = states('sensor.now_playing_media_class') %}
+{% set media_class = media_class_raw | lower %}
+{% set media_class_valid = media_class in ['music', 'non_music', 'none'] %}
+{% set display_allowed = is_state('binary_sensor.now_playing_display_allowed', 'on') %}
+{% set music_guard_active = is_state_attr('binary_sensor.now_playing_display_allowed', 'music_guard_active', true) %}
+{% set preview_key = states('sensor.now_playing_preview_key') %}
+{% set preview_key_valid = preview_key not in invalid %}
+{% set preview_s = state_attr('sensor.now_playing_media_class', 'non_music_preview_s') | int(30) %}
+{% set preview_age_s = (as_timestamp(now()) - as_timestamp(states.sensor.now_playing_preview_key.last_changed)) | float(9999) if preview_key_valid else none %}
+{% set media_contract_expected_display =
+  true if media_class == 'music'
+  else (
+    false if media_class == 'none'
+    else (
+      ((preview_age_s is not none and preview_age_s < preview_s) and not music_guard_active) if preview_key_valid else false
+    )
+  )
+%}
+{% set no_audio_video_context_expected =
+  video_hint and
+  np_entity_missing and
+  np_title_missing and
+  suppression_reason == 'entity_missing' and
+  np_state in ['idle', 'unknown', 'unavailable', 'none']
+%}
+{% set media_contract_timing_ready = media_class != 'non_music' or (not preview_key_valid) or (preview_age_s is not none) %}
+{% set media_contract_display_match = display_allowed == media_contract_expected_display if media_class_valid and media_contract_timing_ready else false %}
+{% set media_contract_surface_ready = media_class_valid and states('binary_sensor.now_playing_display_allowed') not in invalid %}
+{% set media_contract_unknown_expected_ok = no_audio_video_context_expected and media_class in ['unknown', 'unavailable', 'none', ''] and not display_allowed %}
+{% set media_contract_gate_ok = (media_contract_surface_ready and media_contract_timing_ready and media_contract_display_match) or media_contract_unknown_expected_ok %}
+{% set media_contract_reason =
+  'expected_unknown_no_audio_video_context' if media_contract_unknown_expected_ok
+  else (
+  'invalid_media_class' if not media_class_valid
+  else (
+    'surface_missing_or_unknown' if not media_contract_surface_ready
+    else (
+      'preview_timing_unavailable' if not media_contract_timing_ready
+      else (
+        'display_gate_mismatch' if not media_contract_display_match
+        else 'ok'
+      )
+    )
+  )
+  )
+%}
+
+{% set metadata_fail_is_expected_no_audio = metadata_verdict == 'FAIL' and no_audio_video_context_expected and suppression_reason == 'entity_missing' %}
+{% set metadata_effective_fail = metadata_verdict == 'FAIL' and not metadata_fail_is_expected_no_audio %}
+
+{% set esp_blank_expected = media_class == 'non_music' and not display_allowed %}
 
 {% set esp_handoff = states('sensor.spectra_ls_system_esp_control_handoff_status') %}
 {% set esp_target = states('sensor.spectra_ls_system_esp_control_target') %}
@@ -68,6 +179,8 @@
 {% set stale_reason = 'no_clear_reason' %}
 {% if np_entity in invalid and np_title in invalid %}
   {% set stale_reason = 'no_active_now_playing_entity' %}
+{% elif np_track_end_stuck %}
+  {% set stale_reason = 'playing_stuck_at_track_end' %}
 {% elif np_play_stale %}
   {% set stale_reason = 'playing_signal_without_fresh_progress' %}
 {% elif np_paused_stale %}
@@ -86,11 +199,15 @@
 {% set status = 'PASS' %}
 {% if (missing_required | length) > 0 or (unresolved_required | length) > 0 or not contract_valid %}
   {% set status = 'FAIL' %}
-{% elif scheduler_verdict == 'FAIL' or metadata_verdict == 'FAIL' %}
+{% elif scheduler_verdict == 'FAIL' or metadata_effective_fail %}
+  {% set status = 'FAIL' %}
+{% elif not media_contract_gate_ok and media_contract_reason in ['invalid_media_class', 'display_gate_mismatch'] %}
   {% set status = 'FAIL' %}
 {% elif not scheduler_ready or not metadata_ready or not snapshot_fresh or not esp_handoff_ok %}
   {% set status = 'WARN' %}
-{% elif np_play_stale or np_paused_stale %}
+{% elif not media_contract_gate_ok %}
+  {% set status = 'WARN' %}
+{% elif np_track_end_stuck or np_play_stale or np_paused_stale %}
   {% set status = 'WARN' %}
 {% endif %}
 
@@ -112,7 +229,38 @@
 ### Scheduler + metadata gates
 - `scheduler_verdict / ready`: **{{ scheduler_verdict }} / {{ scheduler_ready }}**
 - `metadata_verdict / ready`: **{{ metadata_verdict }} / {{ metadata_ready }}**
+- `metadata_effective_fail`: **{{ metadata_effective_fail }}**
+- `metadata_fail_expected_no_audio_context`: **{{ metadata_fail_is_expected_no_audio }}**
 - `scheduler_blocking`: **{{ scheduler_blocking if scheduler_blocking | length > 0 else [] }}**
+
+### MA provider handoff readiness
+- `candidate_item_uri`: **{{ ma_handoff_uri if ma_handoff_uri_valid else 'n/a' }}**
+- `candidate_uri_valid`: **{{ ma_handoff_uri_valid }}**
+- Recommended refresh call (component path): **spectra_ls.validate_metadata_policy** with `trigger_provider_refresh=true`, `force_refresh=true`, `refresh_reason=step3_reboot_validation`
+
+### MA provider API response (persisted telemetry)
+- `last_status`: **{{ ma_provider_status if ma_provider_status not in invalid else 'n/a' }}**
+- `last_providers`: **{{ ma_provider_providers if ma_provider_providers not in invalid else 'n/a' }}**
+- `last_response`: **{{ ma_provider_response if ma_provider_response not in invalid else 'n/a' }}**
+- `last_item_uri`: **{{ ma_provider_item_uri if ma_provider_item_uri not in invalid else 'n/a' }}**
+- `last_reason`: **{{ ma_provider_reason if ma_provider_reason not in invalid else 'n/a' }}**
+- `last_updated_at`: **{{ ma_provider_updated if ma_provider_updated not in invalid else 'n/a' }}**
+- `last_response_age_s`: **{{ ma_provider_age_s | round(1) if ma_provider_age_s is not none else 'n/a' }}**
+- `provider_parse_hint`: **{{ ma_provider_parse_hint }}**
+
+### HA media-class contract (authoritative policy)
+- `now_playing_media_class`: **{{ media_class if media_class_valid else ('invalid:' ~ media_class_raw) }}**
+- `display_allowed`: **{{ display_allowed }}**
+- `preview_key`: **{{ preview_key if preview_key_valid else 'n/a' }}**
+- `preview_window_s`: **{{ preview_s }}**
+- `preview_key_age_s`: **{{ preview_age_s | round(1) if preview_age_s is not none else 'n/a' }}**
+- `music_guard_active`: **{{ music_guard_active }}**
+- `expected_display_allowed`: **{{ media_contract_expected_display if media_class_valid else 'n/a' }}**
+- `contract_surface_ready`: **{{ media_contract_surface_ready }}**
+- `contract_timing_ready`: **{{ media_contract_timing_ready }}**
+- `unknown_expected_no_audio_video_context`: **{{ media_contract_unknown_expected_ok }}**
+- `contract_gate_ok`: **{{ media_contract_gate_ok }}**
+- `contract_reason`: **{{ media_contract_reason }}**
 
 ### Stale policy + suppression (dual-threshold)
 - `suppression_reason`: **{{ suppression_reason }}**
@@ -121,17 +269,21 @@
 - `recent_paused_progress`: **{{ np_recent_paused }}**
 - `playing_without_fresh_signal`: **{{ np_play_stale }}**
 - `paused_without_fresh_signal`: **{{ np_paused_stale }}**
+- `playing_at_track_end_stuck`: **{{ np_track_end_stuck }}**
 - `long_idle_stale_hidden`: **{{ np_long_idle_hidden }}**
 - `now_playing_entity/state/title`: **{{ np_entity if np_entity not in invalid else 'n/a' }} / {{ np_state }} / {{ np_title if np_title not in invalid else 'n/a' }}**
 - `now_playing_position_age_s`: **{{ np_age_s }}**
 - Thresholds: **playing<= {{ meta_stale_s }}s, paused<= {{ paused_hide_s }}s**
 - Stale root-cause classification: **{{ stale_reason }}**
+- Video/no-audio context expected: **{{ no_audio_video_context_expected }}**
+- Source context hint: **{{ source_ctx | trim if (source_ctx | trim) != '' else 'n/a' }}**
 
 ### ESP + UX gate
 - `esp_control_handoff_status`: **{{ esp_handoff if esp_handoff not in invalid else 'n/a' }}**
 - `esp_control_target`: **{{ esp_target if esp_target not in invalid else 'n/a' }}**
 - `esp_oled_status`: **{{ esp_oled if esp_oled not in invalid else 'n/a' }}**
 - ESP telemetry available: **{{ (esp_handoff not in invalid) or (esp_target not in invalid) or (esp_oled not in invalid) }}**
+- Non-music blank expected now: **{{ esp_blank_expected }}**
 - Auto-only fallback helpers currently clear: **{{ esp_auto_only_gate }}**
 
 ### Snapshot freshness
@@ -143,7 +295,7 @@
 {% if status == 'PASS' %}
 - Step 3 validation packet is healthy. Record this render as runtime evidence and proceed to closeout packet assembly.
 {% elif status == 'WARN' %}
-- Step 3 is partially healthy. Resolve WARN surfaces (scheduler/metadata freshness or ESP gate) and re-render before closeout.
+- Step 3 is partially healthy. Resolve WARN surfaces (scheduler/metadata/media-contract freshness or ESP gate) and re-render before closeout.
 {% else %}
-- Step 3 is blocked. Fix contract/gate failures first, then re-run this template.
+- Step 3 is blocked. Fix contract/gate failures first (including media-class/display-allow mismatches when present), then re-run this template.
 {% endif %}

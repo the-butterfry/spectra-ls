@@ -1,6 +1,6 @@
 # Description: Sensor entities for Spectra LS shadow parity routing surfaces with Phase 3 write-control, Phase 4 diagnostics attributes, and Phase 6/8 control-center settings/readiness/last-attempt visibility, including recorder-safe attribute payload sizing.
-# Version: 2026.04.27.2
-# Last updated: 2026-04-27
+# Version: 2026.04.29.4
+# Last updated: 2026-04-29
 
 from __future__ import annotations
 
@@ -307,6 +307,14 @@ class SpectraLsMetaPolicyStatusSensor(CoordinatorEntity, SensorEntity):
             "meta_policy": policy,
             "suppression_reason": checks.get("now_playing_suppression_reason", ""),
             "fresh_play_signal": checks.get("now_playing_fresh_play_signal"),
+            "now_playing_media_class": values.get("now_playing_media_class", ""),
+            "now_playing_preview_key": values.get("now_playing_preview_key", ""),
+            "now_playing_display_allowed": values.get("now_playing_display_allowed"),
+            "expected_display_allowed": values.get("expected_display_allowed"),
+            "display_contract_consistent": checks.get("now_playing_display_contract_consistent"),
+            "music_guard_active": values.get("music_guard_active"),
+            "non_music_preview_s": values.get("non_music_preview_s"),
+            "now_playing_preview_age_s": values.get("now_playing_preview_age_s"),
             "recent_play_progress": checks.get("now_playing_recent_play_progress", None),
             "recent_paused_progress": checks.get("now_playing_recent_paused_progress", None),
             "playing_without_recent_progress": checks.get("now_playing_playing_without_fresh_signal"),
@@ -314,6 +322,7 @@ class SpectraLsMetaPolicyStatusSensor(CoordinatorEntity, SensorEntity):
             "long_idle_stale_hidden": checks.get("now_playing_long_idle_stale_hidden"),
             "now_playing_entity": values.get("now_playing_entity", ""),
             "now_playing_position_age_s": values.get("now_playing_position_age_s"),
+            "now_playing_position_age_source": values.get("now_playing_position_age_source", "missing"),
             "meta_stale_s": values.get("meta_stale_s"),
             "paused_hide_s": values.get("paused_hide_s"),
             "captured_at": data.get("captured_at"),

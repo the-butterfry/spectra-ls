@@ -1,0 +1,134 @@
+{# Description: Raw copy/paste Jinja template for MA active-target selection pipeline diagnostics. #}
+{# Version: 2026.04.26.1 #}
+{# Last updated: 2026-04-26 #}
+
+{# =========================
+  MA Active-Target Selection Pipeline Diagnostic
+  Purpose: explain why input_select.ma_active_target remains none.
+  Usage:
+    1) Optional refresh actions:
+       - script.ma_update_target_options
+       - script.ma_auto_select
+    2) Paste in Developer Tools -> Template.
+    3) Use output to identify options/build/selection gate failures.
+  ========================= #}
+
+{% set invalid = ['','none','unknown','unavailable','None', none] %}
+
+{% set active_target = states('input_select.ma_active_target') %}
+{% set options = state_attr('input_select.ma_active_target','options') or [] %}
+{% set active_valid = active_target not in invalid and active_target in options and states[active_target] is not none %}
+
+{% set rooms_raw = state_attr('sensor.spectra_ls_rooms_json','rooms_json') | default([], true) %}
+{% set rooms = rooms_raw %}
+{% if rooms is string %}
+  {% set raw_trim = rooms | trim %}
+  {% set raw_trim_l = raw_trim | lower %}
+  {% if raw_trim_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
+    {% set parsed = raw_trim | from_json %}
+    {% if parsed is sequence and parsed is not string and parsed is not mapping %}
+      {% set rooms = parsed %}
+    {% elif parsed is mapping %}
+      {% set rooms = (parsed.rooms if parsed.rooms is defined else (parsed.result if parsed.result is defined else [])) %}
+    {% else %}
+      {% set rooms = [] %}
+    {% endif %}
+  {% else %}
+    {% set rooms = [] %}
+  {% endif %}
+{% elif rooms is mapping %}
+  {% set rooms = (rooms.rooms if rooms.rooms is defined else (rooms.result if rooms.result is defined else [])) %}
+{% elif rooms is not sequence %}
+  {% set rooms = [] %}
+{% endif %}
+
+{% set known = namespace(list=[]) %}
+{% for r in rooms %}
+  {% if r is not none and r.entity is defined and r.entity not in invalid and states[r.entity] is not none %}
+    {% set known.list = known.list + [r.entity] %}
+  {% endif %}
+{% endfor %}
+{% set known_targets = known.list | unique | list %}
+
+{% set players = state_attr('sensor.ma_players','result') or [] %}
+{% set discovered = namespace(list=[], rejected=[]) %}
+{% for p in players %}
+  {% set ent = (p.entity_id if p.entity_id is defined else '') %}
+  {% set ip = (state_attr(ent,'ip_address') if ent not in invalid else '') or (p.ip_address if p.ip_address is defined else '') %}
+  {% if ent not in invalid and (ent | regex_match('^media_player\.')) and states[ent] is not none and ip not in invalid %}
+    {% set discovered.list = discovered.list + [ent] %}
+  {% else %}
+    {% if ent not in invalid %}
+      {% set reason = 'missing_state' if states[ent] is none else ('missing_ip' if ip in invalid else 'filtered') %}
+      {% set discovered.rejected = discovered.rejected + [ent ~ ':' ~ reason] %}
+    {% endif %}
+  {% endif %}
+{% endfor %}
+{% set discovered_targets = discovered.list | unique | list %}
+
+{% set detected = states('sensor.ma_detected_receiver_entity') %}
+{% set detected_valid = detected not in invalid and (detected | regex_match('^media_player\.')) and states[detected] is not none %}
+
+{% set ma_players_count = states('sensor.ma_players') %}
+{% set players_ready = ma_players_count not in ['unknown','unavailable',''] and (ma_players_count | int(0)) > 0 %}
+
+{% set selectable = (known_targets + discovered_targets + ([detected] if detected_valid else [])) | unique | list %}
+
+{% set pick_state = (states(detected) | lower) if detected_valid else '' %}
+{% set pick_ready = detected_valid and detected in options and pick_state not in ['','unknown','unavailable'] %}
+
+{% set first_active = namespace(ent='') %}
+{% for o in options %}
+  {% if first_active.ent == '' and o is string and o.startswith('media_player.') and states[o] is not none %}
+    {% set st = states(o) | lower %}
+    {% if st in ['playing','paused'] %}
+      {% set first_active.ent = o %}
+    {% endif %}
+  {% endif %}
+{% endfor %}
+
+{% set score = 0 %}
+{% if players_ready %}{% set score = score + 1 %}{% endif %}
+{% if (known_targets | length) > 0 %}{% set score = score + 1 %}{% endif %}
+{% if (discovered_targets | length) > 0 %}{% set score = score + 1 %}{% endif %}
+{% if detected_valid %}{% set score = score + 1 %}{% endif %}
+{% if (options | length) > 1 %}{% set score = score + 1 %}{% endif %}
+{% if (selectable | length) > 0 %}{% set score = score + 1 %}{% endif %}
+{% if active_valid %}{% set score = score + 1 %}{% endif %}
+
+{% set verdict = 'PASS' if score >= 6 else 'WARN' %}
+
+### MA Active-Target Selection Pipeline Diagnostic
+- Result: **{{ verdict }}**
+- Score: **{{ score }}/7**
+- Timestamp: **{{ now() }}**
+
+### Active target helper state
+- `input_select.ma_active_target`: **{{ active_target }}** (valid={{ active_valid }})
+- Options count: **{{ options | length }}**
+- Options: **{{ options }}**
+
+### Upstream option builders
+- `sensor.ma_players` count: **{{ ma_players_count }}** (ready={{ players_ready }})
+- Known targets from rooms map: **{{ known_targets if (known_targets | length) > 0 else [] }}**
+- Discovered targets from MA players (ip-qualified): **{{ discovered_targets if (discovered_targets | length) > 0 else [] }}**
+- Discovered rejects (first 12): **{{ (discovered.rejected[:12]) if (discovered.rejected | length) > 0 else [] }}**
+- Detected receiver entity: **{{ detected }}** (valid={{ detected_valid }})
+- Selectable candidates (union): **{{ selectable if (selectable | length) > 0 else [] }}**
+
+### Auto-select gate hints
+- Pick-ready (`detected receiver in options and state available`): **{{ pick_ready }}**
+- First active option (`playing/paused`): **{{ first_active.ent if first_active.ent != '' else 'none' }}**
+
+### Suggested next action
+{% if active_valid %}
+- Selection pipeline is healthy in this snapshot.
+{% elif (options | length) <= 1 and (selectable | length) == 0 %}
+- No selectable candidates reached the helper: check `sensor.spectra_ls_rooms_json`, `sensor.ma_players`, and detected receiver state.
+{% elif detected_valid and detected not in options %}
+- Detected receiver is valid but missing from helper options: rerun `script.ma_update_target_options` and inspect option update automation.
+{% elif first_active.ent != '' %}
+- Active candidate exists but helper still none: rerun `script.ma_auto_select` and verify override is off.
+{% else %}
+- Review discovered rejects and room-map entities to identify missing-state or missing-ip qualifiers.
+{% endif %}

@@ -1,0 +1,237 @@
+{# Description: Raw copy/paste Jinja template for Kitchen Speakers focused target->host->route triage across legacy and component tracks. #}
+{# Version: 2026.04.26.2 #}
+{# Last updated: 2026-04-26 #}
+
+{# =========================
+  Kitchen Speakers Focused Triage (Legacy + Component)
+  Purpose: one-screen PASS/WARN check for target selection -> host derivation -> route decision.
+  Usage:
+    1) Optional refresh actions:
+       - script.ma_update_target_options
+       - spectra_ls.rebuild_registry
+       - spectra_ls.validate_contracts
+       - spectra_ls.dump_route_trace
+    2) Paste in Developer Tools -> Template.
+    3) Default focus label is "Kitchen Speakers" (change `focus_label` if needed).
+  Notes:
+    - Host validation is discovery-first and host-agnostic (no hardcoded IP).
+    - PASS/WARN only by design for rapid reboot-time triage.
+  ========================= #}
+
+{% set focus_label = 'Kitchen Speakers' %}
+{% set invalid = ['','none','unknown','unavailable','None', none] %}
+
+{# Legacy surfaces #}
+{% set active_target = states('input_select.ma_active_target') %}
+{% set active_target_valid = active_target not in invalid and states[active_target] is not none %}
+{% set active_friendly = (state_attr(active_target,'friendly_name') if active_target_valid else '') | default('', true) %}
+{% set active_path = states('sensor.ma_active_control_path') %}
+{% set active_path_ok = active_path == 'linkplay_tcp' %}
+{% set control_host = states('sensor.ma_control_host') %}
+{% set control_hosts_raw = states('sensor.ma_control_hosts') %}
+
+{# Component shadow surfaces (both naming styles) #}
+{% set s_target = 'sensor.shadow_active_target' if states['sensor.shadow_active_target'] is not none else 'sensor.spectra_ls_shadow_active_target' %}
+{% set s_path = 'sensor.shadow_active_control_path' if states['sensor.shadow_active_control_path'] is not none else 'sensor.spectra_ls_shadow_active_control_path' %}
+{% set s_hosts = 'sensor.shadow_control_hosts' if states['sensor.shadow_control_hosts'] is not none else 'sensor.spectra_ls_shadow_control_hosts' %}
+{% set b_capable = 'binary_sensor.shadow_active_control_capable' if states['binary_sensor.shadow_active_control_capable'] is not none else 'binary_sensor.spectra_ls_shadow_active_control_capable' %}
+
+{% set shadow_target = states(s_target) %}
+{% set shadow_path = states(s_path) %}
+{% set shadow_hosts = states(s_hosts) %}
+{% set shadow_capable = is_state(b_capable, 'on') %}
+
+{% set route_trace = state_attr(s_target,'route_trace') or {} %}
+{% set route_decision = (route_trace.decision if route_trace is mapping and route_trace.decision is defined else '') %}
+{% set route_reason = (route_trace.reason if route_trace is mapping and route_trace.reason is defined else '') %}
+
+{# Resolve player entity from legacy helper payload #}
+{% set player_raw = state_attr('sensor.ma_active_player_id_resolved','player_json') | default('{}', true) %}
+{% set player = player_raw if (player_raw is mapping) else ((player_raw | from_json) if (player_raw is string and (player_raw | trim).startswith('{')) else {}) %}
+{% set player_entity = (player.entity_id if player is mapping and player.entity_id is defined else '') %}
+
+{# Resolve focus entity (Kitchen Speakers by friendly name) #}
+{% set focus = namespace(entity='', stale_candidates=[]) %}
+{% if active_target_valid and (active_friendly | lower | trim) == (focus_label | lower | trim) %}
+  {% set active_state_l = states(active_target) | lower %}
+  {% if active_state_l not in ['unknown','unavailable'] %}
+    {% set focus.entity = active_target %}
+  {% else %}
+    {% set focus.stale_candidates = focus.stale_candidates + [active_target] %}
+  {% endif %}
+{% endif %}
+{% if focus.entity == '' %}
+  {% for e in states.media_player %}
+    {% if focus.entity == '' %}
+      {% set fn = (e.attributes.friendly_name if e.attributes is defined and e.attributes.friendly_name is defined else '') | lower | trim %}
+      {% if fn != '' and fn == (focus_label | lower | trim) %}
+        {% set e_state_l = (e.state | lower) if e is not none else 'unknown' %}
+        {% if e_state_l not in ['unknown','unavailable'] %}
+          {% set focus.entity = e.entity_id %}
+        {% else %}
+          {% set focus.stale_candidates = focus.stale_candidates + [e.entity_id] %}
+        {% endif %}
+      {% endif %}
+    {% endif %}
+  {% endfor %}
+{% endif %}
+
+{# Build expected host candidates from direct entity + members #}
+{% set expected = namespace(hosts=[]) %}
+{% if focus.entity != '' and states[focus.entity] is not none %}
+  {% set f_ip = state_attr(focus.entity,'ip_address') or '' %}
+  {% if f_ip not in invalid %}
+    {% set expected.hosts = expected.hosts + [f_ip] %}
+  {% endif %}
+  {% set f_members = state_attr(focus.entity,'group_members') or state_attr(focus.entity,'members') or [] %}
+  {% for m in f_members %}
+    {% if m not in invalid and states[m] is not none %}
+      {% set m_ip = state_attr(m,'ip_address') or '' %}
+      {% if m_ip not in invalid %}
+        {% set expected.hosts = expected.hosts + [m_ip] %}
+      {% endif %}
+    {% endif %}
+  {% endfor %}
+{% endif %}
+{% set expected_hosts = expected.hosts | unique | list %}
+
+{# Alias candidate entities used by runtime fallback chain #}
+{% set alias_entities = [
+  states('sensor.ma_detected_receiver_entity'),
+  states('sensor.ma_active_meta_entity'),
+  states('sensor.now_playing_entity'),
+  player_entity
+] %}
+{% set alias_probe = namespace(found=[]) %}
+{% for ae in alias_entities %}
+  {% if ae not in invalid and states[ae] is not none %}
+    {% set ae_ip = state_attr(ae,'ip_address') or '' %}
+    {% if ae_ip not in invalid %}
+      {% set alias_probe.found = alias_probe.found + [ae_ip] %}
+    {% endif %}
+    {% set ae_members = state_attr(ae,'group_members') or state_attr(ae,'members') or [] %}
+    {% for am in ae_members %}
+      {% if am not in invalid and states[am] is not none %}
+        {% set am_ip = state_attr(am,'ip_address') or '' %}
+        {% if am_ip not in invalid %}
+          {% set alias_probe.found = alias_probe.found + [am_ip] %}
+        {% endif %}
+      {% endif %}
+    {% endfor %}
+  {% endif %}
+{% endfor %}
+{% set alias_hosts = alias_probe.found | unique | list %}
+
+{# Parse host lists #}
+{% set host_list = namespace(values=[]) %}
+{% if control_hosts_raw not in invalid %}
+  {% for h in (control_hosts_raw | string).split(',') %}
+    {% set hs = h | trim %}
+    {% if hs not in invalid %}
+      {% set host_list.values = host_list.values + [hs] %}
+    {% endif %}
+  {% endfor %}
+{% endif %}
+{% set legacy_hosts = host_list.values | unique | list %}
+
+{% set shost_list = namespace(values=[]) %}
+{% if shadow_hosts not in invalid %}
+  {% for h in (shadow_hosts | string).split(',') %}
+    {% set hs = h | trim %}
+    {% if hs not in invalid %}
+      {% set shost_list.values = shost_list.values + [hs] %}
+    {% endif %}
+  {% endfor %}
+{% endif %}
+{% set component_hosts = shost_list.values | unique | list %}
+
+{# Match checks #}
+{% set m = namespace(host_match=false, component_host_match=false, alias_match=false) %}
+{% for eh in expected_hosts %}
+  {% if eh in legacy_hosts %}
+    {% set m.host_match = true %}
+  {% endif %}
+  {% if eh in component_hosts %}
+    {% set m.component_host_match = true %}
+  {% endif %}
+{% endfor %}
+{% for ah in alias_hosts %}
+  {% if ah in legacy_hosts %}
+    {% set m.alias_match = true %}
+  {% endif %}
+{% endfor %}
+
+{% set parity_target_ok = shadow_target == states('sensor.ma_active_target') and shadow_target not in invalid %}
+{% set parity_path_ok = shadow_path == states('sensor.ma_active_control_path') and shadow_path not in invalid %}
+{% set component_route_ok = route_decision == 'route_linkplay_tcp' %}
+
+{% set score = 0 %}
+{% if active_target_valid %}{% set score = score + 1 %}{% endif %}
+{% if focus.entity != '' %}{% set score = score + 1 %}{% endif %}
+{% if (legacy_hosts | length) > 0 %}{% set score = score + 1 %}{% endif %}
+{% if m.host_match or m.alias_match %}{% set score = score + 1 %}{% endif %}
+{% if active_path_ok %}{% set score = score + 1 %}{% endif %}
+{% if parity_target_ok %}{% set score = score + 1 %}{% endif %}
+{% if parity_path_ok %}{% set score = score + 1 %}{% endif %}
+{% if component_route_ok %}{% set score = score + 1 %}{% endif %}
+{% if shadow_capable %}{% set score = score + 1 %}{% endif %}
+
+{% set verdict = 'PASS' if score >= 8 else 'WARN' %}
+
+### Kitchen Speakers Focused Triage (Legacy + Component)
+- Result: **{{ verdict }}**
+- Score: **{{ score }}/9**
+- Timestamp: **{{ now() }}**
+
+### Target pick
+- Focus label: **{{ focus_label }}**
+- Active target (`input_select.ma_active_target`): **{{ active_target }}** (valid={{ active_target_valid }})
+- Active target friendly name: **{{ active_friendly if active_friendly != '' else 'n/a' }}**
+- Resolved focus entity: **{{ focus.entity if focus.entity != '' else 'missing' }}**
+- Stale ghost candidates (friendly-name match but unavailable): **{{ (focus.stale_candidates | unique | list) if (focus.stale_candidates | length) > 0 else [] }}**
+
+### Host derive
+- Legacy control host: **{{ control_host }}**
+- Legacy control hosts: **{{ legacy_hosts if (legacy_hosts | length) > 0 else [] }}**
+- Expected hosts from focus entity/members: **{{ expected_hosts if (expected_hosts | length) > 0 else [] }}**
+- Alias-derived hosts (detected/meta/now-playing/player/member): **{{ alias_hosts if (alias_hosts | length) > 0 else [] }}**
+- Legacy host matches expected: **{{ m.host_match }}**
+- Legacy host matches alias path: **{{ m.alias_match }}**
+
+### Route decision
+- Legacy active path (`sensor.ma_active_control_path`): **{{ active_path }}** (ok={{ active_path_ok }})
+- Component shadow target (`{{ s_target }}`): **{{ shadow_target }}** (parity_ok={{ parity_target_ok }})
+- Component shadow path (`{{ s_path }}`): **{{ shadow_path }}** (parity_ok={{ parity_path_ok }})
+- Component shadow hosts (`{{ s_hosts }}`): **{{ component_hosts if (component_hosts | length) > 0 else [] }}** (expected_match={{ m.component_host_match }})
+- Component route decision/reason: **{{ route_decision if route_decision != '' else 'n/a' }}** / **{{ route_reason if route_reason != '' else 'n/a' }}**
+- Component capable (`{{ b_capable }}`): **{{ shadow_capable }}**
+
+### PASS/WARN breakdown
+| Check | Status |
+|---|---|
+| Active target valid | {{ 'PASS' if active_target_valid else 'WARN' }} |
+| Kitchen focus entity resolved | {{ 'PASS' if focus.entity != '' else 'WARN' }} |
+| Legacy hosts available | {{ 'PASS' if (legacy_hosts | length) > 0 else 'WARN' }} |
+| Legacy host match (expected/alias) | {{ 'PASS' if (m.host_match or m.alias_match) else 'WARN' }} |
+| Legacy route path (`linkplay_tcp`) | {{ 'PASS' if active_path_ok else 'WARN' }} |
+| Target parity (legacy vs component) | {{ 'PASS' if parity_target_ok else 'WARN' }} |
+| Path parity (legacy vs component) | {{ 'PASS' if parity_path_ok else 'WARN' }} |
+| Component route decision | {{ 'PASS' if component_route_ok else 'WARN' }} |
+| Component control capable | {{ 'PASS' if shadow_capable else 'WARN' }} |
+
+### Suggested next action
+{% if verdict == 'PASS' %}
+- Kitchen Speakers selection flow is healthy across legacy + component for this capture.
+{% elif (focus.stale_candidates | length) > 0 and focus.entity == '' %}
+- Friendly-name match only found unavailable/ghost candidates: clear stale room helper IDs and ensure `input_text.spectra_ls_room_*_entity` points to live `media_player.*` entities.
+{% elif focus.entity == '' %}
+- Resolve target label mapping first: ensure a media_player has friendly name matching `{{ focus_label }}`.
+{% elif (legacy_hosts | length) == 0 %}
+- Host derivation is empty: inspect `sensor.ma_control_hosts`, `sensor.ma_detected_receiver_entity`, and member `ip_address` attributes.
+{% elif not active_path_ok %}
+- Route path is not `linkplay_tcp`: inspect control-path classification and control-capable hints in rooms metadata.
+{% elif not component_route_ok %}
+- Component route trace is not eligible: run `spectra_ls.rebuild_registry` + `spectra_ls.dump_route_trace`, then re-check.
+{% else %}
+- Review WARN rows above and rerun after one target switch + one control interaction.
+{% endif %}

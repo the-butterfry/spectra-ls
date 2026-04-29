@@ -1,6 +1,6 @@
 # Description: Audio controls package for Spectra LS System (TCP-only) with host-resolved control routing.
-# Version: 2026.04.27.7
-# Last updated: 2026-04-27
+# Version: 2026.04.28.1
+# Last updated: 2026-04-28
 # Update version/date whenever you change this file.
 
 binary_sensor:
@@ -99,6 +99,14 @@ binary_sensor:
           if (x) {
             id(audio_wake_until_ms) = now + ${audio_wake_hold_ms};
           }
+  - platform: homeassistant
+    id: ha_audio_display_allowed
+    entity_id: ${ha_ma_active_display_allowed}
+    internal: true
+    on_state:
+      - lambda: |-
+          id(meta_refresh_force) = true;
+      - script.execute: compute_display_state
   - platform: template
     name: "HA AirPlay Active"
     id: ha_airplay_active
@@ -853,6 +861,14 @@ text_sensor:
     id: ha_audio_source
     entity_id: ${ha_ma_active_source}
     internal: true
+  - platform: homeassistant
+    id: ha_audio_media_class
+    entity_id: ${ha_ma_active_media_class}
+    internal: true
+    on_value:
+      - lambda: |-
+          id(meta_refresh_force) = true;
+      - script.execute: compute_display_state
   - platform: homeassistant
     id: ha_audio_app
     entity_id: ${ha_ma_active_app}

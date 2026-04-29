@@ -1,6 +1,6 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.04.27.137 -->
-<!-- Last updated: 2026-04-27 -->
+<!-- Version: 2026.04.29.9 -->
+<!-- Last updated: 2026-04-29 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
 
@@ -75,6 +75,25 @@ Each feature slice is only complete when both tracks are dispositioned:
 | P8-S01 | 8 | Validated (legacy sealed baseline readiness gate completed with pre/in/post PASS packet) | Validated (post-cutover governance/readiness lane completed for starter gate) | Completed (Run-1/Run-2/Run-3 PASS; promoted) | High | Validated |
 
 Latest run update (2026-04-26, parity build-out slice):
+
+Latest run update (2026-04-28, MA metadata-provider refresh dispatch):
+
+- Runtime now-playing display policy is refined to explicit Music-Lite semantics: non-music preview window increased to 30s, preview visibility re-arms on fresh preview-key changes, and non-music preview is gated behind an active-music guard (other music playing/paused blocks TV/non-music preview while music remains always display-eligible).
+- Runtime track disposition: implemented (active template display-policy contract updated).
+- Component track disposition: implemented (metadata-prep diagnostics now validate runtime media contract surfaces and surface drift on `media_class`/`preview_key`/`display_allowed`/`music_guard_active` semantics).
+- P1/P2/P3 impact check: no source-of-truth ownership change; deterministic display-policy correctness hardening only.
+
+- Runtime track now includes explicit MA metadata-provider refresh dispatch via `script.ma_send_metadata_to_providers` (`metadata/update_metadata`) using resolved now-playing MA URI and existing MA API transport wrapper.
+- Runtime track now persists refresh API response telemetry (status/response/item/reason/updated-at) to helper-backed surfaces for deterministic validation evidence.
+- Runtime telemetry now also persists compact provider-result summary (`input_text.ma_metadata_provider_last_providers`) so templates can display provider-level outcomes directly.
+- Provider-summary extraction now tolerates mapping and list-shaped response payloads and persists bounded compact output for helper-length safety.
+- Provider-refresh trigger inputs are explicitly boolean-normalized (including string/number payloads) before dispatch to prevent false-positive refresh execution.
+- Registry target classification now fail-closes unsupported host families by deriving `control_path`/`control_capable` from supported path mappings instead of host presence alone.
+- Runtime URI eligibility is hardened with MA active-player fallback (`player_json.current_media.uri`) before `media_content_id` fallback to reduce false invalid-URI dispatch skips.
+- Component track `spectra_ls.validate_metadata_policy` now optionally triggers that runtime refresh script after policy diagnostics refresh, with guarded compatibility behavior when the runtime script surface is unavailable.
+- Runtime track disposition: implemented (explicit provider-refresh action path).
+- Component track disposition: implemented (service-level parity trigger + compatibility shim fallback).
+- P1/P2/P3 impact check: no source-of-truth ownership change; metadata-provider refresh actionability hardening only.
 
 - Selection lifecycle parity migration advanced with component-side lock lifecycle behavior now mirrored for migration windows:
   - lock-on-ambiguous-select parity handling,

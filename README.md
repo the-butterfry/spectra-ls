@@ -1,6 +1,6 @@
 <!-- Description: End-user overview for the Spectra L/S Home Assistant + ESPHome system. -->
-<!-- Version: 2026.04.22.21 -->
-<!-- Last updated: 2026-04-22 -->
+<!-- Version: 2026.04.27.23 -->
+<!-- Last updated: 2026-04-27 -->
 
 # Spectra L/S
 
@@ -74,7 +74,9 @@ Inspired by modern physical-control craftsmanship from [Condesa Electronics — 
 - Control Center settings + execution contracts are already live and operator-verifiable via `spectra_ls.set_control_center_settings` and `spectra_ls.execute_control_center_input`.
 - Ecosystem expansion remains capability-mapped and discovery-first; Sendspin-class and adjacent endpoint families are treated as roadmap integrations under the same safety/rollback gate discipline.
 - Runtime control-target host resolution is discovery-only and fail-closed by contract: no install-specific hardcoded target IP bootstrap defaults in tracked product logic.
+- Fast MA backend testing is now helper-driven in runtime: use `input_select.ma_server_profile` (`beta` / `stable` / `manual`) with profile URL helpers to switch endpoints quickly without editing package YAML.
 - Operator-grade validation artifacts remain the execution truth surface: `docs/testing/raw/*` checklists/monitors and synchronized roadmap ledgers.
+- Startup authority handling is hardened to avoid mixed boot semantics across migration windows, and deterministic diagnostics now include source/provenance + playback-modality context for faster operator triage.
 
 ## Documentation
 

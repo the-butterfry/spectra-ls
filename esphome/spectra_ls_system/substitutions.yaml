@@ -1,6 +1,6 @@
 # Description: Spectra LS System substitutions for ESPHome main config and packages.
-# Version: 2026.04.27.2
-# Last updated: 2026-04-27
+# Version: 2026.04.29.2
+# Last updated: 2026-04-29
 # Spectra LS substitutions scoped to spectra_ls_system.
 # Use absolute paths for assets so this file can move with spectra_ls_system.
 
@@ -108,16 +108,18 @@ oled_model: "SSD1306 128x64"
 # Purpose: entity contracts consumed by active packages.
 # Gain: decouples package logic from site-specific entity naming.
 # Risk: renamed helpers/entities without updating here can break routing/metadata.
-# Now Playing metadata (from MA active sensors)
-ha_ma_active_title: sensor.ma_active_title
+# Now Playing metadata (single-contract coherency surfaces)
+ha_ma_active_title: sensor.now_playing_title
 ha_ma_active_artist: sensor.ma_active_artist
 ha_ma_active_album: sensor.ma_active_album
-ha_ma_active_app: sensor.ma_active_app
-ha_ma_active_source: sensor.ma_active_source
-ha_ma_active_state: sensor.ma_active_state
+ha_ma_active_app: sensor.now_playing_app
+ha_ma_active_source: sensor.now_playing_source
+ha_ma_active_state: sensor.now_playing_state
 ha_ma_active_duration: sensor.ma_active_duration
 ha_ma_active_position: sensor.ma_active_position
 ha_ma_active_volume: sensor.ma_active_volume
+ha_ma_active_media_class: sensor.now_playing_media_class
+ha_ma_active_display_allowed: binary_sensor.now_playing_display_allowed
 ha_ma_meta_candidates: sensor.ma_meta_candidates
 ha_ma_meta_low_confidence: binary_sensor.ma_meta_low_confidence
 ha_ma_meta_override_active: input_boolean.ma_meta_override_active
@@ -259,7 +261,6 @@ meta_playing_grace_ms: "15000"
 meta_refresh_ms: "1500"
 meta_refresh_tick_ms: "250"
 meta_pause_timeout_ms: "60000"
-non_music_preview_ms: "10000"
 meta_override_reset_ms: "120000"
 meta_popup_ms: "3500"
 source_popup_ms: "5000"

@@ -1,6 +1,6 @@
 {# Description: Raw copy/paste Jinja template for deterministic scheduler-apply validation (decision + guarded apply + handoff inventory) with explicit MA boot-wait guidance, component-shadow entity preference hardening, contract-invalid/no-candidate operator guidance, live decision-source fallback when last scheduler decision is never_attempted, control-capable helper-fallback eligibility alignment, runtime control-expected reason visibility, stable-helper/no-candidate action clarification, hotspot-triage diagnostics surfaces, core-health weighted verdict scoring, and additive MA-players refresh/capability-feed checks. #}
-{# Version: 2026.04.27.45 #}
-{# Last updated: 2026-04-27 #}
+{# Version: 2026.04.28.1 #}
+{# Last updated: 2026-04-28 #}
 
 {# =========================
   Scheduler Apply Deterministic Validation (Component)
@@ -122,6 +122,12 @@
 
 {% set no_control_capable_state = states('binary_sensor.ma_no_control_capable_hosts') %}
 {% set no_control_capable_reason = state_attr('binary_sensor.ma_no_control_capable_hosts','reason') %}
+{% set ma_provider_status = states('input_text.ma_metadata_provider_last_status') %}
+{% set ma_provider_providers = states('input_text.ma_metadata_provider_last_providers') %}
+{% set ma_provider_item_uri = states('input_text.ma_metadata_provider_last_item_uri') %}
+{% set ma_provider_updated = states('input_text.ma_metadata_provider_last_updated_at') %}
+{% set ma_provider_updated_ts = as_timestamp(ma_provider_updated) if ma_provider_updated not in invalid else none %}
+{% set ma_provider_age_s = (as_timestamp(now()) - ma_provider_updated_ts) if ma_provider_updated_ts is not none else none %}
 
 {% set esp_handoff_entity = 'sensor.spectra_ls_system_esp_control_handoff_status' %}
 {% set esp_target_entity = 'sensor.spectra_ls_system_esp_control_target' %}
@@ -476,6 +482,13 @@ AVAILABLE SOURCES    : {{ available_sources if available_sources | length > 0 el
 - Selected target: **{{ selected_target if selected_target not in invalid else 'none' }}**
 - Selected target in helper options: **{{ selected_in_options }}**
 - Ranked candidates (top 5): **{{ ranked[:5] if ranked | length > 0 else [] }}**
+
+### MA provider telemetry (runtime handoff)
+- `provider_last_status`: **{{ ma_provider_status if ma_provider_status not in invalid else 'n/a' }}**
+- `provider_last_providers`: **{{ ma_provider_providers if ma_provider_providers not in invalid else 'n/a' }}**
+- `provider_last_item_uri`: **{{ ma_provider_item_uri if ma_provider_item_uri not in invalid else 'n/a' }}**
+- `provider_last_updated_at`: **{{ ma_provider_updated if ma_provider_updated not in invalid else 'n/a' }}**
+- `provider_last_age_s`: **{{ ma_provider_age_s | round(1) if ma_provider_age_s is not none else 'n/a' }}**
 
 ### Hotspot triage signals
 - Hotspot level: **{{ hotspot_level }}** (score={{ hotspot_score }})

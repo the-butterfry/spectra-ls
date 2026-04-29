@@ -1,6 +1,6 @@
 # Description: Spectra LS core state + globals + system intervals + shared scripts.
-# Version: 2026.04.27.5
-# Last updated: 2026-04-27
+# Version: 2026.04.29.5
+# Last updated: 2026-04-29
 # Update version/date whenever you change this file.
 #
 # Sections:
@@ -1005,18 +1005,6 @@ globals:
     type: std::string
     restore_value: no
     initial_value: '""'
-  - id: non_music_preview_key
-    type: std::string
-    restore_value: no
-    initial_value: '""'
-  - id: non_music_preview_until_ms
-    type: uint32_t
-    restore_value: no
-    initial_value: "0"
-  - id: non_music_force_blank
-    type: bool
-    restore_value: no
-    initial_value: "false"
   - id: source_popup_label
     type: std::string
     restore_value: no
@@ -1118,7 +1106,7 @@ text_sensor:
     name: "Arylic HTTP Transport"
     id: arylic_http_transport
     internal: false
-    update_interval: 10s
+    update_interval: 30s
     lambda: |-
       std::string scheme = id(arylic_http_scheme_active);
       std::string host = id(arylic_http_host_active);
@@ -1138,7 +1126,7 @@ text_sensor:
     name: "Arylic HTTP Scheme"
     id: arylic_http_scheme
     internal: false
-    update_interval: 10s
+    update_interval: 30s
     lambda: |-
       std::string scheme = id(arylic_http_scheme_active);
       std::string low = scheme;
@@ -1149,7 +1137,7 @@ text_sensor:
     name: "ESP Control Handoff Status"
     id: esp_control_handoff_status
     internal: false
-    update_interval: 1s
+    update_interval: 30s
     lambda: |-
       const uint32_t now = millis();
 
@@ -1175,7 +1163,7 @@ text_sensor:
     name: "ESP Control Target"
     id: esp_control_target
     internal: false
-    update_interval: 1s
+    update_interval: 30s
     lambda: |-
       std::string friendly = id(ma_active_friendly).has_state() ? id(ma_active_friendly).state.c_str() : "";
       std::string target = id(ma_active_target).has_state() ? id(ma_active_target).state.c_str() : "";
@@ -1186,14 +1174,28 @@ text_sensor:
     name: "ESP OLED Status"
     id: esp_oled_status
     internal: false
-    update_interval: 1s
+    update_interval: 30s
     lambda: |-
       std::string mode = id(screen_mode) == 0 ? "lighting" : "audio";
       if (id(menu_active)) {
         return mode + "|menu:lvl=" + std::to_string(id(menu_level));
       }
 
+      auto sanitize_ascii = [](const std::string &input) {
+        std::string out;
+        out.reserve(input.size());
+        for (unsigned char c : input) {
+          if (c >= 32 && c <= 126) {
+            out.push_back((char) c);
+          } else if (c == '\t') {
+            out.push_back(' ');
+          }
+        }
+        return out;
+      };
+
       std::string line = id(now_playing_title).has_state() ? id(now_playing_title).state.c_str() : "";
+      line = sanitize_ascii(line);
       if (line.empty()) line = "-";
       if (line.size() > 32) line = line.substr(0, 32);
       return mode + "|oled:" + line;
@@ -1694,6 +1696,42 @@ interval:
                                        id(arylic_lr_http_port_active));
                               ESP_LOGW("arylic_lr", "getPlayerStatus error host=%s scheme=%s port=%s",
                                        "${arylic_lr_http_host}", id(arylic_lr_http_scheme_active).c_str(), std::to_string(id(arylic_lr_http_port_active)).c_str());
+  - interval: 30s
+    then:
+      - lambda: |-
+          auto safe_text = [](const std::string &value) {
+            std::string out = value;
+            if (out.empty()) return std::string("-");
+            if (out.size() > 48) out = out.substr(0, 48);
+            return out;
+          };
+
+          auto lower = [](std::string value) {
+            for (auto &c : value) c = (char) ::tolower(c);
+            return value;
+          };
+
+          const std::string media_class = id(ha_audio_media_class).has_state() ? id(ha_audio_media_class).state.c_str() : "unknown";
+          const std::string state = id(ha_audio_state).has_state() ? id(ha_audio_state).state.c_str() : "unknown";
+          const std::string src = id(ha_audio_source).has_state() ? id(ha_audio_source).state.c_str() : "";
+          const std::string app = id(ha_audio_app).has_state() ? id(ha_audio_app).state.c_str() : "";
+          const std::string raw_title = id(ha_audio_title).has_state() ? id(ha_audio_title).state.c_str() : "";
+          const std::string display = id(ha_audio_display_allowed).has_state() ? (id(ha_audio_display_allowed).state ? "on" : "off") : "unknown";
+
+          const std::string media_class_l = lower(media_class);
+          const bool display_allowed = (display == "on");
+          const bool class_blocks_display =
+              (media_class_l.empty() || media_class_l == "none" || media_class_l == "unknown" || media_class_l == "unavailable");
+          const std::string title = (display_allowed && !class_blocks_display) ? raw_title : "";
+
+          ESP_LOGI("ha_meta", "class=%s display=%s state=%s src=%s app=%s title='%s'",
+                   media_class.c_str(),
+                   display.c_str(),
+                   state.c_str(),
+                   safe_text(src).c_str(),
+                   safe_text(app).c_str(),
+                   safe_text(title).c_str());
+
   - interval: ${heartbeat_interval_ms}ms
     then:
       - script.execute: log_status_burst

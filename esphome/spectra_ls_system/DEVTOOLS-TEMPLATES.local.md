@@ -1,6 +1,6 @@
 <!-- Description: Copy/paste Home Assistant Dev Tools template diagnostics for Spectra LS System. -->
-<!-- Version: 2026.04.19.31 -->
-<!-- Last updated: 2026-04-19 -->
+<!-- Version: 2026.04.26.32 -->
+<!-- Last updated: 2026-04-26 -->
 
 # Spectra LS System — Dev Tools Template Validation
 
@@ -12,6 +12,7 @@
 - If markdown code fences are annoying, use raw Jinja files (no backticks) under:
   - `docs/testing/raw/`
 - Current raw templates:
+  - `docs/testing/raw/kitchen_target_flow_triage_legacy_component.jinja`
   - `docs/testing/raw/p2_registry_router_verification.jinja`
   - `docs/testing/raw/p2_negative_case_regression.jinja`
   - `docs/testing/raw/p3_s01_guarded_write_validation.jinja`
@@ -1913,6 +1914,11 @@ Unavailable core entities:
   - profile schema skeleton is visible and deterministic,
   - metadata-prep readiness from P3 remains true,
   - no-authority-expansion guard remains true (`authority_mode=legacy`).
+
+## 25) Kitchen Speakers Focused Triage (Legacy + Component)
+
+- Raw copy/paste file (no markdown fences): `docs/testing/raw/kitchen_target_flow_triage_legacy_component.jinja`
+- Use this for a focused target-flow pass on `Kitchen Speakers` (`target pick -> host derive -> route decision`) with one-screen PASS/WARN output and lock-step legacy/component parity checks.
 
 <!-- EOF -->
 

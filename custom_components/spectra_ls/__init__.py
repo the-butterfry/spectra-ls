@@ -1,6 +1,6 @@
 # Description: Spectra LS custom integration setup for shadow parity, Phase 3 guarded routing write-path services, Phase 4 diagnostics scaffolding services (F4-S01/F4-S03), Phase 5 metadata trial contract service wiring, and Phase 6 control-center settings/execution services including bounded startup auto-recovery scheduling and selection-ownership migration services.
-# Version: 2026.04.27.1
-# Last updated: 2026-04-27
+# Version: 2026.04.28.2
+# Last updated: 2026-04-28
 
 from __future__ import annotations
 
@@ -51,6 +51,22 @@ from .const import (
 from .coordinator import SpectraLsShadowCoordinator
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def _coerce_bool(value: object, default: bool = False) -> bool:
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value != 0
+    if isinstance(value, str):
+        norm = value.strip().lower()
+        if norm in {"1", "true", "yes", "on"}:
+            return True
+        if norm in {"0", "false", "no", "off", ""}:
+            return False
+    return default
 
 
 async def async_setup(hass: HomeAssistant, _config: dict[str, Any]) -> bool:
@@ -145,10 +161,33 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async def _service_validate_metadata_prep(_call: ServiceCall) -> None:
         await coordinator.async_validate_metadata_prep()
 
-    async def _service_validate_metadata_policy(_call: ServiceCall) -> None:
+    async def _service_validate_metadata_policy(call: ServiceCall) -> None:
         # Policy status is synthesized from helper entities + metadata-prep checks;
         # refresh + prep validation keeps diagnostics consistent for operators.
         await coordinator.async_validate_metadata_prep()
+
+        trigger_provider_refresh = _coerce_bool(call.data.get("trigger_provider_refresh"), default=True)
+        if not trigger_provider_refresh:
+            return
+
+        refresh_reason = str(call.data.get("refresh_reason", "validate_metadata_policy")).strip() or "validate_metadata_policy"
+        force_refresh = _coerce_bool(call.data.get("force_refresh"), default=True)
+
+        if not hass.services.has_service("script", "ma_send_metadata_to_providers"):
+            _LOGGER.warning(
+                "validate_metadata_policy requested provider refresh, but script.ma_send_metadata_to_providers is unavailable"
+            )
+            return
+
+        await hass.services.async_call(
+            "script",
+            "ma_send_metadata_to_providers",
+            {
+                "reason": refresh_reason,
+                "force_refresh": force_refresh,
+            },
+            blocking=True,
+        )
 
     async def _service_run_p3_s03_sequence(call: ServiceCall) -> None:
         mode = str(call.data.get("mode", "legacy"))

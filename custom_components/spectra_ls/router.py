@@ -1,6 +1,6 @@
-# Description: Router scaffold helpers for Spectra LS Phase 2 read-only route-trace visibility with deterministic resolved-path decisions.
-# Version: 2026.04.19.2
-# Last updated: 2026-04-19
+# Description: Router scaffold helpers for Spectra LS Phase 2 read-only route-trace visibility with deterministic resolved-path decisions and defer-classification hardening.
+# Version: 2026.04.26.3
+# Last updated: 2026-04-26
 
 from __future__ import annotations
 
@@ -25,12 +25,12 @@ def build_route_trace(active_target: str, active_control_path: str, registry: di
     elif selected is None:
         decision = "defer_unknown_target"
         reason = "Active target is not present in registry snapshot"
-    elif resolved_path != "linkplay_tcp":
-        decision = "defer_unsupported_path"
-        reason = "Only linkplay_tcp is mapped in current Phase 2 scaffold"
     elif not selected.get("control_capable", False):
         decision = "defer_not_capable"
         reason = "Target does not advertise control_capable in registry snapshot"
+    elif resolved_path != "linkplay_tcp":
+        decision = "defer_unsupported_path"
+        reason = "Only linkplay_tcp is mapped in current Phase 2 scaffold"
     else:
         decision = "route_linkplay_tcp"
         reason = "Target/path are supported by read-only scaffold mapping"

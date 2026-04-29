@@ -1,6 +1,6 @@
 <!-- Description: RP2040 firmware module legend, wiring/layout protocol, and component-link map for Spectra LS. -->
-<!-- Version: 2026.04.19.1 -->
-<!-- Last updated: 2026-04-19 -->
+<!-- Version: 2026.04.26.1 -->
+<!-- Last updated: 2026-04-26 -->
 
 # RP2040 Firmware Legend (Spectra LS)
 
@@ -26,6 +26,24 @@ This document is the authoritative RP2040 module map plus wiring/layout protocol
 - Live runtime source: `CIRCUITPY/`.
 - Repository mirror: `esphome/circuitpy/`.
 - Any RP firmware change must update both in the same change set.
+
+## Known-good RP analog tuning baseline (locked 2026-04-26)
+
+Validated on live hardware with serial evidence:
+
+- full `0 → 100` volume sweep reachability
+- responsive low-velocity/small-movement changes
+- no objectionable post-stop drift
+
+Pinned baseline constants in [`code.py`](../../esphome/circuitpy/code.py) (live + mirror):
+
+- `ANALOG_RAW_MIN_CHANGE = 1`
+- `ANALOG_MIN_CHANGE_BY_NAME`: `volume_pot=1`, `eq_bass_pot=2`, `eq_mid_pot=2`, `eq_treble_pot=2`
+- `ANALOG_FILTER_ALPHA_SLOW_BY_NAME`: `volume_pot=0.30`, `eq_bass_pot=0.28`, `eq_mid_pot=0.28`, `eq_treble_pot=0.28`
+- `ANALOG_POT_ASSUME_ZERO_MAX = 1`
+
+Operator note: if a future tuning pass regresses endpoint reachability or small-movement feel,
+restore this exact constant set first before introducing additional filter-path complexity.
 
 ## Wiring/layout protocol summary (directive)
 

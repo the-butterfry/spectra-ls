@@ -1,6 +1,6 @@
 # Description: MA control hub select helpers for active target routing.
-# Version: 2026.04.17.1
-# Last updated: 2026-04-17
+# Version: 2026.04.26.1
+# Last updated: 2026-04-26
 # HUB MUST-READ: Contract parser methodology.
 # - For complex attributes (`rooms`, `candidates_json`, etc.), prefer native sequence/mapping values first.
 # - Only parse string JSON when trimmed payload starts with `[` or `{` and is not unknown/unavailable/none/''.
@@ -12,3 +12,10 @@ ma_active_target:
   options:
     - none
   initial: none
+ma_server_profile:
+  name: MA Server Profile
+  options:
+    - beta
+    - stable
+    - manual
+  initial: beta

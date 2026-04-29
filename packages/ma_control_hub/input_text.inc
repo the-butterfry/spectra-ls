@@ -1,6 +1,6 @@
 # Description: MA control hub input_text helper defaults and target mappings.
-# Version: 2026.04.17.2
-# Last updated: 2026-04-17
+# Version: 2026.04.28.2
+# Last updated: 2026-04-28
 # HUB MUST-READ: Contract parser methodology.
 # - For complex attributes (`rooms`, `candidates_json`, etc.), prefer native sequence/mapping values first.
 # - Only parse string JSON when trimmed payload starts with `[` or `{` and is not unknown/unavailable/none/''.
@@ -14,6 +14,16 @@ ma_ambiguous_entities:
   mode: text
 ma_server_url:
   name: MA Server URL
+  initial: !secret ma_server_url
+  max: 255
+  mode: text
+ma_server_url_beta:
+  name: MA Server URL (Beta)
+  initial: !secret ma_server_url
+  max: 255
+  mode: text
+ma_server_url_stable:
+  name: MA Server URL (Stable)
   initial: !secret ma_server_url
   max: 255
   mode: text
@@ -55,5 +65,35 @@ spectra_ls_target_room_meta_entity:
 spectra_ls_target_room_tcp_host:
   name: Spectra LS Target (Room) TCP Host
   initial: !secret spectra_ls_room_tcp_host
+  max: 255
+  mode: text
+ma_metadata_provider_last_status:
+  name: MA Metadata Provider Last Status
+  initial: ""
+  max: 255
+  mode: text
+ma_metadata_provider_last_response:
+  name: MA Metadata Provider Last Response
+  initial: ""
+  max: 255
+  mode: text
+ma_metadata_provider_last_providers:
+  name: MA Metadata Provider Last Providers
+  initial: ""
+  max: 255
+  mode: text
+ma_metadata_provider_last_item_uri:
+  name: MA Metadata Provider Last Item URI
+  initial: ""
+  max: 255
+  mode: text
+ma_metadata_provider_last_reason:
+  name: MA Metadata Provider Last Reason
+  initial: ""
+  max: 255
+  mode: text
+ma_metadata_provider_last_updated_at:
+  name: MA Metadata Provider Last Updated At
+  initial: ""
   max: 255
   mode: text

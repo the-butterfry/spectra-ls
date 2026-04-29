@@ -1,6 +1,6 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.27.136 -->
-<!-- Last updated: 2026-04-27 -->
+<!-- Version: 2026.04.29.9 -->
+<!-- Last updated: 2026-04-29 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
 
@@ -120,6 +120,25 @@ Execution playbook reference: `docs/program/PARALLEL-PROGRAM-PLAYBOOK.md`.
 | P2-S02 | 2 | Implemented (legacy route contracts retained) | Implemented (deterministic validation hardening + P2 diagnostics closure) | Implemented | Low | Implemented |
 
 Latest run update (2026-04-26, parity correctness/cleanup follow-up):
+
+Latest run update (2026-04-28, MA metadata-provider refresh dispatch):
+
+- Runtime media-policy contract updated for explicit Music-Lite behavior: non-music preview window is 30s and preview visibility is suppressed when other active music context (playing/paused) is present, preserving deterministic “music always wins” display behavior.
+- Runtime track disposition: implemented (active now-playing display contract updated in `packages/ma_control_hub/template.inc`).
+- Component track disposition: implemented (component metadata-policy diagnostics now validate runtime media-contract surfaces and expected display semantics for parity drift visibility).
+- P1/P2/P3 impact check: no source-of-truth ownership change; bounded display-policy correctness hardening only.
+
+- Runtime track adds explicit provider-refresh handoff script (`ma_send_metadata_to_providers`) using MA command `metadata/update_metadata` through existing HA runtime MA API wrapper and resolved now-playing MA URI selection.
+- Runtime helper telemetry now persists latest provider-refresh API response details (`status`, `response`, `item_uri`, `reason`, `updated_at`) for deterministic diagnostics/template consumption.
+- Runtime helper telemetry now also persists compact provider result summaries (`input_text.ma_metadata_provider_last_providers`) so provider-level outcomes are visible in validation templates.
+- Provider-summary extraction now accepts mapping/list response shapes and stores bounded compact helper payloads to avoid overflow-style truncation ambiguity.
+- Component/runtime trigger inputs for provider refresh are now boolean-normalized to avoid accidental dispatch when templated callers pass string-like false values.
+- Registry host-type classification is now fail-closed for unsupported control paths (host observability retained, routing capability restricted to supported path mappings).
+- Runtime provider-refresh URI selection now includes MA active-player URI fallback before `media_content_id` fallback, improving dispatch eligibility under active playback where now-playing fields can lag.
+- Component track extends `validate_metadata_policy` service to optionally dispatch the runtime refresh script after policy diagnostics refresh, preserving compatibility-shim behavior when script surface is not present.
+- Runtime track disposition: implemented (provider-refresh handoff action).
+- Component track disposition: implemented (service parity trigger + fallback).
+- P1/P2/P3 impact check: no source-of-truth ownership change; metadata-provider refresh actionability hardening only.
 
 - Closed auto-select loop watcher parity gap (`GAP-20260426-auto-select-loop-watched-options-filter`) by removing component-side `media_player.*`-only watcher restriction and restoring legacy-equivalent watched-options membership semantics.
 - Runtime track disposition: implemented (legacy behavior unchanged).

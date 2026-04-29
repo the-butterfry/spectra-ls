@@ -1,6 +1,6 @@
 # Description: Binary sensor entities for Spectra LS shadow parity routing surfaces with Phase 3 write-control, Phase 4 diagnostics attributes, and Phase 6 control-center settings visibility.
-# Version: 2026.04.23.1
-# Last updated: 2026-04-23
+# Version: 2026.04.26.1
+# Last updated: 2026-04-26
 
 from __future__ import annotations
 
@@ -22,6 +22,23 @@ class SpectraLsShadowControlCapableBinarySensor(CoordinatorEntity, BinarySensorE
     _attr_icon = "mdi:audio-video"
     _attr_name = "Shadow Active Control Capable"
     _attr_unique_id = "spectra_ls_shadow_active_control_capable"
+    # Keep rich diagnostics visible in state while avoiding Recorder DB bloat and
+    # 16KB attribute warnings on high-volume nested payloads.
+    _unrecorded_attributes = frozenset(
+        {
+            "registry",
+            "route_trace",
+            "contract_validation",
+            "selection_handoff_validation",
+            "route_safety_validation",
+            "metadata_prep_validation",
+            "capability_profile_validation",
+            "action_catalog_validation",
+            "crossfade_balance_validation",
+            "control_center_validation",
+            "write_controls",
+        }
+    )
 
     @property
     def is_on(self) -> bool:

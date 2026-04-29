@@ -1,7 +1,7 @@
 {
   "domain": "spectra_ls",
   "name": "Spectra LS",
-  "version": "2026.4.23.1",
+  "version": "2026.4.29.5",
   "icon": "mdi:audio-video",
   "documentation": "https://github.com/the-butterfry/spectra-ls",
   "issue_tracker": "https://github.com/the-butterfry/spectra-ls/issues",

@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.29.28 -->
+<!-- Version: 2026.04.29.29 -->
 <!-- Last updated: 2026-04-29 -->
 
 # Changelog
 
 ## 2026-04-29
+
+- Custom Component/Version-Metadata Housekeeping + Deploy-Readiness Validation (`custom_components/spectra_ls/manifest.json`, `custom_components/spectra_ls/const.py`): resolve integration version drift by synchronizing Home Assistant manifest-visible component version metadata with the current component constants version so operator-visible update state is coherent in Devices & Services/HACS-facing metadata surfaces. Runtime track disposition: compatibility-shimmed (runtime path unchanged). Custom-component track disposition: implemented (metadata/version synchronization only; no behavior-path mutation). P1/P2/P3 impact: no source-of-truth ownership change; release metadata correctness/readiness hardening only. README/wiki parity: no material repo-state change.
 
 - ESPHome/HA-Meta Single-Contract Coherency Switch (`esphome/spectra_ls_system/substitutions.yaml`, `packages/ma_control_hub/template.inc`, `docs/architecture/CODEBASE-RUNTIME-ARCHITECTURE.md`, `custom_components/spectra_ls/const.py`): switch ESP `ha_meta`-consumed state/source/app/title feeds from `sensor.ma_active_*` to coherent now-playing contracts (`sensor.now_playing_state`, `sensor.now_playing_source`, `sensor.now_playing_app`, `sensor.now_playing_title`) so the exported HA metadata snapshot is sourced from one now-playing contract family and no longer mixes MA-active fallback context with now-playing fields. This enforces consistent cross-field provenance in both HA and ESP observability surfaces. Runtime track disposition: implemented (ESP input-contract coherency hardening + now-playing app contract surface). Custom-component track disposition: compatibility-shimmed with explicit version-metadata review completed (`custom_components/spectra_ls/const.py` metadata bump only; no behavior-path mutation). P1/P2/P3 impact: no source-of-truth ownership change; contract-provenance coherence hardening only. README/wiki parity: no material repo-state change.
 

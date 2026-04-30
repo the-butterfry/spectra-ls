@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.29.31 -->
+<!-- Version: 2026.04.29.32 -->
 <!-- Last updated: 2026-04-29 -->
 
 # Changelog
 
 ## 2026-04-29
+
+- ESPHome/ESP OLED Status Coherency Gate Alignment (`esphome/spectra_ls_system/packages/spectra-ls-system.yaml`): align `ESP OLED Status` text-sensor title emission with the same HA display policy gate used by `ha_meta` (`ha_audio_display_allowed` + media-class suppressions for `none/unknown/unavailable`) so diagnostics no longer report stale now-playing titles while HA policy is in hidden/no-display state (`class=none display=off`). Runtime track disposition: implemented (diagnostics coherency hardening in active ESP runtime path). Custom-component track disposition: checked/not-applicable (component path does not emit ESP text-sensor diagnostics). P1/P2/P3 impact: no source-of-truth ownership change; observability coherency correction only. README/wiki parity: no material repo-state change.
 
 - ESPHome/OTA Schema Corrective for 2026.4.x (`esphome/spectra_ls_system.yaml`): fix runtime config incompatibility on ESPHome 2026.4.3 by restoring new OTA platform structure (`ota: - platform: esphome / - platform: web_server`) and removing invalid `web_server.ota: true` usage, which now only supports explicit `false` for disable semantics. Runtime track disposition: implemented (active ESP runtime compile/deploy compatibility correction). Custom-component track disposition: checked/not-applicable (component path does not own ESPHome OTA schema). P1/P2/P3 impact: no source-of-truth ownership change; OTA config schema compatibility correction only. README/wiki parity: no material repo-state change.
 

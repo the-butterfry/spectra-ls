@@ -1,6 +1,6 @@
 <!-- Description: Wiki source and synchronization instructions for Spectra documentation pages. -->
-<!-- Version: 2026.04.22.11 -->
-<!-- Last updated: 2026-04-22 -->
+<!-- Version: 2026.04.29.12 -->
+<!-- Last updated: 2026-04-29 -->
 
 # Wiki Source + Sync
 

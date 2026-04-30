@@ -1,6 +1,6 @@
 <!-- Description: Wiki home page for Spectra L/S operations, architecture, contribution flow, and runbooks. -->
-<!-- Version: 2026.04.22.11 -->
-<!-- Last updated: 2026-04-22 -->
+<!-- Version: 2026.04.29.12 -->
+<!-- Last updated: 2026-04-29 -->
 
 # Spectra L/S Wiki
 
@@ -27,6 +27,10 @@ This wiki mirrors curated content from [`docs/wiki/`](https://github.com/the-but
 ## Documentation quality baseline
 
 Current documentation posture:
+
+- README/wiki + roadmap notes are maintained in parity for active feature and operator workflow changes.
+- Deployment guidance is aligned to current ESPHome 2026.4.x OTA platform schema expectations.
+- Release cadence guidance reflects intentional release-tag publishing (no per-commit HACS publish requirement).
 
 What that means in practice:
 

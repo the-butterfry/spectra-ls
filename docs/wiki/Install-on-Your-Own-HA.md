@@ -1,6 +1,6 @@
 <!-- Description: Operator runbook for installing Spectra on a user-owned Home Assistant instance with explicit pass/fail checkpoints. -->
-<!-- Version: 2026.04.22.6 -->
-<!-- Last updated: 2026-04-22 -->
+<!-- Version: 2026.04.29.7 -->
+<!-- Last updated: 2026-04-29 -->
 
 # Install on Your Own Home Assistant
 
@@ -39,6 +39,11 @@ Expected result after Step 2:
 - [ ] Compile ESPHome successfully.
 - [ ] Upload OTA/flash if required for your target.
 - [ ] Confirm runtime entities and controls appear as expected.
+
+ESPHome OTA schema note (2026.4.x):
+
+- Use platform-based OTA entries under `ota:` (for example `esphome` + `web_server`).
+- Avoid legacy `web_server.ota: true` syntax in active configs; modern builds reject it.
 
 Evidence to keep (copy/paste into notes/issue if needed):
 
@@ -81,6 +86,11 @@ Planned additions to this page:
 - [ ] Registry/routing diagnostics walkthrough
 - [ ] Migration checkpoints from runtime helpers to component surfaces
 - [ ] First-time setup wizard expectations and diagnostics capture
+
+Release publication note:
+
+- You do not need to publish every commit to HACS.
+- Recommended cadence is release-tag based: publish when you intentionally cut a stable release checkpoint.
 
 Roadmap references:
 

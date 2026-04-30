@@ -1,6 +1,6 @@
 <!-- Description: Release-note and changelog discipline for Spectra L/S behavior, contract, and governance changes. -->
-<!-- Version: 2026.04.22.3 -->
-<!-- Last updated: 2026-04-22 -->
+<!-- Version: 2026.04.29.4 -->
+<!-- Last updated: 2026-04-29 -->
 
 # Release and Changelog Process
 
@@ -28,6 +28,12 @@ For roadmap/process/contract changes, update these together:
 - Use `changelog:*` labels on PRs for future automation.
 - Keep PR scope narrow to improve release-note quality.
 - Include risk and rollback notes in PR descriptions.
+
+HACS publication cadence (recommended):
+
+- Keep day-to-day commits on `main` without creating a HACS release each time.
+- Publish to HACS when you intentionally cut a release tag with stable release notes.
+- Treat release tags as operator-facing checkpoints, not commit-frequency mirrors.
 
 ## Suggested changelog grouping
 

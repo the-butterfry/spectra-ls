@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.29.30 -->
+<!-- Version: 2026.04.29.31 -->
 <!-- Last updated: 2026-04-29 -->
 
 # Changelog
 
 ## 2026-04-29
+
+- ESPHome/OTA Schema Corrective for 2026.4.x (`esphome/spectra_ls_system.yaml`): fix runtime config incompatibility on ESPHome 2026.4.3 by restoring new OTA platform structure (`ota: - platform: esphome / - platform: web_server`) and removing invalid `web_server.ota: true` usage, which now only supports explicit `false` for disable semantics. Runtime track disposition: implemented (active ESP runtime compile/deploy compatibility correction). Custom-component track disposition: checked/not-applicable (component path does not own ESPHome OTA schema). P1/P2/P3 impact: no source-of-truth ownership change; OTA config schema compatibility correction only. README/wiki parity: no material repo-state change.
 
 - ESPHome/Build-Environment Backward-Compatibility OTA Config (`esphome/spectra_ls_system.yaml`, `bin/esphome_spectra_build_local.sh`): switch runtime OTA declaration to legacy-compatible OTA form (`ota:` + `web_server.ota: true`) for older ESPHome environments, and harden local staging build helper to normalize legacy/bare OTA syntax into modern platform OTA schema in stage-only builds so current toolchains still compile cleanly. Runtime track disposition: implemented (active ESP runtime compatibility + build-helper staging hardening). Custom-component track disposition: checked/not-applicable (component path does not own ESPHome OTA/build schema handling). P1/P2/P3 impact: no source-of-truth ownership change; build/deploy compatibility hardening only. README/wiki parity: no material repo-state change.
 

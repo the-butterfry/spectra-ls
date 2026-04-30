@@ -1,5 +1,5 @@
 # Description: Main ESPHome config for Spectra LS System main ESPHome config (ESP32-S3 + RP2040 UART + Arylic TCP).
-# Version: 2026.04.29.14
+# Version: 2026.04.29.15
 # Last updated: 2026-04-29
 # Update version/date whenever you change this file.
 #
@@ -125,6 +125,8 @@ api:
           ESP_LOGI("ma", "ha api reconnect guard armed for ma_control_* forced refresh (%u ms)", 45000u);
 
 ota:
+  - platform: esphome
+  - platform: web_server
 
 external_components:
   - source:
@@ -134,7 +136,6 @@ external_components:
 
 web_server:
   port: 80
-  ota: true
   include_internal: true
   log: false
   version: 3

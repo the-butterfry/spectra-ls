@@ -1,6 +1,6 @@
 <!-- Description: User-facing stub roadmap for migrating setup flow to custom_components/spectra_ls over phased delivery. -->
-<!-- Version: 2026.04.22.5 -->
-<!-- Last updated: 2026-04-22 -->
+<!-- Version: 2026.04.29.6 -->
+<!-- Last updated: 2026-04-29 -->
 
 # Custom Component Setup Roadmap Stub
 
@@ -9,7 +9,7 @@ This page tracks how setup becomes easier as the [`custom_components/spectra_ls`
 ## Current state
 
 - Production path remains runtime + packages + ESPHome.
-- Custom component is developed in parallel and must preserve compatibility.
+- Custom component is the primary lane for net-new control-center feature growth and is developed in parallel with strict compatibility posture.
 
 ## Setup roadmap by phase
 
@@ -41,15 +41,15 @@ This page tracks how setup becomes easier as the [`custom_components/spectra_ls`
 ### Phase 6 — Sidebar control-center productization
 
 - Sidebar-first setup/tuning/defaults/overrides UX becomes primary.
-- Initial P6 settings checkpoint is active now:
+- P6 settings checkpoint is validated and available:
   - integration options provide encoder/button mapping fields,
   - service `spectra_ls.set_control_center_settings` supports operator/automation updates,
   - diagnostics surfaces expose control-center settings for verification.
-- Initial P6 execution checkpoint is active now:
+- P6 execution checkpoint is validated and available:
   - service `spectra_ls.execute_control_center_input` runs mapped encoder/button events,
   - dry-run-first and read-only-mode enforcement are enabled by default,
   - latest execution attempt diagnostics are exposed for operator verification.
-- Initial P6 execution validation artifact checkpoint is active now:
+- P6 execution validation artifact checkpoint is validated:
   - monitor template [`docs/testing/raw/p6_s04_control_input_execution_monitor.jinja`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/testing/raw/p6_s04_control_input_execution_monitor.jinja),
   - checklist [`docs/testing/raw/p6_s04_control_input_execution_checklist.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/testing/raw/p6_s04_control_input_execution_checklist.md),
   - deterministic PASS/WARN/FAIL gate capture for bounded closeout decisions.

@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.04.29.9 -->
+<!-- Version: 2026.04.29.10 -->
 <!-- Last updated: 2026-04-29 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -186,6 +186,14 @@ Latest run update (2026-04-27, metadata-stack rolling validation ledger activati
 | P7-S03 | 7 | Validated (legacy retained as rollback-safe metadata authority baseline with post-window proof accepted) | Validated (bounded metadata-domain authority-flip execution lane complete) | Completed (Run-1 pre/in PASS + Run-2 post PASS) | High | Validated |
 | P7-S04 | 7 | Validated (rollback-safe legacy authority baseline preserved at closeout capture) | Validated (phase-exit closeout packet completed and accepted) | Completed (Run-1 closeout PASS/READY 4/4) | High | Validated |
 | P8-S01 | 8 | Validated (legacy sealed baseline readiness gate completed with pre/in/post PASS packet) | Validated (post-cutover governance/readiness lane completed for starter gate) | Completed (Run-1/Run-2/Run-3 PASS; promoted) | High | Validated |
+
+Latest run update (2026-04-29, docs parity sweep):
+
+- Completed README-through-wiki documentation currency pass and synchronized release/deploy guidance with active runtime/component status language.
+- Added explicit operator guidance for ESPHome 2026.4.x OTA platform schema and release-tag-based HACS publication cadence.
+- Runtime track disposition: compatibility-shimmed (documentation-only).
+- Component track disposition: compatibility-shimmed (documentation-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; documentation parity hardening only.
 
 Latest run update (2026-04-26, parity build-out slice):
 

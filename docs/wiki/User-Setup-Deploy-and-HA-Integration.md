@@ -1,6 +1,6 @@
 <!-- Description: Practical setup/deploy/integration guide for Spectra on Home Assistant with clear operator outcomes and failure actions. -->
-<!-- Version: 2026.04.26.15 -->
-<!-- Last updated: 2026-04-26 -->
+<!-- Version: 2026.04.29.16 -->
+<!-- Last updated: 2026-04-29 -->
 
 # User Setup, Deploy, and HA Integration
 
@@ -67,7 +67,7 @@ Discovery contract note:
 - At least one valid audio target and one valid lighting target discovered.
 - Room/target navigation menus populated with concrete options.
 
-## Control-center settings (P6 early availability)
+## Control-center settings (P6 validated and available)
 
 You can now stage core control-center mappings from the Spectra integration itself:
 
@@ -97,7 +97,7 @@ You can now stage core control-center mappings from the Spectra integration itse
   - `sensor.spectra_ls_control_center_readiness`
   - `sensor.spectra_ls_control_center_last_attempt_status`
 
-This is additive and migration-safe: runtime/source-of-truth ownership remains unchanged while Control Center settings are staged.
+This is additive and migration-safe: runtime/source-of-truth ownership remains unchanged while Control Center settings and execution surfaces are available for bounded operator use.
 
 ## MA beta/stable fast-switch workflow (runtime helper contract)
 
@@ -138,6 +138,11 @@ For P6 execution-lane validation evidence, use:
 5. Compile ESPHome configuration.
 6. Deploy OTA/flash and confirm success.
 7. Verify routing, room/target options, and core controls in HA UI.
+
+Deployment schema note (ESPHome 2026.4.x):
+
+- Active OTA config should use platform-list entries under `ota:` (`esphome` + `web_server`).
+- `web_server.ota: true` is not valid for modern ESPHome builds and should not be used in active runtime configs.
 
 Expected result after Step 7:
 
@@ -199,3 +204,8 @@ Roadmap source:
 - [`docs/roadmap/v-next-NOTES.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/roadmap/v-next-NOTES.md)
 
 As each phase lands, this page will gain concrete screenshots/steps/migration notes.
+
+Release cadence note:
+
+- HACS publication should follow intentional release tags, not every commit pushed to `main`.
+- Keep rapid iteration in Git history; publish when a release checkpoint is explicitly ready.

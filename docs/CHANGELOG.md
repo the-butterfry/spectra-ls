@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.29.32 -->
+<!-- Version: 2026.04.29.33 -->
 <!-- Last updated: 2026-04-29 -->
 
 # Changelog
 
 ## 2026-04-29
+
+- Docs/README+Wiki+Roadmap Parity Refresh (`README.md`, `docs/wiki/Home.md`, `docs/wiki/README.md`, `docs/wiki/Install-on-Your-Own-HA.md`, `docs/wiki/User-Setup-Deploy-and-HA-Integration.md`, `docs/wiki/Custom-Component-Setup-Roadmap-Stub.md`, `docs/wiki/Release-and-Changelog-Process.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): run a full feature-currency documentation pass from top-level README through wiki + roadmap notes to reflect current deployment and release posture: ESPHome 2026.4.x OTA platform-list schema (`ota: - platform: esphome / - platform: web_server`), release-tag based HACS publication cadence (no per-commit publishing requirement), current P6 control-center status wording (`validated/available`), and wiki-home navigation/quality wording cleanup. Runtime track disposition: compatibility-shimmed (documentation-only; no runtime behavior mutation). Custom-component track disposition: compatibility-shimmed (documentation-only; no component behavior mutation). P1/P2/P3 impact: no source-of-truth ownership change; operator documentation parity and release/deploy clarity hardening only. README/wiki parity: completed in same change set.
 
 - ESPHome/ESP OLED Status Coherency Gate Alignment (`esphome/spectra_ls_system/packages/spectra-ls-system.yaml`): align `ESP OLED Status` text-sensor title emission with the same HA display policy gate used by `ha_meta` (`ha_audio_display_allowed` + media-class suppressions for `none/unknown/unavailable`) so diagnostics no longer report stale now-playing titles while HA policy is in hidden/no-display state (`class=none display=off`). Runtime track disposition: implemented (diagnostics coherency hardening in active ESP runtime path). Custom-component track disposition: checked/not-applicable (component path does not emit ESP text-sensor diagnostics). P1/P2/P3 impact: no source-of-truth ownership change; observability coherency correction only. README/wiki parity: no material repo-state change.
 

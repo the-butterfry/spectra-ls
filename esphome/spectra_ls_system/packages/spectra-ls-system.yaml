@@ -1,5 +1,5 @@
 # Description: Spectra LS core state + globals + system intervals + shared scripts.
-# Version: 2026.04.29.5
+# Version: 2026.04.29.6
 # Last updated: 2026-04-29
 # Update version/date whenever you change this file.
 #
@@ -1181,6 +1181,11 @@ text_sensor:
         return mode + "|menu:lvl=" + std::to_string(id(menu_level));
       }
 
+      auto lower = [](std::string value) {
+        for (auto &c : value) c = (char) ::tolower(c);
+        return value;
+      };
+
       auto sanitize_ascii = [](const std::string &input) {
         std::string out;
         out.reserve(input.size());
@@ -1194,7 +1199,16 @@ text_sensor:
         return out;
       };
 
-      std::string line = id(now_playing_title).has_state() ? id(now_playing_title).state.c_str() : "";
+        const std::string media_class = id(ha_audio_media_class).has_state() ? id(ha_audio_media_class).state.c_str() : "unknown";
+        const std::string media_class_l = lower(media_class);
+        const bool display_allowed = id(ha_audio_display_allowed).has_state() ? id(ha_audio_display_allowed).state : false;
+        const bool class_blocks_display =
+          (media_class_l.empty() || media_class_l == "none" || media_class_l == "unknown" || media_class_l == "unavailable");
+
+        std::string line =
+          (display_allowed && !class_blocks_display && id(ha_audio_title).has_state())
+            ? id(ha_audio_title).state.c_str()
+            : "";
       line = sanitize_ascii(line);
       if (line.empty()) line = "-";
       if (line.size() > 32) line = line.substr(0, 32);

@@ -1,6 +1,6 @@
 <!-- Description: First-stop operator page for orientation, support routing, and high-quality bug submission workflow. -->
-<!-- Version: 2026.04.22.4 -->
-<!-- Last updated: 2026-04-22 -->
+<!-- Version: 2026.05.01.1 -->
+<!-- Last updated: 2026-05-01 -->
 
 # Welcome, README, and Bug Workflow
 
@@ -18,6 +18,16 @@ Start here if you are new to Spectra or if something is broken and you need the 
 - **Question / idea / architectural discussion** → GitHub Discussions
 - **Reproducible defect** → GitHub Issue (`bug_report.yml`)
 - **Implementation work** → GitHub Issue + Project item + PR
+
+## Step 2.5 — Fast sanity checks before filing a bug
+
+Do these first to avoid filing environment drift as a product defect:
+
+1. Confirm active target and route surfaces are populated (not `none/unknown/unavailable`).
+2. Confirm latest deploy succeeded (build + OTA evidence if runtime path changed).
+3. Re-run the relevant runbook once from [`Operations-Runbooks.md`](Operations-Runbooks).
+
+If all three still fail, file the bug.
 
 ## Step 3 — Submit a useful bug report
 
@@ -48,3 +58,13 @@ Expected result:
 - Relevant logs/output
 - Clear impact statement
 - Scope path and branch
+
+## Copy/paste bug packet (recommended)
+
+- Repro steps:
+- Expected behavior:
+- Actual behavior:
+- Affected area (`esphome` / `packages` / `custom_components` / docs/tooling):
+- Version context (`branch`, `commit`, deployment timestamp):
+- Evidence attached (logs/config snippets/screenshots):
+- Impact + workaround (if any):

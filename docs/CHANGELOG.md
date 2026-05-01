@@ -1,8 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.29.33 -->
-<!-- Last updated: 2026-04-29 -->
+<!-- Version: 2026.05.01.1 -->
+<!-- Last updated: 2026-05-01 -->
 
 # Changelog
+
+## 2026-05-01
+
+- Docs/Reader-Journey Hardening Pass (`README.md`, `docs/wiki/Home.md`, `docs/wiki/Getting-Started.md`, `docs/wiki/Welcome-README-and-Bug-Workflow.md`, `docs/wiki/Install-on-Your-Own-HA.md`, `docs/wiki/Operations-Runbooks.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): improve end-user and contributor navigation by adding explicit “choose your path” journey routing, first-check triage guidance before bug filing, clearer entry/exit checkpoints for install and troubleshooting flows, and symptom-to-runbook mapping so operators can reach the right page in one hop. Runtime track disposition: compatibility-shimmed (documentation-only; no runtime behavior mutation). Custom-component track disposition: compatibility-shimmed (documentation-only; no component behavior mutation). P1/P2/P3 impact: no source-of-truth ownership change; documentation usability and workflow clarity hardening only. README/wiki parity: completed in same change set.
 
 ## 2026-04-29
 

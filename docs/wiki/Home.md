@@ -1,6 +1,6 @@
 <!-- Description: Wiki home page for Spectra L/S operations, architecture, contribution flow, and runbooks. -->
-<!-- Version: 2026.04.29.12 -->
-<!-- Last updated: 2026-04-29 -->
+<!-- Version: 2026.05.01.1 -->
+<!-- Last updated: 2026-05-01 -->
 
 # Spectra L/S Wiki
 
@@ -23,6 +23,14 @@ This wiki mirrors curated content from [`docs/wiki/`](https://github.com/the-but
 - [Documentation Writing Standard](DOCUMENTATION-WRITING-STANDARD)
 - [Wiki Content Scope Policy](Wiki-Content-Scope-Policy)
 - [Custom Component Setup Roadmap Stub](Custom-Component-Setup-Roadmap-Stub)
+
+## Choose your journey
+
+- **New install** → [Install on Your Own Home Assistant](Install-on-Your-Own-HA)
+- **Setup/deploy verification** → [User Setup, Deploy, and HA Integration](User-Setup-Deploy-and-HA-Integration)
+- **Broken behavior / bug intake** → [Welcome, README, and Bug Workflow](Welcome-README-and-Bug-Workflow)
+- **Active troubleshooting** → [Operations Runbooks](Operations-Runbooks)
+- **Contributing workflow** → [Contributing Workflow](Contributing-Workflow)
 
 ## Documentation quality baseline
 

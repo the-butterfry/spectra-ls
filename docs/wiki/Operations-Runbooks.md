@@ -1,10 +1,19 @@
 <!-- Description: Practical operations runbooks for docs parity, runtime validation, deployment proof, and rollback readiness. -->
-<!-- Version: 2026.04.22.3 -->
-<!-- Last updated: 2026-04-22 -->
+<!-- Version: 2026.05.01.1 -->
+<!-- Last updated: 2026-05-01 -->
 
 # Operations Runbooks
 
 Use this page when you need the exact “what do I do next?” steps.
+
+## Start with symptom routing
+
+| If your problem is... | Start here |
+| --- | --- |
+| Docs out of sync across README/wiki/roadmaps | Documentation parity runbook |
+| Runtime change needs build/deploy proof | Runtime-impacting change runbook |
+| Wiki publishing failed in Actions | Wiki sync failed runbook |
+| Issue needs triage-to-execution path | Bug intake to execution runbook |
 
 ## Documentation parity runbook
 

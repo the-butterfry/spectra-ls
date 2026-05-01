@@ -1,6 +1,6 @@
 <!-- Description: Fast, practical onboarding guide for Spectra L/S operators and contributors with direct task paths. -->
-<!-- Version: 2026.04.22.5 -->
-<!-- Last updated: 2026-04-22 -->
+<!-- Version: 2026.05.01.1 -->
+<!-- Last updated: 2026-05-01 -->
 
 # Getting Started
 
@@ -22,11 +22,23 @@ Expected result:
 
 ## Pick your path
 
+Use this quick chooser first:
+
+- If you need Spectra running in your house today, take the **Operator path**.
+- If something is failing and you need support or a fix, take the **Bug-reporting path**.
+- If you are changing code/docs/process, take the **Contributor path**.
+
 ### Operator path (install and run Spectra)
 
 1. [Install-on-Your-Own-HA.md](Install-on-Your-Own-HA)
 2. [User-Setup-Deploy-and-HA-Integration.md](User-Setup-Deploy-and-HA-Integration)
 3. [Operations-Runbooks.md](Operations-Runbooks)
+
+Path complete when:
+
+- install/deploy checklist is complete,
+- room/target menus are populated,
+- audio + lighting actions both verify pass.
 
 ### Bug-reporting path (something broke)
 
@@ -34,12 +46,24 @@ Expected result:
 2. [.github/ISSUE_TEMPLATE/bug_report.yml](https://github.com/the-butterfry/spectra-ls/blob/main/.github/ISSUE_TEMPLATE/bug_report.yml)
 3. [Discussions-and-Projects-Workflow.md](Discussions-and-Projects-Workflow)
 
+Path complete when:
+
+- repro steps are deterministic,
+- expected vs actual behavior is written clearly,
+- redacted logs/config + impact statement are attached.
+
 ### Contributor path (code/docs changes)
 
 1. [`CONTRIBUTING.md`](https://github.com/the-butterfry/spectra-ls/blob/main/CONTRIBUTING.md)
 2. [`docs/developer/DEVELOPER-INSTRUCTIONS.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/developer/DEVELOPER-INSTRUCTIONS.md)
 3. [`.github/pull_request_template.md`](https://github.com/the-butterfry/spectra-ls/blob/main/.github/pull_request_template.md)
 4. [Release-and-Changelog-Process.md](Release-and-Changelog-Process)
+
+Path complete when:
+
+- required docs parity files are updated,
+- verification evidence is captured,
+- PR checklist is fully satisfied.
 
 ## Source-of-truth map
 

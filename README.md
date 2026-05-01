@@ -1,6 +1,6 @@
 <!-- Description: End-user overview for the Spectra L/S Home Assistant + ESPHome system. -->
-<!-- Version: 2026.04.29.24 -->
-<!-- Last updated: 2026-04-29 -->
+<!-- Version: 2026.05.01.1 -->
+<!-- Last updated: 2026-05-01 -->
 
 # Spectra L/S
 
@@ -100,3 +100,10 @@ Need migration mechanics and slice evidence? Use:
 - [`docs/testing/raw/`](docs/testing/raw/)
 
 Need wiki navigation? Start at [`docs/wiki/Home.md`](docs/wiki/Home.md).
+
+## Reader journey (start in 60 seconds)
+
+- **I want to install and run Spectra** → [`docs/wiki/Install-on-Your-Own-HA.md`](docs/wiki/Install-on-Your-Own-HA.md)
+- **I already installed and need setup/deploy verification** → [`docs/wiki/User-Setup-Deploy-and-HA-Integration.md`](docs/wiki/User-Setup-Deploy-and-HA-Integration.md)
+- **Something broke and I need the right bug path** → [`docs/wiki/Welcome-README-and-Bug-Workflow.md`](docs/wiki/Welcome-README-and-Bug-Workflow.md)
+- **I’m contributing code/docs** → [`docs/wiki/Contributing-Workflow.md`](docs/wiki/Contributing-Workflow.md)

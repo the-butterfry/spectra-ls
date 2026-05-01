@@ -1,12 +1,21 @@
 <!-- Description: Operator runbook for installing Spectra on a user-owned Home Assistant instance with explicit pass/fail checkpoints. -->
-<!-- Version: 2026.04.29.7 -->
-<!-- Last updated: 2026-04-29 -->
+<!-- Version: 2026.05.01.1 -->
+<!-- Last updated: 2026-05-01 -->
 
 # Install on Your Own Home Assistant
 
 Use this page when you want a clean, reproducible install on your own HA instance.
 
 Goal: finish with working audio + lighting control, populated room/target menus, and rollback-safe evidence.
+
+## Reader checkpoints
+
+You are done with this page when all are true:
+
+- HA config validates,
+- ESPHome build and deploy complete,
+- room/target options are concrete,
+- one audio action and one lighting action both pass.
 
 ## Track A (current path): Runtime-first install
 
@@ -117,3 +126,7 @@ This is **not** needed to run Spectra in your home.
 | Room/target menus are empty | unresolved placeholders or helper bootstrap failure | Re-check [`docs/setup/SPECTRA-HA-CONFIG-PLACEHOLDERS.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/setup/SPECTRA-HA-CONFIG-PLACEHOLDERS.md), reload helpers, and revalidate template entities |
 | Controls trigger but state never changes | route metadata unresolved or wrong target path | Verify `control_path` and `control_capable` surfaces, then confirm active target selection is valid |
 | OTA/build succeeds but behavior is wrong | stale runtime state after deploy | Restart HA + integration path, then rerun integration verification checklist |
+
+Need deeper triage?
+
+- Go directly to [Operations Runbooks](Operations-Runbooks) for docs/deploy/wiki-sync and proof-driven troubleshooting flow.

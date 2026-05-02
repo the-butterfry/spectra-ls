@@ -1,6 +1,6 @@
 # Description: Structured feature request form for scoped, reviewable enhancement proposals.
-# Version: 2026.04.19.1
-# Last updated: 2026-04-19
+# Version: 2026.05.02.7
+# Last updated: 2026-05-02
 
 name: "Feature request"
 description: "Propose a new capability or improvement with scope and acceptance criteria"
@@ -51,6 +51,124 @@ body:
         - Contract migration required
     validations:
       required: true
+
+  - type: dropdown
+    id: write_path_lane
+    attributes:
+      label: "Write-path lane impact"
+      description: "Classify scheduler/metadata-bridge proposals as intake baseline; use not-applicable for other feature domains. Any PR lane change requires explicit reclassification rationale."
+      options:
+        - not_applicable
+        - scheduler
+        - metadata_bridge
+    validations:
+      required: true
+
+  - type: input
+    id: canonical_owner
+    attributes:
+      label: "Canonical owner file (if scheduler/metadata_bridge)"
+      description: "Reference Slice-C owner matrix in docs/notes/NOTES-engineering-rigor.md. This is intake baseline owner routing for PR reconciliation."
+      placeholder: "packages/ma_control_hub/template.inc or custom_components/spectra_ls/registry.py"
+    validations:
+      required: true
+
+  - type: textarea
+    id: lane_owner_routing_rationale
+    attributes:
+      label: "Lane/owner routing rationale"
+      description: "State why this lane/owner pairing is correct for intake. If lane is not_applicable, enter `N/A`. If PR lane/owner differs later, PR must include mandatory reclassification rationale referencing this issue baseline."
+      placeholder: "Metadata-bridge because proposal modifies bridge lifecycle checks in canonical owner file..."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component_first_path
+    attributes:
+      label: "Execution path posture"
+      description: "Component-first is default for net-new behavior/contract work. Choose bounded_legacy_exception only when runtime path touch is strictly required."
+      options:
+        - component_first
+        - bounded_legacy_exception
+    validations:
+      required: true
+
+  - type: textarea
+    id: legacy_exception_rationale
+    attributes:
+      label: "Legacy exception rationale (required if bounded_legacy_exception)"
+      description: "If component_first_path is bounded_legacy_exception, explain why runtime path touch is required and why component-first is not currently feasible. Otherwise enter `N/A`."
+      placeholder: "Legacy runtime touch required because ...; rollback boundary ...; component follow-up plan ..."
+    validations:
+      required: true
+
+  - type: input
+    id: legacy_exception_tracking_ref
+    attributes:
+      label: "Legacy exception tracking reference"
+      description: "If component_first_path is bounded_legacy_exception, provide linked decision/approval reference. Otherwise enter `N/A`."
+      placeholder: "Issue/PR/Discussion link or `N/A`"
+    validations:
+      required: true
+
+  - type: textarea
+    id: component_target_files
+    attributes:
+      label: "Planned component target files"
+      description: "List expected `custom_components/spectra_ls/*` files for this feature. If none are expected, explain why in legacy_exception_rationale."
+      value: |
+        - custom_components/spectra_ls/
+    validations:
+      required: true
+
+  - type: dropdown
+    id: runtime_touch_declaration
+    attributes:
+      label: "Runtime-touch declaration"
+      description: "Declare whether this request is component-only (`custom_components/spectra_ls/*` only) or expects bounded legacy/runtime touch. PR changed files must reconcile with this declaration."
+      options:
+        - component_only_declared
+        - bounded_legacy_exception_expected
+    validations:
+      required: true
+
+  - type: input
+    id: runtime_touch_expected_files
+    attributes:
+      label: "Expected runtime-touch files"
+      description: "If runtime_touch_declaration is bounded_legacy_exception_expected, list expected runtime files (for example `packages/...`, `esphome/...`). Otherwise enter `N/A`."
+      placeholder: "packages/ma_control_hub/template.inc or `N/A`"
+    validations:
+      required: true
+
+  - type: checkboxes
+    attributes:
+      label: "Component-first merge gate acknowledgment"
+      options:
+        - label: "I understand missing component-first/legacy-exception evidence can block PR merge readiness"
+          required: true
+        - label: "I understand missing planned component target-file evidence can block PR merge readiness"
+          required: true
+        - label: "I understand runtime file changes are merge-blocking when this request declares component_only and no bounded exception evidence is provided"
+          required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        PR cross-link requirement:
+        - Link this issue in your PR.
+        - Reconcile PR lane/owner against this issue intake baseline.
+        - If they differ, complete mandatory reclassification rationale in `.github/pull_request_template.md`.
+        - Keep component-first posture unless a bounded legacy exception is explicitly documented.
+
+  - type: textarea
+    id: parity_anchors
+    attributes:
+      label: "Parity-anchor disposition"
+      description: "State expected runtime/component anchor impact and whether each is implemented, shimmed, or deferred with rationale."
+      value: |
+        - Runtime anchor disposition:
+        - Component anchor disposition:
 
   - type: textarea
     id: docs

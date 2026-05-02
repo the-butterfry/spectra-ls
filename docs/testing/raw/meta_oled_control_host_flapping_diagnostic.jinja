@@ -1,0 +1,231 @@
+{# Description: Deep diagnostic template for meta/OLED/control-host flapping triage and root-cause isolation. #}
+{# Version: 2026.05.02.2 #}
+{# Last updated: 2026-05-02 #}
+
+{# =========================
+  Meta + OLED + Control-Host Flapping Diagnostic
+  Purpose:
+    - Diagnose why metadata/OLED/control-host state appears to flap.
+    - Show policy-vs-render mismatch, route/host mismatch, and transition heat.
+    - Produce deterministic next-action guidance before behavior changes.
+  Usage:
+    1) Optional prep actions:
+       - spectra_ls.validate_contracts
+       - spectra_ls.validate_scheduler
+       - spectra_ls.validate_metadata_policy
+       - spectra_ls.dump_route_trace
+    2) Paste into Developer Tools -> Template.
+    3) Capture at least 2 snapshots (during flap and 30-60s after) for comparison.
+  ========================= #}
+
+{% set invalid = ['', 'none', 'unknown', 'unavailable', 'None', none] %}
+{% set flap_window_s = 120 %}
+
+{# ---------- shadow entity selection ---------- #}
+{% set s_target_primary = 'sensor.shadow_active_target' %}
+{% set s_target_fallback = 'sensor.spectra_ls_shadow_active_target' %}
+{% set primary_has_attrs = state_attr(s_target_primary, 'route_trace') is not none or state_attr(s_target_primary, 'captured_at') is not none %}
+{% set fallback_has_attrs = state_attr(s_target_fallback, 'route_trace') is not none or state_attr(s_target_fallback, 'captured_at') is not none %}
+{% set s_target = s_target_primary if primary_has_attrs else (s_target_fallback if fallback_has_attrs else s_target_primary) %}
+
+{% set route_trace = state_attr(s_target, 'route_trace') or {} %}
+{% set contract = state_attr(s_target, 'contract_validation') or {} %}
+{% set scheduler = state_attr(s_target, 'scheduler_validation') or {} %}
+{% set metadata_prep = state_attr(s_target, 'metadata_prep_validation') or {} %}
+{% set write_controls = state_attr(s_target, 'write_controls') or {} %}
+{% if route_trace is not mapping %}{% set route_trace = {} %}{% endif %}
+{% if contract is not mapping %}{% set contract = {} %}{% endif %}
+{% if scheduler is not mapping %}{% set scheduler = {} %}{% endif %}
+{% if metadata_prep is not mapping %}{% set metadata_prep = {} %}{% endif %}
+{% if write_controls is not mapping %}{% set write_controls = {} %}{% endif %}
+
+{# ---------- core runtime chain ---------- #}
+{% set active_target = states('input_select.ma_active_target') %}
+{% set target_options = state_attr('input_select.ma_active_target', 'options') or [] %}
+{% if target_options is not sequence or target_options is string %}{% set target_options = [] %}{% endif %}
+{% set target_in_options = active_target not in invalid and active_target in target_options %}
+
+{% set control_host = states('sensor.ma_control_host') %}
+{% set control_hosts = states('sensor.ma_control_hosts') %}
+{% set by_host = states('sensor.ma_active_target_by_host') %}
+{% set control_ambiguous = states('binary_sensor.ma_control_ambiguous') %}
+{% set control_ambiguous_reason = state_attr('binary_sensor.ma_control_ambiguous','reason') %}
+{% set no_control_capable = states('binary_sensor.ma_no_control_capable_hosts') %}
+{% set no_control_capable_reason = state_attr('binary_sensor.ma_no_control_capable_hosts','reason') %}
+
+{% set now_playing_entity = states('sensor.now_playing_entity') %}
+{% set now_playing_state = states('sensor.now_playing_state') | lower %}
+{% set now_playing_title = states('sensor.now_playing_title') %}
+{% set now_playing_source = states('sensor.now_playing_source') %}
+{% set now_playing_app = states('sensor.now_playing_app') %}
+{% set media_class_raw = states('sensor.now_playing_media_class') %}
+{% set media_class = media_class_raw | lower %}
+{% set display_allowed = is_state('binary_sensor.now_playing_display_allowed', 'on') %}
+{% set preview_key = states('sensor.now_playing_preview_key') %}
+{% set music_guard_active = is_state_attr('binary_sensor.now_playing_display_allowed', 'music_guard_active', true) %}
+{% set preview_age_s = (as_timestamp(now()) - as_timestamp(states.sensor.now_playing_preview_key.last_changed)) | float(9999) if preview_key not in invalid else none %}
+
+{% set metadata_owner = metadata_prep.metadata_authority_owner if metadata_prep.metadata_authority_owner is defined else 'missing' %}
+{% set metadata_cutover_active = metadata_prep.metadata_cutover_active if metadata_prep.metadata_cutover_active is defined else false %}
+{% set metadata_cutover_block = metadata_prep.cutover_block_reason if metadata_prep.cutover_block_reason is defined else 'n/a' %}
+{% set metadata_suppression = metadata_prep.checks.now_playing_suppression_reason if metadata_prep.checks is defined and metadata_prep.checks is mapping and metadata_prep.checks.now_playing_suppression_reason is defined else 'n/a' %}
+
+{# ---------- esp surfaces ---------- #}
+{% set esp_handoff = states('sensor.spectra_ls_system_esp_control_handoff_status') %}
+{% set esp_target = states('sensor.spectra_ls_system_esp_control_target') %}
+{% set esp_oled = states('sensor.spectra_ls_system_esp_oled_status') %}
+{% set esp_oled_title = (esp_oled.split('audio|oled:', 1)[1] if esp_oled is string and esp_oled.startswith('audio|oled:') else esp_oled) %}
+{% set esp_has_title = esp_oled_title not in invalid and (esp_oled_title | string | trim) not in ['-', ''] %}
+
+{# ---------- policy coherence ---------- #}
+{% set media_class_valid = media_class in ['music', 'non_music', 'none'] %}
+{% set expected_display =
+  true if media_class == 'music'
+  else (
+    false if media_class in ['none', 'non_music']
+    else false
+  )
+%}
+{% set display_policy_mismatch = media_class_valid and (display_allowed != expected_display) %}
+{% set oled_policy_mismatch = (not display_allowed) and esp_has_title %}
+
+{# ---------- route/host coherence ---------- #}
+{% set route_decision = route_trace.decision if route_trace.decision is defined else 'missing' %}
+{% set scheduler_verdict = scheduler.verdict if scheduler.verdict is defined else 'missing' %}
+{% set scheduler_ready = scheduler.ready_for_scheduler_use if scheduler.ready_for_scheduler_use is defined else false %}
+{% set scheduler_selected = write_controls.scheduler_last_decision.selected_target if write_controls.scheduler_last_decision is defined and write_controls.scheduler_last_decision is mapping and write_controls.scheduler_last_decision.selected_target is defined else 'none' %}
+{% set authority_mode = write_controls.authority_mode if write_controls.authority_mode is defined else 'missing' %}
+
+{% set target_route_mismatch =
+  active_target not in invalid and scheduler_selected not in invalid and scheduler_selected != 'none' and active_target != scheduler_selected
+%}
+{% set target_host_gap = active_target not in invalid and control_host in invalid and control_hosts in invalid %}
+{% set handoff_not_ready = esp_handoff in ['pending_refresh', 'no_host', 'no_target'] %}
+
+{# ---------- recency / transition heat ---------- #}
+{% set watch_entities = [
+  'input_select.ma_active_target',
+  'sensor.ma_control_host',
+  'sensor.ma_control_hosts',
+  'sensor.ma_active_target_by_host',
+  'sensor.now_playing_entity',
+  'sensor.now_playing_state',
+  'sensor.now_playing_title',
+  'sensor.now_playing_media_class',
+  'binary_sensor.now_playing_display_allowed',
+  'sensor.now_playing_preview_key',
+  'sensor.spectra_ls_system_esp_control_handoff_status',
+  'sensor.spectra_ls_system_esp_control_target',
+  'sensor.spectra_ls_system_esp_oled_status'
+] %}
+
+{% set heat = namespace(rows=[], hot=[]) %}
+{% for eid in watch_entities %}
+  {% set exists = states[eid] is not none %}
+  {% if exists %}
+    {% set lc_ts = as_timestamp(states[eid].last_changed) %}
+    {% set age_s = (as_timestamp(now()) - lc_ts) if lc_ts is not none else none %}
+    {% set hot = (age_s is not none and age_s <= flap_window_s) %}
+    {% set val = states(eid) %}
+    {% set heat.rows = heat.rows + [{'entity': eid, 'age_s': age_s, 'hot': hot, 'value': val}] %}
+    {% if hot %}
+      {% set heat.hot = heat.hot + [eid] %}
+    {% endif %}
+  {% else %}
+    {% set heat.rows = heat.rows + [{'entity': eid, 'age_s': none, 'hot': false, 'value': 'missing'}] %}
+  {% endif %}
+{% endfor %}
+
+{% set heat_score = heat.hot | length %}
+{% set heat_level = 'low' if heat_score <= 2 else ('medium' if heat_score <= 5 else 'high') %}
+
+{# ---------- risk classification ---------- #}
+{% set risk = 'LOW' %}
+{% set root_cause = 'stable_or_low_churn' %}
+
+{% if display_policy_mismatch or oled_policy_mismatch %}
+  {% set risk = 'HIGH' %}
+  {% set root_cause = 'policy_render_mismatch' %}
+{% elif target_host_gap and handoff_not_ready %}
+  {% set risk = 'HIGH' %}
+  {% set root_cause = 'target_host_resolution_gap' %}
+{% elif target_route_mismatch and authority_mode == 'legacy' %}
+  {% set risk = 'MEDIUM' %}
+  {% set root_cause = 'legacy_authority_target_divergence' %}
+{% elif heat_level == 'high' and (control_ambiguous == 'on' or no_control_capable == 'on') %}
+  {% set risk = 'MEDIUM' %}
+  {% set root_cause = 'high_transition_churn_with_control_blockers' %}
+{% endif %}
+
+### Meta + OLED + Control-Host Flapping Diagnostic
+- Timestamp: **{{ now() }}**
+- Result risk: **{{ risk }}**
+- Root-cause classification: **{{ root_cause }}**
+- Shadow source: **{{ s_target }}**
+
+### Control chain snapshot
+- `authority_mode`: **{{ authority_mode }}**
+- `active_target`: **{{ active_target if active_target not in invalid else 'n/a' }}**
+- `target_in_options`: **{{ target_in_options }}** (options={{ target_options | length }})
+- `scheduler_selected_target`: **{{ scheduler_selected if scheduler_selected not in invalid else 'n/a' }}**
+- `route_decision`: **{{ route_decision }}**
+- `scheduler_verdict/ready`: **{{ scheduler_verdict }} / {{ scheduler_ready }}**
+- `ma_control_host`: **{{ control_host if control_host not in invalid else 'n/a' }}**
+- `ma_control_hosts`: **{{ control_hosts if control_hosts not in invalid else 'n/a' }}**
+- `ma_active_target_by_host`: **{{ by_host if by_host not in invalid else 'n/a' }}**
+- `ma_control_ambiguous`: **{{ control_ambiguous if control_ambiguous not in invalid else 'n/a' }}**
+- `ma_control_ambiguous.reason`: **{{ control_ambiguous_reason if control_ambiguous_reason not in invalid else 'n/a' }}**
+- `ma_no_control_capable_hosts`: **{{ no_control_capable if no_control_capable not in invalid else 'n/a' }}**
+- `ma_no_control_capable_hosts.reason`: **{{ no_control_capable_reason if no_control_capable_reason not in invalid else 'n/a' }}**
+
+### Metadata + policy snapshot
+- `metadata_owner`: **{{ metadata_owner }}**
+- `metadata_cutover_active`: **{{ metadata_cutover_active }}**
+- `metadata_cutover_block_reason`: **{{ metadata_cutover_block }}**
+- `metadata_suppression_reason`: **{{ metadata_suppression }}**
+- `now_playing_entity`: **{{ now_playing_entity if now_playing_entity not in invalid else 'n/a' }}**
+- `now_playing_state`: **{{ now_playing_state }}**
+- `now_playing_title`: **{{ now_playing_title if now_playing_title not in invalid else 'n/a' }}**
+- `now_playing_source/app`: **{{ now_playing_source if now_playing_source not in invalid else 'n/a' }} / {{ now_playing_app if now_playing_app not in invalid else 'n/a' }}**
+- `media_class`: **{{ media_class if media_class_valid else ('invalid:' ~ media_class_raw) }}**
+- `display_allowed`: **{{ display_allowed }}**
+- `expected_display_allowed`: **{{ expected_display if media_class_valid else 'n/a' }}**
+- `preview_key`: **{{ preview_key if preview_key not in invalid else 'n/a' }}**
+- `preview_age_s`: **{{ preview_age_s | round(1) if preview_age_s is not none else 'n/a' }}**
+- `music_guard_active`: **{{ music_guard_active }}**
+
+### ESP render snapshot
+- `esp_control_handoff_status`: **{{ esp_handoff if esp_handoff not in invalid else 'n/a' }}**
+- `esp_control_target`: **{{ esp_target if esp_target not in invalid else 'n/a' }}**
+- `esp_oled_status`: **{{ esp_oled if esp_oled not in invalid else 'n/a' }}**
+- `esp_oled_title_extracted`: **{{ esp_oled_title if esp_oled_title not in invalid else 'n/a' }}**
+- `esp_has_title`: **{{ esp_has_title }}**
+
+### Flap indicators
+- `display_policy_mismatch`: **{{ display_policy_mismatch }}**
+- `oled_policy_mismatch`: **{{ oled_policy_mismatch }}**
+- `target_route_mismatch`: **{{ target_route_mismatch }}**
+- `target_host_gap`: **{{ target_host_gap }}**
+- `handoff_not_ready`: **{{ handoff_not_ready }}**
+- Transition heat window: **{{ flap_window_s }}s**
+- Transition heat score/level: **{{ heat_score }} / {{ heat_level }}**
+
+### Transition heat table
+| Entity | Age(s) | Hot<= {{ flap_window_s }}s | Current value |
+|---|---:|---:|---|
+{% for row in heat.rows %}
+| `{{ row.entity }}` | {{ row.age_s | round(1) if row.age_s is not none else 'n/a' }} | {{ row.hot }} | {{ row.value }} |
+{% endfor %}
+
+### Deterministic next action
+{% if root_cause == 'policy_render_mismatch' %}
+- Policy/render mismatch detected. Capture one additional snapshot while mismatch is active, then investigate policy surface first (`sensor.now_playing_media_class`, `binary_sensor.now_playing_display_allowed`) before changing OLED/control-host logic.
+{% elif root_cause == 'target_host_resolution_gap' %}
+- Control-host resolution gap detected. Stabilize host route first (`sensor.ma_control_host` + `sensor.ma_control_hosts` + `sensor.ma_active_target_by_host`), then re-check OLED/meta behavior after host is stable.
+{% elif root_cause == 'legacy_authority_target_divergence' %}
+- Legacy authority divergence detected. Treat scheduler-vs-helper mismatch as a potential expected compatibility state; confirm helper-selected target control eligibility before changing routing logic.
+{% elif root_cause == 'high_transition_churn_with_control_blockers' %}
+- High churn with blockers detected. Re-capture during a quieter 60s window after playback/source settles, then compare transition heat score and blocker reasons.
+{% else %}
+- No clear high-risk flap signature in this snapshot. Capture a second snapshot during observed flap and diff control chain + policy indicators.
+{% endif %}

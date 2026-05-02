@@ -1,6 +1,6 @@
-{# Description: Raw copy/paste Jinja template for deterministic scheduler-apply validation (decision + guarded apply + handoff inventory) with explicit MA boot-wait guidance, component-shadow entity preference hardening, contract-invalid/no-candidate operator guidance, live decision-source fallback when last scheduler decision is never_attempted, control-capable helper-fallback eligibility alignment, runtime control-expected reason visibility, stable-helper/no-candidate action clarification, hotspot-triage diagnostics surfaces, core-health weighted verdict scoring, and additive MA-players refresh/capability-feed checks. #}
-{# Version: 2026.04.28.1 #}
-{# Last updated: 2026-04-28 #}
+{# Description: Raw copy/paste Jinja template for deterministic scheduler-apply validation (decision + guarded apply + handoff inventory) with explicit MA boot-wait guidance, component-shadow entity preference hardening, contract-invalid/no-candidate operator guidance, live decision-source fallback when last scheduler decision is never_attempted, control-capable helper-fallback eligibility alignment, runtime control-expected reason visibility, legacy-helper-fallback blocker wording alignment, stable-helper/no-candidate action clarification, hotspot-triage diagnostics surfaces, core-health weighted verdict scoring, and additive MA-players refresh/capability-feed checks. #}
+{# Version: 2026.05.01.1 #}
+{# Last updated: 2026-05-01 #}
 
 {# =========================
   Scheduler Apply Deterministic Validation (Component)
@@ -396,8 +396,13 @@
   {% set control_host_blocker_reason = 'Music Assistant startup surfaces are not fully ready yet' %}
 {% elif esp_handoff_status in ['pending_refresh', 'no_host'] %}
   {% if authority_mode != 'component' and helper_state not in invalid and selected_target not in invalid and helper_state != selected_target %}
-    {% set control_host_blocker = 'LEGACY_AUTHORITY_TARGET_MISMATCH' %}
-    {% set control_host_blocker_reason = 'Authority is legacy and helper-selected target differs from scheduler-selected target' %}
+    {% if helper_fallback_eligible %}
+      {% set control_host_blocker = 'LEGACY_AUTHORITY_TARGET_MISMATCH' %}
+      {% set control_host_blocker_reason = 'Authority is legacy and helper-selected target differs from scheduler-selected target' %}
+    {% else %}
+      {% set control_host_blocker = 'LEGACY_HELPER_FALLBACK_ACTIVE' %}
+      {% set control_host_blocker_reason = 'Legacy helper current target is not control-host eligible, so scheduler fallback divergence is expected' %}
+    {% endif %}
   {% elif helper_state in invalid %}
     {% set control_host_blocker = 'HELPER_TARGET_UNRESOLVED' %}
     {% set control_host_blocker_reason = 'input_select.ma_active_target is unresolved, so host handoff cannot bind a target' %}
@@ -591,6 +596,8 @@ AVAILABLE SOURCES    : {{ available_sources if available_sources | length > 0 el
 - Waiting for Music Assistant startup signals. Re-run this template after MA player list/control targets are available; avoid forcing apply/recovery during this boot window.
 {% elif no_control_capable_reason == 'target_not_control_expected' %}
 - Active runtime target is currently not expected to expose a direct control host. Treat as non-actionable host warning suppression state unless your target contract should be control-capable.
+{% elif control_host_blocker == 'LEGACY_HELPER_FALLBACK_ACTIVE' and esp_handoff_status in ['pending_refresh', 'no_host'] and selected_target not in invalid %}
+- Legacy helper-vs-scheduler divergence is expected in this snapshot because helper current target is not control-host eligible. Treat this as healthy fallback behavior; focus on `sensor.ma_control_hosts` / `sensor.ma_control_host` settling for selected target `{{ selected_target }}`.
 {% elif esp_handoff_status in ['pending_refresh', 'no_host'] and selected_target not in invalid %}
 - Scheduler selection is present but ESP handoff is not ready (`{{ esp_handoff_status }}`). Refresh/check `sensor.ma_control_hosts` and `sensor.ma_control_host`, then re-run this template after host surfaces settle.
 {% elif 'no_scheduler_candidate' in scheduler_blocking_reasons and helper_state not in invalid and auto_select_status == 'noop_already_selected' and (auto_select_selected_target in invalid or auto_select_selected_target == helper_state) %}

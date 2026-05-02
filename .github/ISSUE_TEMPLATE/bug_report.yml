@@ -1,6 +1,6 @@
 # Description: Structured bug report form for reproducible Spectra defects.
-# Version: 2026.04.19.2
-# Last updated: 2026-04-19
+# Version: 2026.05.02.9
+# Last updated: 2026-05-02
 
 name: "Bug report"
 description: "Report a reproducible defect in Spectra runtime, control-hub, docs, or tooling"
@@ -28,6 +28,11 @@ body:
         2. Maintainer triages labels/priority/area.
         3. Issue is routed to project board and worked through PR checklist.
         4. Fix closes issue only after verification evidence is posted.
+
+        Slice-C governance note:
+        - Issue lane/owner entries are the intake baseline.
+        - If PR implementation lane/owner differs from this intake baseline, PR must include explicit lane reclassification rationale in `.github/pull_request_template.md`.
+        - Component-first default applies: new behavior/contract changes should target `custom_components/spectra_ls` unless a bounded legacy exception is required.
 
         For a full walkthrough, see wiki page: `Welcome-README-and-Bug-Workflow`.
 
@@ -65,6 +70,115 @@ body:
         - other
     validations:
       required: true
+
+  - type: dropdown
+    id: write_path_lane
+    attributes:
+      label: "Write-path lane impact"
+      description: "Required intake baseline for scheduler/metadata-bridge behavior-visible bugs; choose not-applicable when unrelated. PR lane changes must include reclassification rationale."
+      options:
+        - not_applicable
+        - scheduler
+        - metadata_bridge
+    validations:
+      required: true
+
+  - type: input
+    id: canonical_owner
+    attributes:
+      label: "Canonical owner file (if lane is scheduler/metadata_bridge)"
+      description: "Use Slice-C owner matrix in docs/notes/NOTES-engineering-rigor.md. This is intake baseline owner routing for PR reconciliation."
+      placeholder: "packages/ma_control_hub/template.inc or custom_components/spectra_ls/registry.py"
+    validations:
+      required: true
+
+  - type: textarea
+    id: lane_owner_routing_rationale
+    attributes:
+      label: "Lane/owner routing rationale"
+      description: "State why this lane/owner pairing is correct for intake. If lane is not_applicable, enter `N/A`. If PR lane/owner differs later, PR must include mandatory reclassification rationale referencing this issue baseline."
+      placeholder: "Scheduler because behavior-visible write-path change touches canonical scheduler owner in packages/ma_control_hub/template.inc..."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component_first_path
+    attributes:
+      label: "Execution path posture"
+      description: "Component-first is default for new behavior/contract work. Choose bounded_legacy_exception only when runtime path touch is strictly required."
+      options:
+        - component_first
+        - bounded_legacy_exception
+    validations:
+      required: true
+
+  - type: textarea
+    id: legacy_exception_rationale
+    attributes:
+      label: "Legacy exception rationale (required if bounded_legacy_exception)"
+      description: "If component_first_path is bounded_legacy_exception, explain why runtime path touch is required and why component-first is not currently feasible. Otherwise enter `N/A`."
+      placeholder: "Legacy runtime touch required because ...; rollback boundary ...; component follow-up plan ..."
+    validations:
+      required: true
+
+  - type: input
+    id: legacy_exception_tracking_ref
+    attributes:
+      label: "Legacy exception tracking reference"
+      description: "If component_first_path is bounded_legacy_exception, provide linked decision/approval reference. Otherwise enter `N/A`."
+      placeholder: "Issue/PR/Discussion link or `N/A`"
+    validations:
+      required: true
+
+  - type: textarea
+    id: component_target_files
+    attributes:
+      label: "Planned component target files"
+      description: "List expected `custom_components/spectra_ls/*` files for this fix. If none are expected, explain why in legacy_exception_rationale."
+      value: |
+        - custom_components/spectra_ls/
+    validations:
+      required: true
+
+  - type: dropdown
+    id: runtime_touch_declaration
+    attributes:
+      label: "Runtime-touch declaration"
+      description: "Declare whether this issue is component-only (`custom_components/spectra_ls/*` only) or expects bounded legacy/runtime touch. PR changed files must reconcile with this declaration."
+      options:
+        - component_only_declared
+        - bounded_legacy_exception_expected
+    validations:
+      required: true
+
+  - type: input
+    id: runtime_touch_expected_files
+    attributes:
+      label: "Expected runtime-touch files"
+      description: "If runtime_touch_declaration is bounded_legacy_exception_expected, list expected runtime files (for example `packages/...`, `esphome/...`). Otherwise enter `N/A`."
+      placeholder: "packages/ma_control_hub/template.inc or `N/A`"
+    validations:
+      required: true
+
+  - type: checkboxes
+    attributes:
+      label: "Component-first merge gate acknowledgment"
+      options:
+        - label: "I understand missing component-first/legacy-exception evidence can block PR merge readiness"
+          required: true
+        - label: "I understand missing planned component target-file evidence can block PR merge readiness"
+          required: true
+        - label: "I understand runtime file changes are merge-blocking when this issue declares component_only and no bounded exception evidence is provided"
+          required: true
+
+  - type: checkboxes
+    attributes:
+      label: "Slice-C intake integrity"
+      description: "Only check when the issue is scheduler/metadata-bridge behavior-visible."
+      options:
+        - label: "Lane is correctly classified and owner-file routing is recorded"
+        - label: "No owner-bypass/forked-lane behavior is being requested"
+        - label: "Paired parity-anchor review expectation is acknowledged"
 
   - type: input
     id: branch

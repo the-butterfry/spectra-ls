@@ -1,6 +1,8 @@
 # Description: Constants for Spectra LS custom integration shadow parity, Phase 3 guarded routing write-path controls, Phase 4 diagnostics scaffolding (F4-S01/F4-S03), Phase 5 metadata trial contract service, and Phase 6/8 control-center settings and fast-remap preset contracts including startup MA-readiness gating constants and selection-ownership migration services.
-# Version: 2026.04.29.5
-# Last updated: 2026-04-29
+# Version: 2026.05.02.8
+# Last updated: 2026-05-02
+# PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
+# and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
 from __future__ import annotations
 
@@ -20,6 +22,7 @@ SERVICE_RUN_P3_S01_SEQUENCE = "run_p3_s01_sequence"
 SERVICE_RUN_P3_S02_SEQUENCE = "run_p3_s02_sequence"
 SERVICE_VALIDATE_METADATA_PREP = "validate_metadata_prep"
 SERVICE_VALIDATE_METADATA_POLICY = "validate_metadata_policy"
+SERVICE_GET_AUTHORITY_CONTRACT = "get_authority_contract"
 SERVICE_RUN_P5_S02_SEQUENCE = "run_p5_s02_sequence"
 SERVICE_RUN_P3_S03_SEQUENCE = "run_p3_s03_sequence"
 SERVICE_VALIDATE_CAPABILITY_PROFILE = "validate_capability_profile"
@@ -56,6 +59,14 @@ WRITE_AUTH_ALLOWED: tuple[str, ...] = (
     WRITE_AUTH_COMPONENT,
 )
 WRITE_DEBOUNCE_SECONDS = 2.0
+
+# Fabric/MA authority contract tokens (must stay 1:1 with architecture docs).
+FABRIC_AUTH_MODE_PRIMARY = "ma_primary"
+FABRIC_AUTH_MODE_DEGRADED_FALLBACK = "ma_degraded_fallback"
+FABRIC_AUTH_REASON_DEGRADED_ACTIVE = "ma_degraded_fallback_active"
+FABRIC_AUTH_REASON_PAYLOAD_STALE = "ma_payload_stale"
+FABRIC_AUTH_REASON_PAYLOAD_SHAPE_INVALID = "ma_payload_shape_invalid"
+FABRIC_AUTH_REASON_API_UNREACHABLE = "ma_api_unreachable"
 
 LEGACY_ACTIVE_TARGET = "sensor.ma_active_target"
 LEGACY_ACTIVE_CONTROL_PATH = "sensor.ma_active_control_path"
@@ -99,9 +110,12 @@ LEGACY_LAST_VALID_TARGET = "input_text.ma_last_valid_target"
 LEGACY_NOW_PLAYING_ENTITY = "sensor.now_playing_entity"
 LEGACY_NOW_PLAYING_STATE = "sensor.now_playing_state"
 LEGACY_NOW_PLAYING_TITLE = "sensor.now_playing_title"
+LEGACY_NOW_PLAYING_POSITION = "sensor.now_playing_position"
+LEGACY_NOW_PLAYING_DURATION = "sensor.now_playing_duration"
 LEGACY_NOW_PLAYING_MEDIA_CLASS = "sensor.now_playing_media_class"
 LEGACY_NOW_PLAYING_PREVIEW_KEY = "sensor.now_playing_preview_key"
 LEGACY_NOW_PLAYING_DISPLAY_ALLOWED = "binary_sensor.now_playing_display_allowed"
+LEGACY_ACTIVE_DURATION = "sensor.ma_active_duration"
 LEGACY_META_CANDIDATES = "sensor.ma_meta_candidates"
 LEGACY_MA_PLAYERS = "sensor.ma_players"
 LEGACY_CONTROL_HOSTS = "sensor.ma_control_hosts"

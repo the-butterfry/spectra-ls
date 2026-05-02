@@ -1,6 +1,6 @@
 <!-- Description: Retroactive architecture and feature documentation for the active Spectra LS ESPHome runtime codebase. -->
-<!-- Version: 2026.04.29.7 -->
-<!-- Last updated: 2026-04-29 -->
+<!-- Version: 2026.05.02.2 -->
+<!-- Last updated: 2026-05-02 -->
 
 # Spectra LS Runtime Architecture (Retroactive Baseline)
 
@@ -53,10 +53,12 @@ Owned in `packages/spectra-ls-system.yaml`:
 - calibration/state bookkeeping
 - base scripts (`note_user_input`, `note_menu_input`, calibration flow, status logging)
 - exported ESP status text sensors include transport-safe OLED diagnostics (`esp_oled_status`) with ASCII-sanitized + bounded payloads to avoid malformed UTF-8/protobuf decode failures during telemetry updates
+- `esp_oled_status` keeps HA display policy as authority and applies a bounded Arylic-title fallback only when HA policy allows rendering but HA title is transiently empty, preventing short `oled:-` gaps during metadata propagation lag
 - ESP status text telemetry cadence is intentionally bounded at 30s for operator log clarity (`esp_control_handoff_status`, `esp_control_target`, `esp_oled_status`, `arylic_http_scheme`, `arylic_http_transport`) to avoid repeated unchanged logs
 - ESP emits a dedicated 30s HA-contract metadata summary line (`ha_meta`) sourced from HA-authoritative surfaces (`ha_audio_media_class`, `ha_audio_display_allowed`, `ha_audio_state`, `ha_audio_source`, `ha_audio_app`, `ha_audio_title`) so operators can distinguish HA policy state from transport-native Arylic status lines
 - `ha_meta` field provenance is now single-contract for state/source/app/title: ESP binds these to `sensor.now_playing_state`, `sensor.now_playing_source`, `sensor.now_playing_app`, and `sensor.now_playing_title` (via substitutions), preventing mixed MA-active vs now-playing cross-field context in periodic metadata logs
 - `ha_meta` title rendering is fail-closed for policy coherence: title is blanked when `display_allowed=false` or media class is non-display (`none/unknown/unavailable`) to prevent stale MA title carryover in hidden-display contexts
+- Arylic HTTP poller now learns and reuses per-host preferred scheme/port from successful sessions (`arylic_http_pref_*` globals), and suppresses opposite-scheme fallback flips when the current host is already on a known-good scheme; this preserves discovery-first dynamic routing while reducing scheme churn without hardcoded host pinning
 
 ### 3) Hardware ingest domain
 
@@ -76,6 +78,7 @@ Owned in `packages/spectra-ls-ui.yaml` + `spectra-ls-peripherals.yaml`:
 - dynamic options parsing for room/target/meta/control-target prompts
 - display renderer (splash, menu, now-playing, EQ, lighting, blank)
 - display-state decision script (`compute_display_state`)
+- now-playing progress pipeline keeps cache continuity during HA↔Arylic handoff gaps by holding/projection of last valid progress while playback is active, reducing transient progress-bar dropouts when metadata arrives before stable duration/position updates
 
 ### 5) Audio control domain (TCP-only)
 

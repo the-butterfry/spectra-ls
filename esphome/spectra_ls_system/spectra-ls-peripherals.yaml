@@ -1,6 +1,6 @@
 # Description: Spectra LS OLED-only peripherals package (no LED rings) for Control Board v2.
-# Version: 2026.04.28.1
-# Last updated: 2026-04-28
+# Version: 2026.05.02.1
+# Last updated: 2026-05-02
 # Update version/date whenever you change this file.
 esphome:
   name: ${device_name}
@@ -670,10 +670,16 @@ interval:
             id(np_disp_pos_ms) = pos_ms;
           } else {
             const uint32_t cached_ms = id(np_disp_pos_ms);
-            if (cached_ms > 0 && (now - cached_ms) < meta_stale_ms && id(np_disp_duration) > 0.5f) {
+            const uint32_t progress_hold_ms = playing ? (uint32_t) ${meta_pause_timeout_ms} : meta_stale_ms;
+            if (cached_ms > 0 && (now - cached_ms) < progress_hold_ms && id(np_disp_duration) > 0.5f) {
               duration = id(np_disp_duration);
               pos = id(np_disp_position);
               pos_ms = cached_ms;
+              if (playing && now > cached_ms) {
+                pos += (now - cached_ms) / 1000.0f;
+              }
+              if (duration > 0.5f && pos > duration) pos = duration;
+              pos_ms = now;
               progress_valid = true;
             }
           }

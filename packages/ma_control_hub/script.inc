@@ -1,6 +1,6 @@
 # Description: Music Assistant control hub scripts (target options, auto-select, control helpers).
-# Version: 2026.04.28.6
-# Last updated: 2026-04-28
+# Version: 2026.05.01.7
+# Last updated: 2026-05-01
 # Update version/date whenever you change this file.
 # HUB MUST-READ: Contract parser methodology.
 # - For complex attributes (`rooms`, `candidates_json`, etc.), prefer native sequence/mapping values first.
@@ -180,6 +180,7 @@ ma_auto_select:
   sequence:
     - variables:
         override_on: "{{ is_state('input_boolean.ma_override_active','on') }}"
+        options: "{{ state_attr('input_select.ma_active_target','options') or [] }}"
         current: "{{ states('input_select.ma_active_target') }}"
         current_state: >-
           {% if current.startswith('media_player.') and states[current] is not none %}
@@ -187,6 +188,54 @@ ma_auto_select:
           {% else %}
             {{ '' }}
           {% endif %}
+        current_ip: >-
+          {% if current.startswith('media_player.') and states[current] is not none %}
+            {{ state_attr(current,'ip_address') }}
+          {% else %}
+            {{ '' }}
+          {% endif %}
+        current_control_capable_attr: >-
+          {% if current.startswith('media_player.') and states[current] is not none %}
+            {{ state_attr(current,'control_capable') }}
+          {% else %}
+            {{ '' }}
+          {% endif %}
+        current_control_path: >-
+          {% if current.startswith('media_player.') and states[current] is not none %}
+            {{ (state_attr(current,'control_path') | string | lower) }}
+          {% else %}
+            {{ '' }}
+          {% endif %}
+        current_model: >-
+          {% if current.startswith('media_player.') and states[current] is not none %}
+            {{ (state_attr(current,'device_model') | string | lower) }}
+          {% else %}
+            {{ '' }}
+          {% endif %}
+        current_manufacturer: >-
+          {% if current.startswith('media_player.') and states[current] is not none %}
+            {{ (state_attr(current,'manufacturer') | string | lower) }}
+          {% else %}
+            {{ '' }}
+          {% endif %}
+        current_purpose: >-
+          {% if current.startswith('media_player.') and states[current] is not none %}
+            {{ (state_attr(current,'integration_purpose') | string | lower) }}
+          {% else %}
+            {{ '' }}
+          {% endif %}
+        current_hint: "{{ (current ~ ' ' ~ current_model ~ ' ' ~ current_manufacturer ~ ' ' ~ current_purpose) | lower }}"
+        current_hint_supported: >-
+          {{ ('wiim' in current_hint) or ('linkplay' in current_hint) or ('arylic' in current_hint) or ('up2stream' in current_hint) }}
+        current_control_capable: >-
+          {{ current_control_capable_attr in [true, 'true', 'True', '1', 1, 'yes', 'on'] }}
+        current_control_path_ok: >-
+          {{ current_control_path in ['linkplay_tcp'] }}
+        current_control_ready: >-
+          {{ current not in ['none','unknown','unavailable','']
+             and current in options
+             and current_ip not in ['','none','unknown','unavailable','None', none]
+             and (current_control_capable or current_control_path_ok or current_hint_supported) }}
         detected: "{{ states('sensor.ma_detected_receiver_entity') }}"
         detected_state: >-
           {% if detected.startswith('media_player.') and states[detected] is not none %}
@@ -194,14 +243,62 @@ ma_auto_select:
           {% else %}
             {{ '' }}
           {% endif %}
+        detected_ip: >-
+          {% if detected.startswith('media_player.') and states[detected] is not none %}
+            {{ state_attr(detected,'ip_address') }}
+          {% else %}
+            {{ '' }}
+          {% endif %}
+        detected_control_capable_attr: >-
+          {% if detected.startswith('media_player.') and states[detected] is not none %}
+            {{ state_attr(detected,'control_capable') }}
+          {% else %}
+            {{ '' }}
+          {% endif %}
+        detected_control_path: >-
+          {% if detected.startswith('media_player.') and states[detected] is not none %}
+            {{ (state_attr(detected,'control_path') | string | lower) }}
+          {% else %}
+            {{ '' }}
+          {% endif %}
+        detected_model: >-
+          {% if detected.startswith('media_player.') and states[detected] is not none %}
+            {{ (state_attr(detected,'device_model') | string | lower) }}
+          {% else %}
+            {{ '' }}
+          {% endif %}
+        detected_manufacturer: >-
+          {% if detected.startswith('media_player.') and states[detected] is not none %}
+            {{ (state_attr(detected,'manufacturer') | string | lower) }}
+          {% else %}
+            {{ '' }}
+          {% endif %}
+        detected_purpose: >-
+          {% if detected.startswith('media_player.') and states[detected] is not none %}
+            {{ (state_attr(detected,'integration_purpose') | string | lower) }}
+          {% else %}
+            {{ '' }}
+          {% endif %}
+        detected_hint: "{{ (detected ~ ' ' ~ detected_model ~ ' ' ~ detected_manufacturer ~ ' ' ~ detected_purpose) | lower }}"
+        detected_hint_supported: >-
+          {{ ('wiim' in detected_hint) or ('linkplay' in detected_hint) or ('arylic' in detected_hint) or ('up2stream' in detected_hint) }}
+        detected_control_capable: >-
+          {{ detected_control_capable_attr in [true, 'true', 'True', '1', 1, 'yes', 'on'] }}
+        detected_control_path_ok: >-
+          {{ detected_control_path in ['linkplay_tcp'] }}
+        detected_control_ready: >-
+          {{ detected not in ['','none','unknown','unavailable']
+             and detected in options
+             and detected_ip not in ['','none','unknown','unavailable','None', none]
+             and (detected_control_capable or detected_control_path_ok or detected_hint_supported) }}
         detected_playing: >-
-          {{ detected_state == 'playing' }}
+          {{ detected_state == 'playing' and detected_control_ready }}
         current_invalid: >-
           {{ current in ['none','unknown','unavailable',''] or states[current] is none or current_state in ['','unknown','unavailable'] }}
         current_playing: >-
-          {{ current not in ['none','unknown','unavailable',''] and current_state == 'playing' }}
+          {{ current not in ['none','unknown','unavailable',''] and current_state == 'playing' and current_control_ready }}
         current_active: >-
-          {{ current not in ['none','unknown','unavailable',''] and current_state in ['playing','paused'] }}
+          {{ current not in ['none','unknown','unavailable',''] and current_state in ['playing','paused'] and current_control_ready }}
         idle_threshold: "{{ states('input_number.ma_auto_idle_s') | float(45) }}"
         current_idle_s: >-
           {% if current in ['none','unknown','unavailable',''] or states[current] is none %}
@@ -227,7 +324,7 @@ ma_auto_select:
             - stop: "Auto-select delayed (current target not idle long enough)."
     - variables:
         allowed_players: >-
-          {{ state_attr('input_select.ma_active_target','options') or [] }}
+          {{ options }}
         players: >-
           {% set ids = (allowed_players | select('match','^media_player\\.') | list) %}
           {% set ns = namespace(list=[]) %}
@@ -248,14 +345,48 @@ ma_auto_select:
             {{ '' }}
           {% endif %}
         pick_ready: >-
-          {{ pick not in ['','none','unknown','unavailable'] and pick in (state_attr('input_select.ma_active_target','options') or []) and pick_state not in ['','unknown','unavailable'] }}
+          {{ pick not in ['','none','unknown','unavailable'] and pick in allowed_players and pick_state not in ['','unknown','unavailable'] and detected_control_ready }}
         first_active_allowed: >-
-          {% set opts = (state_attr('input_select.ma_active_target','options') or []) %}
+          {% set opts = allowed_players %}
           {% set ns = namespace(ent='') %}
           {% for e in opts %}
             {% if ns.ent == '' and e is string and e.startswith('media_player.') and states[e] is not none %}
               {% set st = states(e) | lower %}
-              {% if st in ['playing','paused'] %}
+              {% set ip = state_attr(e,'ip_address') %}
+              {% set control_capable_attr = state_attr(e,'control_capable') %}
+              {% set control_path = (state_attr(e,'control_path') | string | lower) %}
+              {% set model = (state_attr(e,'device_model') | string | lower) %}
+              {% set manufacturer = (state_attr(e,'manufacturer') | string | lower) %}
+              {% set purpose = (state_attr(e,'integration_purpose') | string | lower) %}
+              {% set hint = (e ~ ' ' ~ model ~ ' ' ~ manufacturer ~ ' ' ~ purpose) | lower %}
+              {% set hint_supported = ('wiim' in hint) or ('linkplay' in hint) or ('arylic' in hint) or ('up2stream' in hint) %}
+              {% set control_capable = control_capable_attr in [true, 'true', 'True', '1', 1, 'yes', 'on'] %}
+              {% set control_path_ok = control_path in ['linkplay_tcp'] %}
+              {% set control_ready = ip not in ['','none','unknown','unavailable','None', none] and (control_capable or control_path_ok or hint_supported) %}
+              {% if st in ['playing','paused'] and control_ready %}
+                {% set ns.ent = e %}
+              {% endif %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.ent }}
+        first_control_ready: >-
+          {% set opts = allowed_players %}
+          {% set ns = namespace(ent='') %}
+          {% for e in opts %}
+            {% if ns.ent == '' and e is string and e.startswith('media_player.') and states[e] is not none %}
+              {% set st = states(e) | lower %}
+              {% set ip = state_attr(e,'ip_address') %}
+              {% set control_capable_attr = state_attr(e,'control_capable') %}
+              {% set control_path = (state_attr(e,'control_path') | string | lower) %}
+              {% set model = (state_attr(e,'device_model') | string | lower) %}
+              {% set manufacturer = (state_attr(e,'manufacturer') | string | lower) %}
+              {% set purpose = (state_attr(e,'integration_purpose') | string | lower) %}
+              {% set hint = (e ~ ' ' ~ model ~ ' ' ~ manufacturer ~ ' ' ~ purpose) | lower %}
+              {% set hint_supported = ('wiim' in hint) or ('linkplay' in hint) or ('arylic' in hint) or ('up2stream' in hint) %}
+              {% set control_capable = control_capable_attr in [true, 'true', 'True', '1', 1, 'yes', 'on'] %}
+              {% set control_path_ok = control_path in ['linkplay_tcp'] %}
+              {% set control_ready = ip not in ['','none','unknown','unavailable','None', none] and (control_capable or control_path_ok or hint_supported) %}
+              {% if st not in ['','unknown','unavailable'] and control_ready %}
                 {% set ns.ent = e %}
               {% endif %}
             {% endif %}
@@ -274,9 +405,15 @@ ma_auto_select:
               data:
                 entity_id: input_select.ma_active_target
                 option: "{{ first_active_allowed }}"
+        - conditions: "{{ first_control_ready not in ['', 'none', 'unknown', 'unavailable'] }}"
+          sequence:
+            - service: input_select.select_option
+              data:
+                entity_id: input_select.ma_active_target
+                option: "{{ first_control_ready }}"
         - conditions: "{{ not pick_ready }}"
           sequence:
-            - stop: "Auto-select skipped (no active playing target)."
+            - stop: "Auto-select skipped (no control-host-eligible target candidate)."
 
 ma_set_volume:
   mode: restart

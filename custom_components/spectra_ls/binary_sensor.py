@@ -1,6 +1,6 @@
-# Description: Binary sensor entities for Spectra LS shadow parity routing surfaces with Phase 3 write-control, Phase 4 diagnostics attributes, and Phase 6 control-center settings visibility.
-# Version: 2026.04.26.1
-# Last updated: 2026-04-26
+# Description: Binary sensor entities for Spectra LS shadow parity routing surfaces with Phase 3 write-control, Phase 4 diagnostics attributes, and Phase 6 control-center settings visibility, including shared MA authority-contract packet propagation.
+# Version: 2026.05.02.2
+# Last updated: 2026-05-02
 
 from __future__ import annotations
 
@@ -11,6 +11,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from .authority_contract import build_authority_contract_packet
 from .const import DOMAIN
 
 
@@ -63,6 +64,7 @@ class SpectraLsShadowControlCapableBinarySensor(CoordinatorEntity, BinarySensorE
             "crossfade_balance_validation": data.get("crossfade_balance_validation", {}),
             "control_center_validation": data.get("control_center_validation", {}),
             "write_controls": data.get("write_controls", {}),
+            "authority_contract": build_authority_contract_packet(data),
         }
 
 

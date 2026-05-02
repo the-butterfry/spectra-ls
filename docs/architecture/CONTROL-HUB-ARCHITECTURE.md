@@ -1,6 +1,6 @@
 <!-- Description: Retroactive architecture and feature documentation for the MA control hub package split. -->
-<!-- Version: 2026.04.29.15 -->
-<!-- Last updated: 2026-04-29 -->
+<!-- Version: 2026.05.02.3 -->
+<!-- Last updated: 2026-05-02 -->
 
 # MA Control Hub Architecture (Retroactive Baseline)
 
@@ -91,8 +91,12 @@ Defined by `template.inc`:
 - room payload normalization (`sensor.spectra_ls_rooms_json`)
 - MA/HA candidate scoring and selection (`ma_meta_candidates`, `ma_meta_resolver`)
 - now-playing entity and resolved fields
+- duration contract resilience: `sensor.ma_active_duration` and `sensor.now_playing_duration` now fall back to MA player payload duration (`player_fields_json` derived from MA current-media fields) when entity `media_duration` attributes are missing, preserving progress-surface continuity before fail-closed `0`.
+- MA-authoritative progress augmentation: duration contracts now include discovery-first MA-managed peer fallback (`states.media_player` with MA app/source hints and title/artist match) so active playback can retain valid track duration even when the selected render entity carries position but no `media_duration`.
 - explicit playback-state derivation (`playing/paused/stopped/idle/...`) that prioritizes authoritative state over metadata recency/title presence
 - dual-threshold freshness policy for metadata winner selection: `input_number.ma_meta_stale_s` gates `playing` freshness while `input_number.ma_meta_paused_hide_s` governs paused hold/hide behavior
+- sticky capture stability policy: `sensor.ma_active_meta_entity` and `sensor.ma_control_host` now hold their captured values during active/fresh playback windows and only release/re-resolve when stale freshness gates fail or paused hold exceeds `ma_meta_paused_hide_s`
+- sticky host convergence guard: `sensor.ma_control_host` sticky hold is suppressed whenever `sensor.ma_control_hosts` is currently resolved, so single-host surface follows aggregate host resolution deterministically and avoids stale host split churn.
 - stale-hold prevention guards: resolver winner eligibility now requires active-or-recent playback evidence, and preferred-meta fallback no longer promotes based on metadata presence alone
 - paused stale suppression: paused candidates without recent progress evidence are excluded from active metadata winner eligibility to prevent stale-title promotion
 - mapped-meta freshness guard: room-mapped meta fallbacks must meet the same active/recent criteria before they can override target metadata selection
@@ -102,10 +106,10 @@ Defined by `template.inc`:
 - HA-authoritative OLED media policy contract: `template.inc` now exports `sensor.now_playing_media_class` (`music`/`non_music`/`none`), `sensor.now_playing_preview_key`, and `binary_sensor.now_playing_display_allowed`; ESP consumes these contracts and does not run local app/source media-class heuristics or local preview timers
 - Now-playing app contract surface: `template.inc` exports `sensor.now_playing_app` from the selected `sensor.now_playing_entity` app context (`app_name`) to keep app provenance aligned with now-playing source/state/title surfaces.
 - Now-playing title source coherency contract: `sensor.now_playing_entity` `resolved_title` is entity-local and does not fall back to `sensor.ma_active_title`; fallback order is bounded to now-playing entity-resolved MA fields/stream metadata and current now-playing entity HA title only, preventing cross-source stale title carryover when policy class/display is non-display.
-- Music-Lite non-music policy refinement: runtime media policy uses a 30-second bounded non-music preview window and re-arms preview visibility on fresh preview-key changes, while active music context (playing or paused) remains first-class and blocks non-music preview (`music_guard_active`) so “music always wins” stays deterministic.
-- Non-music fallback classification: if `sensor.now_playing_entity` is unavailable but active playback context still exposes app/source video hints (for example YouTube/OTT/AppleTV/HDMI), media class now falls back to `non_music` and emits a fallback preview key (`fallback|source|app`) so the bounded 30s preview gate can still operate for TV-local playback surfaces with incomplete entity metadata.
-- Music-guard recency semantics are fail-closed and bounded: when `media_position_updated_at` is missing, guard recency falls back to entity `last_changed` (instead of treating missing position timestamps as active forever), preventing stale paused entities from indefinitely blocking non-music preview windows.
-- Component parity diagnostics now validate these same HA media-contract surfaces (`media_class`, `preview_key`, `display_allowed`, `music_guard_active`, preview-window timing) inside metadata-prep validation so runtime/component drift is explicit in one diagnostics lane without changing source-of-truth ownership.
+- OLED display gate rollback policy: runtime display gating is now strictly music-only (`media_class=music` -> display allowed; `media_class=non_music|none` -> display hidden), retiring bounded non-music preview-window behavior for stability.
+- Non-music fallback classification remains active for diagnostics/provenance: when `sensor.now_playing_entity` is unavailable but playback context still indicates app/source video hints (for example YouTube/OTT/AppleTV/HDMI), `sensor.now_playing_media_class` may still classify as `non_music` while OLED display remains hidden by policy.
+- YouTube context refinement under rollback policy: runtime media classification now distinguishes music-like YouTube context (for example mix/remix/DJ/radio/live-set cues) from explicit video cues so audio-centric YouTube playback can classify as `music` and pass the music-only display gate.
+- Component parity diagnostics validate this same simplified HA media-contract surface (`media_class`, `display_allowed`, optional `preview_key` observability) so runtime/component drift is explicit in one diagnostics lane without changing source-of-truth ownership.
 - Component now-playing freshness diagnostics use bounded recency fallback parity with runtime stale guards: when `media_position_updated_at` is missing, coordinator freshness age falls back to entity `last_changed` instead of implicitly treating the signal as fresh.
 - friendly labels and helper projection sensors
 - ESP-facing handoff note: on active-target changes, ESP requests immediate HA recompute for control-target/host surfaces (`sensor.ma_control_targets`, `sensor.ma_control_hosts`, `sensor.ma_control_host`) to reduce host handoff latency, but forced recompute is reconnect-safe gated (HA API reconnect grace window + template-feed readiness checks) to avoid HA reboot startup assertion races.

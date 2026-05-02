@@ -3,8 +3,8 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 ---
 
 <!-- Description: Workspace Copilot operating instructions for Home Assistant + ESPHome. -->
-<!-- Version: 2026.04.26.2 -->
-<!-- Last updated: 2026-04-26 -->
+<!-- Version: 2026.05.02.1 -->
+<!-- Last updated: 2026-05-02 -->
 
 # GitHub Copilot Instructions — Home Assistant + ESPHome
 
@@ -95,6 +95,7 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 - When contribution/triage/release workflow changes, update governance docs/templates in the same change set as the process change.
 - Prefer structured issue forms and PR checklists over free-form intake for reproducibility and triage quality.
 - Keep README end-user focused; contributor workflow detail belongs in governance docs and templates.
+- For scheduler/metadata-bridge behavior-visible slices, require PR checklist completion of `Slice-C write-path integrity` (lane classification, owner-file confirmation, parity-anchor disposition, no-go confirmation) before merge/readiness claims.
 
 ## GitHub Structure Strategy (Current + Future)
 - Current required strategy: **structured monorepo** rooted at `/mnt/homeassistant` with clear domain boundaries.

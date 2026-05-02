@@ -1,6 +1,6 @@
-# Description: Spectra LS custom integration setup for shadow parity, Phase 3 guarded routing write-path services, Phase 4 diagnostics scaffolding services (F4-S01/F4-S03), Phase 5 metadata trial contract service wiring, and Phase 6 control-center settings/execution services including bounded startup auto-recovery scheduling and selection-ownership migration services.
-# Version: 2026.04.28.2
-# Last updated: 2026-04-28
+# Description: Spectra LS custom integration setup for shadow parity, Phase 3 guarded routing write-path services, Phase 4 diagnostics scaffolding services (F4-S01/F4-S03), Phase 5 metadata trial contract service wiring, and Phase 6 control-center settings/execution services including bounded startup auto-recovery scheduling and selection-ownership migration services with authority-contract response service support.
+# Version: 2026.05.02.1
+# Last updated: 2026-05-02
 
 from __future__ import annotations
 
@@ -10,8 +10,10 @@ from typing import Any
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.core import ServiceCall
+from homeassistant.core import SupportsResponse
 from homeassistant.exceptions import HomeAssistantError
 
+from .authority_contract import build_authority_contract_packet
 from .const import (
     CONTROL_CENTER_DEFAULTS,
     DOMAIN,
@@ -27,6 +29,7 @@ from .const import (
     SERVICE_VALIDATE_CONTRACTS,
     SERVICE_VALIDATE_METADATA_PREP,
     SERVICE_VALIDATE_METADATA_POLICY,
+    SERVICE_GET_AUTHORITY_CONTRACT,
     SERVICE_RUN_P3_S03_SEQUENCE,
     SERVICE_VALIDATE_CAPABILITY_PROFILE,
     SERVICE_RUN_F4_S01_SEQUENCE,
@@ -188,6 +191,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             },
             blocking=True,
         )
+
+    async def _service_get_authority_contract(call: ServiceCall) -> dict[str, Any]:
+        refresh = _coerce_bool(call.data.get("refresh"), default=True)
+        if refresh:
+            await coordinator.async_validate_metadata_prep()
+        snapshot = coordinator.data if isinstance(coordinator.data, dict) else {}
+        return build_authority_contract_packet(snapshot)
 
     async def _service_run_p3_s03_sequence(call: ServiceCall) -> None:
         mode = str(call.data.get("mode", "legacy"))
@@ -482,6 +492,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.services.async_register(DOMAIN, SERVICE_VALIDATE_METADATA_PREP, _service_validate_metadata_prep)
     if not hass.services.has_service(DOMAIN, SERVICE_VALIDATE_METADATA_POLICY):
         hass.services.async_register(DOMAIN, SERVICE_VALIDATE_METADATA_POLICY, _service_validate_metadata_policy)
+    if not hass.services.has_service(DOMAIN, SERVICE_GET_AUTHORITY_CONTRACT):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_GET_AUTHORITY_CONTRACT,
+            _service_get_authority_contract,
+            supports_response=SupportsResponse.ONLY,
+        )
     if not hass.services.has_service(DOMAIN, SERVICE_RUN_P3_S03_SEQUENCE):
         hass.services.async_register(DOMAIN, SERVICE_RUN_P3_S03_SEQUENCE, _service_run_p3_s03_sequence)
     if not hass.services.has_service(DOMAIN, SERVICE_RUN_P5_S02_SEQUENCE):
@@ -598,6 +615,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 hass.services.async_remove(DOMAIN, SERVICE_VALIDATE_METADATA_PREP)
             if hass.services.has_service(DOMAIN, SERVICE_VALIDATE_METADATA_POLICY):
                 hass.services.async_remove(DOMAIN, SERVICE_VALIDATE_METADATA_POLICY)
+            if hass.services.has_service(DOMAIN, SERVICE_GET_AUTHORITY_CONTRACT):
+                hass.services.async_remove(DOMAIN, SERVICE_GET_AUTHORITY_CONTRACT)
             if hass.services.has_service(DOMAIN, SERVICE_RUN_P3_S03_SEQUENCE):
                 hass.services.async_remove(DOMAIN, SERVICE_RUN_P3_S03_SEQUENCE)
             if hass.services.has_service(DOMAIN, SERVICE_RUN_P5_S02_SEQUENCE):

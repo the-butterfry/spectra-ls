@@ -1,0 +1,718 @@
+# Description: DST + GE SmartHQ heatpump package (heat/cool supervisory control).
+# Version: 2026.05.01.13
+# Last updated: 2026-05-01
+# config/packages/dst_ge_trash_heatpump.yaml
+#
+# DESIGN INTENT (stability first):
+# - Reuse the proven DST actuator-switch pattern from dst_tuya_ac.
+# - Support true heatpump operation (both heating + cooling).
+# - Keep scripts device-only (no DST self-writes) to avoid loop/re-entry thrash.
+
+template:
+  - switch:
+      - name: "Trash Heatpump Mode — Cool"
+        default_entity_id: switch.trash_hp_cooler
+        icon: mdi:snowflake
+        state: "{{ is_state('climate.trash_conditioner_020000a7311d_climate', 'cool') }}"
+        turn_on:
+          - service: script.turn_on
+            target:
+              entity_id: script.trash_hp_set_cool
+        turn_off:
+          - service: script.turn_on
+            target:
+              entity_id: script.trash_hp_turn_off
+
+      - name: "Trash Heatpump Mode — Heat"
+        default_entity_id: switch.trash_hp_heater
+        icon: mdi:fire
+        state: "{{ is_state('climate.trash_conditioner_020000a7311d_climate', 'heat') }}"
+        turn_on:
+          - service: script.turn_on
+            target:
+              entity_id: script.trash_hp_set_heat
+        turn_off:
+          - service: script.turn_on
+            target:
+              entity_id: script.trash_hp_turn_off
+
+      - name: "Trash Heatpump Mode — Fan"
+        default_entity_id: switch.trash_hp_fan
+        icon: mdi:fan
+        state: "{{ is_state('climate.trash_conditioner_020000a7311d_climate', 'fan_only') }}"
+        turn_on:
+          - service: script.turn_on
+            target:
+              entity_id: script.trash_hp_set_fan_only
+        turn_off:
+          - service: script.turn_on
+            target:
+              entity_id: script.trash_hp_turn_off
+
+      - name: "Trash Heatpump Mode — Dry"
+        default_entity_id: switch.trash_hp_dry
+        icon: mdi:water-percent
+        state: "{{ is_state('climate.trash_conditioner_020000a7311d_climate', 'dry') }}"
+        turn_on:
+          - service: script.turn_on
+            target:
+              entity_id: script.trash_hp_set_dry
+        turn_off:
+          - service: script.turn_on
+            target:
+              entity_id: script.trash_hp_turn_off
+
+  - fan:
+      - name: "Trash Heatpump Fan"
+        default_entity_id: fan.trash_hp_fan
+        icon: mdi:fan
+        state: "{{ is_state('climate.trash_conditioner_020000a7311d_climate', 'fan_only') }}"
+        preset_modes:
+          - "auto"
+          - "low"
+          - "med"
+          - "high"
+        preset_mode: >-
+          {{ state_attr('climate.trash_conditioner_020000a7311d_climate', 'fan_mode') | default('Low', true) | lower }}
+        turn_on:
+          - service: script.turn_on
+            target:
+              entity_id: script.trash_hp_set_fan_only
+        turn_off:
+          - service: script.turn_on
+            target:
+              entity_id: script.trash_hp_turn_off
+        set_preset_mode:
+          - service: climate.set_fan_mode
+            target:
+              entity_id: climate.trash_conditioner_020000a7311d_climate
+            data:
+              fan_mode: >-
+                {% set mode = preset_mode | default('low', true) | lower %}
+                {% if mode == 'auto' %}
+                  Auto
+                {% elif mode == 'med' %}
+                  Med
+                {% elif mode == 'high' %}
+                  High
+                {% else %}
+                  Low
+                {% endif %}
+
+  - sensor:
+      - name: "Trash Heatpump Control Reason"
+        default_entity_id: sensor.trash_hp_control_reason
+        icon: mdi:information-outline
+        state: >-
+          {% set dst_mode = states('climate.trash_heatpump_dst') %}
+          {% set dst_action = state_attr('climate.trash_heatpump_dst','hvac_action') | default('unknown', true) %}
+          {% set ge_mode = states('climate.trash_conditioner_020000a7311d_climate') %}
+          {% set ge_action = state_attr('climate.trash_conditioner_020000a7311d_climate','hvac_action') | default('unknown', true) %}
+          dst={{ dst_mode }}/{{ dst_action }} | ge={{ ge_mode }}/{{ ge_action }}
+
+      - name: "Trash Heatpump DST Status"
+        default_entity_id: sensor.trash_hp_dst_status
+        icon: mdi:thermostat
+        state: >-
+          {% set mode = states('climate.trash_heatpump_dst') %}
+          {% set action = state_attr('climate.trash_heatpump_dst','hvac_action') | default('unknown', true) %}
+          {{ mode ~ '/' ~ action }}
+
+      - name: "Trash Heatpump GE Status"
+        default_entity_id: sensor.trash_hp_ge_status
+        icon: mdi:air-conditioner
+        state: >-
+          {% set mode = states('climate.trash_conditioner_020000a7311d_climate') %}
+          {% set action = state_attr('climate.trash_conditioner_020000a7311d_climate','hvac_action') | default('unknown', true) %}
+          {{ mode ~ '/' ~ action }}
+
+      - name: "Trash Heatpump GE Setpoint"
+        default_entity_id: sensor.trash_hp_ge_setpoint
+        unit_of_measurement: "°F"
+        device_class: temperature
+        state_class: measurement
+        icon: mdi:thermometer-chevron-up
+        state: "{{ state_attr('climate.trash_conditioner_020000a7311d_climate','temperature') | float(0) }}"
+
+      - name: "Trash Heatpump DST Target"
+        default_entity_id: sensor.trash_hp_dst_target
+        unit_of_measurement: "°F"
+        device_class: temperature
+        state_class: measurement
+        icon: mdi:target
+        state: >-
+          {% set single = state_attr('climate.trash_heatpump_dst','temperature') %}
+          {% set low = state_attr('climate.trash_heatpump_dst','target_temp_low') %}
+          {% set high = state_attr('climate.trash_heatpump_dst','target_temp_high') %}
+          {% if single is number %}
+            {{ single | float(0) }}
+          {% elif low is number and high is number %}
+            {{ ((low | float(0)) + (high | float(0))) / 2 }}
+          {% else %}
+            0
+          {% endif %}
+
+      - name: "Trash Heatpump Room Temperature"
+        default_entity_id: sensor.trash_hp_room_temperature
+        unit_of_measurement: "°F"
+        device_class: temperature
+        state_class: measurement
+        icon: mdi:home-thermometer
+        state: >-
+          {% set ble = states('sensor.ble_proxy_ble_proxy_temperature') %}
+          {% set ac = states('sensor.trash_conditioner_ac_ambient_temperature') %}
+          {% if is_number(ble) %}
+            {{ ble | float(0) }}
+          {% elif is_number(ac) %}
+            {{ ac | float(0) }}
+          {% else %}
+            71
+          {% endif %}
+
+      - name: "Trash Heatpump Room Humidity"
+        default_entity_id: sensor.trash_hp_room_humidity
+        unit_of_measurement: "%"
+        device_class: humidity
+        state_class: measurement
+        icon: mdi:water-percent
+        state: >-
+          {% set ble = states('sensor.ble_proxy_ble_proxy_humidity') %}
+          {% set ge = state_attr('climate.trash_conditioner_020000a7311d_climate', 'current_humidity') %}
+          {% if is_number(ble) %}
+            {{ ble | float(0) }}
+          {% elif ge is number %}
+            {{ ge | float(0) }}
+          {% else %}
+            40
+          {% endif %}
+
+      - name: "Trash Heatpump Room Temp Delta"
+        default_entity_id: sensor.trash_hp_room_temp_delta
+        unit_of_measurement: "°F"
+        state_class: measurement
+        icon: mdi:thermometer-lines
+        state: >-
+          {% set room = states('sensor.trash_hp_room_temperature') | float(71) %}
+          {% set single = state_attr('climate.trash_heatpump_dst','temperature') %}
+          {% set low = state_attr('climate.trash_heatpump_dst','target_temp_low') %}
+          {% set high = state_attr('climate.trash_heatpump_dst','target_temp_high') %}
+          {% if single is number %}
+            {% set target = single | float(0) %}
+          {% elif low is number and high is number %}
+            {% set target = ((low | float(0)) + (high | float(0))) / 2 %}
+          {% else %}
+            {% set target = 0 %}
+          {% endif %}
+          {{ (room - target) | round(2) }}
+
+      - name: "Trash Heatpump Power Usage"
+        default_entity_id: sensor.trash_hp_power_usage
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        icon: mdi:flash
+        availability: >-
+          {{ is_number(states('sensor.trash_conditioner_020000a7311d_wac_demand_response_power')) }}
+        state: >-
+          {% set kw = states('sensor.trash_conditioner_020000a7311d_wac_demand_response_power') | float(0) %}
+          {{ (kw * 1000) | round(0) }}
+
+  - binary_sensor:
+      - name: "Trash Heatpump Pause Active"
+        default_entity_id: binary_sensor.trash_hp_pause_active
+        device_class: running
+        state: >-
+          {% set until_ts = as_timestamp(states('input_datetime.trash_hp_pause_until'), default=0) %}
+          {{ until_ts > as_timestamp(now()) }}
+
+      - name: "Trash Heatpump DST Cooling Active"
+        default_entity_id: binary_sensor.trash_hp_dst_cooling_active
+        device_class: running
+        state: >-
+          {{ state_attr('climate.trash_heatpump_dst', 'hvac_action') == 'cooling' }}
+
+      - name: "Trash Heatpump DST Heating Active"
+        default_entity_id: binary_sensor.trash_hp_dst_heating_active
+        device_class: running
+        state: >-
+          {{ state_attr('climate.trash_heatpump_dst', 'hvac_action') == 'heating' }}
+
+script:
+  trash_hp_set_cool:
+    alias: Trash Heatpump Set Cool
+    mode: restart
+    sequence:
+      - variables:
+          dst_target: "{{ state_attr('climate.trash_heatpump_dst','temperature') | float(71) }}"
+          ge_target: "{{ [86, [64, dst_target] | max] | min }}"
+          fan_preference: >-
+            {% set pref = states('input_select.trash_hp_fan_mode_preference') %}
+            {% if pref in ['Auto', 'Low', 'Med', 'High'] %}
+              {{ pref }}
+            {% else %}
+              Auto
+            {% endif %}
+      - service: climate.set_hvac_mode
+        target:
+          entity_id: climate.trash_conditioner_020000a7311d_climate
+        data:
+          hvac_mode: "cool"
+      - service: climate.set_fan_mode
+        target:
+          entity_id: climate.trash_conditioner_020000a7311d_climate
+        data:
+          fan_mode: "{{ fan_preference }}"
+      - service: climate.set_temperature
+        target:
+          entity_id: climate.trash_conditioner_020000a7311d_climate
+        data:
+          temperature: "{{ ge_target }}"
+
+  trash_hp_set_heat:
+    alias: Trash Heatpump Set Heat
+    mode: restart
+    sequence:
+      - variables:
+          dst_target: "{{ state_attr('climate.trash_heatpump_dst','temperature') | float(71) }}"
+          ge_target: "{{ [86, [64, dst_target] | max] | min }}"
+          fan_preference: >-
+            {% set pref = states('input_select.trash_hp_fan_mode_preference') %}
+            {% if pref in ['Auto', 'Low', 'Med', 'High'] %}
+              {{ pref }}
+            {% else %}
+              Auto
+            {% endif %}
+      - service: climate.set_hvac_mode
+        target:
+          entity_id: climate.trash_conditioner_020000a7311d_climate
+        data:
+          hvac_mode: "heat"
+      - service: climate.set_fan_mode
+        target:
+          entity_id: climate.trash_conditioner_020000a7311d_climate
+        data:
+          fan_mode: "{{ fan_preference }}"
+      - service: climate.set_temperature
+        target:
+          entity_id: climate.trash_conditioner_020000a7311d_climate
+        data:
+          temperature: "{{ ge_target }}"
+
+  trash_hp_turn_off:
+    alias: Trash Heatpump Turn Off
+    mode: restart
+    sequence:
+      - service: climate.set_hvac_mode
+        target:
+          entity_id: climate.trash_conditioner_020000a7311d_climate
+        data:
+          hvac_mode: "off"
+
+  trash_hp_set_fan_only:
+    alias: Trash Heatpump Set Fan Only
+    mode: restart
+    sequence:
+      - variables:
+          fan_preference: >-
+            {% set pref = states('input_select.trash_hp_fan_mode_preference') %}
+            {% if pref in ['Auto', 'Low', 'Med', 'High'] %}
+              {{ pref }}
+            {% else %}
+              Auto
+            {% endif %}
+      - service: climate.set_hvac_mode
+        target:
+          entity_id: climate.trash_conditioner_020000a7311d_climate
+        data:
+          hvac_mode: "fan_only"
+      - service: climate.set_fan_mode
+        target:
+          entity_id: climate.trash_conditioner_020000a7311d_climate
+        data:
+          fan_mode: "{{ fan_preference }}"
+
+  trash_hp_set_dry:
+    alias: Trash Heatpump Set Dry
+    mode: restart
+    sequence:
+      - service: climate.set_hvac_mode
+        target:
+          entity_id: climate.trash_conditioner_020000a7311d_climate
+        data:
+          hvac_mode: "dry"
+
+automation:
+  - id: trash_hp_pause_10h_button
+    alias: Trash Heatpump Pause 10h Button
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_button.trash_hp_pause_10h
+    action:
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.trash_hp_pause_until
+        data:
+          datetime: "{{ (now() + timedelta(hours=10)).strftime('%Y-%m-%d %H:%M:%S') }}"
+
+  - id: trash_hp_sync_setpoint_from_dst
+    alias: Trash Heatpump DST -> GE Setpoint
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: climate.trash_heatpump_dst
+        attribute: temperature
+      - platform: state
+        entity_id: switch.trash_hp_cooler
+        to: "on"
+      - platform: state
+        entity_id: switch.trash_hp_heater
+        to: "on"
+    condition:
+      - condition: state
+        entity_id: input_boolean.trash_hp_away_lock
+        state: "off"
+      - condition: state
+        entity_id: binary_sensor.trash_hp_pause_active
+        state: "off"
+      - condition: or
+        conditions:
+          - condition: state
+            entity_id: switch.trash_hp_cooler
+            state: "on"
+          - condition: state
+            entity_id: switch.trash_hp_heater
+            state: "on"
+    action:
+      - variables:
+          dst_target: "{{ state_attr('climate.trash_heatpump_dst','temperature') | float(71) }}"
+          ge_target: "{{ [86, [64, dst_target] | max] | min }}"
+      - service: climate.set_temperature
+        target:
+          entity_id: climate.trash_conditioner_020000a7311d_climate
+        data:
+          temperature: "{{ ge_target }}"
+
+  - id: trash_hp_startup_reconcile
+    alias: Trash Heatpump Startup Schedule Reconcile
+    mode: single
+    trigger:
+      - platform: homeassistant
+        event: start
+    action:
+      - delay: "00:00:20"
+      - variables:
+          hr: "{{ now().hour }}"
+          wday: "{{ now().weekday() < 5 }}"
+          sched_on: "{{ is_state('input_boolean.trash_hp_schedule_enabled', 'on') }}"
+          away: "{{ is_state('input_boolean.trash_hp_away_lock', 'on') }}"
+          paused: "{{ is_state('binary_sensor.trash_hp_pause_active', 'on') }}"
+          ge_on: >-
+            {{ states('climate.trash_conditioner_020000a7311d_climate') in ['cool', 'heat', 'fan_only', 'dry'] }}
+      - choose:
+          # Schedule active and not gated → apply current time-slot setpoints
+          - conditions:
+              - condition: template
+                value_template: "{{ sched_on and not away and not paused }}"
+            sequence:
+              - service: climate.set_hvac_mode
+                target:
+                  entity_id: climate.trash_heatpump_dst
+                data:
+                  hvac_mode: "heat_cool"
+              - choose:
+                  # Weekday morning comfort 06:00–07:59
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ wday and hr >= 6 and hr < 8 }}"
+                    sequence:
+                      - service: climate.set_temperature
+                        target:
+                          entity_id: climate.trash_heatpump_dst
+                        data:
+                          target_temp_low: 69
+                          target_temp_high: 73
+                  # Weekday away eco 08:00–15:59
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ wday and hr >= 8 and hr < 16 }}"
+                    sequence:
+                      - service: climate.set_temperature
+                        target:
+                          entity_id: climate.trash_heatpump_dst
+                        data:
+                          target_temp_low: 64
+                          target_temp_high: 80
+                  # Weekday return home 16:00–20:59
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ wday and hr >= 16 and hr < 21 }}"
+                    sequence:
+                      - service: climate.set_temperature
+                        target:
+                          entity_id: climate.trash_heatpump_dst
+                        data:
+                          target_temp_low: 68
+                          target_temp_high: 72
+                default:
+                  # Night / weekend default → 64–80 comfort band
+                  - service: climate.set_temperature
+                    target:
+                      entity_id: climate.trash_heatpump_dst
+                    data:
+                      target_temp_low: 64
+                      target_temp_high: 80
+          # Schedule off and physical GE running → restore DST to heat_cool
+          - conditions:
+              - condition: template
+                value_template: "{{ ge_on }}"
+            sequence:
+              - service: climate.set_hvac_mode
+                target:
+                  entity_id: climate.trash_heatpump_dst
+                data:
+                  hvac_mode: "heat_cool"
+        default:
+          # Schedule off and physical GE off → heat_cool idle (preserve last setpoints)
+          - service: climate.set_hvac_mode
+            target:
+              entity_id: climate.trash_heatpump_dst
+            data:
+              hvac_mode: "heat_cool"
+
+  - id: trash_hp_schedule_weekday_morning_comfort
+    alias: Trash Heatpump Schedule Weekday Morning Comfort
+    mode: single
+    trigger:
+      - platform: time
+        at: "06:00:00"
+    condition:
+      - condition: state
+        entity_id: input_boolean.trash_hp_schedule_enabled
+        state: "on"
+      - condition: time
+        weekday:
+          - mon
+          - tue
+          - wed
+          - thu
+          - fri
+      - condition: state
+        entity_id: input_boolean.trash_hp_away_lock
+        state: "off"
+      - condition: state
+        entity_id: binary_sensor.trash_hp_pause_active
+        state: "off"
+    action:
+      - service: climate.set_hvac_mode
+        target:
+          entity_id: climate.trash_heatpump_dst
+        data:
+          hvac_mode: "heat_cool"
+      - service: climate.set_temperature
+        target:
+          entity_id: climate.trash_heatpump_dst
+        data:
+          target_temp_low: 69
+          target_temp_high: 73
+
+  - id: trash_hp_schedule_weekday_away_eco
+    alias: Trash Heatpump Schedule Weekday Away Eco
+    mode: single
+    trigger:
+      - platform: time
+        at: "08:00:00"
+    condition:
+      - condition: state
+        entity_id: input_boolean.trash_hp_schedule_enabled
+        state: "on"
+      - condition: time
+        weekday:
+          - mon
+          - tue
+          - wed
+          - thu
+          - fri
+      - condition: state
+        entity_id: input_boolean.trash_hp_away_lock
+        state: "off"
+      - condition: state
+        entity_id: binary_sensor.trash_hp_pause_active
+        state: "off"
+    action:
+      - service: climate.set_hvac_mode
+        target:
+          entity_id: climate.trash_heatpump_dst
+        data:
+          hvac_mode: "heat_cool"
+      - service: climate.set_temperature
+        target:
+          entity_id: climate.trash_heatpump_dst
+        data:
+          target_temp_low: 64
+          target_temp_high: 80
+
+  - id: trash_hp_schedule_weekday_return_home
+    alias: Trash Heatpump Schedule Weekday Return Home
+    mode: single
+    trigger:
+      - platform: time
+        at: "16:00:00"
+    condition:
+      - condition: state
+        entity_id: input_boolean.trash_hp_schedule_enabled
+        state: "on"
+      - condition: time
+        weekday:
+          - mon
+          - tue
+          - wed
+          - thu
+          - fri
+      - condition: state
+        entity_id: input_boolean.trash_hp_away_lock
+        state: "off"
+      - condition: state
+        entity_id: binary_sensor.trash_hp_pause_active
+        state: "off"
+    action:
+      - service: climate.set_hvac_mode
+        target:
+          entity_id: climate.trash_heatpump_dst
+        data:
+          hvac_mode: "heat_cool"
+      - service: climate.set_temperature
+        target:
+          entity_id: climate.trash_heatpump_dst
+        data:
+          target_temp_low: 68
+          target_temp_high: 72
+
+  - id: trash_hp_schedule_night_sleep
+    alias: Trash Heatpump Schedule Night Sleep
+    mode: single
+    trigger:
+      - platform: time
+        at: "21:00:00"
+    condition:
+      - condition: state
+        entity_id: input_boolean.trash_hp_schedule_enabled
+        state: "on"
+      - condition: state
+        entity_id: input_boolean.trash_hp_away_lock
+        state: "off"
+      - condition: state
+        entity_id: binary_sensor.trash_hp_pause_active
+        state: "off"
+    action:
+      - service: climate.set_hvac_mode
+        target:
+          entity_id: climate.trash_heatpump_dst
+        data:
+          hvac_mode: "heat_cool"
+      - service: climate.set_temperature
+        target:
+          entity_id: climate.trash_heatpump_dst
+        data:
+          target_temp_low: 64
+          target_temp_high: 80
+
+  - id: trash_hp_apply_fan_preference_live
+    alias: Trash Heatpump Apply Fan Preference Live
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: input_select.trash_hp_fan_mode_preference
+      - platform: state
+        entity_id: climate.trash_conditioner_020000a7311d_climate
+    condition:
+      - condition: state
+        entity_id: input_boolean.trash_hp_away_lock
+        state: "off"
+      - condition: state
+        entity_id: binary_sensor.trash_hp_pause_active
+        state: "off"
+      - condition: template
+        value_template: >-
+          {{ states('climate.trash_conditioner_020000a7311d_climate') in ['cool', 'heat', 'fan_only'] }}
+    action:
+      - variables:
+          fan_preference: >-
+            {% set pref = states('input_select.trash_hp_fan_mode_preference') %}
+            {% if pref in ['Auto', 'Low', 'Med', 'High'] %}
+              {{ pref }}
+            {% else %}
+              Auto
+            {% endif %}
+      - service: climate.set_fan_mode
+        target:
+          entity_id: climate.trash_conditioner_020000a7311d_climate
+        data:
+          fan_mode: "{{ fan_preference }}"
+
+climate:
+  - platform: dual_smart_thermostat
+    name: "Trash Heatpump DST"
+    heater: switch.trash_hp_heater
+    cooler: switch.trash_hp_cooler
+    target_sensor: sensor.trash_hp_room_temperature
+    humidity_sensor: sensor.trash_hp_room_humidity
+    min_temp: 64
+    max_temp: 86
+    heat_cool_mode: true
+    target_temp: 71
+    target_temp_low: 69
+    target_temp_high: 73
+    cold_tolerance: 1
+    hot_tolerance: 1
+    min_cycle_duration:
+      minutes: 3
+    initial_hvac_mode: "heat_cool"
+    precision: 1
+    target_temp_step: 1
+
+input_boolean:
+  trash_hp_away_lock:
+    name: Trash Heatpump Away Lock
+    icon: mdi:home-lock
+
+  trash_hp_schedule_enabled:
+    name: Trash Heatpump Schedule Enabled
+    icon: mdi:calendar-clock
+
+input_datetime:
+  trash_hp_pause_until:
+    name: Trash Heatpump Pause Until
+    has_date: true
+    has_time: true
+
+input_button:
+  trash_hp_pause_10h:
+    name: Trash Heatpump Pause 10 Hours
+    icon: mdi:timer-pause
+
+input_select:
+  trash_hp_fan_mode_preference:
+    name: Trash Heatpump Fan Preference
+    icon: mdi:fan-auto
+    options:
+      - Auto
+      - Low
+      - Med
+      - High
+    initial: Auto
+
+homeassistant:
+  customize:
+    switch.trash_hp_cooler:
+      hidden: true
+      friendly_name: "Trash Heatpump Mode — Cool"
+    switch.trash_hp_heater:
+      hidden: true
+      friendly_name: "Trash Heatpump Mode — Heat"
+    switch.trash_hp_fan:
+      hidden: true
+      friendly_name: "Trash Heatpump Mode — Fan"
+    switch.trash_hp_dry:
+      hidden: true
+      friendly_name: "Trash Heatpump Mode — Dry"

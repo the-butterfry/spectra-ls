@@ -1,6 +1,6 @@
 <!-- Description: Sidebar navigation for Spectra L/S GitHub Wiki pages published from docs/wiki sources. -->
-<!-- Version: 2026.04.22.7 -->
-<!-- Last updated: 2026-04-22 -->
+<!-- Version: 2026.05.02.8 -->
+<!-- Last updated: 2026-05-02 -->
 
 # Spectra L/S Wiki
 

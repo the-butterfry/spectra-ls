@@ -1,6 +1,6 @@
 ## Description: RP2040 firmware for Spectra LS input scanning and UART event transport.
-## Version: 2026.04.26.13
-## Last updated: 2026-04-26
+## Version: 2026.05.02.1
+## Last updated: 2026-05-02
 #
 # RP FILE CONTRACT:
 # - Owns hardware initialization and main-loop orchestration only.
@@ -93,10 +93,10 @@ ANALOG_FILTER_ALPHA_FAST = 0.55  # default EMA when moving quickly
 # and responsive small-movement behavior on volume + EQ path.
 # If future tuning regresses feel/endpoints, restore this constant set first.
 ANALOG_FILTER_ALPHA_SLOW_BY_NAME = {
-    "eq_bass_pot": 0.28,
-    "eq_mid_pot": 0.28,
-    "eq_treble_pot": 0.28,
-    "volume_pot": 0.30,
+    "eq_bass_pot": 0.24,
+    "eq_mid_pot": 0.24,
+    "eq_treble_pot": 0.24,
+    "volume_pot": 0.24,
 }
 ANALOG_FILTER_ALPHA_FAST_BY_NAME = {}
 ANALOG_FILTER_FAST_THRESHOLD_PCT = 2.5  # default % of full-scale to switch to fast
@@ -116,13 +116,13 @@ ANALOG_MIN_CHANGE_BY_NAME = {
     "eq_bass_pot": 2,
     "eq_mid_pot": 2,
     "eq_treble_pot": 2,
-    "volume_pot": 1,
+    "volume_pot": 2,
 }
 ANALOG_IDLE_LOCK_MS = 0  # idle gate disabled
 ANALOG_IDLE_MIN_CHANGE_BY_NAME = {}
 ANALOG_CONFIRM_SAMPLES_BY_NAME = {}
 ANALOG_CONFIRM_DELTA_BY_NAME = {}
-ANALOG_SEND_INTERVAL_MS = 20  # 0 disables rate limiting
+ANALOG_SEND_INTERVAL_MS = 30  # 0 disables rate limiting
 ANALOG_SNAP_ZERO_PCT = 0  # 0 disables snap
 ANALOG_SNAP_FULL_PCT = 0  # 0 disables snap
 ANALOG_SNAP_ZERO_PCT_BY_NAME = {

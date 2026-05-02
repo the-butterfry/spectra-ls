@@ -1,6 +1,6 @@
 <!-- Description: Copy/paste Home Assistant Dev Tools template diagnostics for Spectra LS System. -->
-<!-- Version: 2026.04.26.32 -->
-<!-- Last updated: 2026-04-26 -->
+<!-- Version: 2026.05.02.1 -->
+<!-- Last updated: 2026-05-02 -->
 
 # Spectra LS System — Dev Tools Template Validation
 
@@ -21,6 +21,7 @@
   - `docs/testing/raw/p3_s01_s02_closure_gate_check.jinja`
   - `docs/testing/raw/p3_s03_metadata_prep_validation.jinja`
   - `docs/testing/raw/f4_s01_capability_profile_validation.jinja`
+  - `docs/testing/raw/meta_oled_control_host_flapping_diagnostic.jinja`
 
 ## 1) Overall Spectra LS Health Check (Comprehensive)
 

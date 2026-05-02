@@ -1,6 +1,6 @@
-# Description: Diagnostics export for Spectra LS read-only shadow parity, Phase 2 scaffold snapshots, and Phase 6 control-center settings/readiness visibility.
-# Version: 2026.04.22.4
-# Last updated: 2026-04-22
+# Description: Diagnostics export for Spectra LS read-only shadow parity, Phase 2 scaffold snapshots, and Phase 6 control-center settings/readiness visibility, including shared MA authority-contract packet propagation.
+# Version: 2026.05.02.2
+# Last updated: 2026-05-02
 
 from __future__ import annotations
 
@@ -9,12 +9,14 @@ from typing import Any
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
+from .authority_contract import build_authority_contract_packet
 from .const import DOMAIN, LEGACY_SURFACES
 
 
 async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: ConfigEntry) -> dict[str, Any]:
     """Return diagnostics for a config entry."""
     coordinator = hass.data[DOMAIN][entry.entry_id]
+    shadow_snapshot = coordinator.data if isinstance(coordinator.data, dict) else {}
 
     source_states: dict[str, str] = {}
     for key, entity_id in LEGACY_SURFACES.items():
@@ -26,6 +28,7 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: ConfigE
         "control_center_settings": coordinator.data.get("write_controls", {}).get("control_center_settings", {}),
         "control_center_validation": coordinator.data.get("control_center_validation", {}),
         "control_center_last_attempt": coordinator.data.get("write_controls", {}).get("control_center_last_attempt", {}),
+        "authority_contract": build_authority_contract_packet(shadow_snapshot),
         "source_states": source_states,
-        "shadow_snapshot": coordinator.data,
+        "shadow_snapshot": shadow_snapshot,
     }

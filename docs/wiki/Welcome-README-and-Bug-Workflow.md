@@ -1,6 +1,6 @@
 <!-- Description: First-stop operator page for orientation, support routing, and high-quality bug submission workflow. -->
-<!-- Version: 2026.05.01.1 -->
-<!-- Last updated: 2026-05-01 -->
+<!-- Version: 2026.05.02.1 -->
+<!-- Last updated: 2026-05-02 -->
 
 # Welcome, README, and Bug Workflow
 
@@ -39,6 +39,12 @@ When submitting a bug:
 4. Include branch/commit/version context.
 5. State user impact and any workaround.
 
+For scheduler/metadata-bridge behavior-visible reports, also include:
+
+1. Write-path lane classification (`scheduler` or `metadata_bridge`).
+2. Canonical owner file routing (`packages/ma_control_hub/template.inc` or `custom_components/spectra_ls/registry.py`).
+3. Slice-C intake integrity confirmation (no owner-bypass/forked-lane intent).
+
 Expected result:
 
 - Maintainers can reproduce quickly and route the issue without back-and-forth.
@@ -68,3 +74,12 @@ Expected result:
 - Version context (`branch`, `commit`, deployment timestamp):
 - Evidence attached (logs/config snippets/screenshots):
 - Impact + workaround (if any):
+
+### Slice-C add-on fields (when scheduler/metadata bridge is involved)
+
+- Write-path lane (`scheduler` / `metadata_bridge` / `not_applicable`):
+- Canonical owner file:
+- Owner-bypass confirmation (`no` expected):
+- Parity-anchor expectation (runtime + component):
+
+See also: [Contributing Workflow](Contributing-Workflow) for PR-side `Slice-C write-path integrity` checklist expectations.

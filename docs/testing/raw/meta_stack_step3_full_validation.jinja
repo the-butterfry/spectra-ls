@@ -1,6 +1,6 @@
 {# Description: Full copy/paste Developer Tools template for Step-3 metadata-stack runtime validation (scheduler + metadata policy + stale root-cause + ESP UX gate). #}
-{# Version: 2026.04.29.2 #}
-{# Last updated: 2026-04-29 #}
+{# Version: 2026.05.02.1 #}
+{# Last updated: 2026-05-02 #}
 
 {# =========================
   Meta Stack Step-3 Full Validation (Runtime)
@@ -122,18 +122,14 @@
 {% set media_class = media_class_raw | lower %}
 {% set media_class_valid = media_class in ['music', 'non_music', 'none'] %}
 {% set display_allowed = is_state('binary_sensor.now_playing_display_allowed', 'on') %}
-{% set music_guard_active = is_state_attr('binary_sensor.now_playing_display_allowed', 'music_guard_active', true) %}
 {% set preview_key = states('sensor.now_playing_preview_key') %}
 {% set preview_key_valid = preview_key not in invalid %}
-{% set preview_s = state_attr('sensor.now_playing_media_class', 'non_music_preview_s') | int(30) %}
 {% set preview_age_s = (as_timestamp(now()) - as_timestamp(states.sensor.now_playing_preview_key.last_changed)) | float(9999) if preview_key_valid else none %}
 {% set media_contract_expected_display =
   true if media_class == 'music'
   else (
-    false if media_class == 'none'
-    else (
-      ((preview_age_s is not none and preview_age_s < preview_s) and not music_guard_active) if preview_key_valid else false
-    )
+    false if media_class in ['none', 'non_music']
+    else false
   )
 %}
 {% set no_audio_video_context_expected =
@@ -143,8 +139,8 @@
   suppression_reason == 'entity_missing' and
   np_state in ['idle', 'unknown', 'unavailable', 'none']
 %}
-{% set media_contract_timing_ready = media_class != 'non_music' or (not preview_key_valid) or (preview_age_s is not none) %}
-{% set media_contract_display_match = display_allowed == media_contract_expected_display if media_class_valid and media_contract_timing_ready else false %}
+{% set media_contract_timing_ready = true %}
+{% set media_contract_display_match = display_allowed == media_contract_expected_display if media_class_valid else false %}
 {% set media_contract_surface_ready = media_class_valid and states('binary_sensor.now_playing_display_allowed') not in invalid %}
 {% set media_contract_unknown_expected_ok = no_audio_video_context_expected and media_class in ['unknown', 'unavailable', 'none', ''] and not display_allowed %}
 {% set media_contract_gate_ok = (media_contract_surface_ready and media_contract_timing_ready and media_contract_display_match) or media_contract_unknown_expected_ok %}
@@ -155,11 +151,8 @@
   else (
     'surface_missing_or_unknown' if not media_contract_surface_ready
     else (
-      'preview_timing_unavailable' if not media_contract_timing_ready
-      else (
-        'display_gate_mismatch' if not media_contract_display_match
-        else 'ok'
-      )
+      'display_gate_mismatch' if not media_contract_display_match
+      else 'ok'
     )
   )
   )
@@ -252,9 +245,7 @@
 - `now_playing_media_class`: **{{ media_class if media_class_valid else ('invalid:' ~ media_class_raw) }}**
 - `display_allowed`: **{{ display_allowed }}**
 - `preview_key`: **{{ preview_key if preview_key_valid else 'n/a' }}**
-- `preview_window_s`: **{{ preview_s }}**
 - `preview_key_age_s`: **{{ preview_age_s | round(1) if preview_age_s is not none else 'n/a' }}**
-- `music_guard_active`: **{{ music_guard_active }}**
 - `expected_display_allowed`: **{{ media_contract_expected_display if media_class_valid else 'n/a' }}**
 - `contract_surface_ready`: **{{ media_contract_surface_ready }}**
 - `contract_timing_ready`: **{{ media_contract_timing_ready }}**

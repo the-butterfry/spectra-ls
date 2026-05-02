@@ -1,6 +1,17 @@
-# Description: Service definitions for Spectra LS Phase 2/3 diagnostics, Phase 4 Slice-01/Slice-03 diagnostics scaffolding, Phase 5 metadata trial contract, and Phase 6/8 control-center settings, fast-remap presets, selection-ownership migration services, and execution.
-# Version: 2026.04.28.1
-# Last updated: 2026-04-28
+# Description: Service definitions for Spectra LS Phase 2/3 diagnostics, Phase 4 Slice-01/Slice-03 diagnostics scaffolding, Phase 5 metadata trial contract, and Phase 6/8 control-center settings, fast-remap presets, selection-ownership migration services, execution, and authority-contract response echo.
+# Version: 2026.05.02.1
+# Last updated: 2026-05-02
+
+get_authority_contract:
+  name: Get authority contract
+  description: Return normalized MA authority packet (`authority_mode`, `authority_gate_results`, `authority_reasons`) from the current metadata-prep snapshot.
+  fields:
+    refresh:
+      name: Refresh metadata prep first
+      description: If true, refresh metadata-prep diagnostics before returning authority packet (default true).
+      required: false
+      selector:
+        boolean:
 
 validate_scheduler:
   name: Validate scheduler

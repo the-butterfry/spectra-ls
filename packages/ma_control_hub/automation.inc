@@ -1,6 +1,6 @@
 # Description: MA control hub automations for startup sync, target selection, and override lifecycle.
-# Version: 2026.04.27.3
-# Last updated: 2026-04-27
+# Version: 2026.05.01.1
+# Last updated: 2026-05-01
 # HUB MUST-READ: Contract parser methodology.
 # - For complex attributes (`rooms`, `candidates_json`, etc.), prefer native sequence/mapping values first.
 # - Only parse string JSON when trimmed payload starts with `[` or `{` and is not unknown/unavailable/none/''.
@@ -9,6 +9,7 @@
 
 - id: ma_update_target_options_start
   alias: "MA: Update target options (startup)"
+  mode: restart
   trigger:
     - platform: homeassistant
       event: start

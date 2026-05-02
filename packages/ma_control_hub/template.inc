@@ -1,6 +1,6 @@
 # Description: Template entities for ma_control_hub runtime routing, metadata, and now-playing state surfaces.
-# Version: 2026.04.29.7
-# Last updated: 2026-04-29
+# Version: 2026.05.02.7
+# Last updated: 2026-05-02
 # PARITY DIRECTIVE (until full cutover): any behavior/contract change here requires same-slice custom-component parity review,
 # explicit implemented/shim/defer disposition in docs/CHANGELOG.md, and version-metadata review on both runtime and component tracks.
 # HUB MUST-READ: Contract parser methodology.
@@ -601,6 +601,31 @@
         {% if t in ['none','unknown','unavailable',''] %}
           {{ '' }}
         {% else %}
+          {% set playing_stale_s = states('input_number.ma_meta_stale_s') | float(45) %}
+          {% set paused_hide_s = states('input_number.ma_meta_paused_hide_s') | float(600) %}
+          {% set sticky_meta = states('sensor.ma_active_meta_entity') %}
+          {% set sticky_valid = sticky_meta not in ['','none','unknown','unavailable'] and states[sticky_meta] is not none %}
+          {% set np = states('sensor.now_playing_entity') %}
+          {% set np_valid = np not in ['','none','unknown','unavailable'] and states[np] is not none %}
+          {% set np_state = (states(np) | lower) if np_valid else '' %}
+          {% set np_play_state = ((state_attr(np,'play_state') if np_valid else '') | lower) %}
+          {% set np_is_playing = (state_attr(np,'is_playing') if np_valid else none) %}
+          {% set np_is_paused = (state_attr(np,'is_paused') if np_valid else none) %}
+          {% set np_pos_updated = (state_attr(np,'media_position_updated_at') if np_valid else none) %}
+          {% set np_pos_ts = as_timestamp(np_pos_updated) if np_pos_updated is not none else 0 %}
+          {% set np_pos_age = (as_timestamp(now()) - np_pos_ts) if np_pos_ts > 0 else 9999 %}
+          {% set np_pos = (state_attr(np,'media_position') if np_valid else 0) | float(0) %}
+          {% set np_dur = (state_attr(np,'media_duration') if np_valid else 0) | float(0) %}
+          {% set np_recent_play = np_pos_age < playing_stale_s %}
+          {% set np_recent_pause = np_pos_age < paused_hide_s %}
+          {% set np_playing = np_state == 'playing' or np_play_state in ['play','playing'] or (np_is_playing is true) %}
+          {% set np_paused = np_state == 'paused' or np_play_state in ['pause','paused'] or (np_is_paused is true) %}
+          {% set np_track_end_stuck = np_playing and np_dur > 0 and np_pos >= (np_dur - 1) and np_pos_age > 5 %}
+          {% set np_playing_fresh = np_playing and (np_pos_ts == 0 or np_recent_play) and (not np_track_end_stuck) %}
+          {% set sticky_hold = np_playing_fresh or (np_paused and np_recent_pause) %}
+          {% if sticky_valid and sticky_hold %}
+            {{ sticky_meta }}
+          {% else %}
           {% set rooms_raw = state_attr('sensor.spectra_ls_rooms_json','rooms_json') %}
           {% set rooms = [] %}
           {% if rooms_raw is sequence and rooms_raw is not string and rooms_raw is not mapping %}
@@ -634,8 +659,6 @@
           {% set conf_min = states('input_number.ma_meta_confidence_min') | int(4) %}
           {% set detected_ok = detected not in ['','none','unknown','unavailable'] and detected_conf >= conf_min %}
           {% set mapped = (entry.meta if entry is not none and entry.meta is defined and entry.meta not in ['','none','unknown','unavailable'] else '') %}
-          {% set playing_stale_s = states('input_number.ma_meta_stale_s') | float(45) %}
-          {% set paused_hide_s = states('input_number.ma_meta_paused_hide_s') | float(600) %}
           {% set mapped_valid = mapped not in ['','none','unknown','unavailable'] and states[mapped] is not none %}
           {% set mapped_state = (states(mapped) | lower) if mapped_valid else '' %}
           {% set mapped_play_state = ((state_attr(mapped,'play_state') if mapped_valid else '') | lower) %}
@@ -694,6 +717,7 @@
           {% set meta_state = states(meta_candidate) if meta_candidate not in ['','none','unknown','unavailable'] else '' %}
           {% set meta_valid = meta_candidate not in ['','none','unknown','unavailable'] and meta_state not in ['unknown','unavailable',''] %}
           {{ meta_candidate if meta_valid else '' }}
+          {% endif %}
         {% endif %}
     - name: MA Active Player ID
       state: >-
@@ -758,6 +782,8 @@
             'ma_track': (cm.metadata.title if cm is mapping and cm.metadata is defined and cm.metadata.title is defined else ''),
             'ma_artist': (cm.artist if cm is mapping and cm.artist is defined else ''),
             'ma_album': (cm.album if cm is mapping and cm.album is defined else ''),
+            'ma_duration': (cm.duration if cm is mapping and cm.duration is defined else (cm.metadata.duration if cm is mapping and cm.metadata is defined and cm.metadata.duration is defined else (p.duration if p is mapping and p.duration is defined else (p.media_duration if p is mapping and p.media_duration is defined else 0)))),
+            'ma_elapsed': (p.elapsed_time if p is mapping and p.elapsed_time is defined else (p.corrected_elapsed_time if p is mapping and p.corrected_elapsed_time is defined else (p.position if p is mapping and p.position is defined else 0))),
             'ma_app': (p.app_name if p is mapping and p.app_name is defined else ''),
             'ma_source': (p.active_source if p is mapping and p.active_source is defined else ''),
             'stream_title': (sm.title if sm is mapping and sm.title is defined else ''),
@@ -931,7 +957,61 @@
           {% else %}
             {% set meta = states('sensor.ma_active_meta_entity') %}
             {% set meta = (meta if meta not in ['','none','unknown','unavailable'] else t) %}
-            {{ (state_attr(meta, 'media_duration') or state_attr(t, 'media_duration') or 0) | float(0) }}
+            {% set f_raw = state_attr('sensor.ma_active_player_id_resolved','player_fields_json') | default('{}', true) %}
+            {% set f = f_raw if (f_raw is mapping) else ((f_raw | from_json) if (f_raw is string and (f_raw | trim).startswith('{')) else {}) %}
+            {% set ma_duration = (f.ma_duration if f is mapping and f.ma_duration is defined else 0) | float(0) %}
+            {% set np = states('sensor.now_playing_entity') %}
+            {% set ap_id = states('sensor.ma_active_player_id') %}
+            {% set ap_resolved = states('sensor.ma_active_player_id_resolved') %}
+            {% set rows = state_attr('sensor.ma_players','result') or [] %}
+            {% set candidates = [t, meta, np, ap_id, ap_resolved] %}
+            {% set ns = namespace(duration=0.0) %}
+            {% for row in rows %}
+              {% if ns.duration <= 0 and row is mapping %}
+                {% set p_ent = (row.entity_id if row.entity_id is defined else '') | string %}
+                {% set p_pid = (row.player_id if row.player_id is defined else '') | string %}
+                {% set cm = (row.current_media if row.current_media is defined else {}) %}
+                {% set hit = false %}
+                {% for c in candidates %}
+                  {% if not hit and c not in ['', 'none', 'unknown', 'unavailable', none] %}
+                    {% set c_raw = c | string %}
+                    {% set c_short = c_raw.split('.')[-1] %}
+                    {% if p_ent == c_raw or p_pid == c_raw or p_pid == c_short or p_ent == ('media_player.' ~ c_short) %}
+                      {% set hit = true %}
+                    {% endif %}
+                  {% endif %}
+                {% endfor %}
+                {% if hit %}
+                  {% set row_duration = (cm.duration if cm is mapping and cm.duration is defined else (cm.metadata.duration if cm is mapping and cm.metadata is defined and cm.metadata.duration is defined else (row.duration if row.duration is defined else (row.media_duration if row.media_duration is defined else 0)))) | float(0) %}
+                  {% if row_duration > 0 %}
+                    {% set ns.duration = row_duration %}
+                  {% endif %}
+                {% endif %}
+              {% endif %}
+            {% endfor %}
+            {% set title_ref = (states('sensor.ma_active_title') or states('sensor.now_playing_title') or '') | string | trim %}
+            {% set artist_ref = (states('sensor.ma_active_artist') or states('sensor.now_playing_artist') or '') | string | trim %}
+            {% set ns_ma = namespace(duration=0.0) %}
+            {% for mp in states.media_player %}
+              {% if ns_ma.duration <= 0 %}
+                {% set app_id = (mp.attributes.app_id if mp.attributes is defined and mp.attributes.app_id is defined else '') | string | lower %}
+                {% set app_name = (mp.attributes.app_name if mp.attributes is defined and mp.attributes.app_name is defined else '') | string | lower %}
+                {% set src = (mp.attributes.source if mp.attributes is defined and mp.attributes.source is defined else '') | string | lower %}
+                {% set ma_hint = ('music_assistant' in app_id) or ('music assistant' in app_name) or ('music assistant queue' in src) %}
+                {% set mp_state = (mp.state | lower) if mp is not none else '' %}
+                {% set mp_play_state = (mp.attributes.play_state if mp.attributes is defined and mp.attributes.play_state is defined else '') | string | lower %}
+                {% set mp_active = mp_state in ['playing','paused'] or mp_play_state in ['play','playing','pause','paused'] or ((mp.attributes.is_playing if mp.attributes is defined and mp.attributes.is_playing is defined else none) is true) or ((mp.attributes.is_paused if mp.attributes is defined and mp.attributes.is_paused is defined else none) is true) %}
+                {% set mp_title = (mp.attributes.media_title if mp.attributes is defined and mp.attributes.media_title is defined else '') | string | trim %}
+                {% set mp_artist = (mp.attributes.media_artist if mp.attributes is defined and mp.attributes.media_artist is defined else '') | string | trim %}
+                {% set title_match = title_ref == '' or (mp_title != '' and (mp_title | lower) == (title_ref | lower)) %}
+                {% set artist_match = artist_ref == '' or mp_artist == '' or (mp_artist | lower) == (artist_ref | lower) %}
+                {% set mp_duration = (mp.attributes.media_duration if mp.attributes is defined and mp.attributes.media_duration is defined else 0) | float(0) %}
+                {% if ma_hint and mp_active and title_match and artist_match and mp_duration > 0 %}
+                  {% set ns_ma.duration = mp_duration %}
+                {% endif %}
+              {% endif %}
+            {% endfor %}
+            {{ (state_attr(meta, 'media_duration') or state_attr(t, 'media_duration') or ma_duration or ns.duration or ns_ma.duration or 0) | float(0) }}
           {% endif %}
         resolved_position: >-
           {% set t = states('input_select.ma_active_target') %}
@@ -940,7 +1020,38 @@
           {% else %}
             {% set meta = states('sensor.ma_active_meta_entity') %}
             {% set meta = (meta if meta not in ['','none','unknown','unavailable'] else t) %}
-            {{ (state_attr(meta, 'media_position') or state_attr(t, 'media_position') or 0) | float(0) }}
+            {% set f_raw = state_attr('sensor.ma_active_player_id_resolved','player_fields_json') | default('{}', true) %}
+            {% set f = f_raw if (f_raw is mapping) else ((f_raw | from_json) if (f_raw is string and (f_raw | trim).startswith('{')) else {}) %}
+            {% set ma_elapsed = (f.ma_elapsed if f is mapping and f.ma_elapsed is defined else 0) | float(0) %}
+            {% set np = states('sensor.now_playing_entity') %}
+            {% set ap_id = states('sensor.ma_active_player_id') %}
+            {% set ap_resolved = states('sensor.ma_active_player_id_resolved') %}
+            {% set rows = state_attr('sensor.ma_players','result') or [] %}
+            {% set candidates = [t, meta, np, ap_id, ap_resolved] %}
+            {% set ns = namespace(position=0.0) %}
+            {% for row in rows %}
+              {% if ns.position <= 0 and row is mapping %}
+                {% set p_ent = (row.entity_id if row.entity_id is defined else '') | string %}
+                {% set p_pid = (row.player_id if row.player_id is defined else '') | string %}
+                {% set hit = false %}
+                {% for c in candidates %}
+                  {% if not hit and c not in ['', 'none', 'unknown', 'unavailable', none] %}
+                    {% set c_raw = c | string %}
+                    {% set c_short = c_raw.split('.')[-1] %}
+                    {% if p_ent == c_raw or p_pid == c_raw or p_pid == c_short or p_ent == ('media_player.' ~ c_short) %}
+                      {% set hit = true %}
+                    {% endif %}
+                  {% endif %}
+                {% endfor %}
+                {% if hit %}
+                  {% set row_pos = (row.elapsed_time if row.elapsed_time is defined else (row.corrected_elapsed_time if row.corrected_elapsed_time is defined else (row.position if row.position is defined else (row.media_position if row.media_position is defined else 0)))) | float(0) %}
+                  {% if row_pos > 0 %}
+                    {% set ns.position = row_pos %}
+                  {% endif %}
+                {% endif %}
+              {% endif %}
+            {% endfor %}
+            {{ (state_attr(meta, 'media_position') or state_attr(t, 'media_position') or ma_elapsed or ns.position or 0) | float(0) }}
           {% endif %}
         resolved_volume: >-
           {% set t = states('input_select.ma_active_target') %}
@@ -1054,6 +1165,8 @@
             'ma_uri': (cm.uri if cm is mapping and cm.uri is defined else ''),
             'ma_artist': (cm.artist if cm is mapping and cm.artist is defined else ''),
             'ma_album': (cm.album if cm is mapping and cm.album is defined else ''),
+            'ma_duration': (cm.duration if cm is mapping and cm.duration is defined else (cm.metadata.duration if cm is mapping and cm.metadata is defined and cm.metadata.duration is defined else (p.duration if p is mapping and p.duration is defined else (p.media_duration if p is mapping and p.media_duration is defined else 0)))),
+            'ma_elapsed': (p.elapsed_time if p is mapping and p.elapsed_time is defined else (p.corrected_elapsed_time if p is mapping and p.corrected_elapsed_time is defined else (p.position if p is mapping and p.position is defined else 0))),
             'ma_source': (p.active_source if p is mapping and p.active_source is defined else ''),
             'ma_state': (p.playback_state if p is mapping and p.playback_state is defined else ''),
             'stream_title': (sm.title if sm is mapping and sm.title is defined else ''),
@@ -1169,10 +1282,97 @@
           {% endif %}
         resolved_position: >-
           {% set t = states('sensor.now_playing_entity') %}
-          {{ (state_attr(t,'media_position') if t not in ['','unknown','unavailable',none] else 0) | float(0) }}
+          {% set f_raw = state_attr('sensor.now_playing_entity','player_fields_json') | default('{}', true) %}
+          {% set f = f_raw if (f_raw is mapping) else ((f_raw | from_json) if (f_raw is string and (f_raw | trim).startswith('{')) else {}) %}
+          {% set ma_elapsed = (f.ma_elapsed if f is mapping and f.ma_elapsed is defined else 0) | float(0) %}
+          {% set active_target = states('input_select.ma_active_target') %}
+          {% set active_meta = states('sensor.ma_active_meta_entity') %}
+          {% set ap_id = states('sensor.ma_active_player_id') %}
+          {% set ap_resolved = states('sensor.ma_active_player_id_resolved') %}
+          {% set rows = state_attr('sensor.ma_players','result') or [] %}
+          {% set candidates = [t, active_target, active_meta, ap_id, ap_resolved] %}
+          {% set ns = namespace(position=0.0) %}
+          {% for row in rows %}
+            {% if ns.position <= 0 and row is mapping %}
+              {% set p_ent = (row.entity_id if row.entity_id is defined else '') | string %}
+              {% set p_pid = (row.player_id if row.player_id is defined else '') | string %}
+              {% set hit = false %}
+              {% for c in candidates %}
+                {% if not hit and c not in ['', 'none', 'unknown', 'unavailable', none] %}
+                  {% set c_raw = c | string %}
+                  {% set c_short = c_raw.split('.')[-1] %}
+                  {% if p_ent == c_raw or p_pid == c_raw or p_pid == c_short or p_ent == ('media_player.' ~ c_short) %}
+                    {% set hit = true %}
+                  {% endif %}
+                {% endif %}
+              {% endfor %}
+              {% if hit %}
+                {% set row_pos = (row.elapsed_time if row.elapsed_time is defined else (row.corrected_elapsed_time if row.corrected_elapsed_time is defined else (row.position if row.position is defined else (row.media_position if row.media_position is defined else 0)))) | float(0) %}
+                {% if row_pos > 0 %}
+                  {% set ns.position = row_pos %}
+                {% endif %}
+              {% endif %}
+            {% endif %}
+          {% endfor %}
+          {{ ((state_attr(t,'media_position') if t not in ['','unknown','unavailable',none] else 0) or ma_elapsed or ns.position or 0) | float(0) }}
         resolved_duration: >-
           {% set t = states('sensor.now_playing_entity') %}
-          {{ (state_attr(t,'media_duration') if t not in ['','unknown','unavailable',none] else 0) | float(0) }}
+          {% set f_raw = state_attr('sensor.now_playing_entity','player_fields_json') | default('{}', true) %}
+          {% set f = f_raw if (f_raw is mapping) else ((f_raw | from_json) if (f_raw is string and (f_raw | trim).startswith('{')) else {}) %}
+          {% set ma_duration = (f.ma_duration if f is mapping and f.ma_duration is defined else 0) | float(0) %}
+          {% set active_target = states('input_select.ma_active_target') %}
+          {% set active_meta = states('sensor.ma_active_meta_entity') %}
+          {% set ap_id = states('sensor.ma_active_player_id') %}
+          {% set ap_resolved = states('sensor.ma_active_player_id_resolved') %}
+          {% set rows = state_attr('sensor.ma_players','result') or [] %}
+          {% set candidates = [t, active_target, active_meta, ap_id, ap_resolved] %}
+          {% set ns = namespace(duration=0.0) %}
+          {% for row in rows %}
+            {% if ns.duration <= 0 and row is mapping %}
+              {% set p_ent = (row.entity_id if row.entity_id is defined else '') | string %}
+              {% set p_pid = (row.player_id if row.player_id is defined else '') | string %}
+              {% set cm = (row.current_media if row.current_media is defined else {}) %}
+              {% set hit = false %}
+              {% for c in candidates %}
+                {% if not hit and c not in ['', 'none', 'unknown', 'unavailable', none] %}
+                  {% set c_raw = c | string %}
+                  {% set c_short = c_raw.split('.')[-1] %}
+                  {% if p_ent == c_raw or p_pid == c_raw or p_pid == c_short or p_ent == ('media_player.' ~ c_short) %}
+                    {% set hit = true %}
+                  {% endif %}
+                {% endif %}
+              {% endfor %}
+              {% if hit %}
+                {% set row_duration = (cm.duration if cm is mapping and cm.duration is defined else (cm.metadata.duration if cm is mapping and cm.metadata is defined and cm.metadata.duration is defined else (row.duration if row.duration is defined else (row.media_duration if row.media_duration is defined else 0)))) | float(0) %}
+                {% if row_duration > 0 %}
+                  {% set ns.duration = row_duration %}
+                {% endif %}
+              {% endif %}
+            {% endif %}
+          {% endfor %}
+          {% set title_ref = (states('sensor.now_playing_title') or '') | string | trim %}
+          {% set artist_ref = (states('sensor.now_playing_artist') or '') | string | trim %}
+          {% set ns_ma = namespace(duration=0.0) %}
+          {% for mp in states.media_player %}
+            {% if ns_ma.duration <= 0 %}
+              {% set app_id = (mp.attributes.app_id if mp.attributes is defined and mp.attributes.app_id is defined else '') | string | lower %}
+              {% set app_name = (mp.attributes.app_name if mp.attributes is defined and mp.attributes.app_name is defined else '') | string | lower %}
+              {% set src = (mp.attributes.source if mp.attributes is defined and mp.attributes.source is defined else '') | string | lower %}
+              {% set ma_hint = ('music_assistant' in app_id) or ('music assistant' in app_name) or ('music assistant queue' in src) %}
+              {% set mp_state = (mp.state | lower) if mp is not none else '' %}
+              {% set mp_play_state = (mp.attributes.play_state if mp.attributes is defined and mp.attributes.play_state is defined else '') | string | lower %}
+              {% set mp_active = mp_state in ['playing','paused'] or mp_play_state in ['play','playing','pause','paused'] or ((mp.attributes.is_playing if mp.attributes is defined and mp.attributes.is_playing is defined else none) is true) or ((mp.attributes.is_paused if mp.attributes is defined and mp.attributes.is_paused is defined else none) is true) %}
+              {% set mp_title = (mp.attributes.media_title if mp.attributes is defined and mp.attributes.media_title is defined else '') | string | trim %}
+              {% set mp_artist = (mp.attributes.media_artist if mp.attributes is defined and mp.attributes.media_artist is defined else '') | string | trim %}
+              {% set title_match = title_ref == '' or (mp_title != '' and (mp_title | lower) == (title_ref | lower)) %}
+              {% set artist_match = artist_ref == '' or mp_artist == '' or (mp_artist | lower) == (artist_ref | lower) %}
+              {% set mp_duration = (mp.attributes.media_duration if mp.attributes is defined and mp.attributes.media_duration is defined else 0) | float(0) %}
+              {% if ma_hint and mp_active and title_match and artist_match and mp_duration > 0 %}
+                {% set ns_ma.duration = mp_duration %}
+              {% endif %}
+            {% endif %}
+          {% endfor %}
+          {{ ((state_attr(t,'media_duration') if t not in ['','unknown','unavailable',none] else 0) or ma_duration or ns.duration or ns_ma.duration or 0) | float(0) }}
         resolved_volume: >-
           {% set t = states('sensor.now_playing_entity') %}
           {{ (state_attr(t,'volume_level') if t not in ['','unknown','unavailable',none] else 0) | float(0) }}
@@ -1287,13 +1487,37 @@
             {% set content_l = (content_type | lower) %}
             {% set music_score = 0 %}
             {% set video_score = 0 %}
+            {% set youtube_context = ('youtube' in blob) and ('youtube music' not in blob) and ('yt music' not in blob) %}
+            {% set youtube_music_hint =
+              ('youtube music' in blob)
+              or ('yt music' in blob)
+              or (' mix ' in (' ' ~ blob ~ ' '))
+              or (' remix ' in (' ' ~ blob ~ ' '))
+              or (' dj ' in (' ' ~ blob ~ ' '))
+              or (' radio ' in (' ' ~ blob ~ ' '))
+              or (' live set' in blob)
+              or ('house' in blob)
+              or ('trance' in blob)
+              or ('lofi' in blob)
+            %}
+            {% set youtube_video_hint =
+              youtube_context and (
+                content_l in ['video','movie','tvshow','episode','channel']
+                or (' trailer ' in (' ' ~ blob ~ ' '))
+                or (' movie ' in (' ' ~ blob ~ ' '))
+                or (' episode ' in (' ' ~ blob ~ ' '))
+                or (' season ' in (' ' ~ blob ~ ' '))
+                or ('tv' in blob)
+              )
+            %}
             {% if content_l in ['music','track','album','playlist','podcast','radio'] %}{% set music_score = music_score + 4 %}{% endif %}
             {% if content_l in ['video','movie','tvshow','episode','channel'] %}{% set video_score = video_score + 4 %}{% endif %}
             {% if artist | trim != '' %}{% set music_score = music_score + 2 %}{% endif %}
             {% if album | trim != '' %}{% set music_score = music_score + 1 %}{% endif %}
             {% if 'music assistant' in blob or 'spotify' in blob or 'tidal' in blob or 'qobuz' in blob or 'deezer' in blob or 'pandora' in blob or 'apple music' in blob or 'youtube music' in blob or 'yt music' in blob or 'plexamp' in blob or 'tunein' in blob %}{% set music_score = music_score + 3 %}{% endif %}
+            {% if youtube_music_hint and not youtube_video_hint %}{% set music_score = music_score + 2 %}{% endif %}
             {% if 'netflix' in blob or 'hulu' in blob or 'prime video' in blob or 'disney' in blob or 'max' in blob or 'hbo' in blob or 'jellyfin' in blob or 'emby' in blob or 'kodi' in blob or 'roku' in blob or 'apple tv' in blob or 'movie' in blob or 'episode' in blob or 'season' in blob %}{% set video_score = video_score + 3 %}{% endif %}
-            {% if 'youtube' in blob and 'youtube music' not in blob and 'yt music' not in blob %}{% set video_score = video_score + 2 %}{% endif %}
+            {% if youtube_video_hint %}{% set video_score = video_score + 2 %}{% endif %}
             {% if 'plex' in blob and 'plexamp' not in blob %}{% set video_score = video_score + 1 %}{% endif %}
             {% set prev = states('sensor.now_playing_media_class') %}
             {% set prev_valid = prev in ['music','non_music'] %}
@@ -1308,30 +1532,10 @@
             {% endif %}
           {% endif %}
         {% endif %}
-      attributes:
-        non_music_preview_s: 30
+      attributes: {}
     - name: Now Playing Preview Key
       state: >-
-        {% set media_class = states('sensor.now_playing_media_class') %}
-        {% set t = states('sensor.now_playing_entity') %}
-        {% if media_class != 'non_music' %}
-          {{ '' }}
-        {% else %}
-          {% if t in ['','none','unknown','unavailable'] %}
-            {% set source_now = states('sensor.now_playing_source') | string | lower | trim %}
-            {% set app_now = states('sensor.ma_active_app') | string | lower | trim %}
-            {% if source_now in ['','none','unknown','unavailable'] and app_now in ['','none','unknown','unavailable'] %}
-              {{ '' }}
-            {% else %}
-              {{ ('fallback|' ~ source_now ~ '|' ~ app_now) | trim }}
-            {% endif %}
-          {% else %}
-            {% set title = (state_attr('sensor.now_playing_entity','resolved_title') or '') | string %}
-            {% set artist = (state_attr('sensor.now_playing_entity','resolved_artist') or '') | string %}
-            {% set source = (state_attr('sensor.now_playing_entity','resolved_source') or '') | string %}
-            {{ (t ~ '|' ~ title ~ '|' ~ artist ~ '|' ~ source) | lower | trim }}
-          {% endif %}
-        {% endif %}
+        {{ '' }}
     - name: MA Control Hosts
       state: >-
         {% set target = states('input_select.ma_active_target') %}
@@ -1683,11 +1887,38 @@
           {{ ns.labels | tojson }}
     - name: MA Control Host
       state: >-
+        {% set sticky_host = states('sensor.ma_control_host') %}
+        {% set sticky_valid = sticky_host not in ['','none','unknown','unavailable'] %}
+        {% set np = states('sensor.now_playing_entity') %}
+        {% set np_valid = np not in ['','none','unknown','unavailable'] and states[np] is not none %}
+        {% set playing_stale_s = states('input_number.ma_meta_stale_s') | float(45) %}
+        {% set paused_hide_s = states('input_number.ma_meta_paused_hide_s') | float(600) %}
+        {% set np_state = (states(np) | lower) if np_valid else '' %}
+        {% set np_play_state = ((state_attr(np,'play_state') if np_valid else '') | lower) %}
+        {% set np_is_playing = (state_attr(np,'is_playing') if np_valid else none) %}
+        {% set np_is_paused = (state_attr(np,'is_paused') if np_valid else none) %}
+        {% set np_pos_updated = (state_attr(np,'media_position_updated_at') if np_valid else none) %}
+        {% set np_pos_ts = as_timestamp(np_pos_updated) if np_pos_updated is not none else 0 %}
+        {% set np_pos_age = (as_timestamp(now()) - np_pos_ts) if np_pos_ts > 0 else 9999 %}
+        {% set np_pos = (state_attr(np,'media_position') if np_valid else 0) | float(0) %}
+        {% set np_dur = (state_attr(np,'media_duration') if np_valid else 0) | float(0) %}
+        {% set np_recent_play = np_pos_age < playing_stale_s %}
+        {% set np_recent_pause = np_pos_age < paused_hide_s %}
+        {% set np_playing = np_state == 'playing' or np_play_state in ['play','playing'] or (np_is_playing is true) %}
+        {% set np_paused = np_state == 'paused' or np_play_state in ['pause','paused'] or (np_is_paused is true) %}
+        {% set np_track_end_stuck = np_playing and np_dur > 0 and np_pos >= (np_dur - 1) and np_pos_age > 5 %}
+        {% set np_playing_fresh = np_playing and (np_pos_ts == 0 or np_recent_play) and (not np_track_end_stuck) %}
+        {% set sticky_hold = np_playing_fresh or (np_paused and np_recent_pause) %}
         {% set hosts = states('sensor.ma_control_hosts') %}
+        {% set hosts_resolved = hosts not in ['','none','unknown','unavailable'] %}
+        {% if sticky_valid and sticky_hold and not hosts_resolved %}
+          {{ sticky_host }}
+        {% else %}
         {% if ',' in hosts %}
           {{ hosts.split(',')[0] }}
         {% else %}
           {{ hosts }}
+        {% endif %}
         {% endif %}
     - name: MA Active Target By Host
       state: >-
@@ -1858,164 +2089,10 @@
 - binary_sensor:
     - name: Now Playing Display Allowed
       state: >-
-        {% set media_class = states('sensor.now_playing_media_class') %}
-        {% set now_entity = states('sensor.now_playing_entity') %}
-        {% set playing_stale_s = states('input_number.ma_meta_stale_s') | float(45) %}
-        {% set paused_hide_s = states('input_number.ma_meta_paused_hide_s') | float(600) %}
-        {% set ns = namespace(music_guard_active=false) %}
-        {% for e in states.media_player %}
-          {% if not ns.music_guard_active %}
-            {% set ent = e.entity_id %}
-            {% if ent != now_entity %}
-              {% set st = (e.state | lower) if e is not none else '' %}
-              {% set play_state = ((e.attributes.play_state if e.attributes is defined and e.attributes.play_state is defined else '') | lower) %}
-              {% set is_playing = (e.attributes.is_playing if e.attributes is defined and e.attributes.is_playing is defined else none) %}
-              {% set is_paused = (e.attributes.is_paused if e.attributes is defined and e.attributes.is_paused is defined else none) %}
-              {% set pos_updated = (e.attributes.media_position_updated_at if e.attributes is defined and e.attributes.media_position_updated_at is defined else none) %}
-              {% set pos_ts = as_timestamp(pos_updated) if pos_updated is not none else 0 %}
-              {% set base_ts = (pos_ts if pos_ts > 0 else as_timestamp(e.last_changed)) %}
-              {% set pos_age = (as_timestamp(now()) - base_ts) if base_ts is not none else 9999 %}
-              {% set playing_signal = st == 'playing' or play_state in ['play','playing'] or (is_playing is true) %}
-              {% set paused_signal = st == 'paused' or play_state in ['pause','paused'] or (is_paused is true) %}
-              {% set playing_active = playing_signal and (pos_age < playing_stale_s) %}
-              {% set paused_active = paused_signal and (pos_age < paused_hide_s) %}
-              {% set active_music_candidate = playing_active or paused_active %}
-              {% if active_music_candidate %}
-                {% set title = (e.attributes.media_title if e.attributes is defined and e.attributes.media_title is defined else '') | string %}
-                {% set artist = (e.attributes.media_artist if e.attributes is defined and e.attributes.media_artist is defined else '') | string %}
-                {% set album = ((e.attributes.media_album_name if e.attributes is defined and e.attributes.media_album_name is defined else (e.attributes.media_album if e.attributes is defined and e.attributes.media_album is defined else ''))) | string %}
-                {% set source = (e.attributes.source if e.attributes is defined and e.attributes.source is defined else '') | string %}
-                {% set app = (e.attributes.app_name if e.attributes is defined and e.attributes.app_name is defined else '') | string %}
-                {% set content_type = (e.attributes.media_content_type if e.attributes is defined and e.attributes.media_content_type is defined else '') | string %}
-                {% set blob = ((title ~ ' ' ~ artist ~ ' ' ~ album ~ ' ' ~ source ~ ' ' ~ app ~ ' ' ~ ent) | lower) %}
-                {% set content_l = (content_type | lower) %}
-                {% set music_hint =
-                  (content_l in ['music','track','album','playlist','podcast','radio'])
-                  or ((artist | trim) != '')
-                  or ((album | trim) != '')
-                  or ('music assistant' in blob)
-                  or ('spotify' in blob)
-                  or ('tidal' in blob)
-                  or ('qobuz' in blob)
-                  or ('deezer' in blob)
-                  or ('pandora' in blob)
-                  or ('apple music' in blob)
-                  or ('youtube music' in blob)
-                  or ('yt music' in blob)
-                  or ('plexamp' in blob)
-                  or ('tunein' in blob)
-                %}
-                {% set video_hint =
-                  (content_l in ['video','movie','tvshow','episode','channel'])
-                  or ('netflix' in blob)
-                  or ('hulu' in blob)
-                  or ('prime video' in blob)
-                  or ('disney' in blob)
-                  or ('max' in blob)
-                  or ('hbo' in blob)
-                  or ('jellyfin' in blob)
-                  or ('emby' in blob)
-                  or ('kodi' in blob)
-                  or ('roku' in blob)
-                  or ('apple tv' in blob)
-                  or (('youtube' in blob) and ('youtube music' not in blob) and ('yt music' not in blob))
-                %}
-                {% if music_hint and not video_hint %}
-                  {% set ns.music_guard_active = true %}
-                {% endif %}
-              {% endif %}
-            {% endif %}
-          {% endif %}
-        {% endfor %}
-        {% if media_class == 'music' %}
-          {{ true }}
-        {% elif media_class == 'non_music' %}
-          {% set key = states('sensor.now_playing_preview_key') %}
-          {% set preview_s = (state_attr('sensor.now_playing_media_class','non_music_preview_s') or 30) | int(30) %}
-          {% if key in ['','none','unknown','unavailable'] %}
-            {{ false }}
-          {% elif ns.music_guard_active %}
-            {{ false }}
-          {% else %}
-            {% set key_age = (as_timestamp(now()) - as_timestamp(states.sensor.now_playing_preview_key.last_changed)) | float(9999) %}
-            {{ key_age < preview_s }}
-          {% endif %}
-        {% else %}
-          {{ false }}
-        {% endif %}
+        {% set media_class = states('sensor.now_playing_media_class') | lower %}
+        {{ media_class == 'music' }}
       attributes:
-        non_music_preview_s: >-
-          {{ (state_attr('sensor.now_playing_media_class','non_music_preview_s') or 30) | int(30) }}
-        music_guard_active: >-
-          {% set now_entity = states('sensor.now_playing_entity') %}
-          {% set playing_stale_s = states('input_number.ma_meta_stale_s') | float(45) %}
-          {% set paused_hide_s = states('input_number.ma_meta_paused_hide_s') | float(600) %}
-          {% set ns = namespace(music_guard_active=false) %}
-          {% for e in states.media_player %}
-            {% if not ns.music_guard_active %}
-              {% set ent = e.entity_id %}
-              {% if ent != now_entity %}
-                {% set st = (e.state | lower) if e is not none else '' %}
-                {% set play_state = ((e.attributes.play_state if e.attributes is defined and e.attributes.play_state is defined else '') | lower) %}
-                {% set is_playing = (e.attributes.is_playing if e.attributes is defined and e.attributes.is_playing is defined else none) %}
-                {% set is_paused = (e.attributes.is_paused if e.attributes is defined and e.attributes.is_paused is defined else none) %}
-                {% set pos_updated = (e.attributes.media_position_updated_at if e.attributes is defined and e.attributes.media_position_updated_at is defined else none) %}
-                {% set pos_ts = as_timestamp(pos_updated) if pos_updated is not none else 0 %}
-                {% set base_ts = (pos_ts if pos_ts > 0 else as_timestamp(e.last_changed)) %}
-                {% set pos_age = (as_timestamp(now()) - base_ts) if base_ts is not none else 9999 %}
-                {% set playing_signal = st == 'playing' or play_state in ['play','playing'] or (is_playing is true) %}
-                {% set paused_signal = st == 'paused' or play_state in ['pause','paused'] or (is_paused is true) %}
-                {% set playing_active = playing_signal and (pos_age < playing_stale_s) %}
-                {% set paused_active = paused_signal and (pos_age < paused_hide_s) %}
-                {% set active_music_candidate = playing_active or paused_active %}
-                {% if active_music_candidate %}
-                  {% set title = (e.attributes.media_title if e.attributes is defined and e.attributes.media_title is defined else '') | string %}
-                  {% set artist = (e.attributes.media_artist if e.attributes is defined and e.attributes.media_artist is defined else '') | string %}
-                  {% set album = ((e.attributes.media_album_name if e.attributes is defined and e.attributes.media_album_name is defined else (e.attributes.media_album if e.attributes is defined and e.attributes.media_album is defined else ''))) | string %}
-                  {% set source = (e.attributes.source if e.attributes is defined and e.attributes.source is defined else '') | string %}
-                  {% set app = (e.attributes.app_name if e.attributes is defined and e.attributes.app_name is defined else '') | string %}
-                  {% set content_type = (e.attributes.media_content_type if e.attributes is defined and e.attributes.media_content_type is defined else '') | string %}
-                  {% set blob = ((title ~ ' ' ~ artist ~ ' ' ~ album ~ ' ' ~ source ~ ' ' ~ app ~ ' ' ~ ent) | lower) %}
-                  {% set content_l = (content_type | lower) %}
-                  {% set music_hint =
-                    (content_l in ['music','track','album','playlist','podcast','radio'])
-                    or ((artist | trim) != '')
-                    or ((album | trim) != '')
-                    or ('music assistant' in blob)
-                    or ('spotify' in blob)
-                    or ('tidal' in blob)
-                    or ('qobuz' in blob)
-                    or ('deezer' in blob)
-                    or ('pandora' in blob)
-                    or ('apple music' in blob)
-                    or ('youtube music' in blob)
-                    or ('yt music' in blob)
-                    or ('plexamp' in blob)
-                    or ('tunein' in blob)
-                  %}
-                  {% set video_hint =
-                    (content_l in ['video','movie','tvshow','episode','channel'])
-                    or ('netflix' in blob)
-                    or ('hulu' in blob)
-                    or ('prime video' in blob)
-                    or ('disney' in blob)
-                    or ('max' in blob)
-                    or ('hbo' in blob)
-                    or ('jellyfin' in blob)
-                    or ('emby' in blob)
-                    or ('kodi' in blob)
-                    or ('roku' in blob)
-                    or ('apple tv' in blob)
-                    or (('youtube' in blob) and ('youtube music' not in blob) and ('yt music' not in blob))
-                  %}
-                  {% if music_hint and not video_hint %}
-                    {% set ns.music_guard_active = true %}
-                  {% endif %}
-                {% endif %}
-              {% endif %}
-            {% endif %}
-          {% endfor %}
-          {{ ns.music_guard_active }}
+        policy_mode: music_only
     - name: MA Active Control Capable
       state: >-
         {% set target = states('input_select.ma_active_target') %}

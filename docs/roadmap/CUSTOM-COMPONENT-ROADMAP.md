@@ -1,6 +1,6 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.05.01.1 -->
-<!-- Last updated: 2026-05-01 -->
+<!-- Version: 2026.05.02.37 -->
+<!-- Last updated: 2026-05-02 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
 
@@ -188,6 +188,461 @@ Latest run update (2026-04-27, metadata-stack rolling validation ledger activati
 | P8-S01 | 8 | Validated (legacy sealed baseline readiness gate completed with pre/in/post PASS packet) | Validated (post-cutover governance/readiness lane completed for starter gate) | Completed (Run-1/Run-2/Run-3 PASS; promoted) | High | Validated |
 
 Latest run update (2026-05-01, reader-journey hardening pass):
+
+Latest run update (2026-05-02, Slice-D sub-slice 36: lean v2.7 test-scope signal):
+
+- parity_stamp: 2026-05-02 / Slice-D-36 / mode=lean_team / batch=9
+- Added explicit test-scope line (`full|targeted|minimal`) for verification-breadth visibility in lean packets.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; verification-breadth signaling hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 37: lean v2.7 contract-delta signal):
+
+- parity_stamp: 2026-05-02 / Slice-D-37 / mode=lean_team / batch=9
+- Added explicit contract-delta line (`none|minor|major`) for compact contract-impact visibility.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; contract-impact signaling hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 38: lean v2.7 communication-note signal):
+
+- parity_stamp: 2026-05-02 / Slice-D-38 / mode=lean_team / batch=9
+- Added communication-note reference line (`N/A` if none) for operational follow-through traceability.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; communication traceability hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 33: lean v2.6 validation-confidence signal):
+
+- parity_stamp: 2026-05-02 / Slice-D-33 / mode=lean_team / batch=8
+- Added explicit validation-confidence line (`high|medium|low`) for uncertainty visibility in lean packets.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; validation-confidence signaling hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 34: lean v2.6 rollback-posture signal):
+
+- parity_stamp: 2026-05-02 / Slice-D-34 / mode=lean_team / batch=8
+- Added explicit rollback-posture line (`safe|needs-attention`) for quick reversibility triage.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; rollback-readiness visibility hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 35: lean v2.6 handoff-note signal):
+
+- parity_stamp: 2026-05-02 / Slice-D-35 / mode=lean_team / batch=8
+- Added handoff-note reference line (`N/A` if none) for reviewer/operator continuity traceability.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; operational continuity signaling hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 30: lean v2.5 change-risk signal):
+
+- parity_stamp: 2026-05-02 / Slice-D-30 / mode=lean_team / batch=7
+- Added explicit change-risk line (`low|medium|high`) in lean core packet for reviewer depth triage.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; review-depth triage clarity hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 31: lean v2.5 follow-up need signal):
+
+- parity_stamp: 2026-05-02 / Slice-D-31 / mode=lean_team / batch=7
+- Added explicit follow-up needed line (`yes|no`) to distinguish ready-to-merge state from post-merge action needs.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; follow-up planning visibility hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 32: lean v2.5 follow-up reference signal):
+
+- parity_stamp: 2026-05-02 / Slice-D-32 / mode=lean_team / batch=7
+- Added follow-up tracking reference line (`N/A` if none) to keep follow-up declarations auditable and durable.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; follow-up traceability hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 27: lean v2.4 core coherence signal):
+
+- parity_stamp: 2026-05-02 / Slice-D-27 / mode=lean_team / batch=6
+- Added explicit core-packet coherence line (`coherent|needs-fix`) for fast packet consistency interpretation.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; packet consistency clarity hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 28: lean v2.4 evidence artifact reference):
+
+- parity_stamp: 2026-05-02 / Slice-D-28 / mode=lean_team / batch=6
+- Added explicit evidence artifact reference line (URL/path or `N/A`) for faster proof-source lookup during review.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; evidence lookup clarity hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 29: lean v2.4 blocker summary signal):
+
+- parity_stamp: 2026-05-02 / Slice-D-29 / mode=lean_team / batch=6
+- Added one-line blocker reason summary (`N/A` when ready) to keep blocked-state interpretation compact and explicit.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; blocker triage clarity hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 24: lean v2.3 blocker verdict signal):
+
+- parity_stamp: 2026-05-02 / Slice-D-24 / mode=lean_team / batch=5
+- Added explicit blocker verdict (`ready|blocked`) for quick merge-readiness interpretation.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; blocker-status clarity hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 25: lean v2.3 optional-section completion summary):
+
+- parity_stamp: 2026-05-02 / Slice-D-25 / mode=lean_team / batch=5
+- Added one-line optional-section completion summary (`A done`, `B done`, `A+B done`, or `none`) for lean reviewer scan.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; optional-section closure visibility hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 26: lean v2.3 reviewer timestamp signal):
+
+- parity_stamp: 2026-05-02 / Slice-D-26 / mode=lean_team / batch=5
+- Added reviewer timestamp (`UTC`) in fast-path attestation for compact recency evidence.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; attestation recency signaling hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 21: lean v2.2 core owner signal):
+
+- parity_stamp: 2026-05-02 / Slice-D-21 / mode=lean_team / batch=4
+- Added explicit core packet owner field to improve packet accountability and reviewer handoff clarity.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; accountability visibility hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 22: lean v2.2 scope summary line):
+
+- parity_stamp: 2026-05-02 / Slice-D-22 / mode=lean_team / batch=4
+- Added one-line scope summary (`A`, `B`, `A+B`, or `none`) to accelerate optional-section expectation checks.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; review scan efficiency hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 23: lean v2.2 evidence freshness hint):
+
+- parity_stamp: 2026-05-02 / Slice-D-23 / mode=lean_team / batch=4
+- Added evidence freshness hint (`fresh|stale`) alongside UTC timestamp for low-overhead recency signaling.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; evidence-readiness interpretation hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 18: lean v2.1 core packet status line):
+
+- parity_stamp: 2026-05-02 / Slice-D-18 / mode=lean_team / batch=3
+- Added explicit core packet status (`complete|incomplete`) for faster reviewer interpretation of packet closure state.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; review-loop signal clarity hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 19: lean v2.1 compact scope toggles):
+
+- parity_stamp: 2026-05-02 / Slice-D-19 / mode=lean_team / batch=3
+- Added compact scope toggles (`yes|no`) for scheduler/shared-contract/runtime-touch checks before optional sections.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; scope-disposition consistency hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 20: lean v2.1 evidence timestamp signal):
+
+- parity_stamp: 2026-05-02 / Slice-D-20 / mode=lean_team / batch=3
+- Added explicit UTC evidence timestamp capture and reviewer fast-path recency check.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; evidence-recency confidence hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 15: lean v2 one-screen core packet):
+
+- parity_stamp: 2026-05-02 / Slice-D-15 / mode=lean_team / batch=2
+- Reduced PR workflow to one-screen required packet while keeping declaration mismatch and evidence blockers strict.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; review throughput hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 16: optional blocks default-N/A):
+
+- parity_stamp: 2026-05-02 / Slice-D-16 / mode=lean_team / batch=2
+- Standardized optional sections to explicit `N/A (not in scope)` defaults unless scope-triggered.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; checklist completion friction reduction only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 17: reviewer fast-path attestation):
+
+- parity_stamp: 2026-05-02 / Slice-D-17 / mode=lean_team / batch=2
+- Added concise reviewer attestation path to confirm blockers/evidence without long-form review boilerplate.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; merge-readiness speedup only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 10: lean template trim):
+
+- parity_stamp: 2026-05-02 / Slice-D-10 / mode=lean_team / batch=1
+- Collapsed PR template to compact core packet with optional scope-driven sections.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; governance friction reduction only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 11: scope trigger matrix):
+
+- parity_stamp: 2026-05-02 / Slice-D-11 / mode=lean_team / batch=1
+- Added explicit skip/complete triggers for optional checklist sections.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; scope confidence hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 12: quick-fill evidence snippets):
+
+- parity_stamp: 2026-05-02 / Slice-D-12 / mode=lean_team / batch=1
+- Added standardized snippet examples for CI/manual declaration-gate evidence packets.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; packet formatting speedup only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 13: lean parity-stamp format):
+
+- parity_stamp: 2026-05-02 / Slice-D-13 / mode=lean_team / batch=1
+- Adopted concise run-note style for roadmap parity updates in lean windows.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; ledger maintenance reduction only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 14: two-person fast-start):
+
+- parity_stamp: 2026-05-02 / Slice-D-14 / mode=lean_team / batch=1
+- Added quick contributor startup path for opening compliant lean PRs with minimal ceremony.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; onboarding acceleration only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 6: lean-team mode activation):
+
+- Activated lean-team governance profile for current two-person execution context.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; throughput hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 7: core-gate minimum packet):
+
+- Established minimum required merge packet and made extended checklist sections conditional by scope.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; review-time reduction hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 8: docs-parity batching policy):
+
+- Added bounded parity batching allowance (up to 4 micro-slices) for lean-team mode.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; docs effort balancing only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 9: masterwork target non-blocking during lean execution):
+
+- Shifted masterwork controls to strategic non-blocking targets during lean execution while preserving blocker-critical controls.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; operational focus hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 5: manual-waiver tracking reference contract):
+
+- Added mandatory waiver-tracking reference evidence for `manual_enforced_now` gate posture in PR governance workflow.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; waiver traceability hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 4: manual-to-CI cutover target contract):
+
+- Added required transition-target-date evidence for `manual_enforced_now` gate posture in PR governance packet.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; governance transition accountability hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 3: CI verdict contract):
+
+- Added CI verdict and failed-run reason requirements for `ci_enforced` declaration-gate packets in PR governance workflow.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; CI governance clarity hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 2: manual-gate waiver expiry contract):
+
+- Added manual-gate waiver owner + expiry requirements for bounded exception accountability under `manual_enforced_now` mode.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; exception lifecycle accountability hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 1: CI evidence contract):
+
+- Added CI-evidence packet requirements for `ci_enforced` PR declaration-gate mode (workflow/job identity and run URL evidence).
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; PR enforcement evidence quality hardening only.
+
+Latest run update (2026-05-02, Slice-D kickoff: declaration gate mode contract):
+
+- Added explicit PR declaration-gate mode capture (`manual_enforced_now` or `ci_enforced`) to support a deterministic migration path from manual reviewer checks to CI-based enforcement.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; enforcement-mode traceability hardening only.
+
+Latest run update (2026-05-02, Slice-C declaration-vs-diff merge-blocker hardening):
+
+- Tightened component-only guardrail so runtime-file diffs are explicitly merge-blocking when issue declaration remains `component_only_declared`.
+- Added bounded exception evidence completion requirement to clear mismatch blockers during PR review.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; component-scope governance clarity hardening only.
+
+Latest run update (2026-05-02, Slice-C component-only declaration enforcement):
+
+- Added component-only declaration enforcement at intake and PR review so runtime-touch intent is explicit and reconciled against actual changed files.
+- Added mismatch handling requirement: declaration-vs-diff divergence must include bounded-exception rationale and tracking reference.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; component-first execution-scope integrity hardening only.
+
+Latest run update (2026-05-02, Slice-C component-target file evidence):
+
+- Added component-target file evidence requirements in issue/PR workflow to make component-first slice planning explicit and reviewer-checkable.
+- Added PR reconciliation fields for planned component files vs actual changed files with divergence rationale when mismatched.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; component-scope execution clarity hardening only.
+
+Latest run update (2026-05-02, Slice-C component-first merge-blocker enforcement):
+
+- Elevated component-first governance checks to merge-blocker policy when reconciliation/legacy-exception evidence is absent.
+- Added explicit legacy-exception tracking-reference evidence requirement across intake/PR workflow (`N/A` when not applicable).
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; enforcement auditability hardening only.
+
+Latest run update (2026-05-02, Slice-C component-first execution gate):
+
+- Added component-first execution gate language across issue/PR and governance workflow docs so new behavior/contract slices default to `custom_components/spectra_ls`.
+- Legacy/runtime touches are now explicitly exception-only with bounded rationale and reviewer acknowledgment requirements.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; component-first routing hardening only.
+
+Latest run update (2026-05-02, Slice-C reconciliation evidence + reviewer attestation):
+
+- Extended scheduler/metadata-bridge governance wording to require reviewer attestation that issue↔PR reconciliation evidence is verified before merge readiness.
+- Added issue intake routing pointer to PR reconciliation requirements to improve pre-PR enforcement visibility.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; reconciliation enforcement auditability hardening only.
+
+Latest run update (2026-05-02, Slice-C issue↔PR reconciliation governance closure):
+
+- Propagated mandatory issue↔PR lane/owner reconciliation wording through contributor/governance workflow docs to align intake and review contracts across templates + documentation.
+- Standardized required reconciliation packet: linked issue IDs, issue intake lane/owner, PR lane/owner, and mandatory mismatch rationale (`N/A` only when no mismatch).
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; governance consistency and enforcement clarity hardening only.
+
+Latest run update (2026-05-02, Slice-C issue↔PR lane-reclassification rationale enforcement):
+
+- Tightened bug/feature issue forms so scheduler/metadata-bridge lane and owner routing are recorded as intake baseline, explicitly feeding PR integrity review.
+- Added required PR checklist reconciliation block for linked issue lane/owner vs PR lane/owner, with mandatory mismatch rationale capture.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; issue-to-PR governance enforcement hardening only.
+
+Latest run update (2026-05-02, Slice-C wiki intake + workflow parity):
+
+- Updated wiki workflow pages so scheduler/metadata-bridge issue intake guidance and PR integrity expectations are aligned in one operator path.
+- Added explicit lane classification, canonical owner-file routing, and parity-anchor expectation notes to bug-intake and contributing flow pages.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; wiki/operator workflow parity hardening only.
+
+Latest run update (2026-05-02, Slice-C issue-intake integrity wiring):
+
+- Added scheduler/metadata-bridge lane classification and canonical owner-file routing prompts directly into bug/feature issue forms.
+- Linked issue intake routing to contributor workflow guidance so write-path integrity checks begin before coding and PR review.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; intake-stage governance hardening only.
+
+Latest run update (2026-05-02, Slice-C governance propagation pack):
+
+- Extended Slice-C enforcement into governance intake/execution standards by updating `CONTRIBUTING.md`, `.github/copilot-instructions.md`, and `docs/governance/GITHUB-MASTERWORK-BLUEPRINT.md`.
+- Scheduler/metadata-bridge integrity checks are now visible before coding, during implementation policy review, and at PR quality checkpoints.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; governance coverage hardening only.
+
+Latest run update (2026-05-02, Slice-C PR workflow wiring):
+
+- Integrated Slice-C scheduler/metadata-bridge enforcement checks directly into `.github/pull_request_template.md`.
+- PR flow now explicitly captures lane classification, canonical owner routing, parity-anchor status, no-go guard confirmation, and paired-review completion.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; workflow enforcement hardening only.
+
+Latest run update (2026-05-02, Slice-C enforcement micro-checklist activation):
+
+- Extended Slice C with a scheduler/metadata-bridge enforcement micro-checklist in `docs/notes/NOTES-engineering-rigor.md` to operationalize owner-matrix usage.
+- Checklist requires lane classification, canonical owner routing, paired-review confirmation, parity-anchor disposition, and no-go verification before merge.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; execution-discipline hardening only.
+
+Latest run update (2026-05-02, Slice-C owner quick-reference matrix kickoff):
+
+- Started Slice C with a compact scheduler/metadata-bridge owner quick-reference matrix in `docs/notes/NOTES-engineering-rigor.md` for fast canonical file routing.
+- Matrix captures `edit-here` owners, `do-not-fork` boundaries, and paired review requirements for behavior-visible write-path changes.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; anti-mispatch execution clarity hardening only.
+
+Latest run update (2026-05-02, Slice-B scheduler + metadata bridge ownership integrity map):
+
+- Extended Slice-A ownership-integrity guardrails with a compact service/write-path ownership map for scheduler and metadata bridge lanes in `docs/notes/NOTES-engineering-rigor.md`.
+- Added lane-specific canonical owner files, mutation boundaries, preflight anti-mispatch checks, and no-go conditions to reduce wrong-file behavior edits.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; write-path boundary integrity hardening only.
+
+Latest run update (2026-05-02, Slice-A fabric ownership integrity capture):
+
+- Published explicit data-fabric file ownership guardrails in `docs/notes/NOTES-engineering-rigor.md` to prevent wrong-file contract edits and local packet-shape forks.
+- Guardrails include canonical owner map, anti-mispatch pre-edit checks, no-go conditions, and required parity-anchor verification for runtime/component tracks.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; execution-discipline and file-boundary integrity hardening only.
+
+Latest run update (2026-05-02, MA-authoritative progress contract hardening):
+
+Plan Delta (2026-05-02, component-first canonical playback data-fabric direction):
+
+- Scope-discipline update: active file-level no-miss ledger is now tracked in `docs/notes/NOTES-engineering-rigor.md` under `Active scoped execution ledger (file-level, no-miss contract)` and must be updated in-slice whenever authority/naming contracts are touched in code.
+
+- Architecture governance contract is now formally anchored in `docs/architecture/COMPONENT-DATA-FABRIC-ARCHITECTURE.md` (placed after core design goals and before canonical model) with token-locked MA authority semantics: `health.authority_mode` = `ma_primary | ma_degraded_fallback`; degraded reasons include `ma_degraded_fallback_active`, `ma_payload_stale`, `ma_payload_shape_invalid`, and `ma_api_unreachable`.
+
+- Direction change recorded: next-step robustness work will prioritize component-owned canonical playback contract architecture over incremental legacy inline fallback growth.
+- New architecture spec published: `docs/architecture/COMPONENT-DATA-FABRIC-ARCHITECTURE.md`.
+- Execution slices queued under component lane:
+  - `CDF-S01`: canonical model + adapter scaffolding,
+  - `CDF-S02`: field-level resolver + provenance/confidence scoring,
+  - `CDF-S03`: compatibility projection + parity bridge,
+  - `CDF-S04`: cutover gate with rollback-safe authority controls.
+- Runtime track disposition: compatibility-shimmed (no ownership expansion in this plan-delta slice).
+- Component track disposition: implemented (architecture/system-design target published; execution queued by CDF slices).
+- P1/P2/P3 impact check: no source-of-truth ownership change in this slice; anti-collapse component architecture path formalized.
+
+- Runtime track now resolves progress duration with MA-authoritative multi-source augmentation (MA payload + MA-managed peer-entity fallback by track identity), addressing active-playback duration dropouts when selected renderer entities expose progress position but not duration.
+- Component track now exposes explicit metadata-prep diagnostics for active-playback progress contract readiness (`playing_with_missing_duration_contract`) so parity validation fails on real progress-contract gaps instead of masking them under generic freshness checks.
+- Runtime track disposition: implemented (progress contract hardening).
+- Component track disposition: implemented (diagnostics parity hardening).
+- P1/P2/P3 impact check: no source-of-truth ownership change; systemic progress-contract correctness hardening only.
 
 - Updated user/operator/contributor doc entry points with explicit path routing and completion checkpoints.
 - Added symptom-based runbook routing and stronger bug-intake prechecks for higher-quality issue packets.

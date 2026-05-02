@@ -1,6 +1,6 @@
-# Description: Sensor entities for Spectra LS shadow parity routing surfaces with Phase 3 write-control, Phase 4 diagnostics attributes, and Phase 6/8 control-center settings/readiness/last-attempt visibility, including recorder-safe attribute payload sizing.
-# Version: 2026.04.29.4
-# Last updated: 2026-04-29
+# Description: Sensor entities for Spectra LS shadow parity routing surfaces with Phase 3 write-control, Phase 4 diagnostics attributes, and Phase 6/8 control-center settings/readiness/last-attempt visibility, including recorder-safe attribute payload sizing and shared MA authority-contract packet propagation.
+# Version: 2026.05.02.2
+# Last updated: 2026-05-02
 
 from __future__ import annotations
 
@@ -11,6 +11,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from .authority_contract import build_authority_contract_packet
 from .const import DOMAIN
 
 
@@ -62,6 +63,7 @@ class SpectraLsShadowSensor(CoordinatorEntity, SensorEntity):
             return {
                 **base,
                 "route_trace": data.get("route_trace", {}),
+                "authority_contract": build_authority_contract_packet(data),
             }
 
         # Primary diagnostics surface (active target): include required operator contracts,
@@ -80,6 +82,7 @@ class SpectraLsShadowSensor(CoordinatorEntity, SensorEntity):
             "ma_backend_profile": data.get("ma_backend_profile", {}),
             "control_center_validation": data.get("control_center_validation", {}),
             "write_controls": data.get("write_controls", {}),
+            "authority_contract": build_authority_contract_packet(data),
         }
 
 
@@ -162,6 +165,7 @@ class SpectraLsControlCenterReadinessSensor(CoordinatorEntity, SensorEntity):
             "non_dry_run_supported_actions": cc_validation.get("non_dry_run_supported_actions", []),
             "non_dry_run_pending_actions": cc_validation.get("non_dry_run_pending_actions", []),
             "control_center_settings": write_controls.get("control_center_settings", {}),
+            "authority_contract": build_authority_contract_packet(data),
             "captured_at": data.get("captured_at"),
         }
 
@@ -325,6 +329,7 @@ class SpectraLsMetaPolicyStatusSensor(CoordinatorEntity, SensorEntity):
             "now_playing_position_age_source": values.get("now_playing_position_age_source", "missing"),
             "meta_stale_s": values.get("meta_stale_s"),
             "paused_hide_s": values.get("paused_hide_s"),
+            "authority_contract": build_authority_contract_packet(data),
             "captured_at": data.get("captured_at"),
         }
 

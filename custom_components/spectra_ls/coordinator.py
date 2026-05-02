@@ -1,6 +1,8 @@
 # Description: Data coordinator for Spectra LS parity diagnostics, Phase 3 guarded routing write-path controls, Phase 4 diagnostics scaffolding (F4-S01/F4-S03), Phase 5 metadata trial contract auditing, and Phase 6/8 control-center settings, fast-remap, execution visibility, startup auto-recovery orchestration (latency-hardened cadence), and selection-lock lifecycle parity migration (ambiguity lock, stale unlock, auto-select loop).
-# Version: 2026.04.29.41
-# Last updated: 2026-04-29
+# Version: 2026.05.02.3
+# Last updated: 2026-05-02
+# PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
+# and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
 from __future__ import annotations
 
@@ -20,6 +22,12 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from .const import (
     CONTROL_CENTER_INPUT_EVENTS,
     DOMAIN,
+    FABRIC_AUTH_MODE_DEGRADED_FALLBACK,
+    FABRIC_AUTH_MODE_PRIMARY,
+    FABRIC_AUTH_REASON_API_UNREACHABLE,
+    FABRIC_AUTH_REASON_DEGRADED_ACTIVE,
+    FABRIC_AUTH_REASON_PAYLOAD_SHAPE_INVALID,
+    FABRIC_AUTH_REASON_PAYLOAD_STALE,
     LEGACY_ACTIVE_META_ENTITY,
     LEGACY_LAST_VALID_TARGET,
     LEGACY_META_DETECTED_ENTITY,
@@ -46,6 +54,9 @@ from .const import (
     LEGACY_NOW_PLAYING_DISPLAY_ALLOWED,
     LEGACY_NOW_PLAYING_STATE,
     LEGACY_NOW_PLAYING_TITLE,
+    LEGACY_NOW_PLAYING_POSITION,
+    LEGACY_NOW_PLAYING_DURATION,
+    LEGACY_ACTIVE_DURATION,
     LEGACY_ROOMS_JSON,
     LEGACY_ROOMS_RAW,
     LEGACY_SURFACES,
@@ -1146,6 +1157,7 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     helper_entry.get("resolver_module", "legacy_helper_authority") or "legacy_helper_authority"
                 )
                 helper_control_capable = bool(helper_entry.get("control_capable", False))
+                helper_host_resolved = self._is_resolved_state(helper_host)
                 helper_feature_profile = (
                     helper_entry.get("feature_profile", {})
                     if isinstance(helper_entry.get("feature_profile", {}), dict)
@@ -1155,29 +1167,58 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     helper_feature_profile.get("availability_quality", "legacy_helper_authority")
                     or "legacy_helper_authority"
                 )
+                if helper_control_capable and helper_host_resolved:
+                    selected = {
+                        "target": helper_current,
+                        "score": 9999.0,
+                        "host": helper_host,
+                        "host_type": helper_host_type,
+                        "resolver_module": helper_resolver_module,
+                        "control_capable": helper_control_capable,
+                        "availability_quality": helper_availability_quality,
+                        "observed_capability_count": 0,
+                        "empirical_bonus": 0.0,
+                        "score_breakdown": {
+                            "legacy_authority_pin": 9999,
+                        },
+                        "scheduler_profile": {
+                            "selection_mode": "legacy_helper_authority",
+                        },
+                    }
 
-                selected = {
-                    "target": helper_current,
-                    "score": 9999.0,
-                    "host": helper_host,
-                    "host_type": helper_host_type,
-                    "resolver_module": helper_resolver_module,
-                    "control_capable": helper_control_capable,
-                    "availability_quality": helper_availability_quality,
-                    "observed_capability_count": 0,
-                    "empirical_bonus": 0.0,
-                    "score_breakdown": {
-                        "legacy_authority_pin": 9999,
-                    },
-                    "scheduler_profile": {
-                        "selection_mode": "legacy_helper_authority",
-                    },
-                }
+                    filtered_top = [
+                        item for item in top if str(item.get("target", "") or "") != helper_current
+                    ]
+                    top = [selected, *filtered_top][:max_results]
+                else:
+                    legacy_fallback = None
+                    for item in top:
+                        item_host = str(item.get("host", "") or "").strip()
+                        item_control_capable = bool(item.get("control_capable", False))
+                        if item_control_capable and self._is_resolved_state(item_host):
+                            legacy_fallback = item
+                            break
 
-                filtered_top = [
-                    item for item in top if str(item.get("target", "") or "") != helper_current
-                ]
-                top = [selected, *filtered_top][:max_results]
+                    if legacy_fallback is not None:
+                        selected = dict(legacy_fallback)
+                        selected["scheduler_profile"] = {
+                            "selection_mode": "legacy_helper_authority_fallback",
+                        }
+                        selected_target = str(selected.get("target", "") or "")
+                        filtered_top = [
+                            item
+                            for item in top
+                            if str(item.get("target", "") or "") != selected_target
+                        ]
+                        top = [selected, *filtered_top][:max_results]
+                    else:
+                        selected = None
+                        top = [
+                            item
+                            for item in top
+                            if bool(item.get("control_capable", False))
+                            and self._is_resolved_state(str(item.get("host", "") or ""))
+                        ][:max_results]
 
         status = "selected" if selected is not None else "no_candidate"
         selection_mode = str(selected.get("scheduler_profile", {}).get("selection_mode", "") if isinstance(selected, dict) else "")
@@ -1185,12 +1226,24 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             reason = helper_fallback_reason or "No candidates satisfied scheduler policy"
         elif selection_mode == "legacy_helper_authority":
             reason = "Legacy authority mode pins scheduler selection to helper current target"
+        elif selection_mode == "legacy_helper_authority_fallback":
+            reason = "Legacy helper target is not control-capable or host-resolved; using highest-ranked control-host candidate"
         elif selection_mode == "helper_current_fallback":
             reason = "Using helper current target fallback because scheduler ranking produced no candidates"
         else:
             reason = "Highest scored candidate selected"
 
-        candidate_count = len(ranked)
+        if self._write_authority_mode == WRITE_AUTH_LEGACY and selected is None:
+            candidate_count = len(
+                [
+                    item
+                    for item in ranked
+                    if bool(item.get("control_capable", False))
+                    and self._is_resolved_state(str(item.get("host", "") or ""))
+                ]
+            )
+        else:
+            candidate_count = len(ranked)
         if selected is not None and candidate_count == 0:
             candidate_count = 1
 
@@ -2000,9 +2053,11 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "now_playing_entity": LEGACY_NOW_PLAYING_ENTITY,
             "now_playing_state": LEGACY_NOW_PLAYING_STATE,
             "now_playing_title": LEGACY_NOW_PLAYING_TITLE,
+            "now_playing_position": LEGACY_NOW_PLAYING_POSITION,
+            "now_playing_duration": LEGACY_NOW_PLAYING_DURATION,
+            "ma_active_duration": LEGACY_ACTIVE_DURATION,
             "meta_candidates": LEGACY_META_CANDIDATES,
             "now_playing_media_class": LEGACY_NOW_PLAYING_MEDIA_CLASS,
-            "now_playing_preview_key": LEGACY_NOW_PLAYING_PREVIEW_KEY,
             "now_playing_display_allowed": LEGACY_NOW_PLAYING_DISPLAY_ALLOWED,
         }
 
@@ -2014,6 +2069,9 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         now_playing_entity_raw = self.hass.states.get(LEGACY_NOW_PLAYING_ENTITY)
         now_playing_state_raw = self.hass.states.get(LEGACY_NOW_PLAYING_STATE)
         now_playing_title_raw = self.hass.states.get(LEGACY_NOW_PLAYING_TITLE)
+        now_playing_position_raw = self.hass.states.get(LEGACY_NOW_PLAYING_POSITION)
+        now_playing_duration_raw = self.hass.states.get(LEGACY_NOW_PLAYING_DURATION)
+        ma_active_duration_raw = self.hass.states.get(LEGACY_ACTIVE_DURATION)
         now_playing_media_class_raw = self.hass.states.get(LEGACY_NOW_PLAYING_MEDIA_CLASS)
         now_playing_preview_key_raw = self.hass.states.get(LEGACY_NOW_PLAYING_PREVIEW_KEY)
         now_playing_display_allowed_raw = self.hass.states.get(LEGACY_NOW_PLAYING_DISPLAY_ALLOWED)
@@ -2022,6 +2080,9 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         now_playing_entity = now_playing_entity_raw.state if now_playing_entity_raw is not None else "missing"
         now_playing_state = now_playing_state_raw.state if now_playing_state_raw is not None else "missing"
         now_playing_title = now_playing_title_raw.state if now_playing_title_raw is not None else "missing"
+        now_playing_position = now_playing_position_raw.state if now_playing_position_raw is not None else "missing"
+        now_playing_duration = now_playing_duration_raw.state if now_playing_duration_raw is not None else "missing"
+        ma_active_duration = ma_active_duration_raw.state if ma_active_duration_raw is not None else "missing"
         now_playing_media_class = self._normalize_state(
             now_playing_media_class_raw.state if now_playing_media_class_raw is not None else "missing"
         )
@@ -2036,6 +2097,9 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         now_playing_entity_resolved = self._is_resolved_state(now_playing_entity)
         now_playing_state_resolved = self._is_resolved_state(now_playing_state)
         now_playing_title_resolved = self._is_resolved_state(now_playing_title)
+        now_playing_position_resolved = self._is_resolved_state(now_playing_position)
+        now_playing_duration_resolved = self._is_resolved_state(now_playing_duration)
+        ma_active_duration_resolved = self._is_resolved_state(ma_active_duration)
         now_playing_media_class_resolved = now_playing_media_class in {"music", "non_music", "none"}
         now_playing_preview_key_resolved = self._is_resolved_state(now_playing_preview_key)
         now_playing_display_allowed_resolved = now_playing_display_allowed in {
@@ -2053,43 +2117,13 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         now_playing_preview_age_s = self._timestamp_age_seconds(
             now_playing_preview_key_raw.last_changed if now_playing_preview_key_raw is not None else None
         )
-        media_class_preview_s = 30.0
-        if now_playing_display_allowed_raw is not None:
-            preview_attr = now_playing_display_allowed_raw.attributes.get("non_music_preview_s")
-            if isinstance(preview_attr, (int, float)):
-                media_class_preview_s = float(preview_attr)
-            elif isinstance(preview_attr, str):
-                try:
-                    media_class_preview_s = float(preview_attr)
-                except ValueError:
-                    pass
-        if now_playing_media_class_raw is not None and media_class_preview_s <= 0:
-            preview_attr = now_playing_media_class_raw.attributes.get("non_music_preview_s")
-            if isinstance(preview_attr, (int, float)):
-                media_class_preview_s = float(preview_attr)
-
         music_guard_active = False
-        if now_playing_display_allowed_raw is not None:
-            music_guard_raw = now_playing_display_allowed_raw.attributes.get("music_guard_active")
-            if isinstance(music_guard_raw, bool):
-                music_guard_active = music_guard_raw
-            elif isinstance(music_guard_raw, (int, float)):
-                music_guard_active = bool(music_guard_raw)
-            elif isinstance(music_guard_raw, str):
-                music_guard_active = self._normalize_state(music_guard_raw) in {"on", "true", "1", "yes"}
 
         expected_display_allowed: bool | None
         if not now_playing_media_class_resolved:
             expected_display_allowed = None
         elif now_playing_media_class == "music":
             expected_display_allowed = True
-        elif now_playing_media_class == "non_music":
-            preview_active = (
-                now_playing_preview_key_resolved
-                and isinstance(now_playing_preview_age_s, float)
-                and now_playing_preview_age_s < media_class_preview_s
-            )
-            expected_display_allowed = bool(preview_active and not music_guard_active)
         else:
             expected_display_allowed = False
 
@@ -2102,8 +2136,29 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         route_decision = str(route_trace.get("decision", "") or "")
         route_trace_present = route_decision != ""
         contract_valid = bool(contract_validation.get("valid", False))
+
+        def _to_float(raw_state: str) -> float | None:
+            try:
+                return float(raw_state)
+            except (TypeError, ValueError):
+                return None
+
+        now_playing_position_v = _to_float(now_playing_position)
+        now_playing_duration_v = _to_float(now_playing_duration)
+        ma_active_duration_v = _to_float(ma_active_duration)
+
         candidate_payload_ready = self._metadata_candidate_payload_ready()
         now_playing_signal = self._build_now_playing_signal(now_playing_entity)
+        active_playback_signal = self._normalize_state(now_playing_state) == "playing" or bool(
+            now_playing_signal.get("fresh_play_signal", False)
+        )
+        playing_with_missing_duration_contract = (
+            active_playback_signal
+            and isinstance(now_playing_position_v, float)
+            and now_playing_position_v > 0
+            and isinstance(now_playing_duration_v, float)
+            and now_playing_duration_v <= 0
+        )
         playing_without_fresh_signal = bool(now_playing_signal.get("playing_without_fresh_signal", False))
         paused_without_fresh_signal = bool(now_playing_signal.get("paused_without_fresh_signal", False))
         long_idle_stale_hidden = bool(now_playing_signal.get("long_idle_stale_hidden", False))
@@ -2117,6 +2172,32 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         cutover_block_reason = "metadata_authority_not_cut_over"
         no_authority_expansion = self._write_authority_mode in WRITE_AUTH_ALLOWED
 
+        authority_gate_results = {
+            "ma_api_reachable": bool(contract_valid and route_trace_present),
+            "ma_payload_shape_valid": bool(candidate_payload_ready),
+            "ma_payload_fresh": bool(now_playing_fresh_play_signal),
+            "ma_identity_confidence": bool(active_meta_entity_resolved and now_playing_entity_resolved),
+            "ma_timing_confidence": bool(
+                not playing_with_missing_duration_contract
+                and not playing_without_fresh_signal
+                and not playing_at_track_end_stuck
+            ),
+        }
+        authority_mode = (
+            FABRIC_AUTH_MODE_PRIMARY
+            if all(bool(value) for value in authority_gate_results.values())
+            else FABRIC_AUTH_MODE_DEGRADED_FALLBACK
+        )
+        authority_reasons: list[str] = []
+        if authority_mode == FABRIC_AUTH_MODE_DEGRADED_FALLBACK:
+            authority_reasons.append(FABRIC_AUTH_REASON_DEGRADED_ACTIVE)
+            if not authority_gate_results["ma_api_reachable"]:
+                authority_reasons.append(FABRIC_AUTH_REASON_API_UNREACHABLE)
+            if not authority_gate_results["ma_payload_shape_valid"]:
+                authority_reasons.append(FABRIC_AUTH_REASON_PAYLOAD_SHAPE_INVALID)
+            if not authority_gate_results["ma_payload_fresh"]:
+                authority_reasons.append(FABRIC_AUTH_REASON_PAYLOAD_STALE)
+
         gate_checks: dict[str, bool] = {
             "contract_valid": contract_valid,
             "active_meta_entity_resolved": active_meta_entity_resolved,
@@ -2127,6 +2208,7 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "route_trace_present": route_trace_present,
             "no_authority_expansion": no_authority_expansion,
             "now_playing_fresh_play_signal": now_playing_fresh_play_signal,
+            "progress_duration_contract_ready": not playing_with_missing_duration_contract,
         }
         gate_score = sum(1 for ok in gate_checks.values() if ok)
         gate_max = len(gate_checks)
@@ -2141,12 +2223,16 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             blocking_reasons.append("now_playing_entity_unresolved")
         if not now_playing_state_resolved:
             blocking_reasons.append("now_playing_state_unresolved")
+        if not now_playing_position_resolved:
+            blocking_reasons.append("now_playing_position_unresolved")
+        if not now_playing_duration_resolved:
+            blocking_reasons.append("now_playing_duration_unresolved")
+        if not ma_active_duration_resolved:
+            blocking_reasons.append("ma_active_duration_unresolved")
         if not now_playing_title_signal_ready:
             blocking_reasons.append("now_playing_title_unresolved")
         if not now_playing_media_class_resolved:
             blocking_reasons.append("now_playing_media_class_unresolved")
-        if now_playing_media_class == "non_music" and not now_playing_preview_key_resolved:
-            blocking_reasons.append("now_playing_preview_key_unresolved")
         if not now_playing_display_allowed_resolved:
             blocking_reasons.append("now_playing_display_allowed_unresolved")
         if now_playing_media_class_resolved and not media_contract_consistent:
@@ -2157,6 +2243,8 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             blocking_reasons.append("route_trace_missing")
         if not no_authority_expansion:
             blocking_reasons.append("authority_mode_not_legacy")
+        if playing_with_missing_duration_contract:
+            blocking_reasons.append("playing_with_missing_duration_contract")
         if playing_without_fresh_signal and not playing_at_track_end_stuck and now_playing_title_resolved:
             blocking_reasons.append("playing_without_recent_progress")
         if playing_at_track_end_stuck and now_playing_title_resolved:
@@ -2167,6 +2255,9 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             blocking_reasons.append("long_idle_stale_hidden")
         elif not now_playing_fresh_play_signal and now_playing_title_resolved:
             blocking_reasons.append("no_fresh_play_signal")
+        for token in authority_reasons:
+            if token not in blocking_reasons:
+                blocking_reasons.append(token)
 
         verdict = "PASS"
         if len(missing_required) > 0 or not contract_valid:
@@ -2183,6 +2274,8 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         elif not media_contract_consistent:
             verdict = "WARN"
         elif not no_authority_expansion:
+            verdict = "WARN"
+        elif playing_with_missing_duration_contract:
             verdict = "WARN"
         elif playing_at_track_end_stuck and now_playing_title_resolved:
             verdict = "WARN"
@@ -2208,11 +2301,16 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "metadata_authority_owner": metadata_authority_owner,
             "metadata_cutover_active": metadata_cutover_active,
             "cutover_block_reason": cutover_block_reason,
+            "authority_mode": authority_mode,
+            "authority_gate_results": authority_gate_results,
             "checks": {
                 "active_meta_entity_resolved": active_meta_entity_resolved,
                 "now_playing_entity_resolved": now_playing_entity_resolved,
                 "now_playing_state_resolved": now_playing_state_resolved,
                 "now_playing_title_resolved": now_playing_title_resolved,
+                "now_playing_position_resolved": now_playing_position_resolved,
+                "now_playing_duration_resolved": now_playing_duration_resolved,
+                "ma_active_duration_resolved": ma_active_duration_resolved,
                 "now_playing_title_signal_ready": now_playing_title_signal_ready,
                 "now_playing_media_class_resolved": now_playing_media_class_resolved,
                 "now_playing_preview_key_resolved": now_playing_preview_key_resolved,
@@ -2231,19 +2329,23 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "now_playing_paused_without_fresh_signal": paused_without_fresh_signal,
                 "now_playing_long_idle_stale_hidden": long_idle_stale_hidden,
                 "now_playing_suppression_reason": now_playing_signal.get("suppression_reason", ""),
+                "active_playback_signal": active_playback_signal,
+                "playing_with_missing_duration_contract": playing_with_missing_duration_contract,
             },
             "values": {
                 "active_meta_entity": active_meta_entity,
                 "now_playing_entity": now_playing_entity,
                 "now_playing_state": now_playing_state,
                 "now_playing_title": now_playing_title,
+                "now_playing_position": now_playing_position_v,
+                "now_playing_duration": now_playing_duration_v,
+                "ma_active_duration": ma_active_duration_v,
                 "now_playing_media_class": now_playing_media_class,
                 "now_playing_preview_key": now_playing_preview_key,
                 "now_playing_display_allowed": now_playing_display_allowed_value,
                 "now_playing_preview_age_s": round(now_playing_preview_age_s, 1)
                 if isinstance(now_playing_preview_age_s, float)
                 else None,
-                "non_music_preview_s": media_class_preview_s,
                 "music_guard_active": music_guard_active,
                 "expected_display_allowed": expected_display_allowed,
                 "now_playing_position_age_s": now_playing_signal.get("position_age_s"),

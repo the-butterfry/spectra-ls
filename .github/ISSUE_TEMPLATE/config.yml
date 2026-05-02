@@ -1,6 +1,6 @@
 # Description: GitHub issue form routing and contact policy for Spectra L/S.
-# Version: 2026.04.19.1
-# Last updated: 2026-04-19
+# Version: 2026.05.02.4
+# Last updated: 2026-05-02
 
 blank_issues_enabled: false
 contact_links:
@@ -10,3 +10,9 @@ contact_links:
   - name: "🌟 Feature ideation"
     url: https://github.com/the-butterfry/spectra-ls/discussions/new?category=ideas
     about: Propose and refine feature ideas before implementation planning.
+  - name: "🧭 Contributor workflow + Slice-C intake"
+    url: https://github.com/the-butterfry/spectra-ls/blob/main/CONTRIBUTING.md
+    about: Use the contributor guide for scheduler/metadata-bridge lane classification and owner-file routing expectations.
+  - name: "✅ PR reconciliation requirements"
+    url: https://github.com/the-butterfry/spectra-ls/blob/main/.github/pull_request_template.md
+    about: Linked issue lane/owner and runtime-touch declaration vs PR file-scope reconciliation evidence is required for scheduler/metadata-bridge work, including reviewer attestation.

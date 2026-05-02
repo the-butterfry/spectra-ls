@@ -1,6 +1,6 @@
 # Description: Spectra LS System substitutions for ESPHome main config and packages.
-# Version: 2026.04.29.2
-# Last updated: 2026-04-29
+# Version: 2026.05.02.1
+# Last updated: 2026-05-02
 # Spectra LS substitutions scoped to spectra_ls_system.
 # Use absolute paths for assets so this file can move with spectra_ls_system.
 
@@ -80,6 +80,8 @@ arylic_http_scheme: "https"
 arylic_http_port: "443"
 arylic_http_poll_ms: "5000"
 arylic_http_enabled: "true"
+arylic_http_diag_log_enabled: "true"
+arylic_http_diag_log_interval_ms: "5000"
 
 # Secondary device (discovery-resolved HTTP optional)
 arylic_lr_http_host: ""

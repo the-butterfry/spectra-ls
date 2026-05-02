@@ -1,14 +1,12 @@
 {# Description: Focused one-screen scenario matrix for Step-3 metadata/media-contract parity validation. #}
-{# Version: 2026.04.29.5 #}
-{# Last updated: 2026-04-29 #}
+{# Version: 2026.05.02.1 #}
+{# Last updated: 2026-05-02 #}
 
 {#
   Meta Stack Focused Scenario Matrix (Runtime)
   Scope:
     - music-only
-    - non-music preview fresh
-    - non-music preview stale
-    - music-guard active suppression
+    - non-music hidden (rollback policy)
     - no-audio/video expected-unknown context
 #}
 
@@ -17,14 +15,10 @@
 {% set media_class_raw = states('sensor.now_playing_media_class') %}
 {% set media_class = media_class_raw | lower %}
 {% set display_allowed = is_state('binary_sensor.now_playing_display_allowed', 'on') %}
-{% set music_guard_active = is_state_attr('binary_sensor.now_playing_display_allowed', 'music_guard_active', true) %}
 
 {% set preview_key = states('sensor.now_playing_preview_key') %}
 {% set preview_key_valid = preview_key not in invalid %}
-{% set preview_s = state_attr('sensor.now_playing_media_class', 'non_music_preview_s') | int(30) %}
 {% set preview_age_s = (as_timestamp(now()) - as_timestamp(states.sensor.now_playing_preview_key.last_changed)) | float(9999) if preview_key_valid else none %}
-{% set preview_fresh = preview_age_s is not none and preview_age_s < preview_s %}
-{% set preview_stale = (preview_age_s is not none and preview_age_s >= preview_s) or not preview_key_valid %}
 
 {% set np_entity = states('sensor.now_playing_entity') %}
 {% set np_state = states('sensor.now_playing_state') | lower %}
@@ -87,20 +81,8 @@
     'ok': display_allowed
   },
   {
-    'name': 'non_music_preview_fresh',
-    'active': media_class == 'non_music' and preview_fresh and not music_guard_active,
-    'expected': 'display_allowed=true',
-    'ok': display_allowed
-  },
-  {
-    'name': 'non_music_preview_stale',
-    'active': media_class == 'non_music' and preview_stale and not music_guard_active,
-    'expected': 'display_allowed=false',
-    'ok': not display_allowed
-  },
-  {
-    'name': 'music_guard_active',
-    'active': media_class == 'non_music' and music_guard_active,
+    'name': 'non_music_hidden',
+    'active': media_class == 'non_music',
     'expected': 'display_allowed=false',
     'ok': not display_allowed
   },
@@ -152,9 +134,8 @@
 ### Runtime snapshot
 - `media_class`: **{{ media_class_raw }}**
 - `display_allowed`: **{{ display_allowed }}**
-- `music_guard_active`: **{{ music_guard_active }}**
 - `preview_key`: **{{ preview_key if preview_key_valid else 'n/a' }}**
-- `preview_age_s / window_s`: **{{ preview_age_s | round(1) if preview_age_s is not none else 'n/a' }} / {{ preview_s }}**
+- `preview_key_age_s`: **{{ preview_age_s | round(1) if preview_age_s is not none else 'n/a' }}**
 - `no_audio_video_expected`: **{{ no_audio_video_expected }}**
 - `hdmi_local_untracked`: **{{ hdmi_local_untracked }}**
 - `source_context_hint`: **{{ source_ctx | trim if (source_ctx | trim) != '' else 'n/a' }}**
@@ -163,12 +144,12 @@
 | Scenario | Active | Verdict | Expected | Observed |
 |---|---:|---|---|---|
 {% for row in rows %}
-| `{{ row.name }}` | {{ row.active }} | {% if row.active and row.ok %}PASS{% elif row.active and not row.ok %}WARN{% else %}INACTIVE{% endif %} | {{ row.expected }} | media_class={{ media_class }}, display_allowed={{ display_allowed }}, music_guard={{ music_guard_active }} |
+| `{{ row.name }}` | {{ row.active }} | {% if row.active and row.ok %}PASS{% elif row.active and not row.ok %}WARN{% else %}INACTIVE{% endif %} | {{ row.expected }} | media_class={{ media_class }}, display_allowed={{ display_allowed }} |
 {% endfor %}
 
 ### Guidance
 {% if ns.active == 0 %}
-- No focused scenario is currently active. Trigger one target state (music playback, non-music preview fresh/stale, or no-audio/video) and re-render.
+- No focused scenario is currently active. Trigger one target state (music playback, non-music playback, or no-audio/video) and re-render.
 {% elif ns.active_warn > 0 %}
 - Active scenario mismatch detected. Re-run `spectra_ls.validate_metadata_policy` then re-render and compare expected vs observed gates.
 {% else %}

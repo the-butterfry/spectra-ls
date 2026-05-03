@@ -1,6 +1,6 @@
 <!-- Description: End-user overview for the Spectra L/S Home Assistant + ESPHome system. -->
-<!-- Version: 2026.05.02.4 -->
-<!-- Last updated: 2026-05-02 -->
+<!-- Version: 2026.05.03.1 -->
+<!-- Last updated: 2026-05-03 -->
 
 # Spectra L/S
 
@@ -72,6 +72,7 @@ Inspired by modern physical-control craftsmanship from [Condesa Electronics — 
 - We are actively building the Home Assistant sidebar **Spectra Control Center** in `custom_components/spectra_ls` as the primary product surface.
 - Current execution focus: setup/onboarding, mapped-environment visibility, tuning/defaults/overrides, and bounded input-to-action execution under evidence-first gates.
 - Control Center settings + execution contracts are already live and operator-verifiable via `spectra_ls.set_control_center_settings` and `spectra_ls.execute_control_center_input`.
+- Host-control cutover readiness is service-addressable via `spectra_ls.get_host_cutover_gate` (with fail-closed options for readiness/activation gating in automation workflows).
 - Canonical playback/progress robustness is now formalized as a component-first architecture program (`custom_components/spectra_ls`) with multi-source field-level resolution, provenance, and deterministic healing (`docs/architecture/COMPONENT-DATA-FABRIC-ARCHITECTURE.md`).
 - Architecture governance is explicit and normative with token-locked MA authority semantics: `health.authority_mode` is `ma_primary | ma_degraded_fallback`, and degraded authority reasons include `ma_degraded_fallback_active`, `ma_payload_stale`, `ma_payload_shape_invalid`, and `ma_api_unreachable`.
 - Ecosystem expansion remains capability-mapped and discovery-first; Sendspin-class and adjacent endpoint families are treated as roadmap integrations under the same safety/rollback gate discipline.

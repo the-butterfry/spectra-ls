@@ -1,6 +1,8 @@
 # Description: Sensor entities for Spectra LS shadow parity routing surfaces with Phase 3 write-control, Phase 4 diagnostics attributes, and Phase 6/8 control-center settings/readiness/last-attempt visibility, including recorder-safe attribute payload sizing and shared MA authority-contract packet propagation.
-# Version: 2026.05.02.2
-# Last updated: 2026-05-02
+# Version: 2026.05.03.3
+# Last updated: 2026-05-03
+# PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
+# and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
 from __future__ import annotations
 
@@ -33,6 +35,7 @@ class SpectraLsShadowSensor(CoordinatorEntity, SensorEntity):
             "scheduler_validation",
             "metadata_bridge_validation",
             "handoff_inventory",
+            "host_control_cutover_gate",
             "control_center_validation",
             "write_controls",
         }
@@ -63,6 +66,7 @@ class SpectraLsShadowSensor(CoordinatorEntity, SensorEntity):
             return {
                 **base,
                 "route_trace": data.get("route_trace", {}),
+                "host_control_cutover_gate": data.get("host_control_cutover_gate", {}),
                 "authority_contract": build_authority_contract_packet(data),
             }
 
@@ -79,6 +83,7 @@ class SpectraLsShadowSensor(CoordinatorEntity, SensorEntity):
             "scheduler_validation": data.get("scheduler_validation", {}),
             "metadata_bridge_validation": data.get("metadata_bridge_validation", {}),
             "handoff_inventory": data.get("handoff_inventory", {}),
+            "host_control_cutover_gate": data.get("host_control_cutover_gate", {}),
             "ma_backend_profile": data.get("ma_backend_profile", {}),
             "control_center_validation": data.get("control_center_validation", {}),
             "write_controls": data.get("write_controls", {}),
@@ -198,6 +203,7 @@ class SpectraLsHostResolutionStatusSensor(CoordinatorEntity, SensorEntity):
     def extra_state_attributes(self):
         data = self.coordinator.data
         registry = data.get("registry", {})
+        host_cutover = data.get("host_control_cutover_gate", {}) if isinstance(data.get("host_control_cutover_gate", {}), dict) else {}
         entries = registry.get("entries", {}) if isinstance(registry.get("entries", {}), dict) else {}
         summary = registry.get("source_summary", {}) if isinstance(registry.get("source_summary", {}), dict) else {}
 
@@ -228,7 +234,48 @@ class SpectraLsHostResolutionStatusSensor(CoordinatorEntity, SensorEntity):
             "target_count": registry.get("target_count", 0),
             "unresolved_sources": registry.get("unresolved_sources", []),
             "targets": targets,
+            "authority_source_mode": host_cutover.get("authority_source_mode", "legacy"),
+            "authoritative_host_candidate": host_cutover.get("component_authoritative_candidate", {}),
+            "cutover_gate_status": host_cutover.get("status", "blocked"),
+            "cutover_gate_ready": host_cutover.get("ready_for_cutover", False),
+            "cutover_gate_blockers": host_cutover.get("gate_blockers", []),
             "route_trace": data.get("route_trace", {}),
+            "captured_at": data.get("captured_at"),
+        }
+
+
+class SpectraLsHostAuthorityCutoverGateSensor(CoordinatorEntity, SensorEntity):
+    """Diagnostic sensor exposing host-control authority cutover readiness gate."""
+
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:source-branch-check"
+    _attr_name = "Host Authority Cutover Gate"
+    _attr_unique_id = "spectra_ls_host_authority_cutover_gate"
+
+    @property
+    def native_value(self):
+        gate = self.coordinator.data.get("host_control_cutover_gate", {})
+        status = str(gate.get("status", "blocked") or "").strip().lower()
+        return status or "blocked"
+
+    @property
+    def extra_state_attributes(self):
+        data = self.coordinator.data
+        gate = data.get("host_control_cutover_gate", {}) if isinstance(data.get("host_control_cutover_gate", {}), dict) else {}
+        return {
+            "schema_version": gate.get("schema_version", ""),
+            "ready_for_cutover": gate.get("ready_for_cutover", False),
+            "ready_for_authoritative_activation": gate.get("ready_for_authoritative_activation", False),
+            "authority_source_mode": gate.get("authority_source_mode", "legacy"),
+            "authority_mode": gate.get("authority_mode", "legacy"),
+            "component_authoritative_candidate": gate.get("component_authoritative_candidate", {}),
+            "legacy_authority_snapshot": gate.get("legacy_authority_snapshot", {}),
+            "route_decision": gate.get("route_decision", ""),
+            "resolved_control_path": gate.get("resolved_control_path", ""),
+            "checks": gate.get("checks", {}),
+            "gate_blockers": gate.get("gate_blockers", []),
+            "activation_blockers": gate.get("activation_blockers", []),
             "captured_at": data.get("captured_at"),
         }
 
@@ -348,6 +395,7 @@ async def async_setup_entry(
             SpectraLsShadowSensor(coordinator, "active_control_path", "Shadow Active Control Path"),
             SpectraLsShadowSensor(coordinator, "control_hosts", "Shadow Control Hosts"),
             SpectraLsHostResolutionStatusSensor(coordinator),
+            SpectraLsHostAuthorityCutoverGateSensor(coordinator),
             SpectraLsSchedulerDecisionSensor(coordinator),
             SpectraLsMetaPolicyStatusSensor(coordinator),
             SpectraLsControlCenterReadinessSensor(coordinator),

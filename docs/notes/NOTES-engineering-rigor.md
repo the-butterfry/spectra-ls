@@ -1,6 +1,6 @@
 <!-- Description: Engineering rigor baseline for custom-component migration decisions, contract inventory, and explicit tough-spot tracking. -->
-<!-- Version: 2026.05.02.6 -->
-<!-- Last updated: 2026-05-02 -->
+<!-- Version: 2026.05.03.3 -->
+<!-- Last updated: 2026-05-03 -->
 
 # NOTES — Engineering Rigor Baseline
 
@@ -112,6 +112,22 @@ No metadata-stack slice is considered complete without a recorded evidence packe
 ## Active scoped execution ledger (file-level, no-miss contract)
 
 Purpose: prevent implementation miss risk when naming/contracts are introduced in real files by keeping one explicit done/remaining file map.
+
+### Slice-D metadata authority plan delta (2026-05-03)
+
+- Authority trial gate contract is now **authority-satisfied** (legacy baseline **or** active component cutover), not legacy-only.
+- Canonical cutover state fields are now expected in authority packet/service outputs:
+  - `metadata_authority_owner`
+  - `metadata_cutover_active`
+- Metadata trial closeout evidence must include these two fields for every authority/cutover validation window.
+- Metadata bridge closeout packets must include explicit checkpoint evidence from:
+  - `cutover_proof.pre_window`
+  - `cutover_proof.in_window`
+  - `cutover_proof.post_window`
+- Cutover-prep endpoint contract is now explicit and required in readiness packets:
+  - `cutover_prep_validation.cutover_prep_complete`
+  - `cutover_prep_validation.checks`
+  - `cutover_prep_validation.blocking_reasons`
 
 ### MA authority-contract propagation scope
 

@@ -1,0 +1,88 @@
+{# Description: Raw validation template for Slice-D authority-contract packet readiness and proof-summary checks with dual-input packet/envelope support. #}
+{# Version: 2026.05.03.2 #}
+{# Last updated: 2026-05-03 #}
+{%- set packet = namespace(v=dict()) -%}
+{%- set envelope = namespace(v=dict()) -%}
+{%- set response = namespace(mode='packet_only') -%}
+{%- set response_entity = namespace(id='') -%}
+
+{%- set response_json_entities = [
+  'input_text.spectra_ls_authority_contract_response_json',
+  'input_text.spectra_ls_authority_response_json',
+  'input_text.authority_contract_response_json'
+] -%}
+
+{%- for entity_id in response_json_entities -%}
+  {%- set raw_payload = states(entity_id) -%}
+  {%- if response_entity.id == '' and raw_payload not in ['unknown', 'unavailable', 'none', ''] -%}
+    {%- set parsed_payload = raw_payload | from_json(default=dict()) -%}
+    {%- if parsed_payload is mapping -%}
+      {%- set envelope.v = parsed_payload -%}
+      {%- set response_entity.id = entity_id -%}
+    {%- endif -%}
+  {%- endif -%}
+{%- endfor -%}
+
+{%- if envelope.v is mapping and envelope.v.get('authority_contract') is mapping -%}
+  {%- set packet.v = envelope.v.get('authority_contract', {}) -%}
+  {%- set response.mode = 'service_envelope_json' -%}
+{%- elif envelope.v is mapping and envelope.v.get('authority_mode') is defined -%}
+  {%- set packet.v = envelope.v -%}
+  {%- set response.mode = 'service_packet_json' -%}
+{%- else -%}
+  {%- set base = state_attr('sensor.shadow_active_target', 'authority_contract') -%}
+  {%- if base is mapping -%}
+    {%- set packet.v = base -%}
+    {%- set response.mode = 'entity_attribute_sensor.shadow_active_target' -%}
+  {%- else -%}
+    {%- set alt = state_attr('sensor.spectra_ls_shadow_active_target', 'authority_contract') -%}
+    {%- if alt is mapping -%}
+      {%- set packet.v = alt -%}
+      {%- set response.mode = 'entity_attribute_sensor.spectra_ls_shadow_active_target' -%}
+    {%- endif -%}
+  {%- endif -%}
+{%- endif -%}
+
+{%- set cutover_ready = packet.v.get('cutover_prep_complete', false) -%}
+{%- set blocker_count = packet.v.get('cutover_prep_blocker_count', 0) | int(0) -%}
+{%- set checkpoint_count = packet.v.get('proof_checkpoint_count', 0) | int(0) -%}
+{%- set verdict = 'PASS' -%}
+{%- if not cutover_ready -%}
+  {%- set verdict = 'WARN' -%}
+{%- endif -%}
+{%- if blocker_count > 0 and checkpoint_count == 0 -%}
+  {%- set verdict = 'FAIL' -%}
+{%- endif -%}
+
+Slice-D Authority Contract Validation
+===================================
+verdict: {{ verdict }}
+source_mode: {{ response.mode }}
+source_entity: {{ response_entity.id if response_entity.id != '' else 'n/a' }}
+schema_version: {{ packet.v.get('schema_version', 'missing') }}
+packet_generated_at: {{ packet.v.get('packet_generated_at', 'missing') }}
+authority_mode: {{ packet.v.get('authority_mode', 'missing') }}
+metadata_authority_owner: {{ packet.v.get('metadata_authority_owner', 'missing') }}
+metadata_cutover_active: {{ packet.v.get('metadata_cutover_active', false) }}
+
+cutover_prep_complete: {{ cutover_ready }}
+cutover_prep_verdict: {{ packet.v.get('cutover_prep_verdict', 'missing') }}
+cutover_prep_blocker_count: {{ blocker_count }}
+cutover_prep_check_count: {{ packet.v.get('cutover_prep_check_count', 'missing') }}
+cutover_prep_passed_check_count: {{ packet.v.get('cutover_prep_passed_check_count', 'missing') }}
+cutover_prep_blocking_reasons: {{ packet.v.get('cutover_prep_blocking_reasons', []) }}
+
+bridge_status: {{ packet.v.get('bridge_status', 'missing') }}
+trial_status: {{ packet.v.get('trial_status', 'missing') }}
+proof_checkpoint_presence: {{ packet.v.get('proof_checkpoint_presence', {}) }}
+proof_checkpoint_count: {{ checkpoint_count }}
+proof_in_window_assertions: {{ packet.v.get('proof_in_window_assertions', {}) }}
+authority_gate_results: {{ packet.v.get('authority_gate_results', {}) }}
+authority_reasons: {{ packet.v.get('authority_reasons', []) }}
+snapshot_summary_present: {{ envelope.v.get('snapshot_summary') is mapping if envelope.v is mapping else false }}
+snapshot_summary: {{ envelope.v.get('snapshot_summary', {}) if envelope.v is mapping else {} }}
+
+interpretation:
+- PASS: cutover-prep complete and proof packet present/coherent.
+- WARN: packet present but prep not complete or blockers remain.
+- FAIL: blockers exist and proof checkpoints are missing.

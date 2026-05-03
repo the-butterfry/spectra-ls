@@ -1,6 +1,6 @@
 <!-- Description: Copy/paste Home Assistant Dev Tools template diagnostics for Spectra LS System. -->
-<!-- Version: 2026.04.29.3 -->
-<!-- Last updated: 2026-04-29 -->
+<!-- Version: 2026.05.03.3 -->
+<!-- Last updated: 2026-05-03 -->
 
 # Spectra LS System — Dev Tools Template Validation
 
@@ -30,6 +30,35 @@ Use this one-paste template during Step 3 to test and assess scheduler + metadat
 - `docs/testing/raw/meta_stack_scenario_matrix_report.jinja`
 
 Use this for rapid parity checks of focused scenarios only: music-only, non-music preview fresh/stale, music-guard-active suppression, and no-audio/video expected-unknown context.
+
+## 0D) Slice-D Authority Contract Validation (One-Screen Packet Check)
+
+- `docs/testing/raw/slice_d_authority_contract_validation.jinja`
+
+Use this one-screen validator to quickly verify authority packet schema/proof fields (`schema_version`, prep verdict/blockers, checkpoint presence/count, bridge/trial status) during closeout evidence captures.
+
+Dual-input notes:
+
+- Default source is entity attributes (`sensor.shadow_active_target` or `sensor.spectra_ls_shadow_active_target`).
+- Optional service JSON source is auto-detected from the first populated input-text entity in this order:
+  - `input_text.spectra_ls_authority_contract_response_json`
+  - `input_text.spectra_ls_authority_response_json`
+  - `input_text.authority_contract_response_json`
+- Supported JSON shapes: full service envelope (`authority_contract` + optional `snapshot_summary`) or packet-only JSON.
+
+Copy/paste JSON capture helper (optional):
+
+1. Run `spectra_ls.get_authority_contract` from Developer Tools → Actions.
+
+1. Copy the service response JSON.
+
+1. Paste it into one of these helpers (create as `input_text` helper if missing):
+
+- `input_text.spectra_ls_authority_contract_response_json` (preferred)
+- `input_text.spectra_ls_authority_response_json`
+- `input_text.authority_contract_response_json`
+
+1. Re-run the template; `source_mode` will switch to `service_envelope_json` or `service_packet_json` when JSON parsing succeeds.
 
 ## 1) Overall Spectra LS Health Check (Comprehensive)
 

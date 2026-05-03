@@ -1,6 +1,6 @@
 <!-- Description: Component-first canonical playback data-fabric architecture for robust multi-source metadata/progress ownership in Spectra LS. -->
-<!-- Version: 2026.05.02.2 -->
-<!-- Last updated: 2026-05-02 -->
+<!-- Version: 2026.05.03.2 -->
+<!-- Last updated: 2026-05-03 -->
 
 # Spectra LS Component Data Fabric Architecture (Canonical Playback Contract)
 
@@ -243,6 +243,9 @@ Project canonical fields to compatibility surfaces while cutover is gated:
 
 - Require sustained PASS windows (`playing_with_missing_duration_contract=false` under active playback).
 - Keep rollback to legacy runtime authority explicit.
+- Host-control authority cutover uses explicit gate packet semantics (`host_control_cutover_gate`) with fail-closed blockers; component-authority scheduler writes are blocked unless gate readiness is true.
+- Gate readiness and activation are distinct: `ready_for_cutover` proves parity/path readiness, while `ready_for_authoritative_activation` additionally requires active component authority mode.
+- Host-cutover packet contract is service-addressable through `spectra_ls.get_host_cutover_gate` for deterministic automation and closeout evidence capture.
 
 ## Risks and mitigations
 

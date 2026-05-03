@@ -1,6 +1,6 @@
-# Description: Registry scaffold helpers for Spectra LS Phase 2 read-only target normalization and deterministic payload parsing with helper/active-target fallback seeding hardening.
-# Version: 2026.04.28.1
-# Last updated: 2026-04-28
+# Description: Registry scaffold helpers for Spectra LS Phase 2 read-only target normalization and deterministic payload parsing with helper/active-target fallback seeding hardening plus host-type capability/path classification safeguards.
+# Version: 2026.05.03.1
+# Last updated: 2026-05-03
 # PARITY DIRECTIVE (until full cutover): runtime-affecting contract behavior changed here must be mirrored/reconciled in `packages/` + `esphome/`
 # in the same slice, with explicit implemented/shim/defer two-track disposition and version-metadata review.
 
@@ -600,7 +600,15 @@ def build_registry_snapshot(
 
         resolution = resolver_fn(hass, target)
         effective_host = _clean_host(resolution.get("host", ""))
-        resolved_control_path = "linkplay_tcp" if host_type == "linkplay_tcp" else "unknown"
+        normalized_room_control_path = str(room_control_path or "").strip().lower()
+
+        resolved_control_path = "unknown"
+        if effective_host:
+            if host_type in {"linkplay_tcp", "wiim"}:
+                resolved_control_path = "linkplay_tcp"
+            elif normalized_room_control_path in SUPPORTED_CONTROL_PATHS:
+                resolved_control_path = normalized_room_control_path
+
         control_capable = bool(effective_host) and resolved_control_path in SUPPORTED_CONTROL_PATHS
         feature_profile = _build_feature_profile(hass, target, entity_reg, device_reg)
         empirical_overlay = _empirical_overlay_for_target(empirical_overlays, target)
@@ -617,7 +625,7 @@ def build_registry_snapshot(
         entries[target] = {
             "target": target,
             "control_path": resolved_control_path,
-            "hardware_family": room_hardware_family if room_hardware_family else ("arylic_linkplay" if host_type == "linkplay_tcp" and effective_host else "unknown"),
+            "hardware_family": room_hardware_family if room_hardware_family else ("arylic_linkplay" if resolved_control_path == "linkplay_tcp" and effective_host else "unknown"),
             "control_capable": control_capable,
             "host": effective_host,
             "capabilities": ["volume", "transport"] if control_capable else [],

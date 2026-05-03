@@ -1,5 +1,5 @@
 # Description: Selection-fabric workflow for Spectra LS scheduler, target-options, and helper write orchestration extracted from meta-fabric.
-# Version: 2026.05.03.1
+# Version: 2026.05.03.3
 # Last updated: 2026-05-03
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
@@ -7,7 +7,6 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from time import monotonic
 from typing import Any
 from uuid import uuid4
 
@@ -21,6 +20,7 @@ from .const import (
     WRITE_AUTH_COMPONENT,
     WRITE_AUTH_LEGACY,
 )
+from .write_path_fabric import WritePathFabric
 
 
 class SelectionFabricWorkflow:
@@ -28,6 +28,12 @@ class SelectionFabricWorkflow:
 
     def __init__(self, coordinator: Any) -> None:
         self._coordinator = coordinator
+
+    @staticmethod
+    def _append_unique(target_list: list[str], seen: set[str], value: str) -> None:
+        if value and value not in seen:
+            seen.add(value)
+            target_list.append(value)
 
     def compute_component_target_options_plan(self) -> dict[str, Any]:
         """Compute deterministic component target-options plan from helpers/registry/runtime surfaces."""
@@ -38,28 +44,16 @@ class SelectionFabricWorkflow:
         helper_current = ""
         if helper_state is not None:
             helper_current = str(helper_state.state or "").strip()
-            options_attr = helper_state.attributes.get("options", [])
-            if isinstance(options_attr, list):
-                helper_options = [
-                    str(item).strip()
-                    for item in options_attr
-                    if isinstance(item, str) and str(item).strip()
-                ]
+            helper_options = WritePathFabric.normalize_options(helper_state.attributes.get("options", []))
 
-        last_valid_state = c.hass.states.get("input_text.ma_last_valid_target")
+        last_valid_state = c.hass.states.get(LEGACY_LAST_VALID_TARGET)
         last_valid = str(last_valid_state.state if last_valid_state is not None else "").strip()
 
         known_targets: list[str] = []
+        known_seen: set[str] = set()
         rooms_state = c.hass.states.get(LEGACY_ROOMS_JSON)
         rooms_raw = rooms_state.attributes.get("rooms_json", []) if rooms_state is not None else []
-        rooms_payload = c._parse_jsonish_payload(rooms_raw)
-        rooms_list: list[Any] = []
-        if isinstance(rooms_payload, list):
-            rooms_list = rooms_payload
-        elif isinstance(rooms_payload, dict):
-            mapped = rooms_payload.get("rooms", rooms_payload.get("result", []))
-            if isinstance(mapped, list):
-                rooms_list = mapped
+        rooms_list = c.utility_fabric.extract_payload_list(rooms_raw, ("rooms", "result"))
         for room in rooms_list:
             if not isinstance(room, dict):
                 continue
@@ -70,20 +64,13 @@ class SelectionFabricWorkflow:
                 continue
             if c.hass.states.get(ent) is None:
                 continue
-            if ent not in known_targets:
-                known_targets.append(ent)
+            self._append_unique(known_targets, known_seen, ent)
 
         discovered_targets: list[str] = []
+        discovered_seen: set[str] = set()
         ma_players_state = c.hass.states.get(LEGACY_MA_PLAYERS)
         ma_players_raw = ma_players_state.attributes.get("result", []) if ma_players_state is not None else []
-        ma_players_payload = c._parse_jsonish_payload(ma_players_raw)
-        players_list: list[Any] = []
-        if isinstance(ma_players_payload, list):
-            players_list = ma_players_payload
-        elif isinstance(ma_players_payload, dict):
-            mapped = ma_players_payload.get("result", ma_players_payload.get("players", []))
-            if isinstance(mapped, list):
-                players_list = mapped
+        players_list = c.utility_fabric.extract_payload_list(ma_players_raw, ("result", "players"))
         for player in players_list:
             if not isinstance(player, dict):
                 continue
@@ -96,10 +83,10 @@ class SelectionFabricWorkflow:
             ip = str(entity_state.attributes.get("ip_address", "") or player.get("ip_address", "") or "").strip()
             if not c._is_resolved_state(ip):
                 continue
-            if ent not in discovered_targets:
-                discovered_targets.append(ent)
+            self._append_unique(discovered_targets, discovered_seen, ent)
 
         discovered_live_targets: list[str] = []
+        discovered_live_seen: set[str] = set()
         for player_state in c.hass.states.async_all("media_player"):
             ent = str(player_state.entity_id or "").strip()
             if not c._is_resolved_state(ent):
@@ -117,10 +104,10 @@ class SelectionFabricWorkflow:
             control_capable = control_capable_attr in [True, "true", "True", "1", 1, "yes", "on"]
             control_path_ok = control_path == "linkplay_tcp"
             if control_capable or control_path_ok or hint_supported:
-                if ent not in discovered_live_targets:
-                    discovered_live_targets.append(ent)
+                self._append_unique(discovered_live_targets, discovered_live_seen, ent)
 
         registry_capability_targets: list[str] = []
+        registry_seen: set[str] = set()
         registry_payload = c.data.get("registry", {}) if isinstance(c.data, dict) else {}
         registry_entries = registry_payload.get("entries", {}) if isinstance(registry_payload, dict) else {}
         if isinstance(registry_entries, dict):
@@ -146,8 +133,7 @@ class SelectionFabricWorkflow:
                 control_path_supported = control_path in {"", "linkplay_tcp"}
 
                 if control_capable and host_resolved and control_path_supported and fresh_enough:
-                    if target not in registry_capability_targets:
-                        registry_capability_targets.append(target)
+                    self._append_unique(registry_capability_targets, registry_seen, target)
 
         detected_state = c.hass.states.get("sensor.ma_detected_receiver_entity")
         detected_candidate = str(detected_state.state if detected_state is not None else "").strip()
@@ -159,20 +145,19 @@ class SelectionFabricWorkflow:
             detected_candidate = ""
 
         selectable_candidates: list[str] = []
+        selectable_seen: set[str] = set()
         for item in [*known_targets, *discovered_targets, *discovered_live_targets, *registry_capability_targets]:
-            if item not in selectable_candidates:
-                selectable_candidates.append(item)
-        if detected_candidate and detected_candidate not in selectable_candidates:
-            selectable_candidates.append(detected_candidate)
+            self._append_unique(selectable_candidates, selectable_seen, item)
+        self._append_unique(selectable_candidates, selectable_seen, detected_candidate)
 
         current_extra: list[str] = []
         if c._is_resolved_state(helper_current) and helper_current not in selectable_candidates:
             current_extra = [helper_current]
 
         proposed_options: list[str] = []
+        proposed_seen: set[str] = set()
         for item in ["none", *selectable_candidates, *current_extra]:
-            if item and item not in proposed_options:
-                proposed_options.append(item)
+            self._append_unique(proposed_options, proposed_seen, item)
         if not proposed_options:
             proposed_options = ["none"]
 
@@ -306,13 +291,7 @@ class SelectionFabricWorkflow:
             helper_current = str(helper_state.state if helper_state is not None else "").strip()
             helper_options: list[str] = []
             if helper_state is not None:
-                options_attr = helper_state.attributes.get("options", [])
-                if isinstance(options_attr, list):
-                    helper_options = [
-                        str(item).strip()
-                        for item in options_attr
-                        if isinstance(item, str) and str(item).strip()
-                    ]
+                helper_options = WritePathFabric.normalize_options(helper_state.attributes.get("options", []))
 
             helper_current_resolved = c._is_resolved_state(helper_current)
             helper_current_in_options = helper_current_resolved and helper_current in helper_options
@@ -368,13 +347,7 @@ class SelectionFabricWorkflow:
             helper_current = str(helper_state.state if helper_state is not None else "").strip()
             helper_options: list[str] = []
             if helper_state is not None:
-                options_attr = helper_state.attributes.get("options", [])
-                if isinstance(options_attr, list):
-                    helper_options = [
-                        str(item).strip()
-                        for item in options_attr
-                        if isinstance(item, str) and str(item).strip()
-                    ]
+                helper_options = WritePathFabric.normalize_options(helper_state.attributes.get("options", []))
 
             helper_current_resolved = c._is_resolved_state(helper_current)
             helper_current_in_options = helper_current_resolved and helper_current in helper_options
@@ -601,16 +574,14 @@ class SelectionFabricWorkflow:
         elif not bool(host_cutover_gate.get("ready_for_cutover", False)):
             result["status"] = "blocked_host_cutover_gate"
             result["reason"] = "Host-control cutover gate is not ready; scheduler apply is intentionally blocked"
-        elif c._write_in_progress and not force:
-            result["status"] = "blocked_reentrancy"
-            result["reason"] = "A prior write attempt is still in progress"
-        elif not force and not dry_run and c._last_write_monotonic > 0:
-            elapsed = monotonic() - c._last_write_monotonic
-            if elapsed < c._write_debounce_s:
-                result["status"] = "blocked_debounce"
-                result["reason"] = "Debounce guard active"
-                result["elapsed_s"] = round(elapsed, 3)
-                result["debounce_s"] = c._write_debounce_s
+        WritePathFabric.apply_standard_write_guards(
+            c,
+            result,
+            force=bool(force),
+            dry_run=bool(dry_run),
+            authority_required=WRITE_AUTH_COMPONENT,
+            authority_block_reason="Write authority is legacy; scheduler apply is intentionally blocked",
+        )
 
         if result["status"] == "pending" and helper_state is None:
             result["status"] = "blocked_missing_target_helper"
@@ -620,13 +591,7 @@ class SelectionFabricWorkflow:
         helper_current = ""
         if helper_state is not None:
             helper_current = str(helper_state.state or "").strip()
-            options_attr = helper_state.attributes.get("options", [])
-            if isinstance(options_attr, list):
-                helper_options = [
-                    str(item).strip()
-                    for item in options_attr
-                    if isinstance(item, str) and str(item).strip()
-                ]
+            helper_options = WritePathFabric.normalize_options(helper_state.attributes.get("options", []))
 
         if result["status"] == "pending" and helper_options and selected_target not in helper_options:
             result["status"] = "blocked_option_mismatch"
@@ -663,7 +628,7 @@ class SelectionFabricWorkflow:
                 c._write_in_progress = False
 
         if result["status"] in {"dry_run_ok", "noop_already_selected", "write_applied", "write_error"}:
-            c._last_write_monotonic = monotonic()
+            WritePathFabric.mark_write_touch(c)
 
         result["completed_at"] = datetime.now(UTC).isoformat()
 
@@ -674,15 +639,13 @@ class SelectionFabricWorkflow:
             **decision,
         }
         c._last_scheduler_apply = result
-        c._last_write_attempt = {
-            "status": result.get("status", "unknown"),
-            "timestamp": result.get("completed_at"),
-            "authority_mode": c._write_authority_mode,
-            "reason": result.get("reason", ""),
-            "correlation_id": corr,
-            "source": "scheduler_apply_choice",
-            "active_target": selected_target,
-        }
+        WritePathFabric.stamp_last_write_attempt(
+            c,
+            result=result,
+            source="scheduler_apply_choice",
+            correlation_id=corr,
+            active_target=selected_target,
+        )
 
         c.async_set_updated_data(c._build_snapshot())
         return result
@@ -737,19 +700,14 @@ class SelectionFabricWorkflow:
         if helper_state is None:
             result["status"] = "blocked_missing_target_helper"
             result["reason"] = "Target helper entity is missing"
-        elif c._write_authority_mode != WRITE_AUTH_COMPONENT and not dry_run:
-            result["status"] = "blocked_authority"
-            result["reason"] = "Write authority is legacy; target-options apply is intentionally blocked"
-        elif c._write_in_progress and not force:
-            result["status"] = "blocked_reentrancy"
-            result["reason"] = "A prior write attempt is still in progress"
-        elif not force and not dry_run and c._last_write_monotonic > 0:
-            elapsed = monotonic() - c._last_write_monotonic
-            if elapsed < c._write_debounce_s:
-                result["status"] = "blocked_debounce"
-                result["reason"] = "Debounce guard active"
-                result["elapsed_s"] = round(elapsed, 3)
-                result["debounce_s"] = c._write_debounce_s
+        WritePathFabric.apply_standard_write_guards(
+            c,
+            result,
+            force=bool(force),
+            dry_run=bool(dry_run),
+            authority_required=WRITE_AUTH_COMPONENT,
+            authority_block_reason="Write authority is legacy; target-options apply is intentionally blocked",
+        )
 
         if result["status"] == "pending" and dry_run:
             result["status"] = "dry_run_ok"
@@ -796,19 +754,17 @@ class SelectionFabricWorkflow:
                 c._write_in_progress = False
 
         if result["status"] in {"dry_run_ok", "options_applied", "write_error"}:
-            c._last_write_monotonic = monotonic()
+            WritePathFabric.mark_write_touch(c)
 
         result["completed_at"] = datetime.now(UTC).isoformat()
         c._last_target_options_attempt = result
-        c._last_write_attempt = {
-            "status": result.get("status", "unknown"),
-            "timestamp": result.get("completed_at"),
-            "authority_mode": c._write_authority_mode,
-            "reason": result.get("reason", ""),
-            "correlation_id": corr,
-            "source": "build_target_options_scaffold",
-            "active_target": "",
-        }
+        WritePathFabric.stamp_last_write_attempt(
+            c,
+            result=result,
+            source="build_target_options_scaffold",
+            correlation_id=corr,
+            active_target="",
+        )
         c.async_set_updated_data(c._build_snapshot())
         return result
 
@@ -849,13 +805,7 @@ class SelectionFabricWorkflow:
         helper_current = ""
         if helper_state is not None:
             helper_current = str(helper_state.state or "").strip()
-            options_attr = helper_state.attributes.get("options", [])
-            if isinstance(options_attr, list):
-                helper_options = [
-                    str(item).strip()
-                    for item in options_attr
-                    if isinstance(item, str) and str(item).strip()
-                ]
+            helper_options = WritePathFabric.normalize_options(helper_state.attributes.get("options", []))
 
         helper_current_resolved = c._is_resolved_state(helper_current)
         helper_current_in_options = helper_current_resolved and helper_current in helper_options
@@ -899,19 +849,14 @@ class SelectionFabricWorkflow:
         elif helper_state is None:
             result["status"] = "blocked_missing_target_helper"
             result["reason"] = "Target helper entity is missing"
-        elif c._write_authority_mode != WRITE_AUTH_COMPONENT and not dry_run:
-            result["status"] = "blocked_authority"
-            result["reason"] = "Write authority is legacy; auto-select apply is intentionally blocked"
-        elif c._write_in_progress and not force:
-            result["status"] = "blocked_reentrancy"
-            result["reason"] = "A prior write attempt is still in progress"
-        elif not force and not dry_run and c._last_write_monotonic > 0:
-            elapsed = monotonic() - c._last_write_monotonic
-            if elapsed < c._write_debounce_s:
-                result["status"] = "blocked_debounce"
-                result["reason"] = "Debounce guard active"
-                result["elapsed_s"] = round(elapsed, 3)
-                result["debounce_s"] = c._write_debounce_s
+        WritePathFabric.apply_standard_write_guards(
+            c,
+            result,
+            force=bool(force),
+            dry_run=bool(dry_run),
+            authority_required=WRITE_AUTH_COMPONENT,
+            authority_block_reason="Write authority is legacy; auto-select apply is intentionally blocked",
+        )
 
         if result["status"] == "pending" and selected_target not in helper_options:
             if dry_run and sync_options_if_missing and len(planned_options) > 0:
@@ -969,19 +914,17 @@ class SelectionFabricWorkflow:
                 c._write_in_progress = False
 
         if result["status"] in {"dry_run_ok", "noop_already_selected", "write_applied", "write_error"}:
-            c._last_write_monotonic = monotonic()
+            WritePathFabric.mark_write_touch(c)
 
         result["completed_at"] = datetime.now(UTC).isoformat()
         c._last_auto_select_attempt = result
-        c._last_write_attempt = {
-            "status": result.get("status", "unknown"),
-            "timestamp": result.get("completed_at"),
-            "authority_mode": c._write_authority_mode,
-            "reason": result.get("reason", ""),
-            "correlation_id": corr,
-            "source": "run_auto_select_scaffold",
-            "active_target": selected_target,
-        }
+        WritePathFabric.stamp_last_write_attempt(
+            c,
+            result=result,
+            source="run_auto_select_scaffold",
+            correlation_id=corr,
+            active_target=selected_target,
+        )
         c.async_set_updated_data(c._build_snapshot())
         return result
 
@@ -1026,19 +969,14 @@ class SelectionFabricWorkflow:
         elif not c._is_resolved_state(helper_current):
             result["status"] = "blocked_unresolved_target"
             result["reason"] = "Current helper target is unresolved and cannot be tracked"
-        elif c._write_authority_mode != WRITE_AUTH_COMPONENT and not dry_run:
-            result["status"] = "blocked_authority"
-            result["reason"] = "Write authority is legacy; last-valid tracking write is intentionally blocked"
-        elif c._write_in_progress and not force:
-            result["status"] = "blocked_reentrancy"
-            result["reason"] = "A prior write attempt is still in progress"
-        elif not force and not dry_run and c._last_write_monotonic > 0:
-            elapsed = monotonic() - c._last_write_monotonic
-            if elapsed < c._write_debounce_s:
-                result["status"] = "blocked_debounce"
-                result["reason"] = "Debounce guard active"
-                result["elapsed_s"] = round(elapsed, 3)
-                result["debounce_s"] = c._write_debounce_s
+        WritePathFabric.apply_standard_write_guards(
+            c,
+            result,
+            force=bool(force),
+            dry_run=bool(dry_run),
+            authority_required=WRITE_AUTH_COMPONENT,
+            authority_block_reason="Write authority is legacy; last-valid tracking write is intentionally blocked",
+        )
 
         if result["status"] == "pending":
             current_last_valid = str(last_valid_state.state if last_valid_state is not None else "").strip()
@@ -1072,19 +1010,17 @@ class SelectionFabricWorkflow:
                 c._write_in_progress = False
 
         if result["status"] in {"dry_run_ok", "noop_already_tracked", "write_applied", "write_error"}:
-            c._last_write_monotonic = monotonic()
+            WritePathFabric.mark_write_touch(c)
 
         result["completed_at"] = datetime.now(UTC).isoformat()
         c._last_track_last_valid_attempt = result
-        c._last_write_attempt = {
-            "status": result.get("status", "unknown"),
-            "timestamp": result.get("completed_at"),
-            "authority_mode": c._write_authority_mode,
-            "reason": result.get("reason", ""),
-            "correlation_id": corr,
-            "source": source,
-            "active_target": helper_current,
-        }
+        WritePathFabric.stamp_last_write_attempt(
+            c,
+            result=result,
+            source=source,
+            correlation_id=corr,
+            active_target=helper_current,
+        )
         c.async_set_updated_data(c._build_snapshot())
         return result
 
@@ -1107,13 +1043,7 @@ class SelectionFabricWorkflow:
         last_valid_target = str(last_valid_state.state if last_valid_state is not None else "").strip()
         helper_options: list[str] = []
         if helper_state is not None:
-            options_attr = helper_state.attributes.get("options", [])
-            if isinstance(options_attr, list):
-                helper_options = [
-                    str(item).strip()
-                    for item in options_attr
-                    if isinstance(item, str) and str(item).strip()
-                ]
+            helper_options = WritePathFabric.normalize_options(helper_state.attributes.get("options", []))
 
         current_resolved = c._is_resolved_state(helper_current)
         restore_candidate = (
@@ -1149,19 +1079,14 @@ class SelectionFabricWorkflow:
         elif restore_candidate == "":
             result["status"] = "blocked_no_last_valid_candidate"
             result["reason"] = "No restorable last-valid target is present in current helper options"
-        elif c._write_authority_mode != WRITE_AUTH_COMPONENT and not dry_run:
-            result["status"] = "blocked_authority"
-            result["reason"] = "Write authority is legacy; restore-last-valid write is intentionally blocked"
-        elif c._write_in_progress and not force:
-            result["status"] = "blocked_reentrancy"
-            result["reason"] = "A prior write attempt is still in progress"
-        elif not force and not dry_run and c._last_write_monotonic > 0:
-            elapsed = monotonic() - c._last_write_monotonic
-            if elapsed < c._write_debounce_s:
-                result["status"] = "blocked_debounce"
-                result["reason"] = "Debounce guard active"
-                result["elapsed_s"] = round(elapsed, 3)
-                result["debounce_s"] = c._write_debounce_s
+        WritePathFabric.apply_standard_write_guards(
+            c,
+            result,
+            force=bool(force),
+            dry_run=bool(dry_run),
+            authority_required=WRITE_AUTH_COMPONENT,
+            authority_block_reason="Write authority is legacy; restore-last-valid write is intentionally blocked",
+        )
 
         if result["status"] == "pending" and helper_current == restore_candidate:
             result["status"] = "noop_already_selected"
@@ -1199,19 +1124,17 @@ class SelectionFabricWorkflow:
             "write_applied",
             "write_error",
         }:
-            c._last_write_monotonic = monotonic()
+            WritePathFabric.mark_write_touch(c)
 
         result["completed_at"] = datetime.now(UTC).isoformat()
         c._last_restore_last_valid_attempt = result
-        c._last_write_attempt = {
-            "status": result.get("status", "unknown"),
-            "timestamp": result.get("completed_at"),
-            "authority_mode": c._write_authority_mode,
-            "reason": result.get("reason", ""),
-            "correlation_id": corr,
-            "source": "restore_last_valid_target",
-            "active_target": restore_candidate,
-        }
+        WritePathFabric.stamp_last_write_attempt(
+            c,
+            result=result,
+            source="restore_last_valid_target",
+            correlation_id=corr,
+            active_target=restore_candidate,
+        )
         c.async_set_updated_data(c._build_snapshot())
         return result
 
@@ -1234,13 +1157,7 @@ class SelectionFabricWorkflow:
         helper_current = str(helper_state.state if helper_state is not None else "").strip()
         helper_options: list[str] = []
         if helper_state is not None:
-            options_attr = helper_state.attributes.get("options", [])
-            if isinstance(options_attr, list):
-                helper_options = [
-                    str(item).strip()
-                    for item in options_attr
-                    if isinstance(item, str) and str(item).strip()
-                ]
+            helper_options = WritePathFabric.normalize_options(helper_state.attributes.get("options", []))
 
         cycle_options = list(helper_options)
         if not include_none:
@@ -1281,19 +1198,14 @@ class SelectionFabricWorkflow:
         elif next_target == "":
             result["status"] = "blocked_no_next_target"
             result["reason"] = "Unable to derive next cycle target"
-        elif c._write_authority_mode != WRITE_AUTH_COMPONENT and not dry_run:
-            result["status"] = "blocked_authority"
-            result["reason"] = "Write authority is legacy; cycle-target write is intentionally blocked"
-        elif c._write_in_progress and not force:
-            result["status"] = "blocked_reentrancy"
-            result["reason"] = "A prior write attempt is still in progress"
-        elif not force and not dry_run and c._last_write_monotonic > 0:
-            elapsed = monotonic() - c._last_write_monotonic
-            if elapsed < c._write_debounce_s:
-                result["status"] = "blocked_debounce"
-                result["reason"] = "Debounce guard active"
-                result["elapsed_s"] = round(elapsed, 3)
-                result["debounce_s"] = c._write_debounce_s
+        WritePathFabric.apply_standard_write_guards(
+            c,
+            result,
+            force=bool(force),
+            dry_run=bool(dry_run),
+            authority_required=WRITE_AUTH_COMPONENT,
+            authority_block_reason="Write authority is legacy; cycle-target write is intentionally blocked",
+        )
 
         if result["status"] == "pending" and len(cycle_options) == 1 and helper_current == next_target:
             result["status"] = "noop_single_option"
@@ -1345,18 +1257,16 @@ class SelectionFabricWorkflow:
                 c._write_in_progress = False
 
         if result["status"] in {"dry_run_ok", "noop_single_option", "write_applied", "write_error"}:
-            c._last_write_monotonic = monotonic()
+            WritePathFabric.mark_write_touch(c)
 
         result["completed_at"] = datetime.now(UTC).isoformat()
         c._last_cycle_target_attempt = result
-        c._last_write_attempt = {
-            "status": result.get("status", "unknown"),
-            "timestamp": result.get("completed_at"),
-            "authority_mode": c._write_authority_mode,
-            "reason": result.get("reason", ""),
-            "correlation_id": corr,
-            "source": "cycle_active_target",
-            "active_target": next_target,
-        }
+        WritePathFabric.stamp_last_write_attempt(
+            c,
+            result=result,
+            source="cycle_active_target",
+            correlation_id=corr,
+            active_target=next_target,
+        )
         c.async_set_updated_data(c._build_snapshot())
         return result

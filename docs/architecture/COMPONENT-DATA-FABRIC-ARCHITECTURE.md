@@ -1,5 +1,5 @@
 <!-- Description: Component-first canonical playback data-fabric architecture for robust multi-source metadata/progress ownership in Spectra LS. -->
-<!-- Version: 2026.05.03.2 -->
+<!-- Version: 2026.05.03.7 -->
 <!-- Last updated: 2026-05-03 -->
 
 # Spectra LS Component Data Fabric Architecture (Canonical Playback Contract)
@@ -116,6 +116,7 @@ Component-owned canonical object (`playback_contract.v1`) with required sections
   - `position_s`, `duration_s`, `position_updated_at`, `at_track_end_stuck`
 - `routing`
   - `active_target`, `control_host`, `control_path`, `control_capable`
+  - classification guardrail: when target host resolution is successful and transport compatibility indicates supported Linkplay/TCP routing (including WiiM-discovered targets resolved onto compatible host transport), registry classification must not degrade to `control_path=unknown`/`control_capable=false` for that target.
 - `policy`
   - `media_class`, `display_allowed`, `suppression_reason`
 - `health`
@@ -246,6 +247,10 @@ Project canonical fields to compatibility surfaces while cutover is gated:
 - Host-control authority cutover uses explicit gate packet semantics (`host_control_cutover_gate`) with fail-closed blockers; component-authority scheduler writes are blocked unless gate readiness is true.
 - Gate readiness and activation are distinct: `ready_for_cutover` proves parity/path readiness, while `ready_for_authoritative_activation` additionally requires active component authority mode.
 - Host-cutover packet contract is service-addressable through `spectra_ls.get_host_cutover_gate` for deterministic automation and closeout evidence capture.
+- Metadata bridge cutover-proof contract must capture the in-window checkpoint under the effective authority mode for that window (component when metadata cutover is active); trial-stage authority transitions must not manufacture false in-window owner/cutover regressions.
+- Metadata bridge bounded windows with operator-provided `expected_target` must preserve target/route stability when that expected target is already active and route-supported; preflight recovery logic must not reselect non-capable targets mid-window.
+- Metadata trial audit payloads are closeout-critical contracts and must always include canonical status fields (`status`, `requested_at`, `completed_at`) even when expected-meta preflight checks pass, so audit completeness and endpoint gates are deterministic.
+- Metadata prep freshness gating must tolerate bounded active-playback contract-complete windows (resolved state/title/position/duration) when progress-clock freshness is temporarily stale; this posture must not fail-close authority ownership if core playback contract surfaces remain resolved.
 
 ## Risks and mitigations
 

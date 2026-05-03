@@ -1,5 +1,5 @@
 # Description: Extracted metadata stack workflows for Spectra LS (metadata prep/bridge/cutover validation and metadata trial services).
-# Version: 2026.05.03.3
+# Version: 2026.05.03.7
 # Last updated: 2026-05-03
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
@@ -680,6 +680,18 @@ class MetadataStackWorkflow:
 		long_idle_stale_hidden = bool(now_playing_signal.get("long_idle_stale_hidden", False))
 		playing_at_track_end_stuck = bool(now_playing_signal.get("playing_at_track_end_stuck", False))
 		now_playing_fresh_play_signal = bool(now_playing_signal.get("fresh_play_signal", False))
+		resolved_active_playback_contract = (
+			active_playback_signal
+			and now_playing_title_resolved
+			and now_playing_position_resolved
+			and now_playing_duration_resolved
+			and isinstance(now_playing_position_v, float)
+			and now_playing_position_v >= 0
+			and isinstance(now_playing_duration_v, float)
+			and now_playing_duration_v > 0
+			and not playing_with_missing_duration_contract
+		)
+		freshness_gate_satisfied = now_playing_fresh_play_signal or resolved_active_playback_contract
 		now_playing_title_signal_ready = now_playing_title_resolved or (
 			now_playing_fresh_play_signal and active_meta_entity_resolved
 		)
@@ -699,7 +711,7 @@ class MetadataStackWorkflow:
 				and now_playing_title_signal_ready
 				and candidate_payload_ready
 				and route_trace_present
-				and now_playing_fresh_play_signal
+				and freshness_gate_satisfied
 				and not playing_with_missing_duration_contract
 			),
 			resolver_selected=resolver_selected,
@@ -712,11 +724,11 @@ class MetadataStackWorkflow:
 		authority_gate_results = {
 			"ma_api_reachable": bool(contract_valid and route_trace_present),
 			"ma_payload_shape_valid": bool(candidate_payload_ready),
-			"ma_payload_fresh": bool(now_playing_fresh_play_signal),
+			"ma_payload_fresh": bool(freshness_gate_satisfied),
 			"ma_identity_confidence": bool(active_meta_entity_resolved and now_playing_entity_resolved),
 			"ma_timing_confidence": bool(
 				not playing_with_missing_duration_contract
-				and not playing_without_fresh_signal
+				and (not playing_without_fresh_signal or resolved_active_playback_contract)
 				and not playing_at_track_end_stuck
 			),
 		}
@@ -744,7 +756,8 @@ class MetadataStackWorkflow:
 			"candidate_payload_ready": candidate_payload_ready,
 			"route_trace_present": route_trace_present,
 			"no_authority_expansion": no_authority_expansion,
-			"now_playing_fresh_play_signal": now_playing_fresh_play_signal,
+			"now_playing_fresh_play_signal": freshness_gate_satisfied,
+			"resolved_active_playback_contract": resolved_active_playback_contract,
 			"progress_duration_contract_ready": not playing_with_missing_duration_contract,
 		}
 		gate_score = sum(1 for ok in gate_checks.values() if ok)
@@ -782,7 +795,12 @@ class MetadataStackWorkflow:
 			blocking_reasons.append("authority_mode_not_legacy")
 		if playing_with_missing_duration_contract:
 			blocking_reasons.append("playing_with_missing_duration_contract")
-		if playing_without_fresh_signal and not playing_at_track_end_stuck and now_playing_title_resolved:
+		if (
+			playing_without_fresh_signal
+			and not resolved_active_playback_contract
+			and not playing_at_track_end_stuck
+			and now_playing_title_resolved
+		):
 			blocking_reasons.append("playing_without_recent_progress")
 		if playing_at_track_end_stuck and now_playing_title_resolved:
 			blocking_reasons.append("playing_stuck_at_track_end")
@@ -790,7 +808,7 @@ class MetadataStackWorkflow:
 			blocking_reasons.append("paused_without_recent_progress")
 		elif long_idle_stale_hidden and now_playing_title_resolved:
 			blocking_reasons.append("long_idle_stale_hidden")
-		elif not now_playing_fresh_play_signal and now_playing_title_resolved:
+		elif not freshness_gate_satisfied and now_playing_title_resolved:
 			blocking_reasons.append("no_fresh_play_signal")
 		for token in authority_reasons:
 			if token not in blocking_reasons:
@@ -816,7 +834,11 @@ class MetadataStackWorkflow:
 			verdict = "WARN"
 		elif playing_at_track_end_stuck and now_playing_title_resolved:
 			verdict = "WARN"
-		elif playing_without_fresh_signal and now_playing_title_resolved:
+		elif (
+			playing_without_fresh_signal
+			and not resolved_active_playback_contract
+			and now_playing_title_resolved
+		):
 			verdict = "WARN"
 		elif paused_without_fresh_signal and now_playing_title_resolved:
 			verdict = "WARN"
@@ -859,6 +881,8 @@ class MetadataStackWorkflow:
 				"route_trace_present": route_trace_present,
 				"no_authority_expansion": no_authority_expansion,
 				"now_playing_fresh_play_signal": now_playing_fresh_play_signal,
+				"now_playing_freshness_gate_satisfied": freshness_gate_satisfied,
+				"resolved_active_playback_contract": resolved_active_playback_contract,
 				"now_playing_recent_play_progress": now_playing_signal.get("recent_play_progress"),
 				"now_playing_recent_paused_progress": now_playing_signal.get("recent_paused_progress"),
 				"now_playing_playing_at_track_end_stuck": playing_at_track_end_stuck,
@@ -1103,26 +1127,47 @@ class MetadataStackWorkflow:
 			else:
 				result["stages"]["set_component_authority"] = "noop_already_component"
 
-			auto_select_result = await c.async_run_auto_select_scaffold(
-				dry_run=False,
-				force=True,
-				sync_options_if_missing=True,
-				include_none=True,
-				correlation_id=f"{corr}-auto-select",
-			)
-			result["stages"]["auto_select_scaffold"] = {
-				"status": auto_select_result.get("status", "unknown"),
-				"reason": auto_select_result.get("reason", ""),
-				"selected_target": auto_select_result.get("selected_target", ""),
-				"options_synced": bool(auto_select_result.get("options_synced", False)),
-			}
+			pre_window = result.get("cutover_proof", {}).get("pre_window", {}) if isinstance(result.get("cutover_proof", {}), dict) else {}
+			pre_target = str(pre_window.get("active_target", "") or "").strip()
+			pre_route = str(pre_window.get("route_decision", "") or "").strip()
+			expected_target_norm = str(result.get("expected_target", "") or "").strip()
+			expected_route_norm = str(result.get("expected_route", "") or "").strip()
 
-			auto_status = str(auto_select_result.get("status", "") or "")
-			if auto_status.startswith("blocked_") or auto_status == "write_error":
-				result["cutover_proof"]["in_window"] = _capture_cutover_proof("blocked_target_recovery_stage")
-				result["status"] = "blocked_target_recovery_stage"
-				result["reason"] = "Automatic control-capable target recovery did not pass guards"
-				return result
+			target_window_stable = (
+				expected_target_norm != ""
+				and expected_target_norm == pre_target
+				and (expected_route_norm == "" or expected_route_norm == pre_route)
+				and pre_route == "route_linkplay_tcp"
+			)
+
+			if target_window_stable:
+				result["stages"]["auto_select_scaffold"] = {
+					"status": "skipped_expected_target_stable",
+					"reason": "Expected target/route already stable; skipping recovery auto-select",
+					"selected_target": pre_target,
+					"options_synced": False,
+				}
+			else:
+				auto_select_result = await c.async_run_auto_select_scaffold(
+					dry_run=False,
+					force=True,
+					sync_options_if_missing=True,
+					include_none=True,
+					correlation_id=f"{corr}-auto-select",
+				)
+				result["stages"]["auto_select_scaffold"] = {
+					"status": auto_select_result.get("status", "unknown"),
+					"reason": auto_select_result.get("reason", ""),
+					"selected_target": auto_select_result.get("selected_target", ""),
+					"options_synced": bool(auto_select_result.get("options_synced", False)),
+				}
+
+				auto_status = str(auto_select_result.get("status", "") or "")
+				if auto_status.startswith("blocked_") or auto_status == "write_error":
+					result["cutover_proof"]["in_window"] = _capture_cutover_proof("blocked_target_recovery_stage")
+					result["status"] = "blocked_target_recovery_stage"
+					result["reason"] = "Automatic control-capable target recovery did not pass guards"
+					return result
 
 			resolver_result = await self.async_run_metadata_resolver_scaffold(
 				dry_run=resolver_dry_run,
@@ -1141,22 +1186,36 @@ class MetadataStackWorkflow:
 				result["status"] = "blocked_resolver_stage"
 				result["reason"] = "Resolver scaffold stage did not pass guards"
 			else:
-				result["cutover_proof"]["in_window"] = _capture_cutover_proof("post_resolver_stage")
+				resolver_window = _capture_cutover_proof("post_resolver_stage")
+				result["cutover_proof"]["in_window"] = resolver_window
 				selected_meta = (expected_meta_entity or "").strip()
 				if selected_meta == "":
 					selected_meta = str(resolver_result.get("selected_meta_entity", "") or "").strip()
 
-				if c._write_authority_mode != WRITE_AUTH_LEGACY:
+				trial_mode = WRITE_AUTH_LEGACY
+				if bool(resolver_window.get("metadata_cutover_active", False)):
+					trial_mode = WRITE_AUTH_COMPONENT
+				result["stages"]["trial_authority_mode"] = trial_mode
+
+				if trial_mode == WRITE_AUTH_LEGACY and c._write_authority_mode != WRITE_AUTH_LEGACY:
 					await c.async_set_write_authority(
 						mode=WRITE_AUTH_LEGACY,
 						reason=f"{operator_reason} (trial-stage)",
 					)
 					result["stages"]["set_legacy_authority"] = "applied"
-				else:
+				elif trial_mode == WRITE_AUTH_LEGACY:
 					result["stages"]["set_legacy_authority"] = "noop_already_legacy"
+				elif c._write_authority_mode != WRITE_AUTH_COMPONENT:
+					await c.async_set_write_authority(
+						mode=WRITE_AUTH_COMPONENT,
+						reason=f"{operator_reason} (trial-stage)",
+					)
+					result["stages"]["set_component_authority"] = "applied"
+				else:
+					result["stages"]["set_component_authority"] = "noop_already_component"
 
 				trial_result = await self.async_metadata_write_trial(
-					mode=WRITE_AUTH_LEGACY,
+					mode=trial_mode,
 					window_id=window,
 					reason=f"{operator_reason} (bridge)",
 					dry_run=trial_dry_run,
@@ -1178,7 +1237,8 @@ class MetadataStackWorkflow:
 					result["status"] = "blocked_trial_stage"
 					result["reason"] = "Metadata trial stage did not pass guards"
 				else:
-					result["cutover_proof"]["in_window"] = _capture_cutover_proof("post_trial_stage")
+					proof_stage = "post_trial_stage_component" if trial_mode == WRITE_AUTH_COMPONENT else "post_trial_stage_legacy"
+					result["cutover_proof"]["in_window"] = _capture_cutover_proof(proof_stage)
 					result["status"] = "bridge_completed"
 					result["reason"] = "Resolver-authority gating and metadata trial bridge completed"
 		finally:
@@ -1344,19 +1404,17 @@ class MetadataStackWorkflow:
 					"reason": "Observed active target does not match expected_target",
 				}
 			)
-		elif expected_meta_entity_norm:
-			meta_matches = expected_meta_entity_norm in {
-				active_meta_entity,
-				scaffold_meta_entity,
-				(override_entity if override_active else ""),
-			}
-			if not meta_matches:
-				result.update(
-					{
-						"status": "blocked_expected_meta_mismatch",
-						"reason": "Observed metadata resolver surfaces do not match expected_meta_entity",
-					}
-				)
+		elif expected_meta_entity_norm and expected_meta_entity_norm not in {
+			active_meta_entity,
+			scaffold_meta_entity,
+			(override_entity if override_active else ""),
+		}:
+			result.update(
+				{
+					"status": "blocked_expected_meta_mismatch",
+					"reason": "Observed metadata resolver surfaces do not match expected_meta_entity",
+				}
+			)
 		elif not dry_run and requested_mode == WRITE_AUTH_COMPONENT and not metadata_cutover_active:
 			result.update(
 				{

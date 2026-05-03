@@ -1,6 +1,6 @@
 # Description: Audio controls package for Spectra LS System (TCP-only) with host-resolved control routing.
-# Version: 2026.04.28.1
-# Last updated: 2026-04-28
+# Version: 2026.05.03.2
+# Last updated: 2026-05-03
 # Update version/date whenever you change this file.
 
 binary_sensor:
@@ -327,17 +327,6 @@ sensor:
     accuracy_decimals: 0
     lambda: |-
       return (float) id(arylic_meta_duration_state);
-  - platform: homeassistant
-    id: ma_control_port
-    entity_id: sensor.ma_control_port
-    internal: true
-    accuracy_decimals: 0
-    on_value:
-      - lambda: |-
-          int port = (int) x;
-          if (port <= 0 || port > 65534) port = (int) ${arylic_tcp_port};
-          id(arylic_control_port) = port;
-          ESP_LOGI("ma", "control_port=%d", port);
 number:
   - platform: template
     name: "EQ Low"
@@ -677,13 +666,24 @@ text_sensor:
           std::string low = hosts;
           for (auto &c : low) c = (char) ::tolower(c);
           if (hosts.empty() || low == "unknown" || low == "unavailable" || low == "none") {
+            const bool reconnect_grace_active = id(control_target_ha_reconnect_guard_until_ms) > now;
             const bool pending_refresh = id(control_target_pending_until_ms) > now;
             const bool has_recent_valid = id(arylic_control_hosts_last_valid_ms) > 0 &&
                                           (now - id(arylic_control_hosts_last_valid_ms)) < 10000;
             const bool has_cached = !id(arylic_control_hosts).empty();
-            if (has_cached && (pending_refresh || has_recent_valid)) {
+            if (reconnect_grace_active && !has_cached) {
               if (should_log_invalid()) {
-                ESP_LOGW("ma", "control_hosts invalid update '%s' while refreshing; keeping cached '%s'", hosts.c_str(), id(arylic_control_hosts).c_str());
+                ESP_LOGI("ma", "control_hosts transient invalid update '%s' during reconnect grace with empty cache; deferring fail-closed clear", hosts.c_str());
+              }
+              return;
+            }
+            if (has_cached && (pending_refresh || has_recent_valid || reconnect_grace_active)) {
+              if (should_log_invalid()) {
+                if (reconnect_grace_active) {
+                  ESP_LOGI("ma", "control_hosts transient invalid update '%s' during reconnect grace; keeping cached '%s'", hosts.c_str(), id(arylic_control_hosts).c_str());
+                } else {
+                  ESP_LOGW("ma", "control_hosts invalid update '%s' while refreshing; keeping cached '%s'", hosts.c_str(), id(arylic_control_hosts).c_str());
+                }
               }
               return;
             }
@@ -720,14 +720,26 @@ text_sensor:
           std::string low = host;
           for (auto &c : low) c = (char) ::tolower(c);
           if (host.empty() || low == "unknown" || low == "unavailable" || low == "none") {
+            const bool reconnect_grace_active = id(control_target_ha_reconnect_guard_until_ms) > now;
             const bool pending_refresh = id(control_target_pending_until_ms) > now;
             const bool has_recent_valid = id(arylic_control_hosts_last_valid_ms) > 0 &&
                                           (now - id(arylic_control_hosts_last_valid_ms)) < 10000;
             const bool has_cached = !id(arylic_control_hosts).empty() || !id(arylic_control_host).empty();
-            if (has_cached && (pending_refresh || has_recent_valid)) {
+            if (reconnect_grace_active && !has_cached) {
               if (should_log_invalid()) {
-                ESP_LOGW("ma", "control_host invalid update '%s' while refreshing; keeping cached hosts='%s' host='%s'",
-                         host.c_str(), id(arylic_control_hosts).c_str(), id(arylic_control_host).c_str());
+                ESP_LOGI("ma", "control_host transient invalid update '%s' during reconnect grace with empty cache; deferring fail-closed clear", host.c_str());
+              }
+              return;
+            }
+            if (has_cached && (pending_refresh || has_recent_valid || reconnect_grace_active)) {
+              if (should_log_invalid()) {
+                if (reconnect_grace_active) {
+                  ESP_LOGI("ma", "control_host transient invalid update '%s' during reconnect grace; keeping cached hosts='%s' host='%s'",
+                           host.c_str(), id(arylic_control_hosts).c_str(), id(arylic_control_host).c_str());
+                } else {
+                  ESP_LOGW("ma", "control_host invalid update '%s' while refreshing; keeping cached hosts='%s' host='%s'",
+                           host.c_str(), id(arylic_control_hosts).c_str(), id(arylic_control_host).c_str());
+                }
               }
               return;
             }
@@ -750,6 +762,79 @@ text_sensor:
           id(control_target_pending_until_ms) = 0;
           ESP_LOGI("ma", "control_host=%s", host.c_str());
   - platform: homeassistant
+    id: ma_control_port
+    entity_id: sensor.ma_control_port
+    internal: true
+    on_value:
+      - lambda: |-
+          const uint32_t now = millis();
+          static uint32_t last_invalid_log_ms = 0;
+          auto should_log_invalid = [&]() -> bool {
+            if (now - last_invalid_log_ms < 5000) return false;
+            last_invalid_log_ms = now;
+            return true;
+          };
+
+          auto is_invalid = [&](const std::string &value) -> bool {
+            std::string low = value;
+            for (auto &c : low) c = (char) ::tolower(c);
+            return low.empty() || low == "unknown" || low == "unavailable" || low == "none" || low == "null";
+          };
+
+          std::string raw = x.c_str();
+          if (is_invalid(raw)) {
+            const bool reconnect_grace_active = id(control_target_ha_reconnect_guard_until_ms) > now;
+            const bool pending_refresh = id(control_target_pending_until_ms) > now;
+            const bool has_recent_valid = id(arylic_control_port_last_valid_ms) > 0 &&
+                                          (now - id(arylic_control_port_last_valid_ms)) < 10000;
+            if (reconnect_grace_active || pending_refresh || has_recent_valid) {
+              if (should_log_invalid()) {
+                if (reconnect_grace_active) {
+                  ESP_LOGI("ma", "control_port transient invalid update '%s' during reconnect grace; keeping cached port=%d", raw.c_str(), id(arylic_control_port));
+                } else {
+                  ESP_LOGW("ma", "control_port invalid update '%s' while refreshing; keeping cached port=%d", raw.c_str(), id(arylic_control_port));
+                }
+              }
+              return;
+            }
+
+            int fallback = (int) ${arylic_tcp_port};
+            if (fallback <= 0 || fallback > 65534) fallback = 8899;
+            id(arylic_control_port) = fallback;
+            if (should_log_invalid()) {
+              ESP_LOGW("ma", "control_port fail-closed fallback applied (invalid update '%s', fallback=%d)", raw.c_str(), fallback);
+            }
+            return;
+          }
+
+          char *end = nullptr;
+          long parsed = strtol(raw.c_str(), &end, 10);
+          if (end == raw.c_str()) {
+            if (should_log_invalid()) {
+              ESP_LOGW("ma", "control_port parse failed '%s'; keeping cached port=%d", raw.c_str(), id(arylic_control_port));
+            }
+            return;
+          }
+          while (*end == ' ' || *end == '\t' || *end == '\n' || *end == '\r') end++;
+          if (*end != '\0') {
+            if (should_log_invalid()) {
+              ESP_LOGW("ma", "control_port parse trailing junk '%s'; keeping cached port=%d", raw.c_str(), id(arylic_control_port));
+            }
+            return;
+          }
+
+          int port = (int) parsed;
+          if (port <= 0 || port > 65534) {
+            if (should_log_invalid()) {
+              ESP_LOGW("ma", "control_port out of range '%s'; keeping cached port=%d", raw.c_str(), id(arylic_control_port));
+            }
+            return;
+          }
+
+          id(arylic_control_port) = port;
+          id(arylic_control_port_last_valid_ms) = now;
+          ESP_LOGI("ma", "control_port=%d", port);
+  - platform: homeassistant
     id: ha_audio_position
     entity_id: ${ha_ma_active_position}
     internal: true
@@ -763,7 +848,11 @@ text_sensor:
           if (raw.empty() || low == "unknown" || low == "unavailable" || low == "none" || low == "null") {
             if (now - last_invalid_log_ms > 15000) {
               last_invalid_log_ms = now;
-              ESP_LOGW("ha_state", "ha_audio_position ignored non-numeric '%s'", raw.c_str());
+              if (id(control_target_ha_reconnect_guard_until_ms) > now) {
+                ESP_LOGI("ha_state", "ha_audio_position transient non-numeric during reconnect '%s'", raw.c_str());
+              } else {
+                ESP_LOGW("ha_state", "ha_audio_position ignored non-numeric '%s'", raw.c_str());
+              }
             }
             return;
           }
@@ -807,7 +896,11 @@ text_sensor:
           if (raw.empty() || low == "unknown" || low == "unavailable" || low == "none" || low == "null") {
             if (now - last_invalid_log_ms > 15000) {
               last_invalid_log_ms = now;
-              ESP_LOGW("ha_state", "ha_audio_duration ignored non-numeric '%s'", raw.c_str());
+              if (id(control_target_ha_reconnect_guard_until_ms) > now) {
+                ESP_LOGI("ha_state", "ha_audio_duration transient non-numeric during reconnect '%s'", raw.c_str());
+              } else {
+                ESP_LOGW("ha_state", "ha_audio_duration ignored non-numeric '%s'", raw.c_str());
+              }
             }
             return;
           }
@@ -884,7 +977,11 @@ text_sensor:
           if (cur == last) return;
           last = cur;
           if (cur == "unavailable" || cur == "unknown" || cur.empty()) {
-            ESP_LOGW("ha_state", "ha_audio_state='%s'", cur.c_str());
+            if (id(control_target_ha_reconnect_guard_until_ms) > millis()) {
+              ESP_LOGI("ha_state", "ha_audio_state transient during reconnect='%s'", cur.c_str());
+            } else {
+              ESP_LOGW("ha_state", "ha_audio_state='%s'", cur.c_str());
+            }
           } else {
             ESP_LOGI("ha_state", "ha_audio_state='%s'", cur.c_str());
           }

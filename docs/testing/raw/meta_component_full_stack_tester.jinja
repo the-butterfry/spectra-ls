@@ -1,0 +1,158 @@
+{# Description: Full-stack one-screen Spectra LS component validation template for HA Developer Tools. #}
+{# Version: 2026.05.03.58 #}
+{# Last updated: 2026-05-03 #}
+
+{% set invalid = ['','none','unknown','unavailable','null'] %}
+
+{% set shadow_entity = 'sensor.shadow_active_target' if states['sensor.shadow_active_target'] is not none else 'sensor.spectra_ls_shadow_active_target' %}
+{% set shadow_exists = states[shadow_entity] is not none %}
+{% set shadow_state = states(shadow_entity) if shadow_exists else 'missing' %}
+{% set captured_at = state_attr(shadow_entity,'captured_at') if shadow_exists else none %}
+
+{% set age_s = none %}
+{% if captured_at is string and captured_at|trim not in invalid %}
+  {% set cap_ts = as_timestamp(captured_at, none) %}
+  {% if cap_ts is not none %}
+    {% set age_s = as_timestamp(now()) - cap_ts %}
+  {% endif %}
+{% endif %}
+
+{% set snapshot_fresh = (age_s is not none) and (age_s <= 300) %}
+
+{% set route_trace = state_attr(shadow_entity,'route_trace') if shadow_exists and state_attr(shadow_entity,'route_trace') is mapping else {} %}
+{% set contract_validation = state_attr(shadow_entity,'contract_validation') if shadow_exists and state_attr(shadow_entity,'contract_validation') is mapping else {} %}
+{% set scheduler_validation = state_attr(shadow_entity,'scheduler_validation') if shadow_exists and state_attr(shadow_entity,'scheduler_validation') is mapping else {} %}
+{% set selection_handoff = state_attr(shadow_entity,'selection_handoff_validation') if shadow_exists and state_attr(shadow_entity,'selection_handoff_validation') is mapping else {} %}
+{% set metadata_prep = state_attr(shadow_entity,'metadata_prep_validation') if shadow_exists and state_attr(shadow_entity,'metadata_prep_validation') is mapping else {} %}
+{% set control_center = state_attr(shadow_entity,'control_center_validation') if shadow_exists and state_attr(shadow_entity,'control_center_validation') is mapping else {} %}
+{% set host_cutover = state_attr(shadow_entity,'host_control_cutover_gate') if shadow_exists and state_attr(shadow_entity,'host_control_cutover_gate') is mapping else {} %}
+{% set write_controls = state_attr(shadow_entity,'write_controls') if shadow_exists and state_attr(shadow_entity,'write_controls') is mapping else {} %}
+{% set authority_contract = state_attr(shadow_entity,'authority_contract') if shadow_exists and state_attr(shadow_entity,'authority_contract') is mapping else {} %}
+
+{% set authority_mode = write_controls.authority_mode if write_controls.authority_mode is defined else 'unknown' %}
+{% set last_attempt = write_controls.last_attempt if write_controls.last_attempt is defined and write_controls.last_attempt is mapping else {} %}
+{% set last_attempt_status = last_attempt.status if last_attempt.status is defined else 'unknown' %}
+{% set trial_attempt = write_controls.metadata_trial_last_attempt if write_controls.metadata_trial_last_attempt is defined and write_controls.metadata_trial_last_attempt is mapping else {} %}
+{% set trial_status = trial_attempt.status if trial_attempt.status is defined else 'unknown' %}
+
+{% set route_decision = route_trace.decision if route_trace.decision is defined else 'unknown' %}
+{% set active_target = route_trace.active_target if route_trace.active_target is defined else 'unknown' %}
+{% set active_path = route_trace.active_path if route_trace.active_path is defined else (route_trace.active_control_path if route_trace.active_control_path is defined else 'unknown') %}
+
+{% set helper_target = states('input_select.ma_active_target') %}
+{% set helper_options = state_attr('input_select.ma_active_target','options') or [] %}
+{% set helper_target_valid = helper_target not in invalid and helper_target in helper_options and states[helper_target] is not none %}
+
+{% set now_playing_entity = states('sensor.now_playing_entity') %}
+{% set now_playing_state = states('sensor.now_playing_state') %}
+{% set now_playing_title = states('sensor.now_playing_title') %}
+{% set active_meta_entity = states('sensor.ma_active_meta_entity') %}
+
+{% set host_sensor = states('sensor.ma_control_host') %}
+{% set hosts_sensor = states('sensor.ma_control_hosts') %}
+
+{% set contract_ready_raw = contract_validation.ready if contract_validation.ready is defined else none %}
+{% set contract_valid = contract_validation.valid if contract_validation.valid is defined else false %}
+{% set missing_required = contract_validation.missing_required if contract_validation.missing_required is defined and contract_validation.missing_required is sequence else [] %}
+{% set unresolved_required = contract_validation.unresolved_required if contract_validation.unresolved_required is defined and contract_validation.unresolved_required is sequence else [] %}
+{% set unresolved_sources = state_attr(shadow_entity,'unresolved_sources') if shadow_exists and state_attr(shadow_entity,'unresolved_sources') is sequence else (contract_validation.unresolved_sources if contract_validation.unresolved_sources is defined and contract_validation.unresolved_sources is sequence else []) %}
+{% set mismatches = state_attr(shadow_entity,'mismatches') if shadow_exists and state_attr(shadow_entity,'mismatches') is sequence else (contract_validation.mismatches if contract_validation.mismatches is defined and contract_validation.mismatches is sequence else []) %}
+{% set missing_required_count = missing_required | count %}
+{% set unresolved_required_count = unresolved_required | count %}
+{% set unresolved_sources_count = unresolved_sources | count %}
+{% set mismatches_count = mismatches | count %}
+{% set contract_ready = contract_ready_raw if contract_ready_raw is not none else (contract_valid and missing_required_count == 0 and unresolved_required_count == 0) %}
+
+{% set scheduler_verdict = scheduler_validation.verdict if scheduler_validation.verdict is defined else 'unknown' %}
+{% set handoff_verdict = selection_handoff.verdict if selection_handoff.verdict is defined else 'unknown' %}
+{% set metadata_verdict = metadata_prep.verdict if metadata_prep.verdict is defined else 'unknown' %}
+
+{% set host_cutover_ready = host_cutover.ready_for_cutover if host_cutover.ready_for_cutover is defined else false %}
+{% set host_activation_ready = host_cutover.ready_for_authoritative_activation if host_cutover.ready_for_authoritative_activation is defined else false %}
+{% set authority_contract_ready = authority_contract.authority_contract_ready if authority_contract.authority_contract_ready is defined else false %}
+{% set metadata_blockers = metadata_prep.blocking_reasons if metadata_prep.blocking_reasons is defined and metadata_prep.blocking_reasons is sequence else [] %}
+{% set authority_reasons = authority_contract.authority_reasons if authority_contract.authority_reasons is defined and authority_contract.authority_reasons is sequence else [] %}
+
+{% set ns = namespace(score=0, max=11, blockers=[]) %}
+
+{% if shadow_exists %}{% set ns.score = ns.score + 1 %}{% else %}{% set ns.blockers = ns.blockers + ['shadow_entity_missing'] %}{% endif %}
+{% if snapshot_fresh %}{% set ns.score = ns.score + 1 %}{% else %}{% set ns.blockers = ns.blockers + ['snapshot_not_fresh'] %}{% endif %}
+{% if helper_target_valid %}{% set ns.score = ns.score + 1 %}{% else %}{% set ns.blockers = ns.blockers + ['helper_target_invalid'] %}{% endif %}
+{% if route_decision == 'route_linkplay_tcp' %}{% set ns.score = ns.score + 1 %}{% else %}{% set ns.blockers = ns.blockers + ['route_not_linkplay_tcp'] %}{% endif %}
+{% if contract_ready and contract_valid and missing_required_count == 0 and unresolved_required_count == 0 %}{% set ns.score = ns.score + 1 %}{% else %}{% set ns.blockers = ns.blockers + ['contract_not_clean'] %}{% endif %}
+{% if unresolved_sources_count == 0 and mismatches_count == 0 %}{% set ns.score = ns.score + 1 %}{% else %}{% set ns.blockers = ns.blockers + ['parity_drift_detected'] %}{% endif %}
+{% if scheduler_verdict == 'PASS' %}{% set ns.score = ns.score + 1 %}{% else %}{% set ns.blockers = ns.blockers + ['scheduler_not_pass'] %}{% endif %}
+{% if handoff_verdict == 'PASS' %}{% set ns.score = ns.score + 1 %}{% else %}{% set ns.blockers = ns.blockers + ['handoff_not_pass'] %}{% endif %}
+{% if metadata_verdict == 'PASS' and (metadata_prep.ready_for_metadata_handoff if metadata_prep.ready_for_metadata_handoff is defined else false) %}{% set ns.score = ns.score + 1 %}{% else %}{% set ns.blockers = ns.blockers + ['metadata_prep_not_ready'] %}{% endif %}
+{% if host_cutover_ready and host_activation_ready %}{% set ns.score = ns.score + 1 %}{% else %}{% set ns.blockers = ns.blockers + ['host_cutover_not_ready'] %}{% endif %}
+{% if authority_contract_ready %}{% set ns.score = ns.score + 1 %}{% else %}{% set ns.blockers = ns.blockers + ['authority_contract_not_ready'] %}{% endif %}
+
+{% set verdict = 'PASS' %}
+{% if ns.score < 10 %}
+  {% set verdict = 'FAIL' %}
+{% elif ns.score < ns.max %}
+  {% set verdict = 'WARN' %}
+{% endif %}
+
+### Spectra LS Meta Component Full-Stack Tester
+- Result: **{{ verdict }}**
+- Timestamp: **{{ now() }}**
+- Score: **{{ ns.score }}/{{ ns.max }}**
+- Snapshot source: **{{ shadow_entity }}**
+
+### Core context
+- `authority_mode`: **{{ authority_mode }}**
+- Active target (route/helper): **{{ active_target }} / {{ helper_target }}**
+- Active path/decision: **{{ active_path }} / {{ route_decision }}**
+- Control host(s): **{{ host_sensor }} / {{ hosts_sensor }}**
+- Meta entity: **{{ active_meta_entity }}**
+- Now playing: **{{ now_playing_entity }} | {{ now_playing_state }} | {{ now_playing_title }}**
+
+### Contract + parity
+- contract ready/valid: **{{ contract_ready }} / {{ contract_valid }}**
+- missing/unresolved required: **{{ missing_required_count }} / {{ unresolved_required_count }}**
+- unresolved sources / mismatches: **{{ unresolved_sources_count }} / {{ mismatches_count }}**
+- snapshot fresh: **{{ snapshot_fresh }}**{% if age_s is not none %} (age={{ age_s | round(1) }}s){% endif %}
+
+### Functional gates
+- scheduler: **{{ scheduler_verdict }}**
+- selection handoff: **{{ handoff_verdict }}**
+- metadata prep: **{{ metadata_verdict }}** (ready={{ metadata_prep.ready_for_metadata_handoff if metadata_prep.ready_for_metadata_handoff is defined else false }})
+- metadata blockers: **{{ (metadata_blockers | join(', ')) if (metadata_blockers | length) > 0 else 'none' }}**
+- host cutover gate: **ready={{ host_cutover_ready }} / activation={{ host_activation_ready }}**
+- authority contract ready: **{{ authority_contract_ready }}**
+- authority reasons: **{{ (authority_reasons | join(', ')) if (authority_reasons | length) > 0 else 'none' }}**
+
+### Write-attempt telemetry
+- last write attempt: **{{ last_attempt_status }}**
+- metadata trial attempt: **{{ trial_status }}**
+- control-center readiness: **{{ control_center.verdict if control_center.verdict is defined else 'unknown' }}**
+- control-center last attempt: **{{ (write_controls.control_center_last_attempt.status if write_controls.control_center_last_attempt is defined and write_controls.control_center_last_attempt is mapping and write_controls.control_center_last_attempt.status is defined else 'unknown') }}**
+
+### Blocking reasons
+{% if (ns.blockers | length) == 0 %}
+- none
+{% else %}
+{% for b in ns.blockers %}
+- {{ b }}
+{% endfor %}
+{% endif %}
+
+### Suggested next action
+{% if verdict == 'PASS' %}
+- Stack looks clean. Run your bounded in-window action trial and capture this output in your checklist evidence block.
+{% elif not shadow_exists %}
+- Trigger refresh sequence first (`spectra_ls.rebuild_registry`, `spectra_ls.validate_contracts`, `spectra_ls.dump_route_trace`) and rerun.
+{% elif not helper_target_valid %}
+- Repair helper target/options first (`input_select.ma_active_target` + `script.ma_update_target_options`), then rerun.
+{% elif route_decision != 'route_linkplay_tcp' %}
+- Resolve route eligibility before further trials; inspect `route_trace.reason` and active-target registry capability mapping.
+{% elif not (contract_ready and contract_valid) %}
+- Fix required contract surfaces (`missing_required`/`unresolved_required`) before trusting any trial verdict.
+{% elif metadata_verdict != 'PASS' %}
+- Run `spectra_ls.run_p3_s03_sequence` and resolve metadata blockers before advancing.
+{% elif metadata_verdict == 'PASS' and not authority_contract_ready %}
+- Metadata prep is green but authority proof is incomplete/stale. Run proof capture lane: `spectra_ls.set_write_authority(mode=component)` → `spectra_ls.run_metadata_resolver_scaffold(dry_run=true, force=true)` → `spectra_ls.run_metadata_trial_bridge_scaffold(dry_run=true, force=true)`, then rerun this template.
+{% else %}
+- Resolve the remaining blockers above, rerun this template, then capture a fresh timestamped packet.
+{% endif %}

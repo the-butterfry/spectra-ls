@@ -1,0 +1,414 @@
+# Description: Cool-only DST + Tuya window AC package (porch pattern emulation).
+# Version: 2026.04.22.1
+# Last updated: 2026-04-22
+# config/packages/dst_tuya_ac.yaml
+#
+# DESIGN INTENT (stability first):
+# - Emulate the working Sun Porch pattern: template actuator switch + DST setpoint sync.
+# - Cool-only operation (no heat/auto/policy overlays).
+# - Keep control-path simple: DST decides cycle timing; Tuya remains the physical device.
+
+template:
+  - switch:
+      - name: "AC Mode — Cool"
+        default_entity_id: switch.ac_cooler
+        icon: mdi:snowflake
+        state: >
+          {% set action = state_attr('climate.snail_conditioner_tuya','hvac_action') %}
+          {{ action == 'cooling' if action is not none else is_state('climate.snail_conditioner_tuya','cool') }}
+        turn_on:
+          - service: script.turn_on
+            target:
+              entity_id: script.dst_ac_set_cool
+        turn_off:
+          - service: script.turn_on
+            target:
+              entity_id: script.dst_ac_turn_off
+
+      - name: "AC Mode — Fan"
+        default_entity_id: switch.ac_fan
+        icon: mdi:fan
+        state: "{{ is_state('climate.snail_conditioner_tuya', 'fan_only') }}"
+        turn_on:
+          - service: script.turn_on
+            target:
+              entity_id: script.dst_ac_set_fan_only
+        turn_off:
+          - service: script.turn_on
+            target:
+              entity_id: script.dst_ac_turn_off
+
+      - name: "AC Mode — Dry"
+        default_entity_id: switch.ac_dryer
+        icon: mdi:water-percent
+        state: "{{ is_state('climate.snail_conditioner_tuya', 'dry') }}"
+        turn_on:
+          - service: script.turn_on
+            target:
+              entity_id: script.dst_ac_set_dry
+        turn_off:
+          - service: script.turn_on
+            target:
+              entity_id: script.dst_ac_turn_off
+
+  - fan:
+      - name: "AC Fan"
+        default_entity_id: fan.ac_fan
+        icon: mdi:fan
+        state: "{{ is_state('climate.snail_conditioner_tuya', 'fan_only') }}"
+        preset_modes:
+          - "low"
+          - "medium"
+          - "high"
+          - "auto"
+        preset_mode: >-
+          {{ state_attr('climate.snail_conditioner_tuya', 'fan_mode') | default('low', true) | lower }}
+        turn_on:
+          - service: script.turn_on
+            target:
+              entity_id: script.dst_ac_set_fan_only
+        turn_off:
+          - service: script.turn_on
+            target:
+              entity_id: script.dst_ac_turn_off
+        set_preset_mode:
+          - service: climate.set_fan_mode
+            target:
+              entity_id: climate.snail_conditioner_tuya
+            data:
+              fan_mode: "{{ preset_mode }}"
+
+  - sensor:
+      - name: "AC Control Reason"
+        default_entity_id: sensor.ac_control_reason
+        icon: mdi:information-outline
+        state: >-
+          {% set dst_mode = states('climate.room_dst') %}
+          {% set dst_action = state_attr('climate.room_dst','hvac_action') | default('unknown', true) %}
+          {% set tuya_mode = states('climate.snail_conditioner_tuya') %}
+          {% set tuya_action = state_attr('climate.snail_conditioner_tuya','hvac_action') | default('unknown', true) %}
+          dst={{ dst_mode }}/{{ dst_action }} | tuya={{ tuya_mode }}/{{ tuya_action }}
+
+      - name: "AC DST Status"
+        default_entity_id: sensor.ac_dst_status
+        icon: mdi:thermostat
+        state: >-
+          {% set mode = states('climate.room_dst') %}
+          {% set action = state_attr('climate.room_dst','hvac_action') | default('unknown', true) %}
+          {{ mode ~ '/' ~ action }}
+
+      - name: "AC Tuya Status"
+        default_entity_id: sensor.ac_tuya_status
+        icon: mdi:air-conditioner
+        state: >-
+          {% set mode = states('climate.snail_conditioner_tuya') %}
+          {% set action = state_attr('climate.snail_conditioner_tuya','hvac_action') | default('unknown', true) %}
+          {{ mode ~ '/' ~ action }}
+
+      - name: "AC Tuya Setpoint"
+        default_entity_id: sensor.ac_tuya_setpoint
+        unit_of_measurement: "°F"
+        device_class: temperature
+        state_class: measurement
+        icon: mdi:thermometer-chevron-up
+        state: "{{ state_attr('climate.snail_conditioner_tuya','temperature') | float(0) }}"
+
+      - name: "AC DST Target"
+        default_entity_id: sensor.ac_dst_target
+        unit_of_measurement: "°F"
+        device_class: temperature
+        state_class: measurement
+        icon: mdi:target
+        state: "{{ state_attr('climate.room_dst','temperature') | float(0) }}"
+
+      - name: "AC Room Temp Delta"
+        default_entity_id: sensor.ac_room_temp_delta
+        unit_of_measurement: "°F"
+        state_class: measurement
+        icon: mdi:thermometer-lines
+        state: >-
+          {% set room = states('sensor.bedroom_enviro_temperature') | float(0) %}
+          {% set target = state_attr('climate.room_dst','temperature') | float(0) %}
+          {{ (room - target) | round(2) }}
+
+      - name: "AC Target Mode"
+        default_entity_id: sensor.ac_target_mode
+        icon: mdi:tune-variant
+        state: "{{ states('climate.snail_conditioner_tuya') }}"
+
+      - name: "AC Tuya HVAC Action"
+        default_entity_id: sensor.ac_tuya_hvac_action
+        icon: mdi:hvac
+        state: "{{ state_attr('climate.snail_conditioner_tuya','hvac_action') | default('unknown', true) }}"
+
+      - name: "DST Room Temp Change 1h"
+        default_entity_id: sensor.dst_room_temp_change_1h
+        unit_of_measurement: "°F"
+        state_class: measurement
+        icon: mdi:thermometer-plus
+        state: "0"
+
+      - name: "DST Room Temp Rate 1h"
+        default_entity_id: sensor.dst_room_temp_rate_1h
+        unit_of_measurement: "°F/h"
+        state_class: measurement
+        icon: mdi:speedometer
+        state: "{{ states('sensor.dst_room_temp_change_1h') | float(0) }}"
+
+      - name: "DST Room Temp Trend 1h Summary"
+        default_entity_id: sensor.dst_room_temp_trend_1h_summary
+        icon: mdi:chart-line
+        state: >-
+          {% set rate = states('sensor.dst_room_temp_rate_1h') | float(0) %}
+          {% if rate >= 0.3 %}
+            rising
+          {% elif rate <= -0.3 %}
+            falling
+          {% else %}
+            stable
+          {% endif %}
+
+  - binary_sensor:
+      - name: "AC DST Cooling Active"
+        default_entity_id: binary_sensor.ac_dst_cooling_active
+        device_class: running
+        state: >-
+          {{ state_attr('climate.room_dst', 'hvac_action') == 'cooling' }}
+
+      - name: "AC Tuya Cooling Active"
+        default_entity_id: binary_sensor.ac_tuya_cooling_active
+        device_class: running
+        state: >-
+          {{ state_attr('climate.snail_conditioner_tuya', 'hvac_action') == 'cooling' }}
+
+      - name: "AC Manual Override Active"
+        default_entity_id: binary_sensor.ac_manual_override_active
+        device_class: running
+        state: "{{ is_state('input_boolean.ac_fan_override', 'on') }}"
+
+      - name: "AC Pause Active"
+        default_entity_id: binary_sensor.ac_pause_active
+        device_class: running
+        state: >-
+          {% set until_ts = as_timestamp(states('input_datetime.ac_pause_until'), default=0) %}
+          {{ until_ts > as_timestamp(now()) }}
+
+      - name: "AC Schedule Cool Request"
+        default_entity_id: binary_sensor.ac_schedule_cool_request
+        device_class: running
+        state: "false"
+
+      - name: "AC Fan Policy Active"
+        default_entity_id: binary_sensor.ac_fan_policy_active
+        device_class: running
+        state: "{{ is_state('input_boolean.ac_fan_override', 'on') }}"
+
+      - name: "AC Warm Rising Policy Active"
+        default_entity_id: binary_sensor.ac_warm_rising_policy_active
+        device_class: running
+        state: "false"
+
+      - name: "DST Room Temp Rising 1h"
+        default_entity_id: binary_sensor.dst_room_temp_rising_1h
+        device_class: heat
+        state: "{{ states('sensor.dst_room_temp_rate_1h') | float(0) >= 0.3 }}"
+
+script:
+  dst_ac_set_cool:
+    alias: DST AC Set Cool
+    mode: restart
+    sequence:
+      - variables:
+          dst_target: "{{ state_attr('climate.room_dst','temperature') | float(75) }}"
+          tuya_target: "{{ [86, [64, dst_target] | max] | min }}"
+      - service: climate.set_hvac_mode
+        target:
+          entity_id: climate.room_dst
+        data:
+          hvac_mode: "cool"
+      - service: climate.set_hvac_mode
+        target:
+          entity_id: climate.snail_conditioner_tuya
+        data:
+          hvac_mode: "cool"
+      - delay: "00:00:01"
+      - service: climate.set_temperature
+        target:
+          entity_id: climate.snail_conditioner_tuya
+        data:
+          temperature: "{{ tuya_target }}"
+
+  dst_ac_turn_off:
+    alias: DST AC Turn Off
+    mode: restart
+    sequence:
+      - variables:
+          room_temp: "{{ states('sensor.bedroom_enviro_temperature') | float(75) }}"
+          dst_target: "{{ state_attr('climate.room_dst','temperature') | float(75) }}"
+          high_target: "{{ [86, [64, [room_temp + 2, dst_target + 1] | max] | max] | min }}"
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: climate.snail_conditioner_tuya
+                state: "cool"
+            sequence:
+              - service: climate.set_temperature
+                target:
+                  entity_id: climate.snail_conditioner_tuya
+                data:
+                  temperature: "{{ high_target }}"
+              - delay: "00:00:01"
+              - service: climate.set_temperature
+                target:
+                  entity_id: climate.snail_conditioner_tuya
+                data:
+                  temperature: "{{ high_target }}"
+      - service: climate.set_hvac_mode
+        target:
+          entity_id: climate.room_dst
+        data:
+          hvac_mode: "off"
+      - service: climate.set_hvac_mode
+        target:
+          entity_id: climate.snail_conditioner_tuya
+        data:
+          hvac_mode: "off"
+      - delay: "00:00:01"
+      - service: climate.set_hvac_mode
+        target:
+          entity_id: climate.snail_conditioner_tuya
+        data:
+          hvac_mode: "off"
+
+  dst_ac_set_fan_only:
+    alias: DST AC Set Fan Only
+    mode: restart
+    sequence:
+      - service: climate.set_hvac_mode
+        target:
+          entity_id: climate.room_dst
+        data:
+          hvac_mode: "off"
+      - service: climate.set_hvac_mode
+        target:
+          entity_id: climate.snail_conditioner_tuya
+        data:
+          hvac_mode: "fan_only"
+      - delay: "00:00:01"
+      - service: climate.set_fan_mode
+        target:
+          entity_id: climate.snail_conditioner_tuya
+        data:
+          fan_mode: "low"
+
+  dst_ac_set_dry:
+    alias: DST AC Set Dry
+    mode: restart
+    sequence:
+      - service: climate.set_hvac_mode
+        target:
+          entity_id: climate.room_dst
+        data:
+          hvac_mode: "off"
+      - service: climate.set_hvac_mode
+        target:
+          entity_id: climate.snail_conditioner_tuya
+        data:
+          hvac_mode: "dry"
+
+automation:
+  - id: ac_pause_10h_button
+    alias: AC Pause 10h Button
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_button.ac_pause_10h
+    action:
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.ac_pause_until
+        data:
+          datetime: "{{ (now() + timedelta(hours=10)).strftime('%Y-%m-%d %H:%M:%S') }}"
+
+  - id: sync_window_ac_setpoint_from_dst
+    alias: DST -> Window AC Setpoint
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: climate.room_dst
+        attribute: temperature
+      - platform: state
+        entity_id: switch.ac_cooler
+        to: "on"
+    condition:
+      - condition: state
+        entity_id: switch.ac_cooler
+        state: "on"
+      - condition: state
+        entity_id: input_boolean.ac_away_lock
+        state: "off"
+      - condition: state
+        entity_id: binary_sensor.ac_pause_active
+        state: "off"
+    action:
+      - variables:
+          dst_target: "{{ state_attr('climate.room_dst','temperature') | float(75) }}"
+          tuya_target: "{{ [86, [64, dst_target] | max] | min }}"
+      - service: climate.set_temperature
+        target:
+          entity_id: climate.snail_conditioner_tuya
+        data:
+          temperature: "{{ tuya_target }}"
+
+climate:
+  - platform: dual_smart_thermostat
+    name: "Room DST"
+    heater: switch.ac_cooler
+    ac_mode: true
+    target_sensor: sensor.bedroom_enviro_temperature
+    min_temp: 64
+    max_temp: 86
+    target_temp: 75
+    hot_tolerance: 1
+    min_cycle_duration:
+      minutes: 3
+    initial_hvac_mode: "off"
+    precision: 1
+    target_temp_step: 1
+
+input_boolean:
+  ac_fan_override:
+    name: AC Fan Override
+    icon: mdi:fan-alert
+
+  ac_away_lock:
+    name: AC Away Lock
+    icon: mdi:home-lock
+
+input_datetime:
+  ac_pause_until:
+    name: AC Pause Until
+    has_date: true
+    has_time: true
+
+  ac_manual_override_until:
+    name: AC Manual Override Until
+    has_date: true
+    has_time: true
+
+input_button:
+  ac_pause_10h:
+    name: AC Pause 10 Hours
+    icon: mdi:timer-pause
+
+homeassistant:
+  customize:
+    switch.ac_cooler:
+      hidden: true
+      friendly_name: "AC Mode — Cool"
+    switch.ac_fan:
+      hidden: true
+      friendly_name: "AC Mode — Fan"
+    switch.ac_dryer:
+      hidden: true
+      friendly_name: "AC Mode — Dry"

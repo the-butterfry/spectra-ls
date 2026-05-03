@@ -1,6 +1,6 @@
 {# Description: Raw copy/paste Jinja monitor template for Spectra LS P5-S02 metadata-domain gate-prep and run-window validation feedback. #}
-{# Version: 2026.04.21.13 #}
-{# Last updated: 2026-04-21 #}
+{# Version: 2026.05.03.1 #}
+{# Last updated: 2026-05-03 #}
 
 {# =========================
   P5-S02 Metadata Functionality Monitor (gate-prep safe)
@@ -24,6 +24,9 @@
 {% set write_controls = state_attr(s_target, 'write_controls') or {} %}
 {% set metadata = state_attr(s_target, 'metadata_prep_validation') or {} %}
 {% set metadata_trial = write_controls.metadata_trial_last_attempt if write_controls is mapping and write_controls.metadata_trial_last_attempt is defined else {} %}
+{% set metadata_bridge = write_controls.metadata_bridge_last_attempt if write_controls is mapping and write_controls.metadata_bridge_last_attempt is defined else {} %}
+{% set cutover_prep = state_attr(s_target, 'cutover_prep_validation') or {} %}
+{% set cutover_proof = metadata_bridge.cutover_proof if metadata_bridge is mapping and metadata_bridge.cutover_proof is defined and metadata_bridge.cutover_proof is mapping else {} %}
 
 {% set authority_mode = write_controls.authority_mode if write_controls is mapping and write_controls.authority_mode is defined else 'missing' %}
 {% set route_decision = route_trace.decision if route_trace is mapping and route_trace.decision is defined else '' %}
@@ -61,6 +64,12 @@
 {% set metadata_trial_closeout_eligible = metadata_trial.eligible_for_closeout if metadata_trial is mapping and metadata_trial.eligible_for_closeout is defined else none %}
 {% set metadata_trial_audit_complete = metadata_trial_status != 'never_attempted' and metadata_trial_window != '' and metadata_trial_requested_mode != '' and metadata_trial_effective_mode != '' and metadata_trial_dry_run is not none and metadata_trial_reason != '' and metadata_trial_corr != '' and metadata_trial_requested_at != '' and metadata_trial_completed_at != '' %}
 {% set metadata_trial_audit_state = metadata_trial_audit_state_payload if metadata_trial_audit_state_payload in ['N/A', 'COMPLETE', 'PARTIAL'] else ('N/A' if metadata_trial_status == 'never_attempted' else ('COMPLETE' if metadata_trial_audit_complete else 'PARTIAL')) %}
+{% set cutover_prep_complete = cutover_prep.cutover_prep_complete if cutover_prep is mapping and cutover_prep.cutover_prep_complete is defined else false %}
+{% set cutover_prep_blocking_reasons = cutover_prep.blocking_reasons if cutover_prep is mapping and cutover_prep.blocking_reasons is defined and cutover_prep.blocking_reasons is sequence and cutover_prep.blocking_reasons is not string else [] %}
+{% set cutover_prep_checks = cutover_prep.checks if cutover_prep is mapping and cutover_prep.checks is defined and cutover_prep.checks is mapping else {} %}
+{% set cutover_pre_window_present = cutover_proof.pre_window is defined and cutover_proof.pre_window is mapping %}
+{% set cutover_in_window_present = cutover_proof.in_window is defined and cutover_proof.in_window is mapping %}
+{% set cutover_post_window_present = cutover_proof.post_window is defined and cutover_proof.post_window is mapping %}
 
 {% set unresolved = state_attr(s_target, 'unresolved_sources') or [] %}
 {% set mismatches = state_attr(s_target, 'mismatches') or [] %}
@@ -128,6 +137,21 @@
 - `trial_gate_verdict`: **{{ metadata_trial_gate_verdict }}**
 - `eligible_for_closeout`: **{{ metadata_trial_closeout_eligible if metadata_trial_closeout_eligible is not none else 'n/a' }}**
 - `missing_audit_fields`: **{{ metadata_trial_missing_audit_fields | length }}**
+
+### Cutover prep endpoint gate (Slice-D)
+- `cutover_prep_validation.cutover_prep_complete`: **{{ cutover_prep_complete }}**
+- `cutover_prep_validation.blocking_reasons`: **{{ cutover_prep_blocking_reasons | length }}**
+- `cutover_prep_validation.checks`: **{{ cutover_prep_checks | count }}**
+- `write_controls.metadata_bridge_last_attempt.cutover_proof.pre_window`: **{{ cutover_pre_window_present }}**
+- `write_controls.metadata_bridge_last_attempt.cutover_proof.in_window`: **{{ cutover_in_window_present }}**
+- `write_controls.metadata_bridge_last_attempt.cutover_proof.post_window`: **{{ cutover_post_window_present }}**
+
+{% if (cutover_prep_blocking_reasons | length) > 0 %}
+Cutover endpoint blocking reasons:
+{% for item in cutover_prep_blocking_reasons %}
+- `{{ item }}`
+{% endfor %}
+{% endif %}
 
 {% if (metadata_trial_blocking_reasons | length) > 0 %}
 Metadata trial blocking reasons:
@@ -199,6 +223,11 @@ Parity mismatches:
 - Metadata lane is blocked; resolve FAIL conditions before continuing window execution.
 {% else %}
 - Metadata lane is not yet closeout-ready; capture additional refresh evidence and re-check.
+{% endif %}
+{% if cutover_prep_complete %}
+- Cutover endpoint gate is **complete**; closeout packet can reference `cutover_prep_validation.cutover_prep_complete=true` when other stop-condition checks are clean.
+{% else %}
+- Cutover endpoint gate is **not complete**; keep this slice active until endpoint blockers are cleared and all `cutover_proof` checkpoints are present.
 {% endif %}
 {% if metadata_owner == 'legacy_contract_surfaces' and metadata_cutover_active is sameas false %}
 - Metadata source-of-truth is still **legacy contract surfaces**; component-mode routing does not imply metadata ownership cutover.

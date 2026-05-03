@@ -1,6 +1,6 @@
 <!-- Description: Deterministic operator run-window checklist for Phase 5 Slice-02 metadata-domain cutover readiness and bounded validation (P5-S02). -->
-<!-- Version: 2026.04.21.20 -->
-<!-- Last updated: 2026-04-21 -->
+<!-- Version: 2026.05.03.2 -->
+<!-- Last updated: 2026-05-03 -->
 
 # P5-S02 Metadata Cutover — Run Window Checklist
 
@@ -125,6 +125,11 @@ Audit-completeness interpretation (from monitor output):
 5. **Evidence freshness gate**
    - All captured snapshots are fresh and timestamped in this run window.
 
+6. **Cutover endpoint gate (Slice-D endpoint)**
+   - `cutover_prep_validation.cutover_prep_complete=true` for closeout-grade records.
+   - `cutover_prep_validation.blocking_reasons` is empty.
+   - `write_controls.metadata_bridge_last_attempt.cutover_proof.pre_window|in_window|post_window` checkpoints are all present.
+
 ## Recommended bounded sequence
 
 1. Capture pre-window baseline (`authority`, `route_decision`, `contract_valid`, metadata validation summary).
@@ -191,6 +196,11 @@ in_window_snapshot:
    metadata_trial_missing_audit_fields:
    metadata_trial_requested_at:
    metadata_trial_completed_at:
+   cutover_prep_complete:
+   cutover_prep_blocking_reasons_count:
+   cutover_proof_pre_window_present:
+   cutover_proof_in_window_present:
+   cutover_proof_post_window_present:
    captured_at:
 
 stop_conditions:
@@ -212,6 +222,7 @@ verdict:
 ## Closeout rule for this scaffolded slice
 
 - `PASS` closeout-eligible only when all gates pass and post-window authority posture is explicit/safe (`legacy` unless an approved metadata cutover mechanism is documented).
+- `PASS` closeout-eligible only when endpoint gate is complete (`cutover_prep_complete=true`) with no endpoint blockers and all cutover proof checkpoints present.
 - `WARN` for inconclusive or incomplete evidence.
 - `FAIL` for stop-condition trigger or unsafe authority drift.
 
@@ -327,6 +338,11 @@ Run-1 fill hints (source = `p5_s02_metadata_functionality_monitor.jinja`):
 - `metadata_trial_missing_audit_fields` ← `write_controls.metadata_trial_last_attempt.missing_audit_fields`
 - `metadata_trial_requested_at` ← `write_controls.metadata_trial_last_attempt.requested_at`
 - `metadata_trial_completed_at` ← `write_controls.metadata_trial_last_attempt.completed_at`
+- `cutover_prep_complete` ← `cutover_prep_validation.cutover_prep_complete`
+- `cutover_prep_blocking_reasons_count` ← `cutover_prep_validation.blocking_reasons | length`
+- `cutover_proof_pre_window_present` ← `write_controls.metadata_bridge_last_attempt.cutover_proof.pre_window is mapping`
+- `cutover_proof_in_window_present` ← `write_controls.metadata_bridge_last_attempt.cutover_proof.in_window is mapping`
+- `cutover_proof_post_window_present` ← `write_controls.metadata_bridge_last_attempt.cutover_proof.post_window is mapping`
 
 ## Example C — Operator-captured runtime baseline (2026-04-20)
 
@@ -713,6 +729,59 @@ closeout_recommendation:
 ```
 
 Roadmap status tables are updated with `P5-S02=Validated`; next isolated slice is `P5-S03` (lighting domain).
+
+## Example I — Slice-D endpoint-complete closeout packet (strict)
+
+Use this structure when validating the explicit endpoint gate and bridge proof checkpoints.
+
+```text
+P5-S02 Run Window Evidence Record
+---------------------------------
+run_id: p5s02-2026-05-03-cutover-endpoint
+captured_at: 2026-05-03T__ :__ :__-07:00
+operator: local
+window_scope: metadata-domain only
+
+preflight:
+   gate_a_authority_baseline: PASS
+   gate_b_parity_precheck: PASS
+   gate_c_metadata_readiness: PASS
+   gate_d_isolation: PASS
+   gate_e_fresh_evidence: PASS
+
+in_window_snapshot:
+   authority_mode: component|legacy
+   metadata_validation_verdict: PASS
+   metadata_ready_for_handoff: true
+   metadata_trial_status: bridge_completed|dry_run_ok
+   metadata_trial_audit_completeness: COMPLETE
+   cutover_prep_complete: true
+   cutover_prep_blocking_reasons_count: 0
+   cutover_prep_blocking_reasons: []
+   cutover_proof_pre_window_present: true
+   cutover_proof_in_window_present: true
+   cutover_proof_post_window_present: true
+   cutover_proof_in_window_cutover_active: true
+   cutover_proof_in_window_owner_component: true
+   captured_at: 2026-05-03T__ :__ :__-07:00
+
+post_window_snapshot:
+   authority_mode: legacy|component
+   metadata_validation_verdict: PASS
+   metadata_ready_for_handoff: true
+   captured_at: 2026-05-03T__ :__ :__-07:00
+
+verdict:
+   outcome: PASS
+   rationale: endpoint gate complete with no blockers and all bridge proof checkpoints captured.
+   closeout_eligible: true
+```
+
+Strict fail-closed interpretation for this packet:
+
+- If `cutover_prep_complete != true`, classify `WARN`/`FAIL` (non-closeout).
+- If any proof checkpoint presence field is false, classify `WARN` (incomplete evidence).
+- If endpoint blockers are non-empty, classify `FAIL` until blockers clear.
 
 ## Artifact linkage
 

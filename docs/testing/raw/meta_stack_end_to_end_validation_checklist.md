@@ -1,6 +1,6 @@
 <!-- Description: Deterministic end-to-end checklist for Spectra LS metadata-stack stale-healing, policy diagnostics, and ESP UI auto-only behavior validation. -->
-<!-- Version: 2026.04.27.3 -->
-<!-- Last updated: 2026-04-27 -->
+<!-- Version: 2026.05.03.2 -->
+<!-- Last updated: 2026-05-03 -->
 
 # Meta Stack End-to-End Validation Checklist
 
@@ -89,6 +89,14 @@ component_track:
   suppression_reason:
   metadata_ready:
   trial_status:
+  cutover_prep_complete:
+  cutover_endpoint_blockers:
+  cutover_endpoint_blockers_count:
+  cutover_proof_pre_window_present:
+  cutover_proof_in_window_present:
+  cutover_proof_post_window_present:
+  cutover_proof_in_window_cutover_active:
+  cutover_proof_in_window_owner_component:
 
 stale_guard_probe:
   executed: true|false

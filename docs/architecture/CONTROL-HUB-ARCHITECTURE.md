@@ -1,5 +1,5 @@
 <!-- Description: Retroactive architecture and feature documentation for the MA control hub package split. -->
-<!-- Version: 2026.05.02.3 -->
+<!-- Version: 2026.05.02.4 -->
 <!-- Last updated: 2026-05-02 -->
 
 # MA Control Hub Architecture (Retroactive Baseline)
@@ -182,6 +182,11 @@ Compatibility posture:
 - legacy control-hub remains source-of-truth by default,
 - component write behavior is explicitly opt-in and reversible,
 - metadata/selection broader ownership remains deferred to later P3 slices.
+
+Metadata authority migration note (Slice-D kickoff):
+
+- Component metadata diagnostics now compute `metadata_authority_owner` and `metadata_cutover_active` from explicit component authority mode plus resolver-cutover readiness, rather than hardcoding permanent legacy ownership.
+- Legacy metadata surfaces remain rollback-safe compatibility baseline; component cutover posture is treated as valid only when resolver readiness and metadata-prep gates are satisfied.
 
 ## Pluggable host-resolution feed contract (scheduler-facing)
 

@@ -1,6 +1,6 @@
 # Description: Constants for Spectra LS custom integration shadow parity, Phase 3 guarded routing write-path controls, Phase 4 diagnostics scaffolding (F4-S01/F4-S03), Phase 5 metadata trial contract service, and Phase 6/8 control-center settings and fast-remap preset contracts including startup MA-readiness gating constants and selection-ownership migration services.
-# Version: 2026.05.02.8
-# Last updated: 2026-05-02
+# Version: 2026.05.03.2
+# Last updated: 2026-05-03
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -23,6 +23,7 @@ SERVICE_RUN_P3_S02_SEQUENCE = "run_p3_s02_sequence"
 SERVICE_VALIDATE_METADATA_PREP = "validate_metadata_prep"
 SERVICE_VALIDATE_METADATA_POLICY = "validate_metadata_policy"
 SERVICE_GET_AUTHORITY_CONTRACT = "get_authority_contract"
+SERVICE_GET_HOST_CUTOVER_GATE = "get_host_cutover_gate"
 SERVICE_RUN_P5_S02_SEQUENCE = "run_p5_s02_sequence"
 SERVICE_RUN_P3_S03_SEQUENCE = "run_p3_s03_sequence"
 SERVICE_VALIDATE_CAPABILITY_PROFILE = "validate_capability_profile"
@@ -59,6 +60,13 @@ WRITE_AUTH_ALLOWED: tuple[str, ...] = (
     WRITE_AUTH_COMPONENT,
 )
 WRITE_DEBOUNCE_SECONDS = 2.0
+
+METADATA_AUTH_OWNER_LEGACY = "legacy_contract_surfaces"
+METADATA_AUTH_OWNER_COMPONENT = "component_contract_surfaces"
+METADATA_CUTOVER_BLOCK_NOT_CUT_OVER = "metadata_authority_not_cut_over"
+METADATA_CUTOVER_BLOCK_LEGACY_MODE = "metadata_authority_legacy_mode"
+METADATA_CUTOVER_BLOCK_PREP_NOT_READY = "metadata_prep_not_ready"
+METADATA_CUTOVER_BLOCK_RESOLVER_CANDIDATE_MISSING = "resolver_candidate_missing"
 
 # Fabric/MA authority contract tokens (must stay 1:1 with architecture docs).
 FABRIC_AUTH_MODE_PRIMARY = "ma_primary"

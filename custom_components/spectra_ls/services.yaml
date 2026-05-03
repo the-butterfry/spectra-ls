@@ -1,14 +1,71 @@
-# Description: Service definitions for Spectra LS Phase 2/3 diagnostics, Phase 4 Slice-01/Slice-03 diagnostics scaffolding, Phase 5 metadata trial contract, and Phase 6/8 control-center settings, fast-remap presets, selection-ownership migration services, execution, and authority-contract response echo.
-# Version: 2026.05.02.1
-# Last updated: 2026-05-02
+# Description: Service definitions for Spectra LS Phase 2/3 diagnostics, Phase 4 Slice-01/Slice-03 diagnostics scaffolding, Phase 5 metadata trial contract, and Phase 6/8 control-center settings, fast-remap presets, selection-ownership migration services, execution, and expanded authority-contract response echo.
+# Version: 2026.05.03.6
+# Last updated: 2026-05-03
+# PARITY DIRECTIVE: Behavior/contract edits must include same-slice two-track parity review and version-metadata review (runtime + component).
 
 get_authority_contract:
   name: Get authority contract
-  description: Return normalized MA authority packet (`authority_mode`, `authority_gate_results`, `authority_reasons`) from the current metadata-prep snapshot.
+  description: Return normalized MA authority packet (`schema_version`, `packet_generated_at`, `authority_mode`, `metadata_authority_owner`, `metadata_cutover_active`, `cutover_prep_complete`, `cutover_prep_verdict`, `cutover_prep_blocking_reasons`, `cutover_prep_blocker_count`, `cutover_prep_check_count`, `cutover_prep_passed_check_count`, `authority_contract_ready`, `authority_contract_blocking_reasons`, `authority_contract_blocker_count`, `bridge_status`, `trial_status`, `proof_checkpoint_presence`, `required_proof_checkpoints_present`, `proof_checkpoint_count`, `proof_in_window_assertions`, `authority_gate_results`, `authority_reasons`) from the current metadata-prep snapshot.
   fields:
     refresh:
       name: Refresh metadata prep first
       description: If true, refresh metadata-prep diagnostics before returning authority packet (default true).
+      required: false
+      selector:
+        boolean:
+    include_snapshot_summary:
+      name: Include snapshot summary
+      description: If true, wrap response with `authority_contract` plus a compact `snapshot_summary` block.
+      required: false
+      selector:
+        boolean:
+    fail_closed_if_unready:
+      name: Fail closed if unready
+      description: If true, service raises an error when `cutover_prep_complete` is false.
+      required: false
+      selector:
+        boolean:
+    fail_closed_if_contract_not_ready:
+      name: Fail closed if contract not ready
+      description: If true, service raises an error when `authority_contract_ready` is false.
+      required: false
+      selector:
+        boolean:
+    required_checkpoint_count:
+      name: Required proof checkpoint count
+      description: Optional minimum required `proof_checkpoint_count`; service fails closed if observed count is lower.
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 3
+          step: 1
+
+get_host_cutover_gate:
+  name: Get host cutover gate
+  description: Return deterministic host-control cutover gate packet (`status`, `ready_for_cutover`, `ready_for_authoritative_activation`, `authority_mode`, candidate payload, checks, and blocker lists) from the current coordinator snapshot.
+  fields:
+    refresh:
+      name: Refresh snapshot first
+      description: If true, refresh the coordinator snapshot before returning host-cutover gate packet (default true).
+      required: false
+      selector:
+        boolean:
+    include_snapshot_summary:
+      name: Include snapshot summary
+      description: If true, wrap response with `host_cutover_gate` plus compact `snapshot_summary` block.
+      required: false
+      selector:
+        boolean:
+    fail_closed_if_not_ready:
+      name: Fail closed if cutover gate not ready
+      description: If true, service raises an error when `ready_for_cutover` is false.
+      required: false
+      selector:
+        boolean:
+    fail_closed_if_not_activation_ready:
+      name: Fail closed if activation gate not ready
+      description: If true, service raises an error when `ready_for_authoritative_activation` is false.
       required: false
       selector:
         boolean:

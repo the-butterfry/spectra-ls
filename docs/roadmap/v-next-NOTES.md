@@ -1,6 +1,6 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.05.02.37 -->
-<!-- Last updated: 2026-05-02 -->
+<!-- Version: 2026.05.03.29 -->
+<!-- Last updated: 2026-05-03 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
 
@@ -74,7 +74,259 @@ Each feature slice is only complete when both tracks are dispositioned:
 | P7-S04 | 7 | Validated (rollback-safe legacy authority baseline preserved at closeout capture) | Validated (phase-exit closeout packet completed and accepted) | Completed (Run-1 closeout PASS/READY 4/4) | High | Validated |
 | P8-S01 | 8 | Validated (legacy sealed baseline readiness gate completed with pre/in/post PASS packet) | Validated (post-cutover governance/readiness lane completed for starter gate) | Completed (Run-1/Run-2/Run-3 PASS; promoted) | High | Validated |
 
-Latest run update (2026-05-01, reader-journey hardening pass):
+Latest run update (2026-05-03, Slice-H host-cutover gate enforcement + binary readiness surface):
+
+Latest run update (2026-05-03, Slice-V validation-control lane extraction implementation):
+
+- parity_stamp: 2026-05-03 / Slice-V-validation-control-extraction / mode=implementation
+- Extracted the remaining validation/control assembly lane from `meta_fabric.py` into a dedicated workflow boundary module `validation_fabric.py` (metadata validation bundle/policy surfaces, handoff status/dependency map, scheduler/contract/selection/route safety builders, host cutover gate, control-center validation, F4 capability/action/crossfade validations, and snapshot validation packet assembly).
+- Rewired meta-fabric methods to thin delegation wrappers through `ValidationFabricWorkflow`, preserving existing packet contracts and coordinator-facing behavior.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (validation/control lane now boundary-owned by dedicated workflow module).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal architecture hardening only.
+
+Latest run update (2026-05-03, Slice-V validation-control lane extraction activation):
+
+- parity_stamp: 2026-05-03 / Slice-V-validation-control-extraction / mode=docs-first
+- Activated the next super-macro extraction cycle to move the remaining validation/control assembly lane from `meta_fabric.py` into a dedicated workflow boundary module, then rewire meta-fabric methods to thin delegation wrappers.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: compatibility-shimmed (docs-first activation step completed; implementation/rewire verification follows in the same macro cycle).
+- P1/P2/P3 impact check: no source-of-truth ownership change; architecture-hardening execution progression only.
+
+Latest run update (2026-05-03, Slice-U selection-fabric lane extraction):
+
+- parity_stamp: 2026-05-03 / Slice-U-selection-fabric-extraction / mode=implementation
+- Extracted the large scheduler/selection/write-orchestration lane out of `meta_fabric.py` into a dedicated workflow module (`selection_fabric.py`): target-options planning, scheduler decision/choice/apply, target-options scaffold, auto-select scaffold, and track/restore/cycle helpers.
+- Rewired meta-fabric methods to thin delegation wrappers to the new selection-fabric boundary.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (major orchestration lane moved from meta-fabric monolith into dedicated workflow boundary).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal architecture hardening only.
+
+Latest run update (2026-05-03, Slice-T meta-fabric event-recovery orchestration extraction):
+
+- parity_stamp: 2026-05-03 / Slice-T-meta-fabric-event-recovery / mode=implementation
+- Moved the remaining coordinator event/recovery orchestration lane into meta-fabric workflow methods: auto-select loop preflight/execution, players-change refresh sequencing, ambiguity lock, stale unlock/timer handling, no-control feedback self-heal/notification lifecycle, and global/state change callback orchestration.
+- Rewired coordinator callback/service surfaces to thin delegation wrappers in the same slice.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (remaining event/recovery orchestration lane now boundary-owned by meta-fabric).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal architecture hardening only.
+
+Latest run update (2026-05-03, Slice-S meta-fabric write-orchestration super-macro):
+
+- parity_stamp: 2026-05-03 / Slice-S-meta-fabric-write-orchestration / mode=implementation
+- Moved the core async write-orchestration service lane (scheduler choice/apply, target-options scaffold, auto-select scaffold, track-last-valid, restore-last-valid, cycle-target) from coordinator into meta-fabric methods.
+- Rewired coordinator service methods to thin delegation wrappers in the same slice.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (major async write-orchestration lane now boundary-owned by meta-fabric).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal architecture hardening only.
+
+Latest run update (2026-05-03, Slice-R meta-fabric compute-engine macro extraction):
+
+- parity_stamp: 2026-05-03 / Slice-R-meta-fabric-compute-engines / mode=implementation
+- Moved coordinator target-options planning engine and scheduler decision/ranking engine into meta-fabric helpers.
+- Rewired coordinator compute methods and downstream usage paths to delegate through meta-fabric in the same slice.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (major coordinator compute seams now boundary-owned by meta-fabric).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal architecture hardening only.
+
+Latest run update (2026-05-03, Slice-Q meta-fabric scaffolds+inventory+backend macro rewire):
+
+- parity_stamp: 2026-05-03 / Slice-Q-meta-fabric-scaffolds-inventory-backend / mode=implementation
+- Moved component-scaffold planning assembly, handoff-inventory packet assembly, and MA backend-profile assembly into meta-fabric helpers.
+- Rewired coordinator methods to delegate these seams through the meta-fabric boundary in the same slice.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (coordinator orchestration surface reduced across scaffolds/inventory/backend seams).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal architecture hardening only.
+
+Latest run update (2026-05-03, Slice-P meta-fabric snapshot validation packetization):
+
+- parity_stamp: 2026-05-03 / Slice-P-meta-fabric-snapshot-packet / mode=implementation
+- Added a meta-fabric snapshot-validation packet helper that assembles host-cutover, contract/selection/route-safety, metadata validation bundle normalization, F4 capability/action/crossfade validations, scheduler validation, and control-center validation in one boundary call.
+- Rewired coordinator snapshot assembly to consume the packetized validation bundle and unwrap stable diagnostic surfaces.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (snapshot validation orchestration coupling reduced through packetized boundary delegation).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal architecture hardening only.
+
+Latest run update (2026-05-03, Slice-O meta-fabric validation+gate macro rewire bundle):
+
+- parity_stamp: 2026-05-03 / Slice-O-meta-fabric-validation-gate-rewire / mode=implementation
+- Performed a macro extraction/rewire pass by moving host-cutover gate validation, control-center validation assembly, and F4 capability/action/crossfade validation builders from `coordinator.py` into `meta_fabric.py` helpers.
+- Coordinator methods now delegate these validation/gate assembly surfaces through the meta-fabric boundary in the same slice.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (coordinator validation/gate assembly surface narrowed via macro boundary rewiring).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal architecture hardening only.
+
+Latest run update (2026-05-03, Slice-N meta-fabric macro rewire bundle):
+
+- parity_stamp: 2026-05-03 / Slice-N-meta-fabric-macro-rewire / mode=implementation
+- Performed macro extraction/rewire by moving coordinator contract-validation, selection-handoff validation, route-safety validation, and scheduler-validation assembly logic into meta-fabric workflow helpers.
+- Coordinator methods now delegate these validation assemblies through meta-fabric boundaries in the same slice.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (coordinator orchestration surface narrowed via macro boundary rewiring).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal architecture hardening only.
+
+Latest run update (2026-05-03, Slice-M meta-fabric follow-on seam bundle):
+
+- parity_stamp: 2026-05-03 / Slice-M-meta-fabric-follow-on-seams / mode=implementation
+- Extracted follow-on metadata-adjacent coordinator seams into meta-fabric helpers for write-controls metadata surface assembly, handoff metadata-status evaluation, and snapshot metadata-bundle normalization/unpack.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (coordinator metadata assembly coupling reduced via behavior-preserving delegation).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal architecture hardening only.
+
+Latest run update (2026-05-03, Slice-L meta-fabric metadata-validation bundle delegation):
+
+- parity_stamp: 2026-05-03 / Slice-L-meta-fabric-metadata-bundle / mode=implementation
+- Added a meta-fabric metadata-validation bundle helper so metadata-prep/bridge/cutover snapshot assembly seams are delegated through `meta_fabric.py`.
+- Coordinator now consumes a bundled metadata validation payload instead of stitching metadata stack bridge/cutover seams inline.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (coordinator coupling reduced for metadata-prep/bridge-facing validation assembly).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal architecture hardening only.
+
+Latest run update (2026-05-03, Slice-K meta-fabric startup-orchestration extraction):
+
+- parity_stamp: 2026-05-03 / Slice-K-meta-fabric-startup-extract / mode=implementation
+- Extracted metadata startup-recovery/boot-gate orchestration from `coordinator.py` into new workflow boundary module `meta_fabric.py` and switched coordinator to delegation wrappers for startup scheduling/timer execution and wait-reason formatting.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (metadata startup orchestration now lives behind dedicated meta-fabric module boundary).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal architecture hardening only.
+- README parity: no material repo-state change.
+
+Latest run update (2026-05-03, Slice-I+J host-cutover service contract + diagnostics highlights):
+
+- parity_stamp: 2026-05-03 / Slice-IJ-host-cutover-service-diagnostics / mode=implementation
+- Added response-capable `spectra_ls.get_host_cutover_gate` service with optional fail-closed readiness/activation guards and optional `snapshot_summary` envelope for deterministic automation consumption.
+- Added compact `host_cutover_gate_highlights` block to diagnostics export for one-screen readiness/activation triage.
+- Runtime track disposition: compatibility-shimmed (legacy host helper/entity authority remains rollback baseline).
+- Component track disposition: implemented (host-cutover gate packet is now service-addressable and diagnostics-highlighted).
+- P1/P2/P3 impact check: no source-of-truth ownership change; service-level evidence/actionability and observability hardening only.
+
+- parity_stamp: 2026-05-03 / Slice-H-host-cutover-enforcement / mode=implementation
+- Added a dedicated binary diagnostic entity for host cutover readiness so operators can monitor gate readiness with a single on/off surface.
+- Added fail-closed host-cutover gating in scheduler-apply write flow: when authority mode is component and host cutover gate is not ready, scheduler apply is blocked with explicit gate blocker context.
+- Runtime track disposition: compatibility-shimmed (legacy host helper/entity authority remains rollback baseline).
+- Component track disposition: implemented (component write-path safety now enforces host-cutover readiness before helper mutation in component-authority windows).
+- P1/P2/P3 impact check: no source-of-truth ownership change; guardrail and diagnostics hardening only.
+
+Latest run update (2026-05-03, Slice-G host-control cutover gate + authoritative host surfaces):
+
+- parity_stamp: 2026-05-03 / Slice-G-host-control-cutover-gate / mode=implementation
+- Added deterministic component-side `host_control_cutover_gate` packet in coordinator snapshot with fail-closed checks/blockers for active-target resolution, registry membership, host resolution, capability/path support, and legacy consistency drift.
+- Added explicit readiness split: `ready_for_cutover` (contract/path parity readiness) vs `ready_for_authoritative_activation` (readiness + authority-mode activation gate).
+- Exposed component-authoritative host candidate and cutover-gate state in diagnostics sensors (`Host Resolution Status` attributes + dedicated `Host Authority Cutover Gate` sensor).
+- Runtime track disposition: compatibility-shimmed (legacy host helper/entity contracts remain rollback-safe authority baseline).
+- Component track disposition: implemented (cutover-readiness and authority-candidate observability surfaces are now first-class in component snapshot/sensor contracts).
+- P1/P2/P3 impact check: no source-of-truth ownership change; host-control cutover readiness determinism and observability hardening only.
+
+Latest run update (2026-05-03, Slice-F service coercion + lifecycle dedupe hardening):
+
+- parity_stamp: 2026-05-03 / Slice-F-service-lifecycle-coercion / mode=implementation
+- Replaced brittle `bool(...)` service input coercion with explicit truthy/falsy normalization for scheduler/scaffold/trial/control-input service paths.
+- Collapsed duplicated domain service register/unregister chains into shared lifecycle plumbing so setup/unload service surfaces remain lock-step as services evolve.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (input-safety + lifecycle-drift hardening only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal safety/maintainability hardening only.
+
+- parity_stamp: 2026-05-03 / Slice-E-followup-boundary-sequence / mode=implementation
+- Added a coordinator snapshot-refresh surface and switched metadata workflow refresh calls to that public coordinator hook instead of direct private snapshot rebuild calls.
+- Consolidated repeated integration service stage execution loops into a shared internal sequence runner with unchanged stage-level fail-closed error reporting.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (internal maintainability + coupling-hardening only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal robustness/readability hardening only.
+
+Latest run update (2026-05-03, Slice-E metadata-stack final extraction + service routing cleanup):
+
+- parity_stamp: 2026-05-03 / Slice-E-metadata-stack-extract-final / mode=implementation
+- Completed metadata-stack ownership transfer by moving metadata trial/resolver/bridge attempt state to `MetadataStackWorkflow` and removing remaining coordinator-owned metadata attempt-state/wrapper responsibilities.
+- Updated integration service routing so metadata operations execute through `coordinator.metadata_stack` directly, keeping coordinator as orchestration-only for metadata stack flows.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (metadata stack extracted to dedicated workflow ownership with reduced coordinator coupling).
+- P1/P2/P3 impact check: no source-of-truth ownership change; component architecture/contract-boundary hardening only.
+
+Latest run update (2026-05-03, Slice-D authority-json-capture + three-slice hardening bundle):
+
+- parity_stamp: 2026-05-03 / Slice-D-authority-next-three / mode=implementation
+- Added operator copy/paste JSON capture guidance for authority packet service responses into `input_text` helpers to reduce validation friction.
+- Expanded authority packet contract with deterministic readiness surfaces: `authority_contract_ready`, `authority_contract_blocking_reasons`, `authority_contract_blocker_count`, and `required_proof_checkpoints_present`.
+- Hardened `spectra_ls.get_authority_contract` with additional fail-closed options: `fail_closed_if_contract_not_ready` and `required_checkpoint_count`.
+- Extended diagnostics highlights to surface readiness/blocker status directly for one-glance triage.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (authority packet/service/diagnostics validation ergonomics and fail-closed signaling hardened).
+- P1/P2/P3 impact check: no source-of-truth ownership change; validation/actionability hardening only.
+
+Latest run update (2026-05-03, Slice-D authority-validator dual-input envelope support):
+
+- parity_stamp: 2026-05-03 / Slice-D-authority-validator-dual-input / mode=implementation
+- Extended the raw authority validator template to auto-accept both packet-only and service-envelope JSON (`authority_contract` + optional `snapshot_summary`) from input-text capture entities, with fallback to shadow sensor attributes.
+- Added explicit source diagnostics (`source_mode`, `source_entity`, snapshot-summary presence) to make packet provenance deterministic during closeout captures.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (validator tooling now envelope-aware and lower-friction for operator validation workflows).
+- P1/P2/P3 impact check: no source-of-truth ownership change; validation ergonomics hardening only.
+
+Latest run update (2026-05-03, Slice-D authority-contract three-slice bundle):
+
+- parity_stamp: 2026-05-03 / Slice-D-authority-three-slice / mode=implementation
+- Added authority packet metadata and deterministic checklist/proof counters: `schema_version`, `packet_generated_at`, prep check counts, and proof checkpoint count for compact closeout consumption.
+- Hardened `spectra_ls.get_authority_contract` service with optional strict fail-closed behavior (`fail_closed_if_unready`) and optional compact snapshot summary envelope (`include_snapshot_summary`).
+- Extended diagnostics export with `authority_contract_highlights` and added raw validator template `docs/testing/raw/slice_d_authority_contract_validation.jinja` for one-screen operator packet verification.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (authority-contract packet/service/diagnostics path hardened end-to-end).
+- P1/P2/P3 impact check: no source-of-truth ownership change; evidence/actionability hardening only.
+
+Latest run update (2026-05-03, Slice-D authority-contract packet expansion):
+
+- parity_stamp: 2026-05-03 / Slice-D-authority-packet-expand / mode=implementation
+- Expanded `spectra_ls.get_authority_contract` response with deterministic cutover-prep/proof-summary fields: prep verdict/blocker count, bridge/trial status echo, proof checkpoint presence (`pre_window|in_window|post_window`), and in-window cutover/owner assertions.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (authority-contract response envelope expanded additively for meta-stack automation/closeout consumption).
+- P1/P2/P3 impact check: no source-of-truth ownership change; contract/actionability hardening only.
+
+Latest run update (2026-05-03, Slice-D strict endpoint closeout packet hardening):
+
+- parity_stamp: 2026-05-03 / Slice-D-endpoint-strict-packet / mode=implementation
+- Added strict endpoint-complete closeout packet example to P5-S02 checklist with fail-closed interpretation rules.
+- Expanded rolling meta-stack evidence schema with endpoint blocker count + explicit cutover checkpoint/assertion fields (`pre_window|in_window|post_window`, in-window cutover-active + owner-component assertions).
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged; docs/evidence schema hardening only).
+- Component track disposition: implemented (existing endpoint/proof contract now captured in stricter closeout packet fields).
+- P1/P2/P3 impact check: no source-of-truth ownership change; closeout evidence precision hardening only.
+
+Latest run update (2026-05-03, Slice-D closeout endpoint evidence wiring):
+
+- parity_stamp: 2026-05-03 / Slice-D-closeout-evidence / mode=implementation
+- Active P5 monitor/checklist artifacts now consume explicit endpoint gate fields: `cutover_prep_validation.cutover_prep_complete`, endpoint blocker count, and `cutover_proof` checkpoint presence (`pre_window|in_window|post_window`).
+- Rolling meta-stack evidence template now includes endpoint completion/blocker fields for deterministic closeout packets.
+- Runtime track disposition: compatibility-shimmed (runtime behavior/contracts unchanged; evidence surfaces only).
+- Component track disposition: implemented (existing endpoint/proof contract is now wired into operator closeout artifacts).
+- P1/P2/P3 impact check: no source-of-truth ownership change; closeout evidence determinism hardening only.
+
+Latest run update (2026-05-03, Slice-D metadata bridge cutover proof packet + endpoint gate):
+
+- parity_stamp: 2026-05-03 / Slice-D-meta-bridge-proof / mode=implementation
+- Metadata bridge result payload now emits deterministic cutover proof checkpoints: `cutover_proof.pre_window`, `cutover_proof.in_window`, and `cutover_proof.post_window`.
+- Each checkpoint includes authority mode, metadata owner, cutover-active state, readiness, and cutover-block reason for direct pre/in/post validation.
+- Snapshot now emits explicit cutover-prep endpoint gate `cutover_prep_validation.cutover_prep_complete` with deterministic checklist + blocker reasons.
+- Authority contract packet/service now includes `cutover_prep_complete` for one-glance cutover-prep readiness status.
+- Runtime track disposition: compatibility-shimmed (legacy metadata contracts remain rollback baseline).
+- Component track disposition: implemented (bridge evidence packet hardening + explicit endpoint readiness gate).
+- P1/P2/P3 impact check: source-of-truth ownership remains migration-bounded; validation evidence quality improved without ownership overreach.
+
+Latest run update (2026-05-03, Slice-D metadata authority-satisfied trial contract):
+
+- parity_stamp: 2026-05-03 / Slice-D-meta-authority-trial / mode=implementation
+- Metadata trial authority checks now pass when either legacy authority is active or component metadata cutover is active (`metadata_cutover_active=true`).
+- Metadata trial payload/closeout now records metadata owner + cutover state for deterministic cutover evidence.
+- Authority contract packet/service now includes `metadata_authority_owner` + `metadata_cutover_active`.
+- Runtime track disposition: compatibility-shimmed (legacy metadata contracts preserved as rollback baseline).
+- Component track disposition: implemented (authority-satisfied trial gating + packet visibility).
+- P1/P2/P3 impact check: source-of-truth ownership remains migration-bounded; cutover readiness is now explicitly contract-driven.
+
+Latest run update (2026-05-02, Slice-D metadata authority rewrite kickoff):
+
+- parity_stamp: 2026-05-02 / Slice-D-meta-authority-kickoff / mode=implementation
+- Replaced hardcoded legacy-only metadata authority owner/cutover diagnostics with component-aware authority resolution (mode + resolver-cutover readiness).
+- Bridge validation now treats component metadata cutover as a valid authority posture and only requires legacy trial-stage checks when cutover is not active.
+- Runtime track disposition: compatibility-shimmed (legacy runtime metadata contracts preserved as rollback baseline).
+- Component track disposition: implemented (metadata authority diagnostics now support component-first cutover posture).
+- P1/P2/P3 impact check: source-of-truth ownership remains migration-bounded; metadata authority diagnostics no longer permanently pinned to legacy.
 
 Latest run update (2026-05-02, Slice-D sub-slice 36: lean v2.7 test-scope signal):
 
@@ -453,8 +705,6 @@ Latest run update (2026-05-02, Slice-C wiki intake + workflow parity):
 - Component track disposition: compatibility-shimmed (governance/docs-only).
 - P1/P2/P3 impact check: no source-of-truth ownership change; wiki/operator workflow parity hardening only.
 
-Latest run update (2026-05-02, MA-authoritative progress contract hardening):
-
 Latest run update (2026-05-02, Slice-C issue-intake integrity wiring):
 
 - Extended Slice-C enforcement into issue intake forms so scheduler/metadata-bridge proposals are lane-classified and owner-routed before implementation starts.
@@ -547,8 +797,6 @@ Latest run update (2026-04-29, docs parity sweep):
 - Runtime track disposition: compatibility-shimmed (documentation-only).
 - Component track disposition: compatibility-shimmed (documentation-only).
 - P1/P2/P3 impact check: no source-of-truth ownership change; documentation parity hardening only.
-
-Latest run update (2026-04-26, parity build-out slice):
 
 Latest run update (2026-04-28, MA metadata-provider refresh dispatch):
 

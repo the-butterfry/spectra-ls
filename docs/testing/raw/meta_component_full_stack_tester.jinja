@@ -1,5 +1,5 @@
 {# Description: Full-stack one-screen Spectra LS component validation template for HA Developer Tools. #}
-{# Version: 2026.05.03.59 #}
+{# Version: 2026.05.03.60 #}
 {# Last updated: 2026-05-03 #}
 
 {% set invalid = ['','none','unknown','unavailable','null'] %}
@@ -7,7 +7,8 @@
 {% set shadow_entity = 'sensor.shadow_active_target' if states['sensor.shadow_active_target'] is not none else 'sensor.spectra_ls_shadow_active_target' %}
 {% set shadow_exists = states[shadow_entity] is not none %}
 {% set shadow_state = states(shadow_entity) if shadow_exists else 'missing' %}
-{% set captured_at = state_attr(shadow_entity,'captured_at') if shadow_exists else none %}
+{% set shadow_attrs = states[shadow_entity].attributes if shadow_exists and states[shadow_entity] is not none else {} %}
+{% set captured_at = shadow_attrs.captured_at if shadow_attrs.captured_at is defined else none %}
 
 {% set age_s = none %}
 {% if captured_at is string and captured_at|trim not in invalid %}
@@ -19,15 +20,15 @@
 
 {% set snapshot_fresh = (age_s is not none) and (age_s <= 300) %}
 
-{% set route_trace = state_attr(shadow_entity,'route_trace') if shadow_exists and state_attr(shadow_entity,'route_trace') is mapping else {} %}
-{% set contract_validation = state_attr(shadow_entity,'contract_validation') if shadow_exists and state_attr(shadow_entity,'contract_validation') is mapping else {} %}
-{% set scheduler_validation = state_attr(shadow_entity,'scheduler_validation') if shadow_exists and state_attr(shadow_entity,'scheduler_validation') is mapping else {} %}
-{% set selection_handoff = state_attr(shadow_entity,'selection_handoff_validation') if shadow_exists and state_attr(shadow_entity,'selection_handoff_validation') is mapping else {} %}
-{% set metadata_prep = state_attr(shadow_entity,'metadata_prep_validation') if shadow_exists and state_attr(shadow_entity,'metadata_prep_validation') is mapping else {} %}
-{% set control_center = state_attr(shadow_entity,'control_center_validation') if shadow_exists and state_attr(shadow_entity,'control_center_validation') is mapping else {} %}
-{% set host_cutover = state_attr(shadow_entity,'host_control_cutover_gate') if shadow_exists and state_attr(shadow_entity,'host_control_cutover_gate') is mapping else {} %}
-{% set write_controls = state_attr(shadow_entity,'write_controls') if shadow_exists and state_attr(shadow_entity,'write_controls') is mapping else {} %}
-{% set authority_contract = state_attr(shadow_entity,'authority_contract') if shadow_exists and state_attr(shadow_entity,'authority_contract') is mapping else {} %}
+{% set route_trace = shadow_attrs.route_trace if shadow_attrs.route_trace is defined and shadow_attrs.route_trace is mapping else {} %}
+{% set contract_validation = shadow_attrs.contract_validation if shadow_attrs.contract_validation is defined and shadow_attrs.contract_validation is mapping else {} %}
+{% set scheduler_validation = shadow_attrs.scheduler_validation if shadow_attrs.scheduler_validation is defined and shadow_attrs.scheduler_validation is mapping else {} %}
+{% set selection_handoff = shadow_attrs.selection_handoff_validation if shadow_attrs.selection_handoff_validation is defined and shadow_attrs.selection_handoff_validation is mapping else {} %}
+{% set metadata_prep = shadow_attrs.metadata_prep_validation if shadow_attrs.metadata_prep_validation is defined and shadow_attrs.metadata_prep_validation is mapping else {} %}
+{% set control_center = shadow_attrs.control_center_validation if shadow_attrs.control_center_validation is defined and shadow_attrs.control_center_validation is mapping else {} %}
+{% set host_cutover = shadow_attrs.host_control_cutover_gate if shadow_attrs.host_control_cutover_gate is defined and shadow_attrs.host_control_cutover_gate is mapping else {} %}
+{% set write_controls = shadow_attrs.write_controls if shadow_attrs.write_controls is defined and shadow_attrs.write_controls is mapping else {} %}
+{% set authority_contract = shadow_attrs.authority_contract if shadow_attrs.authority_contract is defined and shadow_attrs.authority_contract is mapping else {} %}
 
 {% set authority_mode = write_controls.authority_mode if write_controls.authority_mode is defined else 'unknown' %}
 {% set last_attempt = write_controls.last_attempt if write_controls.last_attempt is defined and write_controls.last_attempt is mapping else {} %}
@@ -62,8 +63,8 @@
 {% set contract_valid = contract_validation.valid if contract_validation.valid is defined else false %}
 {% set missing_required = contract_validation.missing_required if contract_validation.missing_required is defined and contract_validation.missing_required is sequence else [] %}
 {% set unresolved_required = contract_validation.unresolved_required if contract_validation.unresolved_required is defined and contract_validation.unresolved_required is sequence else [] %}
-{% set unresolved_sources = state_attr(shadow_entity,'unresolved_sources') if shadow_exists and state_attr(shadow_entity,'unresolved_sources') is sequence else (contract_validation.unresolved_sources if contract_validation.unresolved_sources is defined and contract_validation.unresolved_sources is sequence else []) %}
-{% set mismatches = state_attr(shadow_entity,'mismatches') if shadow_exists and state_attr(shadow_entity,'mismatches') is sequence else (contract_validation.mismatches if contract_validation.mismatches is defined and contract_validation.mismatches is sequence else []) %}
+{% set unresolved_sources = shadow_attrs.unresolved_sources if shadow_attrs.unresolved_sources is defined and shadow_attrs.unresolved_sources is sequence else (contract_validation.unresolved_sources if contract_validation.unresolved_sources is defined and contract_validation.unresolved_sources is sequence else []) %}
+{% set mismatches = shadow_attrs.mismatches if shadow_attrs.mismatches is defined and shadow_attrs.mismatches is sequence else (contract_validation.mismatches if contract_validation.mismatches is defined and contract_validation.mismatches is sequence else []) %}
 {% set missing_required_count = missing_required | count %}
 {% set unresolved_required_count = unresolved_required | count %}
 {% set unresolved_sources_count = unresolved_sources | count %}

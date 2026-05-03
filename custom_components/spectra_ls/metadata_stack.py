@@ -1,5 +1,5 @@
 # Description: Extracted metadata stack workflows for Spectra LS (metadata prep/bridge/cutover validation and metadata trial services).
-# Version: 2026.05.03.7
+# Version: 2026.05.03.8
 # Last updated: 2026-05-03
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 import json
-from time import monotonic
 from typing import Any
 from uuid import uuid4
 
@@ -55,6 +54,7 @@ from .const import (
 	WRITE_AUTH_COMPONENT,
 	WRITE_AUTH_LEGACY,
 )
+from .write_path_fabric import WritePathFabric
 
 
 class MetadataStackWorkflow:
@@ -985,19 +985,15 @@ class MetadataStackWorkflow:
 		elif not override_active_exists or not override_entity_exists:
 			result["status"] = "blocked_missing_override_helpers"
 			result["reason"] = "Metadata override helpers are missing"
-		elif c._write_authority_mode != WRITE_AUTH_COMPONENT:
-			result["status"] = "blocked_authority"
-			result["reason"] = "Write authority is legacy; metadata-resolver scaffold apply is intentionally blocked"
-		elif c._write_in_progress and not force:
-			result["status"] = "blocked_reentrancy"
-			result["reason"] = "A prior write attempt is still in progress"
-		elif not force and not dry_run and c._last_write_monotonic > 0:
-			elapsed = monotonic() - c._last_write_monotonic
-			if elapsed < c._write_debounce_s:
-				result["status"] = "blocked_debounce"
-				result["reason"] = "Debounce guard active"
-				result["elapsed_s"] = round(elapsed, 3)
-				result["debounce_s"] = c._write_debounce_s
+		else:
+			WritePathFabric.apply_standard_write_guards(
+				c,
+				result,
+				force=force,
+				dry_run=dry_run,
+				authority_required=WRITE_AUTH_COMPONENT,
+				authority_block_reason="Write authority is legacy; metadata-resolver scaffold apply is intentionally blocked",
+			)
 
 		if result["status"] == "pending" and current_override_active and current_override_entity == selected_meta_entity:
 			result["status"] = "noop_already_selected"
@@ -1037,19 +1033,17 @@ class MetadataStackWorkflow:
 				c._write_in_progress = False
 
 		if result["status"] in {"dry_run_ok", "noop_already_selected", "write_applied", "write_error"}:
-			c._last_write_monotonic = monotonic()
+			WritePathFabric.mark_write_touch(c)
 
 		result["completed_at"] = datetime.now(UTC).isoformat()
 		self._last_metadata_resolver_attempt = result
-		c._last_write_attempt = {
-			"status": result.get("status", "unknown"),
-			"timestamp": result.get("completed_at"),
-			"authority_mode": c._write_authority_mode,
-			"reason": result.get("reason", ""),
-			"correlation_id": corr,
-			"source": "run_metadata_resolver_scaffold",
-			"active_target": selected_meta_entity,
-		}
+		WritePathFabric.stamp_last_write_attempt(
+			c,
+			result=result,
+			source="run_metadata_resolver_scaffold",
+			correlation_id=corr,
+			active_target=selected_meta_entity,
+		)
 		c.refresh_snapshot()
 		return result
 
@@ -1250,15 +1244,13 @@ class MetadataStackWorkflow:
 			result["authority_after"] = c._write_authority_mode
 			result["completed_at"] = datetime.now(UTC).isoformat()
 			self._last_metadata_bridge_attempt = result
-			c._last_write_attempt = {
-				"status": result.get("status", "unknown"),
-				"timestamp": result.get("completed_at"),
-				"authority_mode": c._write_authority_mode,
-				"reason": result.get("reason", ""),
-				"correlation_id": corr,
-				"source": "run_metadata_trial_bridge_scaffold",
-				"active_target": str(result.get("expected_meta_entity", "") or ""),
-			}
+			WritePathFabric.stamp_last_write_attempt(
+				c,
+				result=result,
+				source="run_metadata_trial_bridge_scaffold",
+				correlation_id=corr,
+				active_target=str(result.get("expected_meta_entity", "") or ""),
+			)
 			c.refresh_snapshot()
 
 		return result

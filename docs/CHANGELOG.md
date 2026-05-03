@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.05.03.66 -->
+<!-- Version: 2026.05.03.67 -->
 <!-- Last updated: 2026-05-03 -->
 
 # Changelog
 
 ## 2026-05-03
+
+- Validation/Slice-AV Full-Stack Tester ESP Runtime Gate (`docs/testing/raw/meta_component_full_stack_tester.jinja`): add explicit ESP-side sanity visibility to the metadata full-stack tester by checking runtime telemetry surfaces (`sensor.spectra_ls_system_esp_control_handoff_status`, `sensor.spectra_ls_system_esp_oled_status`) and scoring an additional full-stack gate (`esp_runtime_not_ready` blocker when unavailable/invalid). Suggested-next-action guidance now includes a direct ESP recovery lane when component metadata/authority gates are green but ESP runtime telemetry is degraded. Runtime track disposition: compatibility-shimmed (runtime behavior unchanged; diagnostics coverage expanded). Custom-component track disposition: compatibility-shimmed (template-level observability hardening only). P1/P2/P3 impact: no source-of-truth ownership change; full-stack diagnostics completeness hardening only. README/wiki parity: no material operator workflow change.
 
 - Validation/Slice-AU Full-Stack Tester Metadata-Only Scope Trim (`docs/testing/raw/meta_component_full_stack_tester.jinja`): remove Phase-4 optional diagnostic blocks (`capability_profile_validation`, `action_catalog_validation`, `crossfade_balance_validation`) from the one-screen metadata tester because those payloads are intentionally not exposed on `sensor.shadow_active_target` in the current recorder-safe contract. Template scoring/gates now stay metadata/control/authority focused without emitting misleading `n/a_not_exposed` lines. Runtime track disposition: compatibility-shimmed (runtime behavior unchanged). Custom-component track disposition: compatibility-shimmed (diagnostic template scope correction only). P1/P2/P3 impact: no source-of-truth ownership change; operator diagnostics clarity hardening only. README/wiki parity: no material operator workflow change.
 

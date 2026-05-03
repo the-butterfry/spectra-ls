@@ -1,5 +1,5 @@
 {# Description: Full-stack one-screen Spectra LS component validation template for HA Developer Tools. #}
-{# Version: 2026.05.03.58 #}
+{# Version: 2026.05.03.59 #}
 {# Last updated: 2026-05-03 #}
 
 {% set invalid = ['','none','unknown','unavailable','null'] %}
@@ -48,6 +48,13 @@
 {% set now_playing_title = states('sensor.now_playing_title') %}
 {% set active_meta_entity = states('sensor.ma_active_meta_entity') %}
 
+{% set esp_handoff_entity = 'sensor.spectra_ls_system_esp_control_handoff_status' if states['sensor.spectra_ls_system_esp_control_handoff_status'] is not none else '' %}
+{% set esp_oled_entity = 'sensor.spectra_ls_system_esp_oled_status' if states['sensor.spectra_ls_system_esp_oled_status'] is not none else '' %}
+{% set esp_handoff_state = states(esp_handoff_entity) if esp_handoff_entity != '' else 'missing' %}
+{% set esp_oled_state = states(esp_oled_entity) if esp_oled_entity != '' else 'missing' %}
+{% set esp_runtime_visible = esp_handoff_entity != '' and esp_oled_entity != '' %}
+{% set esp_runtime_ready = esp_runtime_visible and esp_handoff_state not in invalid and esp_oled_state not in invalid %}
+
 {% set host_sensor = states('sensor.ma_control_host') %}
 {% set hosts_sensor = states('sensor.ma_control_hosts') %}
 
@@ -73,7 +80,7 @@
 {% set metadata_blockers = metadata_prep.blocking_reasons if metadata_prep.blocking_reasons is defined and metadata_prep.blocking_reasons is sequence else [] %}
 {% set authority_reasons = authority_contract.authority_reasons if authority_contract.authority_reasons is defined and authority_contract.authority_reasons is sequence else [] %}
 
-{% set ns = namespace(score=0, max=11, blockers=[]) %}
+{% set ns = namespace(score=0, max=12, blockers=[]) %}
 
 {% if shadow_exists %}{% set ns.score = ns.score + 1 %}{% else %}{% set ns.blockers = ns.blockers + ['shadow_entity_missing'] %}{% endif %}
 {% if snapshot_fresh %}{% set ns.score = ns.score + 1 %}{% else %}{% set ns.blockers = ns.blockers + ['snapshot_not_fresh'] %}{% endif %}
@@ -84,6 +91,7 @@
 {% if scheduler_verdict == 'PASS' %}{% set ns.score = ns.score + 1 %}{% else %}{% set ns.blockers = ns.blockers + ['scheduler_not_pass'] %}{% endif %}
 {% if handoff_verdict == 'PASS' %}{% set ns.score = ns.score + 1 %}{% else %}{% set ns.blockers = ns.blockers + ['handoff_not_pass'] %}{% endif %}
 {% if metadata_verdict == 'PASS' and (metadata_prep.ready_for_metadata_handoff if metadata_prep.ready_for_metadata_handoff is defined else false) %}{% set ns.score = ns.score + 1 %}{% else %}{% set ns.blockers = ns.blockers + ['metadata_prep_not_ready'] %}{% endif %}
+{% if esp_runtime_ready %}{% set ns.score = ns.score + 1 %}{% else %}{% set ns.blockers = ns.blockers + ['esp_runtime_not_ready'] %}{% endif %}
 {% if host_cutover_ready and host_activation_ready %}{% set ns.score = ns.score + 1 %}{% else %}{% set ns.blockers = ns.blockers + ['host_cutover_not_ready'] %}{% endif %}
 {% if authority_contract_ready %}{% set ns.score = ns.score + 1 %}{% else %}{% set ns.blockers = ns.blockers + ['authority_contract_not_ready'] %}{% endif %}
 
@@ -107,6 +115,7 @@
 - Control host(s): **{{ host_sensor }} / {{ hosts_sensor }}**
 - Meta entity: **{{ active_meta_entity }}**
 - Now playing: **{{ now_playing_entity }} | {{ now_playing_state }} | {{ now_playing_title }}**
+- ESP handoff/oled: **{{ esp_handoff_state }} / {{ esp_oled_state }}**
 
 ### Contract + parity
 - contract ready/valid: **{{ contract_ready }} / {{ contract_valid }}**
@@ -119,6 +128,7 @@
 - selection handoff: **{{ handoff_verdict }}**
 - metadata prep: **{{ metadata_verdict }}** (ready={{ metadata_prep.ready_for_metadata_handoff if metadata_prep.ready_for_metadata_handoff is defined else false }})
 - metadata blockers: **{{ (metadata_blockers | join(', ')) if (metadata_blockers | length) > 0 else 'none' }}**
+- esp runtime telemetry: **{{ 'ready' if esp_runtime_ready else 'degraded_or_missing' }}**
 - host cutover gate: **ready={{ host_cutover_ready }} / activation={{ host_activation_ready }}**
 - authority contract ready: **{{ authority_contract_ready }}**
 - authority reasons: **{{ (authority_reasons | join(', ')) if (authority_reasons | length) > 0 else 'none' }}**
@@ -151,6 +161,8 @@
 - Fix required contract surfaces (`missing_required`/`unresolved_required`) before trusting any trial verdict.
 {% elif metadata_verdict != 'PASS' %}
 - Run `spectra_ls.run_p3_s03_sequence` and resolve metadata blockers before advancing.
+{% elif not esp_runtime_ready %}
+- Component metadata gates are green, but ESP runtime telemetry is degraded/missing. Verify ESP node online status in ESPHome, then refresh with `homeassistant.update_entity` for `sensor.spectra_ls_system_esp_control_handoff_status` and `sensor.spectra_ls_system_esp_oled_status`, and rerun.
 {% elif metadata_verdict == 'PASS' and not authority_contract_ready %}
 - Metadata prep is green but authority proof is incomplete/stale. Run proof capture lane: `spectra_ls.set_write_authority(mode=component)` → `spectra_ls.run_metadata_resolver_scaffold(dry_run=true, force=true)` → `spectra_ls.run_metadata_trial_bridge_scaffold(dry_run=true, force=true)`, then rerun this template.
 {% else %}

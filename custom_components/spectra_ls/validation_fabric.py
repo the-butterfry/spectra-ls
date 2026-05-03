@@ -1,5 +1,5 @@
 # Description: Validation/control fabric workflow for Spectra LS snapshot validation assembly extracted from meta-fabric.
-# Version: 2026.05.03.1
+# Version: 2026.05.03.3
 # Last updated: 2026-05-03
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
@@ -16,11 +16,14 @@ from .const import (
     LEGACY_META_PAUSED_HIDE_S,
     LEGACY_META_STALE_S,
     LEGACY_ROOMS_JSON,
+    LEGACY_ROOMS_RAW,
+    LEGACY_SURFACES,
     META_POLICY_DEFAULTS,
     WRITE_AUTH_ALLOWED,
     WRITE_AUTH_COMPONENT,
 )
 from .selection_fabric import SelectionFabricWorkflow
+from .write_path_fabric import WritePathFabric
 
 
 class ValidationFabricWorkflow:
@@ -285,15 +288,15 @@ class ValidationFabricWorkflow:
         """Build required/soft contract validation payload for routing surfaces."""
         c = self._coordinator
         required_entities = {
-            "active_target": c._legacy_surfaces["active_target"],
-            "active_control_path": c._legacy_surfaces["active_control_path"],
-            "active_control_capable": c._legacy_surfaces["active_control_capable"],
+            "active_target": LEGACY_SURFACES["active_target"],
+            "active_control_path": LEGACY_SURFACES["active_control_path"],
+            "active_control_capable": LEGACY_SURFACES["active_control_capable"],
             "control_targets": LEGACY_CONTROL_TARGETS,
             "rooms_json": LEGACY_ROOMS_JSON,
-            "rooms_raw": c._legacy_rooms_raw,
+            "rooms_raw": LEGACY_ROOMS_RAW,
         }
         soft_required_entities = {
-            "control_hosts": c._legacy_surfaces["control_hosts"],
+            "control_hosts": LEGACY_SURFACES["control_hosts"],
             "control_host": LEGACY_CONTROL_HOST,
         }
         missing_required = [
@@ -350,11 +353,8 @@ class ValidationFabricWorkflow:
         c = self._coordinator
         helper_state = c.hass.states.get(LEGACY_ACTIVE_TARGET_HELPER)
         helper_exists = helper_state is not None
-        helper_options_attr = helper_state.attributes.get("options", []) if helper_state is not None else []
-        helper_options = (
-            [str(item) for item in helper_options_attr if isinstance(item, str)]
-            if isinstance(helper_options_attr, list)
-            else []
+        helper_options = WritePathFabric.normalize_options(
+            helper_state.attributes.get("options", []) if helper_state is not None else []
         )
 
         active_target = str(parity.get("active_target", "") or "").strip()

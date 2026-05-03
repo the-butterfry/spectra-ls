@@ -1,6 +1,6 @@
 <!-- Description: Retroactive architecture and feature documentation for the active Spectra LS ESPHome runtime codebase. -->
-<!-- Version: 2026.05.02.2 -->
-<!-- Last updated: 2026-05-02 -->
+<!-- Version: 2026.05.03.2 -->
+<!-- Last updated: 2026-05-03 -->
 
 # Spectra LS Runtime Architecture (Retroactive Baseline)
 
@@ -89,6 +89,8 @@ Owned in `packages/spectra-ls-audio-tcp.yaml`:
 - guarded send paths via `arylic_tcp` (prompt/host gating)
 - active-playback volume unblock: volume paths may proceed during prompt state when playback is active and hosts are resolvable (still fail-closed when hosts are unresolved)
 - host/port intake from HA (`sensor.ma_control_hosts`, `sensor.ma_control_port`)
+- reconnect-aware host-feed guardrails: transient HA/API reconnect invalid updates (`''/unknown/unavailable/none`) retain cached control-host surfaces during bounded reconnect/pending windows; sustained invalid feeds still fail-closed clear caches
+- reconnect-aware port-feed guardrails: transient non-numeric `sensor.ma_control_port` values are parsed as guarded text and no longer produce numeric conversion warnings; bounded fallback keeps runtime control port stable during reconnect churn
 - now-playing/meta resolver feed inputs
 - control-target prompt lifecycle
 

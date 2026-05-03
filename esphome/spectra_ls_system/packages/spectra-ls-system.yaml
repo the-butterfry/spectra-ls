@@ -1,6 +1,6 @@
 # Description: Spectra LS core state + globals + system intervals + shared scripts.
-# Version: 2026.05.02.3
-# Last updated: 2026-05-02
+# Version: 2026.05.03.1
+# Last updated: 2026-05-03
 # Update version/date whenever you change this file.
 #
 # Sections:
@@ -1102,6 +1102,10 @@ globals:
     restore_value: no
     initial_value: "0"
   - id: arylic_control_hosts_last_valid_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: arylic_control_port_last_valid_ms
     type: uint32_t
     restore_value: no
     initial_value: "0"

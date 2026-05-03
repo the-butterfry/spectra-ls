@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.05.03.29 -->
+<!-- Version: 2026.05.03.64 -->
 <!-- Last updated: 2026-05-03 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -75,6 +75,298 @@ Each feature slice is only complete when both tracks are dispositioned:
 | P8-S01 | 8 | Validated (legacy sealed baseline readiness gate completed with pre/in/post PASS packet) | Validated (post-cutover governance/readiness lane completed for starter gate) | Completed (Run-1/Run-2/Run-3 PASS; promoted) | High | Validated |
 
 Latest run update (2026-05-03, Slice-H host-cutover gate enforcement + binary readiness surface):
+
+Latest run update (2026-05-03, Slice-AS metadata prep freshness tolerance for resolved active playback):
+
+- Hardened `custom_components/spectra_ls/metadata_stack.py` metadata-prep authority gate semantics to tolerate resolved active-playback contract surfaces when progress freshness clocks are temporarily stale, preventing false `ma_degraded_fallback` closeout blockers in contract-complete playback windows.
+- In this bounded posture, freshness gate and metadata handoff readiness no longer fail-close solely due `no_fresh_play_signal` / `playing_without_recent_progress` when playback state/title/position/duration contracts remain resolved.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (authority gate false-negative path corrected).
+- P1/P2/P3 impact check: no source-of-truth ownership change; authority closeout reliability hardening only.
+
+Latest run update (2026-05-03, Slice-AR MA control-port parse guard + reconnect no-clear noise hardening):
+
+- Hardened runtime ESP HA-feed ingestion in `esphome/spectra_ls_system/packages/spectra-ls-audio-tcp.yaml` by moving `sensor.ma_control_port` ingest to guarded text parsing so transient non-numeric states (`unknown`/`unavailable`/empty) no longer trigger numeric conversion warnings while preserving bounded default-port fallback semantics.
+- Tightened reconnect-window host/hosts invalid-state handling to suppress reconnect-grace fail-closed clear noise when HA feed surfaces are transiently invalid at reconnect, while preserving fail-closed behavior outside guarded windows.
+- Runtime track disposition: implemented (runtime parser/reconnect noise hardening).
+- Component track disposition: compatibility-shimmed (component contracts unchanged; equivalent mode checked).
+- P1/P2/P3 impact check: no source-of-truth ownership change; runtime ingest/observability hardening only.
+
+Latest run update (2026-05-03, Slice-AQ metadata trial audit completeness contract fix):
+
+- Corrected metadata trial preflight/status sequencing in `custom_components/spectra_ls/metadata_stack.py` so expected-meta matched trial windows continue through canonical status assignment (`dry_run_ok`/`noop_applied`) instead of falling through with no `status` field.
+- Removes false partial audit payloads (`missing_audit_fields=['status']`) that previously caused deterministic `cutover_prep_incomplete` blockers despite successful bridge/trial execution.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged; equivalent audit-surface failure mode reviewed).
+- Component track disposition: implemented (metadata trial audit status emission now deterministic on expected-meta matched paths).
+- P1/P2/P3 impact check: no source-of-truth ownership change; metadata trial audit-contract correctness hardening only.
+
+Latest run update (2026-05-03, Slice-AP metadata bridge expected-target stability guard):
+
+- Hardened `custom_components/spectra_ls/metadata_stack.py` bridge execution flow to preserve validated expected-target route stability during bounded metadata cutover windows; when `expected_target` is provided and already matches current routed target under supported route decision, bridge no longer performs an unnecessary auto-select recovery write that can reselect a non-control-capable metadata source target.
+- Prevents deterministic mid-window route regression (`route_linkplay_tcp` → `defer_not_capable`) that otherwise cascades into `blocked_metadata_not_ready` trial failures unrelated to authority-owner semantics.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged; equivalent route-stability failure mode reviewed).
+- Component track disposition: implemented (bridge preflight target-stability guard added; recovery auto-select only runs when route preconditions are not already satisfied).
+- P1/P2/P3 impact check: no source-of-truth ownership change; bounded execution-window stability hardening only.
+
+Latest run update (2026-05-03, Slice-AO metadata bridge in-window authority proof alignment):
+
+- Hardened `custom_components/spectra_ls/metadata_stack.py` bridge sequencing so metadata trial authority mode is selected from live post-resolver cutover state: when component metadata cutover is already active, trial runs in component mode and in-window proof remains component-owned; legacy trial mode is now only used when cutover is not active.
+- Eliminates deterministic false authority-contract blockers where owner/cutover were globally active but in-window proof was captured after forced legacy trial authority switch.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged; equivalent failure mode reviewed).
+- Component track disposition: implemented (metadata bridge trial-stage authority selection/proof capture corrected).
+- P1/P2/P3 impact check: no source-of-truth ownership change; authority closeout proof correctness hardening only.
+
+Latest run update (2026-05-03, Slice-AN registry capability-path alignment for WiiM host targets):
+
+- Hardened component registry capability classification in `custom_components/spectra_ls/registry.py` so host-resolved WiiM-target entries that are transport-compatible with the supported Linkplay/TCP control path are not forced into `control_path=unknown`/`control_capable=false` under current gate consumers.
+- Removes false `defer_not_capable` route posture and restores scheduler candidate eligibility for host-cutover readiness when host + supported path conditions are satisfied.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (registry route-capability inference corrected).
+- P1/P2/P3 impact check: no source-of-truth ownership change; capability/path classification correctness hardening only.
+
+Latest run update (2026-05-03, Slice-AM meta full-stack tester schema+scoring correction):
+
+- Corrected `docs/testing/raw/meta_component_full_stack_tester.jinja` for current shadow packet schema and list-valued fields: unresolved/mismatch surfaces now read top-level packet attributes, contract/parity list checks use counts (not scalar equals), and `contract_ready` derives from valid+required-count fallback when explicit `ready` is absent.
+- Capability/action/crossfade checks now auto-classify as `n/a_not_exposed` (informational note, non-blocking) when those validation lanes are not present in current shadow attributes.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (validation template consumption/score logic corrected).
+- P1/P2/P3 impact check: no source-of-truth ownership change; diagnostics truthfulness and operator triage reliability hardening only.
+
+Latest run update (2026-05-03, Slice-AL runtime reconnect fail-closed guard hardening):
+
+- Hardened ESP runtime host-feed invalid-state handling in `esphome/spectra_ls_system/packages/spectra-ls-audio-tcp.yaml` so transient HA/API reconnect updates (`''/unknown/unavailable/none`) do not immediately clear control-host caches during reconnect grace or bounded short stale windows.
+- Preserved fail-closed posture for sustained invalid feeds while reducing noisy reconnect degradation loops and false `control_host(s) cleared fail-closed` churn.
+- Runtime track disposition: implemented (active ESP runtime reconnect resilience hardening).
+- Component track disposition: compatibility-shimmed (equivalent failure mode reviewed; no direct component behavior mutation required).
+- P1/P2/P3 impact check: no source-of-truth ownership change; reconnect resilience and observability noise hardening only.
+
+Latest run update (2026-05-03, Slice-AK coordinator async-import hardening):
+
+- Replaced dynamic runtime imports in `custom_components/spectra_ls/coordinator.py` initialization (`importlib.import_module`) with static class imports for coordinator workflow dependencies, eliminating Home Assistant blocking import warnings during integration load/reload.
+- Hardens coordinator startup path and reduces event-loop churn risk while preserving existing contracts and behavior surfaces.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged; equivalent warning mode checked).
+- Component track disposition: implemented (coordinator startup import lane hardened).
+- P1/P2/P3 impact check: no source-of-truth ownership change; startup reliability/compliance hardening only.
+
+Latest run update (2026-05-03, Slice-AJ snapshot contract regression fix):
+
+- Fixed snapshot refresh/build crash path in `custom_components/spectra_ls/validation_fabric.py` by replacing stale references to removed coordinator-private fields (`_legacy_surfaces`, `_legacy_rooms_raw`) with canonical constant-backed legacy surface mapping.
+- Restores deterministic snapshot publication for state-change, deferred refresh, and coordinator update flows that previously failed with `AttributeError` during contract validation assembly.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged; equivalent failure mode checked).
+- Component track disposition: implemented (component validation regression corrected).
+- P1/P2/P3 impact check: no source-of-truth ownership change; regression correction and stability hardening only.
+
+Latest run update (2026-05-03, Slice-AI meta component full-stack Jinja tester):
+
+- Added a consolidated raw template `docs/testing/raw/meta_component_full_stack_tester.jinja` for one-screen component-stack validation (authority/host gate, route/contract, scheduler/handoff/metadata prep, capability/action/crossfade, control-center/write-attempts, parity/freshness, and deterministic next-step guidance).
+- Registered the new template in `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md` quick-path list for copy/paste operator use.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (validation tooling expansion for full-stack evidence capture).
+- P1/P2/P3 impact check: no source-of-truth ownership change; diagnostics/evidence workflow hardening only.
+
+Latest run update (2026-05-03, Slice-AH Pack D reuse + cache + hardening implementation):
+
+- parity_stamp: 2026-05-03 / Slice-AH-pack-d-reuse-cache-harden / mode=implementation
+- Implemented Pack D shared reuse/caching layer by adding `payload_surface_fabric.py` helpers and rewiring snapshot/service summary consumers to shape-safe shared extractors instead of repeated inline dict/list guards.
+- Added bounded micro-caching/hardening in high-frequency paths: short-TTL snapshot publish cache in `refresh_validation_fabric.py` with defensive cache lifecycle behavior, plus bounded authority-contract packet cache in `authority_contract.py` keyed by snapshot `captured_at` for repeated diagnostics/sensor reads.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (Pack D reuse/caching/hardening landed in component internals).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal reuse/caching and brittleness-hardening only.
+
+Latest run update (2026-05-03, Slice-AH Pack D reuse + cache + hardening activation):
+
+- parity_stamp: 2026-05-03 / Slice-AH-pack-d-reuse-cache-harden / mode=docs-first
+- Activated docs-first Pack D macro cycle for `custom_components/spectra_ls`: add shared payload-surface extraction utilities for repeated dict/list shape checks, introduce safe bounded micro-caching on high-frequency snapshot publish paths, and apply additional defensive hardening around cache lifecycle/state churn behavior while preserving existing behavior contracts.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: compatibility-shimmed (docs-first activation step completed; implementation/verification follows in the same macro cycle).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal reuse/caching/hardening workflow activation only.
+
+Latest run update (2026-05-03, Slice-AG Pack C optimization + reuse + hardening implementation):
+
+- parity_stamp: 2026-05-03 / Slice-AG-pack-c-opt-reuse-harden / mode=implementation
+- Implemented Pack C optimizations and reuse hardening in component paths: added reusable payload-list extraction helper in `utility_fabric.py`, converted selection target aggregation to linear-time de-duplication with set-backed uniqueness in `selection_fabric.py`, and reduced callback storm brittleness via bounded global-state coalescing cache pruning + in-flight dedupe in `event_recovery_fabric.py`.
+- Applied additional common-code reuse and robustness tightening: shared helper-state/options normalization usage in `control_execution_fabric.py`, `startup_recovery_fabric.py`, and `validation_fabric.py`; reusable dict-surface extraction in `snapshot_fabric.py`; and deduped snapshot publish flow in `refresh_validation_fabric.py` to reduce repeated brittle shape/publish patterns.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (Pack C optimization/reuse/hardening landed).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal performance/reuse and defensive-hardening only.
+
+Latest run update (2026-05-03, Slice-AG Pack C optimization + reuse + hardening activation):
+
+- parity_stamp: 2026-05-03 / Slice-AG-pack-c-opt-reuse-harden / mode=docs-first
+- Activated docs-first Pack C macro cycle for `custom_components/spectra_ls`: apply performance optimizations in high-frequency selection/event paths, expand reusable helper abstractions for repeated extraction/normalization logic, and execute a defensive hardening pass to reduce brittleness/callback storm risk while preserving behavior contracts.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: compatibility-shimmed (docs-first activation step completed; implementation/rewire verification follows in the same macro cycle).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal optimization/reuse/hardening workflow activation only.
+
+Latest run update (2026-05-03, Slice-AF Pack A+B hardening implementation):
+
+- parity_stamp: 2026-05-03 / Slice-AF-pack-a-b-hardening / mode=implementation
+- Added shared write-path hardening helpers in `write_path_fabric.py` (deduped helper-options normalization, common authority/reentrancy/debounce guard evaluation, and standardized write-attempt stamping), then rewired high-churn write lanes in `selection_fabric.py` and `control_execution_fabric.py` to consume the shared helpers while preserving status/reason contracts.
+- Added bounded global state-change event coalescing and in-flight dedupe in `event_recovery_fabric.py` to reduce task fan-out under rapid HA state churn.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (Pack A+B reliability/performance/dedupe hardening landed in component write and event-recovery lanes).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal reliability/performance hardening only.
+
+Latest run update (2026-05-03, Slice-AF Pack A+B hardening activation):
+
+- parity_stamp: 2026-05-03 / Slice-AF-pack-a-b-hardening / mode=docs-first
+- Activated a docs-first macro hardening cycle for `custom_components/spectra_ls` Pack A+B execution: introduce shared write-path dedupe/guard helpers (helper-state packet normalization, common guard-chain evaluation, and write-attempt recording) and rewire high-churn write lanes to consume those helpers while preserving status/reason contracts; add bounded global state-change event coalescing in event-recovery orchestration to reduce task-storm risk under rapid HA state churn.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: compatibility-shimmed (docs-first activation step completed; implementation/rewire verification follows in the same macro cycle).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal reliability/performance hardening workflow activation only.
+
+Latest run update (2026-05-03, Slice-AE coordinator endgame internals extraction implementation):
+
+- parity_stamp: 2026-05-03 / Slice-AE-coordinator-endgame-internals / mode=implementation
+- Moved remaining coordinator internals to workflow boundaries by extracting `_snapshot_for_entity` parsing semantics and write-authority normalization policy to `utility_fabric.py`, and `_async_update_data` refresh dispatch to `refresh_validation_fabric.py`.
+- Rewired coordinator methods to thin delegations through utility/refresh workflow boundaries while preserving helper contracts consumed across existing orchestration paths.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (endgame internals now boundary-owned by dedicated workflow modules).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal architecture hardening only.
+
+Latest run update (2026-05-03, Slice-AE coordinator endgame internals extraction activation):
+
+- parity_stamp: 2026-05-03 / Slice-AE-coordinator-endgame-internals / mode=docs-first
+- Activated the final endgame extraction cycle to move remaining coordinator internals (`_snapshot_for_entity` field parsing semantics, write-authority mode normalization policy, and `_async_update_data` refresh path dispatch) from `coordinator.py` into workflow boundaries, then rewire coordinator methods to thin delegation wrappers.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: compatibility-shimmed (docs-first activation step completed; implementation/rewire verification follows in the same macro cycle).
+- P1/P2/P3 impact check: no source-of-truth ownership change; architecture-hardening execution progression only.
+
+Latest run update (2026-05-03, Slice-AD coordinator utility-helper final one-shot extraction implementation):
+
+- parity_stamp: 2026-05-03 / Slice-AD-coordinator-utility-helper-final-one-shot / mode=implementation
+- Added dedicated workflow boundary module `utility_fabric.py` and moved remaining coordinator utility/helper lane ownership out of `coordinator.py` (state normalization, JSON payload parsing, float-helper parsing, availability scoring, empirical bonus scoring, resolved-state checks, and timestamp age parsing).
+- Rewired coordinator helper methods to thin delegations through `UtilityFabricWorkflow`, preserving helper contracts consumed across workflow boundaries.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (remaining utility/helper lane now boundary-owned by dedicated workflow module).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal architecture hardening only.
+
+Latest run update (2026-05-03, Slice-AD coordinator utility-helper final one-shot extraction activation):
+
+- parity_stamp: 2026-05-03 / Slice-AD-coordinator-utility-helper-final-one-shot / mode=docs-first
+- Activated the next super-macro extraction cycle to move the remaining coordinator utility/helper seams (state normalization, JSON payload parsing, float-helper parsing, availability scoring, empirical bonus scoring, resolved-state checks, and timestamp age parsing) from `coordinator.py` into a dedicated workflow boundary module, then rewire coordinator helper methods to thin delegation wrappers.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: compatibility-shimmed (docs-first activation step completed; implementation/rewire verification follows in the same macro cycle).
+- P1/P2/P3 impact check: no source-of-truth ownership change; architecture-hardening execution progression only.
+
+Latest run update (2026-05-03, Slice-AC coordinator refresh-validation super-chunk extraction implementation):
+
+- parity_stamp: 2026-05-03 / Slice-AC-coordinator-refresh-validation-super-chunk / mode=implementation
+- Added dedicated workflow boundary module `refresh_validation_fabric.py` and moved coordinator refresh/validation service lane ownership out of `coordinator.py` (`_refresh_snapshot`, deferred refresh callback handling, `async_rebuild_registry`, `async_validate_contracts`, `async_dump_route_trace`, `async_validate_selection_handoff`, `async_validate_capability_profile`, `async_validate_action_catalog`, `async_validate_crossfade_balance`, and `async_validate_scheduler`).
+- Rewired coordinator methods to thin delegations through `RefreshValidationFabricWorkflow`, preserving service and callback contracts.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (refresh/validation super-chunk lane now boundary-owned by dedicated workflow module).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal architecture hardening only.
+
+Latest run update (2026-05-03, Slice-AC coordinator refresh-validation super-chunk extraction activation):
+
+- parity_stamp: 2026-05-03 / Slice-AC-coordinator-refresh-validation-super-chunk / mode=docs-first
+- Activated the next super-macro extraction cycle to move coordinator refresh/validation service seams (`_refresh_snapshot`, deferred refresh callback handling, `async_rebuild_registry`, `async_validate_contracts`, `async_dump_route_trace`, `async_validate_selection_handoff`, `async_validate_capability_profile`, `async_validate_action_catalog`, `async_validate_crossfade_balance`, and `async_validate_scheduler`) from `coordinator.py` into a dedicated workflow boundary module, then rewire coordinator methods to thin delegation wrappers.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: compatibility-shimmed (docs-first activation step completed; implementation/rewire verification follows in the same macro cycle).
+- P1/P2/P3 impact check: no source-of-truth ownership change; architecture-hardening execution progression only.
+
+Latest run update (2026-05-03, Slice-AB coordinator lifecycle-listener lane extraction implementation):
+
+- parity_stamp: 2026-05-03 / Slice-AB-coordinator-lifecycle-listener-extraction / mode=implementation
+- Added dedicated workflow boundary module `lifecycle_fabric.py` and moved coordinator lifecycle listener lane ownership out of `coordinator.py` (`async_setup` and `async_shutdown`).
+- Rewired coordinator lifecycle methods to thin delegations through `LifecycleFabricWorkflow`, preserving listener/watch-set contracts and unload cleanup semantics.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (lifecycle listener lane now boundary-owned by dedicated workflow module).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal architecture hardening only.
+
+Latest run update (2026-05-03, Slice-AB coordinator lifecycle-listener lane extraction activation):
+
+- parity_stamp: 2026-05-03 / Slice-AB-coordinator-lifecycle-listener-extraction / mode=docs-first
+- Activated the next super-macro extraction cycle to move coordinator lifecycle listener seams (`async_setup` and `async_shutdown`) from `coordinator.py` into a dedicated workflow boundary module, then rewire coordinator methods to thin delegation wrappers.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: compatibility-shimmed (docs-first activation step completed; implementation/rewire verification follows in the same macro cycle).
+- P1/P2/P3 impact check: no source-of-truth ownership change; architecture-hardening execution progression only.
+
+Latest run update (2026-05-03, Slice-AA coordinator control-execution lane extraction implementation):
+
+- parity_stamp: 2026-05-03 / Slice-AA-coordinator-control-execution-extraction / mode=implementation
+- Added dedicated workflow boundary module `control_execution_fabric.py` and moved coordinator control-execution service lane ownership out of `coordinator.py` (`async_apply_control_center_settings`, `async_execute_control_center_input`, `async_set_write_authority`, and `async_route_write_trial`).
+- Rewired coordinator methods to thin delegations through `ControlExecutionFabricWorkflow`, preserving service payload/status contracts and guarded write semantics.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (control-execution lane now boundary-owned by dedicated workflow module).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal architecture hardening only.
+
+Latest run update (2026-05-03, Slice-AA coordinator control-execution lane extraction activation):
+
+- parity_stamp: 2026-05-03 / Slice-AA-coordinator-control-execution-extraction / mode=docs-first
+- Activated the next super-macro extraction cycle to move coordinator control-execution service seams (`async_apply_control_center_settings`, `async_execute_control_center_input`, `async_set_write_authority`, and `async_route_write_trial`) from `coordinator.py` into a dedicated workflow boundary module, then rewire coordinator methods to thin delegation wrappers.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: compatibility-shimmed (docs-first activation step completed; implementation/rewire verification follows in the same macro cycle).
+- P1/P2/P3 impact check: no source-of-truth ownership change; architecture-hardening execution progression only.
+
+Latest run update (2026-05-03, Slice-Z coordinator snapshot-lane extraction implementation):
+
+- parity_stamp: 2026-05-03 / Slice-Z-coordinator-snapshot-extraction / mode=implementation
+- Added dedicated workflow boundary module `snapshot_fabric.py` and moved coordinator snapshot-assembly lane ownership out of `coordinator.py` (`build_snapshot` packet assembly and `build_write_controls` packet packaging).
+- Rewired coordinator `_build_snapshot` and `_build_write_controls` methods to thin delegations through `SnapshotFabricWorkflow`, preserving coordinator-facing payload contracts.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (snapshot lane now boundary-owned by dedicated workflow module).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal architecture hardening only.
+
+Latest run update (2026-05-03, Slice-Z coordinator snapshot-lane extraction activation):
+
+- parity_stamp: 2026-05-03 / Slice-Z-coordinator-snapshot-extraction / mode=docs-first
+- Activated the next super-macro extraction cycle to move coordinator snapshot assembly seams (`_build_snapshot` packet assembly and write-controls snapshot packaging) from `coordinator.py` into a dedicated workflow boundary module, then rewire coordinator methods to thin delegation wrappers.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: compatibility-shimmed (docs-first activation step completed; implementation/rewire verification follows in the same macro cycle).
+- P1/P2/P3 impact check: no source-of-truth ownership change; architecture-hardening execution progression only.
+
+Latest run update (2026-05-03, Slice-Y startup-recovery lane extraction implementation):
+
+- parity_stamp: 2026-05-03 / Slice-Y-startup-recovery-extraction / mode=implementation
+- Added dedicated workflow boundary module `startup_recovery_fabric.py` and moved startup-recovery orchestration lane ownership out of `meta_fabric.py` (`async_schedule_startup_recovery`, timer callback dispatch, startup attempt engine, boot-readiness evaluation, and startup wait-reason formatting).
+- Rewired meta-fabric methods to thin delegations through `StartupRecoveryFabricWorkflow`, preserving coordinator callback/service contracts and coordinator-facing behavior.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (startup-recovery lane now boundary-owned by dedicated workflow module).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal architecture hardening only.
+
+Latest run update (2026-05-03, Slice-Y startup-recovery lane extraction activation):
+
+- parity_stamp: 2026-05-03 / Slice-Y-startup-recovery-extraction / mode=docs-first
+- Activated the next super-macro extraction cycle to move the startup-recovery orchestration lane from `meta_fabric.py` into a dedicated workflow boundary module, then rewire meta-fabric methods to thin delegation wrappers.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: compatibility-shimmed (docs-first activation step completed; implementation/rewire verification follows in the same macro cycle).
+- P1/P2/P3 impact check: no source-of-truth ownership change; architecture-hardening execution progression only.
+
+Latest run update (2026-05-03, Slice-X event-recovery lane extraction implementation):
+
+- parity_stamp: 2026-05-03 / Slice-X-event-recovery-extraction / mode=implementation
+- Added dedicated workflow boundary module `event_recovery_fabric.py` and moved event/recovery orchestration lane ownership out of `meta_fabric.py` (auto-select loop preflight/execution, players-change refresh, ambiguity lock, stale unlock/timer handling, no-control feedback hold/self-heal/post-heal notification lifecycle, and global/state callback orchestration).
+- Rewired meta-fabric methods to thin delegations through `EventRecoveryFabricWorkflow`, preserving callback/service contracts and coordinator-facing behavior.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (event/recovery lane now boundary-owned by dedicated workflow module).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal architecture hardening only.
+
+Latest run update (2026-05-03, Slice-X event-recovery lane extraction activation):
+
+- parity_stamp: 2026-05-03 / Slice-X-event-recovery-extraction / mode=docs-first
+- Activated the next super-macro extraction cycle to move the event/recovery orchestration lane from `meta_fabric.py` into a dedicated workflow boundary module, then rewire meta-fabric methods to thin delegation wrappers.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: compatibility-shimmed (docs-first activation step completed; implementation/rewire verification follows in the same macro cycle).
+- P1/P2/P3 impact check: no source-of-truth ownership change; architecture-hardening execution progression only.
+
+Latest run update (2026-05-03, Slice-W scaffold-backend lane extraction implementation):
+
+- parity_stamp: 2026-05-03 / Slice-W-scaffold-backend-extraction / mode=implementation
+- Added dedicated workflow boundary module `scaffold_fabric.py` and moved scaffold/backend assembly lane ownership out of `meta_fabric.py` (`build_component_scaffolds`, `build_handoff_inventory`, `build_ma_backend_profile`).
+- Rewired meta-fabric methods to thin delegations through `ScaffoldFabricWorkflow` while preserving existing packet contracts and coordinator-facing outputs.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (scaffold/backend lane now boundary-owned by dedicated workflow module).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal architecture hardening only.
+
+Latest run update (2026-05-03, Slice-W scaffold-backend lane extraction activation):
+
+- parity_stamp: 2026-05-03 / Slice-W-scaffold-backend-extraction / mode=docs-first
+- Activated the next super-macro extraction cycle to move the scaffold/backend assembly lane from `meta_fabric.py` into a dedicated workflow boundary module, then rewire meta-fabric methods to thin delegation wrappers.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: compatibility-shimmed (docs-first activation step completed; implementation/rewire verification follows in the same macro cycle).
+- P1/P2/P3 impact check: no source-of-truth ownership change; architecture-hardening execution progression only.
 
 Latest run update (2026-05-03, Slice-V validation-control lane extraction implementation):
 

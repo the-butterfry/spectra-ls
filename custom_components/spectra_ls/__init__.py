@@ -1,5 +1,5 @@
 # Description: Spectra LS custom integration setup for shadow parity, Phase 3 guarded routing write-path services, Phase 4 diagnostics scaffolding services (F4-S01/F4-S03), Phase 5 metadata trial contract service wiring, and Phase 6 control-center settings/execution services including bounded startup auto-recovery scheduling and selection-ownership migration services with hardened authority-contract response service support.
-# Version: 2026.05.03.7
+# Version: 2026.05.03.8
 # Last updated: 2026-05-03
 # PARITY DIRECTIVE: Behavior/contract edits must include same-slice two-track parity review and version-metadata review (runtime + component).
 
@@ -54,6 +54,7 @@ from .const import (
     normalize_control_center_settings,
 )
 from .coordinator import SpectraLsShadowCoordinator
+from .payload_surface_fabric import PayloadSurfaceFabric
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -96,17 +97,9 @@ _DOMAIN_SERVICE_NAMES: tuple[str, ...] = (
 
 def _build_authority_snapshot_summary(snapshot: dict[str, Any]) -> dict[str, Any]:
     """Build compact authority-related snapshot summary for service consumers."""
-    route_trace = snapshot.get("route_trace", {}) if isinstance(snapshot.get("route_trace", {}), dict) else {}
-    contract_validation = (
-        snapshot.get("contract_validation", {})
-        if isinstance(snapshot.get("contract_validation", {}), dict)
-        else {}
-    )
-    cutover_prep_validation = (
-        snapshot.get("cutover_prep_validation", {})
-        if isinstance(snapshot.get("cutover_prep_validation", {}), dict)
-        else {}
-    )
+    route_trace = PayloadSurfaceFabric.dict_surface(snapshot, "route_trace")
+    contract_validation = PayloadSurfaceFabric.dict_surface(snapshot, "contract_validation")
+    cutover_prep_validation = PayloadSurfaceFabric.dict_surface(snapshot, "cutover_prep_validation")
 
     missing_required = contract_validation.get("missing_required", [])
     unresolved_required = contract_validation.get("unresolved_required", [])
@@ -126,17 +119,9 @@ def _build_authority_snapshot_summary(snapshot: dict[str, Any]) -> dict[str, Any
 
 def _build_host_cutover_snapshot_summary(snapshot: dict[str, Any]) -> dict[str, Any]:
     """Build compact host-cutover summary for service consumers."""
-    route_trace = snapshot.get("route_trace", {}) if isinstance(snapshot.get("route_trace", {}), dict) else {}
-    contract_validation = (
-        snapshot.get("contract_validation", {})
-        if isinstance(snapshot.get("contract_validation", {}), dict)
-        else {}
-    )
-    host_gate = (
-        snapshot.get("host_control_cutover_gate", {})
-        if isinstance(snapshot.get("host_control_cutover_gate", {}), dict)
-        else {}
-    )
+    route_trace = PayloadSurfaceFabric.dict_surface(snapshot, "route_trace")
+    contract_validation = PayloadSurfaceFabric.dict_surface(snapshot, "contract_validation")
+    host_gate = PayloadSurfaceFabric.dict_surface(snapshot, "host_control_cutover_gate")
     gate_blockers = host_gate.get("gate_blockers", [])
     activation_blockers = host_gate.get("activation_blockers", [])
 

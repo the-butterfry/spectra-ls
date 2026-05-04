@@ -1,6 +1,6 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.05.03.64 -->
-<!-- Last updated: 2026-05-03 -->
+<!-- Version: 2026.05.04.6 -->
+<!-- Last updated: 2026-05-04 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
 
@@ -11,6 +11,14 @@
 Operator local deployment note (non-contract, do not hardcode in product logic):
 
 - Current Spectra ESP node management IP: `192.168.10.40`.
+
+Latest run update (2026-05-04, Slice-BP LC-01 component entity namespace binding remap):
+
+- Verified live HA component entities are exposed as `sensor.component_*` / `binary_sensor.component_*` (not `sensor.spectra_ls_component_*`), and remapped active ESP substitutions accordingly in `esphome/spectra_ls_system/substitutions.yaml`.
+- Runtime track disposition: implemented (ESP consumer-binding correction only).
+- Component track disposition: compatibility-shimmed (component contracts/services unchanged).
+- P1/P2/P3 impact check: no source-of-truth ownership change; environment-binding correctness hardening only.
+- README parity: no material repo-state change.
 
 ## Custom-Component Parallel Program (Required)
 
@@ -75,6 +83,189 @@ Each feature slice is only complete when both tracks are dispositioned:
 | P8-S01 | 8 | Validated (legacy sealed baseline readiness gate completed with pre/in/post PASS packet) | Validated (post-cutover governance/readiness lane completed for starter gate) | Completed (Run-1/Run-2/Run-3 PASS; promoted) | High | Validated |
 
 Latest run update (2026-05-03, Slice-H host-cutover gate enforcement + binary readiness surface):
+
+Latest run update (2026-05-04, Slice-AY.2 Arylic HTTP per-host scheme memory):
+
+Latest run update (2026-05-03, Slice-BF legacy codepath cleanup tracker activation):
+
+Latest run update (2026-05-03, Slice-BG legacy active-friendly feed cleanup (LC-04)):
+
+Latest run update (2026-05-03, Slice-BH legacy control-port feed cleanup (LC-03)):
+
+Latest run update (2026-05-03, Slice-BI now-playing freshness fallback clock fix):
+
+- Runtime `sensor.now_playing_freshness_age_s` now uses bounded fallback clock semantics (`media_position_updated_at` → `last_updated` → `last_changed`) instead of hard-falling to `9999` when position timestamp is missing.
+- Runtime track disposition: implemented (freshness false-negative reduction for metadata readiness gates).
+- Component track disposition: compatibility-shimmed (component metadata stack already applies bounded fallback semantics; equivalent mode reviewed).
+- P1/P2/P3 impact check: no source-of-truth ownership change; freshness contract correctness hardening only.
+
+Latest run update (2026-05-03, Slice-BJ LC-02 active-target read-lane cutover phase-1):
+
+- ESP active-target read substitution now binds component surface (`sensor.spectra_ls_component_active_target`) instead of runtime helper `input_select.ma_active_target`.
+- Runtime track disposition: compatibility-shimmed (helper write lane retained as temporary UI prompt compatibility shim).
+- Component track disposition: implemented (component active-target contract now drives ESP read lane).
+- P1/P2/P3 impact check: bounded read-path retirement only; explicit-target write service/proxy still pending for full LC-02 closure.
+
+Latest run update (2026-05-04, Slice-BK LC-02 active-target write-lane cutover phase-2):
+
+- Added explicit component service contract `spectra_ls.set_active_target` with authority/debounce/reentrancy-guarded helper apply semantics in `custom_components/spectra_ls` selection fabric and service wiring.
+- ESP UI control-target prompt commit (`apply_control_target_selection` in `esphome/spectra_ls_system/packages/spectra-ls-ui.yaml`) now calls `spectra_ls.set_active_target` instead of direct `input_select.select_option` helper writes.
+- Runtime track disposition: implemented (active ESP prompt write lane no longer writes helper directly).
+- Component track disposition: implemented (explicit active-target write contract exposed and consumed).
+- P1/P2/P3 impact check: source-of-truth ownership unchanged; LC-02 write-lane retirement completed under component-mediated guard semantics.
+
+Latest run update (2026-05-04, Slice-BL LC-01 metadata-candidates read-lane cutover phase-1):
+
+- Added component-native metadata candidate contract entities (`sensor.spectra_ls_component_meta_candidates`, `binary_sensor.spectra_ls_component_meta_low_confidence`) sourced by component diagnostics/resolver state and exposed as stable read surfaces.
+- ESP substitutions for metadata candidate and confidence ingest now bind component entities (`ha_ma_meta_candidates`, `ha_ma_meta_low_confidence`) instead of legacy runtime entities.
+- Runtime track disposition: compatibility-shimmed (metadata override write helpers remain in compatibility mode pending write-lane migration).
+- Component track disposition: implemented (component metadata candidate/low-confidence read contracts now drive active ESP ingest lane).
+- P1/P2/P3 impact check: bounded read-path retirement only; override write-lane retirement remains deferred to next LC-01 phase.
+
+Latest run update (2026-05-04, Slice-BM LC-01 metadata override write-lane cutover phase-2):
+
+- Added explicit component service contract `spectra_ls.set_metadata_override` with guarded apply/clear semantics (authority/reentrancy/debounce + helper/entity existence and input-shape fail-closed checks) in metadata-stack workflow + service wiring.
+- ESP metadata override menu apply lane (`apply_meta_override_selection` in `esphome/spectra_ls_system/packages/spectra-ls-ui.yaml`) now calls `spectra_ls.set_metadata_override` instead of direct `input_boolean.turn_on/off` + `input_text.set_value` helper writes.
+- Runtime track disposition: implemented (active ESP metadata override write lane now component-mediated; helper entities retained as compatibility storage surfaces).
+- Component track disposition: implemented (explicit metadata override write contract exposed and consumed by active ESP lane).
+- P1/P2/P3 impact check: no source-of-truth ownership change; LC-01 write-lane retirement completed with bounded compatibility-storage retention.
+
+Latest run update (2026-05-04, Slice-BN ESP handoff false-`no_target` guard + lighting OLED tester semantics):
+
+- ESP handoff status classification now treats resolved active-friendly context as a valid target-presence signal, reducing transient false `no_target` status during helper-state timing windows.
+- Full-stack tester semantics now treat `lighting|oled:-` as expected while UI mode is lighting, avoiding misleading implication that blank OLED text is degraded in non-audio mode.
+- Runtime track disposition: implemented (telemetry/validation semantics hardening only).
+- Component track disposition: compatibility-shimmed (component contracts unchanged; equivalent failure-mode posture reviewed).
+- P1/P2/P3 impact check: no source-of-truth ownership change; diagnostics and operator-triage correctness hardening only.
+
+Latest run update (2026-05-04, Slice-BO control-host fallback ingest + lighting OLED label hardening):
+
+- ESP control-host/port ingest now includes bounded runtime compatibility fallbacks (`sensor.ma_control_hosts`, `sensor.ma_control_host`, `sensor.ma_control_port`) that apply only when component-native control-host feeds are transiently unresolved, reducing false `no_hosts` control gating while preserving fail-closed semantics for sustained invalid feeds.
+- ESP handoff readiness classification now accepts resolved cached control-host state, preventing false `no_target` posture when component shadow route is healthy but read-lane feeds are in transient churn.
+- Lighting mode OLED status now emits explicit `LIGHTING` label instead of blank placeholder text for clearer operator telemetry semantics.
+- Runtime track disposition: implemented (runtime ingest/status/render hardening only).
+- Component track disposition: compatibility-shimmed (component contracts unchanged; equivalent failure-mode posture reviewed).
+- P1/P2/P3 impact check: no source-of-truth ownership change; runtime host-gate correctness and telemetry clarity hardening only.
+
+- Added component-native control-port contract surface (`sensor.spectra_ls_component_control_port`) and switched ESP control-port substitution consumption to this component entity.
+- Runtime track disposition: compatibility-shimmed (runtime `sensor.ma_control_port` retained as rollback artifact, no longer active ESP consumer dependency).
+- Component track disposition: implemented (component route/host packet now provides active control-port lane for ESP runtime).
+- P1/P2/P3 impact check: bounded read-path migration completed for control-port lane; no write-path ownership changes in this slice.
+
+- ESP active-friendly ingest (`ma_active_friendly` lane in `spectra-ls-audio-tcp.yaml`) now consumes component-native friendly surface via substitutions (`sensor.spectra_ls_component_now_playing_friendly`) instead of runtime `sensor.ma_active_friendly`.
+- Runtime track disposition: compatibility-shimmed (legacy runtime friendly surface remains available but is no longer consumed in this ESP lane).
+- Component track disposition: implemented (component-friendly context surface is now authoritative for this consumer path).
+- P1/P2/P3 impact check: bounded legacy read-path retirement with no write-path ownership change.
+
+- Added explicit cleanup ledger `docs/roadmap/LEGACY-CODEPATH-CLEANUP-TRACKER.md` with concrete task IDs (LC-01..LC-06), blockers, and exit criteria covering remaining ESP/runtime/component legacy dependencies.
+- Runtime track disposition: compatibility-shimmed (legacy contracts intentionally retained until each task exit gate is validated).
+- Component track disposition: implemented (cleanup backlog ownership + retirement gates are now explicit and auditable).
+- P1/P2/P3 impact check: no immediate contract retirement; governance now enforces explicit stale-code retirement planning and proof requirements.
+
+Latest run update (2026-05-03, Slice-BE component-native now-playing volume consumer swap):
+
+- Component now publishes `sensor.spectra_ls_component_now_playing_volume` (derived from active now-playing entity volume attributes) and ESP volume ingest substitution now consumes this component surface.
+- Runtime track disposition: compatibility-shimmed (runtime volume contract retained as fallback compatibility artifact).
+- Component track disposition: implemented (component now-playing volume surface now drives active ESP volume consumer lane).
+- P1/P2/P3 impact check: no immediate legacy retirement; component-owned now-playing consumer coverage expanded to include volume.
+
+Latest run update (2026-05-03, Slice-BD component-native control-route feed swap):
+
+- ESP control-route substitutions now consume component-native target/host feeds (`sensor.spectra_ls_component_control_targets`, `sensor.spectra_ls_component_control_hosts`, `sensor.spectra_ls_component_control_host`) for target-options and host-cache update lanes, while keeping runtime `sensor.ma_control_port` as bounded compatibility shim.
+- Runtime track disposition: compatibility-shimmed (runtime route surfaces retained as rollback-safe compatibility; no ownership expansion).
+- Component track disposition: implemented (component route packet surfaces now drive active ESP target/host ingest paths).
+- P1/P2/P3 impact check: no immediate legacy retirement; component-owned control-route read-path coverage expanded with bounded runtime port shim retained.
+
+Latest run update (2026-05-03, Slice-BC component-native now-playing context completion):
+
+- Component now publishes derived now-playing context surfaces (`friendly`, `artist`, `album`, `app`, `source`) and ESP substitutions now consume these component entities for active metadata context lanes.
+- Runtime track disposition: compatibility-shimmed (legacy runtime context surfaces remain available as rollback-safe compatibility contracts).
+- Component track disposition: implemented (component-owned now-playing context tuple coverage expanded for ESP consumers).
+- P1/P2/P3 impact check: no immediate legacy retirement; component-native now-playing read-path coverage expanded to full context tuple.
+
+Latest run update (2026-05-03, Slice-BB component-native now-playing consumer contract swap):
+
+- ESP now-playing consumer substitutions now prefer component-native now-playing contract entities (`sensor.spectra_ls_component_now_playing_*`, `binary_sensor.spectra_ls_component_now_playing_display_allowed`) for entity/state/title/position/duration/media-class/preview-key/freshness-age lanes while preserving legacy runtime contracts as rollback-safe compatibility surfaces.
+- Runtime track disposition: compatibility-shimmed (legacy runtime now-playing contracts remain available; no write-path ownership expansion).
+- Component track disposition: implemented (component-native now-playing contracts are now active ESP read-path inputs).
+- P1/P2/P3 impact check: no immediate source-of-truth retirement; consumer read-path now prefers component-owned now-playing contract surfaces.
+
+Latest run update (2026-05-04, Slice-AY.7 idle-transition poll guard + input quiet window):
+
+- Added poll-lane guard to suppress Arylic HTTP polling during HA idle/off transition windows when Arylic is already in known-playing state, reducing transient idle-transition failure spikes.
+- Extended post-input quiet guard window so HTTP polling does not immediately re-enter after dense control bursts, reducing interval blocking/hitch pressure.
+- Runtime track disposition: implemented (ESP poll-loop guard hardening).
+- Component track disposition: compatibility-shimmed (component path does not own ESP HTTP poll loop).
+- P1/P2/P3 impact check: no source-of-truth ownership change; runtime hitch-risk reduction only.
+
+Latest run update (2026-05-04, Slice-AY.6 timeout-budget correction):
+
+- Root-cause correction applied to Arylic HTTP defaults: request timeout widened from an overly aggressive budget and poll/input-guard cadence tuned to tolerate normal endpoint response jitter under active playback/control.
+- Objective is to reduce false `http_request Code: -1` churn without changing routing ownership, authority mode, or discovery-first host contracts.
+- Runtime track disposition: implemented (ESP transport resilience correction).
+- Component track disposition: compatibility-shimmed (component path does not own ESP HTTP transport loop).
+- P1/P2/P3 impact check: no source-of-truth ownership change; runtime transport stability correction only.
+
+Latest run update (2026-05-04, Slice-AY.5 hard component pin):
+
+- Component write authority is now pinned: coordinator authority normalization/default behavior no longer accepts legacy-mode activation, and runtime authority fallback defaults to component mode.
+- Component auto-select scaffold now keeps current helper target when already valid and not forced, reducing unsolicited helper target churn from transient ranking/metadata noise.
+- Runtime track disposition: implemented (legacy authority lane disabled for normal operation).
+- Component track disposition: implemented (authority and selection lanes pinned to component semantics).
+- P1/P2/P3 impact check: active write ownership is component-only for target/host selection lanes; legacy remains dormant rollback artifact only.
+
+Latest run update (2026-05-04, Slice-AY.4 non-hybrid authority cutover):
+
+- Runtime `ma_control_hub` now exposes `sensor.ma_authority_mode` and authority-gates legacy target/host write lanes (`ma_update_target_options`, `ma_auto_select`, restore/lock automations), preventing dual-writer churn when component authority is active.
+- Runtime manual cycle action now delegates to component service `spectra_ls.cycle_active_target` in component mode; legacy helper write path remains fallback in legacy mode.
+- Runtime `sensor.ma_control_hosts` now prefers component host-cutover candidate host when host authority gate reports `authority_mode=component`, aligning ESP host feeds to component-selected authority host while retaining fail-closed fallback behavior.
+- Runtime track disposition: implemented (non-hybrid target/host ownership in component mode).
+- Component track disposition: implemented (existing authority/cycle/cutover-gate surfaces consumed as canonical control authority; no schema expansion required).
+- P1/P2/P3 impact check: source-of-truth ownership remains migration-bounded but normal-operation target/host authority is now component-primary and non-hybrid.
+
+- Runtime Arylic HTTP preferred transport memory now preserves bounded per-host scheme/port slots (primary + alternate), avoiding repeated default-protocol restarts during active-target host churn when hosts have different HTTP/HTTPS support.
+- Runtime track disposition: implemented (active ESP runtime transport-selection stability hardening).
+- Component track disposition: compatibility-shimmed (component path does not own ESP HTTP polling lane; equivalent failure-mode posture reviewed).
+- P1/P2/P3 impact check: no source-of-truth ownership change; runtime transport-selection correctness hardening only.
+
+Latest run update (2026-05-04, Slice-AY.1 Arylic HTTP interaction-priority guard + timeout tightening):
+
+- Runtime Arylic HTTP poll loop now uses a tighter timeout budget and a short post-input poll guard window keyed from `last_input_ms`, skipping non-critical status polls immediately after user interaction to preserve tactile responsiveness under transport-fault windows.
+- Runtime track disposition: implemented (active ESP runtime poll-loop responsiveness hardening).
+- Component track disposition: compatibility-shimmed (component path does not own ESP HTTP polling lane; equivalent failure-mode posture reviewed).
+- P1/P2/P3 impact check: no source-of-truth ownership change; runtime interaction smoothness hardening only.
+
+Latest run update (2026-05-04, Slice-AY Arylic HTTP hitch stabilization under transport errors):
+
+- Runtime Arylic HTTP poll loop now uses tighter timeout + stronger fail-backoff tuning (`arylic_http_timeout_ms`, `arylic_http_backoff_*`) and delays fallback-scheme switching until sustained failures, reducing perceived freeze/hitch windows during repeated transport errors.
+- Runtime track disposition: implemented (active ESP runtime poll-loop stability hardening).
+- Component track disposition: compatibility-shimmed (component path does not own ESP HTTP polling lane; equivalent failure-mode posture reviewed).
+- P1/P2/P3 impact check: no source-of-truth ownership change; runtime transport resilience and interaction smoothness hardening only.
+
+Latest run update (2026-05-03, Slice-AX3+AX4 freshness-age + deterministic preview-key contract):
+
+- Added deterministic now-playing preview-change contract surface (`sensor.now_playing_preview_key`) and explicit freshness-age surface (`sensor.now_playing_freshness_age_s`) in runtime templates so ESP consumers can react to coherent content transitions instead of blank/no-op preview tokens.
+- ESP now consumes freshness-age signal and suppresses stale cached metadata rescue outside bounded freshness windows while still honoring HA display policy authority.
+- Runtime track disposition: implemented (active HA+ESP consumer determinism/freshness hardening).
+- Component track disposition: compatibility-shimmed (component behavior unchanged; equivalent failure mode reviewed).
+- P1/P2/P3 impact check: no source-of-truth ownership change; consumer-side coherence and stale-window hardening only.
+
+Latest run update (2026-05-03, Slice-AW3 OLED metadata tuple coherency fix):
+
+- Fixed ESP metadata contract mixing for OLED now-playing fields by aligning substitutions to a single now-playing family for title/artist/album (`sensor.now_playing_title`, `sensor.now_playing_artist`, `sensor.now_playing_album`) instead of mixed `now_playing_title` + `ma_active_*` tuple inputs.
+- Removes stale cross-source album carryover where title/artist were current but album lagged from prior MA-active context.
+- Runtime track disposition: implemented (active ESP runtime metadata contract alignment).
+- Component track disposition: compatibility-shimmed (component behavior unchanged; equivalent failure mode reviewed).
+- P1/P2/P3 impact check: no source-of-truth ownership change; metadata display coherence hardening only.
+
+Latest run update (2026-05-03, Slice-AW2 restart cutover persistence + active-target capability recovery hardening):
+
+- Restored component cutover continuity across HA restart windows by sourcing startup write-authority mode from persisted config-entry options (`default_write_authority_mode`) instead of fixed legacy default.
+- Added bounded option persistence in authority-set path so operator-selected authority mode survives reload/restart and service flows that omit explicit mode now default to persisted authority.
+- Hardened component registry fallback for active target host discovery by applying a constrained `ma_control_host` fallback when target-local discovery is temporarily unresolved, reducing false `defer_not_capable` route windows.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged; equivalent lane reviewed).
+- Component track disposition: implemented (startup authority persistence + route-capability fallback hardening).
+- P1/P2/P3 impact check: no source-of-truth ownership change; restart stability and route-readiness reliability hardening only.
 
 Latest run update (2026-05-03, Slice-AS metadata prep freshness tolerance for resolved active playback):
 

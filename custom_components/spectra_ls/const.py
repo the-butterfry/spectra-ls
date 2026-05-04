@@ -1,6 +1,6 @@
 # Description: Constants for Spectra LS custom integration shadow parity, Phase 3 guarded routing write-path controls, Phase 4 diagnostics scaffolding (F4-S01/F4-S03), Phase 5 metadata trial contract service, and Phase 6/8 control-center settings and fast-remap preset contracts including startup MA-readiness gating constants and selection-ownership migration services.
-# Version: 2026.05.03.2
-# Last updated: 2026-05-03
+# Version: 2026.05.04.3
+# Last updated: 2026-05-04
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -44,6 +44,8 @@ SERVICE_RUN_METADATA_TRIAL_BRIDGE_SCAFFOLD = "run_metadata_trial_bridge_scaffold
 SERVICE_CYCLE_ACTIVE_TARGET = "cycle_active_target"
 SERVICE_RESTORE_LAST_VALID_TARGET = "restore_last_valid_target"
 SERVICE_TRACK_LAST_VALID_TARGET = "track_last_valid_target"
+SERVICE_SET_ACTIVE_TARGET = "set_active_target"
+SERVICE_SET_METADATA_OVERRIDE = "set_metadata_override"
 
 PLATFORMS: tuple[Platform, ...] = (
     Platform.SENSOR,
@@ -134,6 +136,58 @@ LEGACY_SERVER_PROFILE_EFFECTIVE = "sensor.ma_server_profile_effective"
 LEGACY_ROOMS_JSON = "sensor.spectra_ls_rooms_json"
 LEGACY_ROOMS_RAW = "sensor.spectra_ls_rooms_raw"
 
+# Legacy scaffold governance split (LC-05):
+# - compat_required: still consumed by active component/runtime compatibility paths
+# - retire_candidate: intentionally retained legacy scaffolds with explicit retirement gates
+LEGACY_RETIRE_GATE_LC_05 = "LC-05"
+LEGACY_RETIRE_GATE_LC_06 = "LC-06"
+
+LEGACY_COMPAT_REQUIRED_CONSTANTS: dict[str, str] = {
+    "LEGACY_ACTIVE_TARGET": LEGACY_ACTIVE_TARGET,
+    "LEGACY_ACTIVE_CONTROL_PATH": LEGACY_ACTIVE_CONTROL_PATH,
+    "LEGACY_ACTIVE_CONTROL_CAPABLE": LEGACY_ACTIVE_CONTROL_CAPABLE,
+    "LEGACY_ACTIVE_TARGET_HELPER": LEGACY_ACTIVE_TARGET_HELPER,
+    "LEGACY_ACTIVE_META_ENTITY": LEGACY_ACTIVE_META_ENTITY,
+    "LEGACY_META_RESOLVER": LEGACY_META_RESOLVER,
+    "LEGACY_META_DETECTED_ENTITY": LEGACY_META_DETECTED_ENTITY,
+    "LEGACY_META_OVERRIDE_ACTIVE": LEGACY_META_OVERRIDE_ACTIVE,
+    "LEGACY_META_OVERRIDE_ENTITY": LEGACY_META_OVERRIDE_ENTITY,
+    "LEGACY_META_STALE": LEGACY_META_STALE,
+    "LEGACY_META_PAUSED_HIDE_S": LEGACY_META_PAUSED_HIDE_S,
+    "LEGACY_META_STALE_S": LEGACY_META_STALE_S,
+    "LEGACY_META_CONFIDENCE_MIN": LEGACY_META_CONFIDENCE_MIN,
+    "LEGACY_META_CANDIDATES": LEGACY_META_CANDIDATES,
+    "LEGACY_MA_PLAYERS": LEGACY_MA_PLAYERS,
+    "LEGACY_CONTROL_HOST": LEGACY_CONTROL_HOST,
+    "LEGACY_CONTROL_HOSTS": LEGACY_CONTROL_HOSTS,
+    "LEGACY_CONTROL_TARGETS": LEGACY_CONTROL_TARGETS,
+    "LEGACY_ROOMS_JSON": LEGACY_ROOMS_JSON,
+    "LEGACY_ROOMS_RAW": LEGACY_ROOMS_RAW,
+}
+
+LEGACY_RETIRE_CANDIDATE_CONSTANTS: dict[str, str] = {
+    "LEGACY_CONTROL_AMBIGUOUS": LEGACY_CONTROL_AMBIGUOUS,
+    "LEGACY_NO_CONTROL_CAPABLE_HOSTS": LEGACY_NO_CONTROL_CAPABLE_HOSTS,
+    "LEGACY_OVERRIDE_ACTIVE": LEGACY_OVERRIDE_ACTIVE,
+    "LEGACY_LAST_VALID_TARGET": LEGACY_LAST_VALID_TARGET,
+    "LEGACY_NOW_PLAYING_ENTITY": LEGACY_NOW_PLAYING_ENTITY,
+    "LEGACY_NOW_PLAYING_STATE": LEGACY_NOW_PLAYING_STATE,
+    "LEGACY_NOW_PLAYING_TITLE": LEGACY_NOW_PLAYING_TITLE,
+    "LEGACY_NOW_PLAYING_POSITION": LEGACY_NOW_PLAYING_POSITION,
+    "LEGACY_NOW_PLAYING_DURATION": LEGACY_NOW_PLAYING_DURATION,
+    "LEGACY_NOW_PLAYING_MEDIA_CLASS": LEGACY_NOW_PLAYING_MEDIA_CLASS,
+    "LEGACY_NOW_PLAYING_PREVIEW_KEY": LEGACY_NOW_PLAYING_PREVIEW_KEY,
+    "LEGACY_NOW_PLAYING_DISPLAY_ALLOWED": LEGACY_NOW_PLAYING_DISPLAY_ALLOWED,
+    "LEGACY_ACTIVE_DURATION": LEGACY_ACTIVE_DURATION,
+    "LEGACY_SERVER_PROFILE": LEGACY_SERVER_PROFILE,
+    "LEGACY_SERVER_PROFILE_EFFECTIVE": LEGACY_SERVER_PROFILE_EFFECTIVE,
+}
+
+LEGACY_RETIREMENT_GATES: dict[str, str] = {
+    **{key: LEGACY_RETIRE_GATE_LC_06 for key in LEGACY_RETIRE_CANDIDATE_CONSTANTS},
+    **{key: LEGACY_RETIRE_GATE_LC_05 for key in LEGACY_COMPAT_REQUIRED_CONSTANTS},
+}
+
 LEGACY_SURFACES: dict[str, str] = {
     "active_target": LEGACY_ACTIVE_TARGET,
     "active_control_path": LEGACY_ACTIVE_CONTROL_PATH,
@@ -150,6 +204,7 @@ OPT_BUTTON_2_SCENE = "button_2_scene"
 OPT_BUTTON_3_SCENE = "button_3_scene"
 OPT_BUTTON_4_SCENE = "button_4_scene"
 OPT_MAPPING_PRESET = "mapping_preset"
+OPT_DEFAULT_WRITE_AUTHORITY_MODE = "default_write_authority_mode"
 
 CONTROL_CENTER_ACTIONS: tuple[str, ...] = (
     "volume",

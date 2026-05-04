@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.05.04.6 -->
+<!-- Version: 2026.05.04.7 -->
 <!-- Last updated: 2026-05-04 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -19,6 +19,14 @@ Latest run update (2026-05-04, Slice-BP LC-01 component entity namespace binding
 - Component track disposition: compatibility-shimmed (component contracts/services unchanged).
 - P1/P2/P3 impact check: no source-of-truth ownership change; environment-binding correctness hardening only.
 - README parity: no material repo-state change.
+
+Latest run update (2026-05-04, Slice-BQ LC-05 legacy scaffold constant governance split):
+
+- Split component `LEGACY_*` internal scaffold constants into explicit governance buckets (`compat_required` vs `retire_candidate`) and added deterministic retirement gate IDs (`LC-05` / `LC-06`) in `custom_components/spectra_ls/const.py`.
+- Exported the same classification packet in config-entry diagnostics to keep retirement gating auditable from one surface.
+- Runtime track disposition: compatibility-shimmed (no runtime behavior mutation).
+- Component track disposition: implemented (constant governance split + diagnostics exposure).
+- P1/P2/P3 impact check: no source-of-truth ownership change; migration governance/retirement traceability hardening only.
 
 ## Custom-Component Parallel Program (Required)
 

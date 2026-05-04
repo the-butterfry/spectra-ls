@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.05.04.6 -->
+<!-- Version: 2026.05.04.7 -->
 <!-- Last updated: 2026-05-04 -->
 
 # Changelog
 
 ## 2026-05-04
+
+- Component/Slice-BQ LC-05 Legacy Scaffold Constant Governance Split (`custom_components/spectra_ls/const.py`, `custom_components/spectra_ls/diagnostics.py`, `docs/roadmap/LEGACY-CODEPATH-CLEANUP-TRACKER.md`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): implement the next cleanup slice by splitting internal `LEGACY_*` constant surfaces into explicit governance buckets (`compat_required` vs `retire_candidate`) with deterministic retirement gate IDs (`LC-05`/`LC-06`) and exporting the classification in component diagnostics for operator/audit visibility. Verified no dead/unreachable `LEGACY_*` constants remain in active component paths in this slice. Runtime track disposition: compatibility-shimmed (no runtime behavior/contract mutation; version bump not applicable). Custom-component track disposition: implemented (constant-surface governance split + diagnostics exposure). P1/P2/P3 impact: no source-of-truth ownership change; migration-governance and retirement-traceability hardening only. README/wiki parity: no material operator workflow change.
 
 - Runtime+ESP/Slice-BP LC-01 Component Entity Namespace Binding Remap (`esphome/spectra_ls_system/substitutions.yaml`, `docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`): align active ESP metadata/control read-lane substitutions to the live Home Assistant component entity namespace (`sensor.component_*`, `binary_sensor.component_*`) after runtime verification showed `sensor.spectra_ls_component_*` surfaces are absent in this environment. This removes read-lane 404 bindings while preserving existing component contracts/services and legacy fallback semantics. Runtime track disposition: implemented (ESP substitution consumer remap only). Custom-component track disposition: compatibility-shimmed (component contract surfaces unchanged; naming/failure-mode posture verified). P1/P2/P3 impact: no source-of-truth ownership change; environment-binding correctness hardening only. README/wiki parity: no material operator workflow change.
 

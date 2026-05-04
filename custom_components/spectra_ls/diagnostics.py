@@ -1,6 +1,6 @@
 # Description: Diagnostics export for Spectra LS read-only shadow parity, Phase 2 scaffold snapshots, and Phase 6 control-center settings/readiness visibility, including expanded shared MA authority-contract packet highlights.
-# Version: 2026.05.03.3
-# Last updated: 2026-05-03
+# Version: 2026.05.04.1
+# Last updated: 2026-05-04
 # PARITY DIRECTIVE: Behavior/contract edits must include same-slice two-track parity review and version-metadata review (runtime + component).
 
 from __future__ import annotations
@@ -11,7 +11,13 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
 from .authority_contract import build_authority_contract_packet
-from .const import DOMAIN, LEGACY_SURFACES
+from .const import (
+    DOMAIN,
+    LEGACY_COMPAT_REQUIRED_CONSTANTS,
+    LEGACY_RETIRE_CANDIDATE_CONSTANTS,
+    LEGACY_RETIREMENT_GATES,
+    LEGACY_SURFACES,
+)
 
 
 async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: ConfigEntry) -> dict[str, Any]:
@@ -68,5 +74,12 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: ConfigE
             "activation_blocker_count": len(activation_blockers) if isinstance(activation_blockers, list) else 0,
         },
         "source_states": source_states,
+        "legacy_constant_governance": {
+            "compat_required_count": len(LEGACY_COMPAT_REQUIRED_CONSTANTS),
+            "retire_candidate_count": len(LEGACY_RETIRE_CANDIDATE_CONSTANTS),
+            "compat_required": LEGACY_COMPAT_REQUIRED_CONSTANTS,
+            "retire_candidates": LEGACY_RETIRE_CANDIDATE_CONSTANTS,
+            "retirement_gates": LEGACY_RETIREMENT_GATES,
+        },
         "shadow_snapshot": shadow_snapshot,
     }

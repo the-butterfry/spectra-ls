@@ -1,12 +1,13 @@
 # Description: Data coordinator for Spectra LS parity diagnostics, Phase 3 guarded routing write-path controls, Phase 4 diagnostics scaffolding (F4-S01/F4-S03), Phase 5 metadata trial contract auditing, and Phase 6/8 control-center settings, fast-remap, execution visibility, startup auto-recovery orchestration (latency-hardened cadence), and selection-lock lifecycle parity migration (ambiguity lock, stale unlock, auto-select loop).
-# Version: 2026.05.03.24
-# Last updated: 2026-05-03
+# Version: 2026.05.04.28
+# Last updated: 2026-05-04
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC, datetime
 import logging
 from typing import Any
 
@@ -63,8 +64,8 @@ from .const import (
     META_SUPPRESSION_PAUSED_STALE,
     META_SUPPRESSION_PLAYING,
     META_SUPPRESSION_PLAYING_STALE,
-    WRITE_AUTH_ALLOWED,
-    WRITE_AUTH_LEGACY,
+    OPT_DEFAULT_WRITE_AUTHORITY_MODE,
+    WRITE_AUTH_COMPONENT,
     WRITE_DEBOUNCE_SECONDS,
     normalize_control_center_settings,
 )
@@ -100,7 +101,7 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._unsub_state_events = None
         self._unsub_global_state_events = None
         self._meta_stale_unlock_unsub = None
-        self._write_authority_mode = WRITE_AUTH_LEGACY
+        self._write_authority_mode = WRITE_AUTH_COMPONENT
         self._write_debounce_s = float(WRITE_DEBOUNCE_SECONDS)
         self._control_center_settings = normalize_control_center_settings(entry.options)
         self._last_control_center_action_attempt: dict[str, Any] = {
@@ -182,6 +183,22 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "reason": "No component last-valid tracking attempts requested yet",
             "tracked_target": "",
         }
+        self._last_set_active_target_attempt: dict[str, Any] = {
+            "status": "never_attempted",
+            "requested_at": None,
+            "completed_at": None,
+            "reason": "No component explicit active-target set attempts requested yet",
+            "selected_target": "",
+        }
+        self._last_metadata_provider_packet: dict[str, Any] = {
+            "status": "never_attempted",
+            "response": "",
+            "providers": "",
+            "item_uri": "",
+            "reason": "",
+            "updated_at": "",
+            "source": "component_default_state",
+        }
         self._startup_recovery_unsub = None
         self._startup_recovery_task = None
         self._startup_recovery_attempt = 0
@@ -228,6 +245,10 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     @property
     def utility_fabric(self) -> Any:
         return self._utility_fabric
+
+    @property
+    def last_metadata_provider_packet(self) -> dict[str, Any]:
+        return self._last_metadata_provider_packet
 
     async def async_setup(self) -> None:
         """Initialize data and state listeners."""
@@ -299,7 +320,8 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         )
 
     def _normalize_write_authority(self, mode: str) -> str:
-        return self._utility_fabric.normalize_write_authority(mode, WRITE_AUTH_ALLOWED, WRITE_AUTH_LEGACY)
+        _ = mode
+        return WRITE_AUTH_COMPONENT
 
     def _build_write_controls(self) -> dict[str, Any]:
         return self._snapshot_fabric.build_write_controls()
@@ -616,6 +638,57 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             include_none=include_none,
             correlation_id=correlation_id,
         )
+
+    async def async_set_active_target(
+        self,
+        *,
+        target: str,
+        dry_run: bool,
+        force: bool,
+        sync_options_if_missing: bool,
+        correlation_id: str | None,
+    ) -> dict[str, Any]:
+        """Set active-target helper selection through component-guarded explicit target contract."""
+        return await self._meta_fabric.async_set_active_target(
+            target=target,
+            dry_run=dry_run,
+            force=force,
+            sync_options_if_missing=sync_options_if_missing,
+            correlation_id=correlation_id,
+        )
+
+    async def async_set_metadata_provider_packet(
+        self,
+        *,
+        status: str,
+        response: str,
+        providers: str,
+        item_uri: str,
+        reason: str,
+        updated_at: str,
+        source: str,
+    ) -> dict[str, Any]:
+        """Store component-owned metadata provider telemetry packet for diagnostics surfaces."""
+
+        def _norm_text(value: Any) -> str:
+            norm = str(value or "").strip()
+            if norm.lower() in {"", "none", "unknown", "unavailable", "null"}:
+                return ""
+            return norm
+
+        packet = {
+            "status": _norm_text(status) or "never_attempted",
+            "response": _norm_text(response),
+            "providers": _norm_text(providers),
+            "item_uri": _norm_text(item_uri),
+            "reason": _norm_text(reason),
+            "updated_at": _norm_text(updated_at) or datetime.now(UTC).isoformat(),
+            "source": _norm_text(source) or "component_service_set_metadata_provider_packet",
+        }
+
+        self._last_metadata_provider_packet = packet
+        self.refresh_snapshot()
+        return packet
 
     async def async_set_write_authority(self, mode: str, reason: str = "") -> None:
         """Set write authority mode for guarded routing write-path trials."""

@@ -1,6 +1,6 @@
 {# Description: Raw copy/paste Jinja template for deterministic scheduler-apply validation (decision + guarded apply + handoff inventory) with explicit MA boot-wait guidance, component-shadow entity preference hardening, contract-invalid/no-candidate operator guidance, live decision-source fallback when last scheduler decision is never_attempted, control-capable helper-fallback eligibility alignment, runtime control-expected reason visibility, legacy-helper-fallback blocker wording alignment, stable-helper/no-candidate action clarification, hotspot-triage diagnostics surfaces, core-health weighted verdict scoring, and additive MA-players refresh/capability-feed checks. #}
-{# Version: 2026.05.01.1 #}
-{# Last updated: 2026-05-01 #}
+{# Version: 2026.05.04.2 #}
+{# Last updated: 2026-05-04 #}
 
 {# =========================
   Scheduler Apply Deterministic Validation (Component)
@@ -112,6 +112,9 @@
 {% set ranked = (scheduler_decision.ranked_candidates if scheduler_decision.ranked_candidates is defined and scheduler_decision.ranked_candidates is sequence and scheduler_decision.ranked_candidates is not string else []) %}
 {% set bridge_verdict = (metadata_bridge_validation.verdict if metadata_bridge_validation.verdict is defined else 'missing') %}
 {% set bridge_ready = (metadata_bridge_validation.ready_for_bridge if metadata_bridge_validation.ready_for_bridge is defined else false) %}
+{% set bridge_status = (metadata_bridge_attempt.status if metadata_bridge_attempt.status is defined else 'never_attempted') %}
+{% set bridge_skip_component_no_mix = authority_mode == 'component' and bridge_status == 'skipped_component_startup_no_mix' %}
+{% set bridge_action_required = (bridge_verdict != 'PASS') and (not bridge_skip_component_no_mix) %}
 {% set scheduler_waiting_for_ma_boot = (scheduler_validation.waiting_for_ma_boot if scheduler_validation.waiting_for_ma_boot is defined else false) %}
 {% set scheduler_wait_reason = (scheduler_validation.ma_boot_wait_reason if scheduler_validation.ma_boot_wait_reason is defined else '') %}
 {% set scheduler_blocking_reasons = (scheduler_validation.blocking_reasons if scheduler_validation.blocking_reasons is defined and scheduler_validation.blocking_reasons is sequence and scheduler_validation.blocking_reasons is not string else []) %}
@@ -122,12 +125,18 @@
 
 {% set no_control_capable_state = states('binary_sensor.ma_no_control_capable_hosts') %}
 {% set no_control_capable_reason = state_attr('binary_sensor.ma_no_control_capable_hosts','reason') %}
-{% set ma_provider_status = states('input_text.ma_metadata_provider_last_status') %}
-{% set ma_provider_providers = states('input_text.ma_metadata_provider_last_providers') %}
-{% set ma_provider_item_uri = states('input_text.ma_metadata_provider_last_item_uri') %}
-{% set ma_provider_updated = states('input_text.ma_metadata_provider_last_updated_at') %}
+{% set component_provider_entity = 'sensor.component_metadata_provider_status' %}
+{% set component_provider_status = states(component_provider_entity) %}
+{% set component_provider_providers = state_attr(component_provider_entity, 'providers') %}
+{% set component_provider_item_uri = state_attr(component_provider_entity, 'item_uri') %}
+{% set component_provider_updated = state_attr(component_provider_entity, 'updated_at') %}
+{% set component_provider_age = state_attr(component_provider_entity, 'age_s') %}
+{% set ma_provider_status = component_provider_status if component_provider_status not in invalid else states('input_text.ma_metadata_provider_last_status') %}
+{% set ma_provider_providers = component_provider_providers if component_provider_providers not in invalid else states('input_text.ma_metadata_provider_last_providers') %}
+{% set ma_provider_item_uri = component_provider_item_uri if component_provider_item_uri not in invalid else states('input_text.ma_metadata_provider_last_item_uri') %}
+{% set ma_provider_updated = component_provider_updated if component_provider_updated not in invalid else states('input_text.ma_metadata_provider_last_updated_at') %}
 {% set ma_provider_updated_ts = as_timestamp(ma_provider_updated) if ma_provider_updated not in invalid else none %}
-{% set ma_provider_age_s = (as_timestamp(now()) - ma_provider_updated_ts) if ma_provider_updated_ts is not none else none %}
+{% set ma_provider_age_s = component_provider_age if component_provider_age is number else ((as_timestamp(now()) - ma_provider_updated_ts) if ma_provider_updated_ts is not none else none) %}
 
 {% set esp_handoff_entity = 'sensor.spectra_ls_system_esp_control_handoff_status' %}
 {% set esp_target_entity = 'sensor.spectra_ls_system_esp_control_target' %}
@@ -338,7 +347,7 @@
 {% if contract_missing_required | length > 0 or contract_unresolved_required | length > 0 %}{% set hotspot_score = hotspot_score + 1 %}{% endif %}
 {% if contract_soft_surface_warnings | length > 0 %}{% set hotspot_score = hotspot_score + 1 %}{% endif %}
 {% if metadata_prep_blocking_reasons | length > 0 %}{% set hotspot_score = hotspot_score + 1 %}{% endif %}
-{% if bridge_ready == false %}{% set hotspot_score = hotspot_score + 1 %}{% endif %}
+{% if bridge_ready == false and not bridge_skip_component_no_mix %}{% set hotspot_score = hotspot_score + 1 %}{% endif %}
 {% set hotspot_level = 'low' if hotspot_score <= 1 else ('medium' if hotspot_score <= 3 else 'high') %}
 
 {% set handoff_summary = handoff_inventory.summary if handoff_inventory.summary is defined and handoff_inventory.summary is mapping else {} %}
@@ -387,7 +396,7 @@
 {% set target_short = (selected_target.split('.')[-1] if selected_target not in invalid and '.' in selected_target else (selected_target if selected_target not in invalid else 'none')) %}
 {% set route_short = (route_decision if route_decision not in invalid else 'missing') %}
 {% set host_short = (runtime_control_host if runtime_control_host not in invalid else (top_candidate.host if top_candidate is mapping and top_candidate.host is defined and top_candidate.host not in invalid else 'none')) %}
-{% set next_hint = 'WAIT_MA' if (scheduler_waiting_for_ma_boot or bridge_waiting_for_ma_boot) else ('FIX_HOST' if (esp_handoff_status in ['pending_refresh','no_host']) else ('RUN_BRIDGE' if (metadata_bridge_validation.verdict is defined and metadata_bridge_validation.verdict != 'PASS') else ('READY' if (validation_verdict == 'PASS' and scheduler_ready and bridge_ready and selected_in_options) else 'CHECK_WARNS'))) %}
+{% set next_hint = 'WAIT_MA' if (scheduler_waiting_for_ma_boot or bridge_waiting_for_ma_boot) else ('FIX_HOST' if (esp_handoff_status in ['pending_refresh','no_host']) else ('RUN_BRIDGE' if bridge_action_required else ('READY' if (validation_verdict == 'PASS' and scheduler_ready and selected_in_options) else 'CHECK_WARNS'))) %}
 
 {% set control_host_blocker = 'NONE' %}
 {% set control_host_blocker_reason = 'ESP control host path is healthy for this snapshot' %}
@@ -594,6 +603,8 @@ AVAILABLE SOURCES    : {{ available_sources if available_sources | length > 0 el
 - Shadow sensor missing. Ensure `custom_components/spectra_ls` is loaded and entity registry has either `sensor.shadow_active_target` (current) or `sensor.spectra_ls_shadow_active_target` (compatibility).
 {% elif scheduler_waiting_for_ma_boot or bridge_waiting_for_ma_boot %}
 - Waiting for Music Assistant startup signals. Re-run this template after MA player list/control targets are available; avoid forcing apply/recovery during this boot window.
+{% elif bridge_skip_component_no_mix and metadata_prep_blocking_reasons | length > 0 %}
+- Bridge status is intentionally `skipped_component_startup_no_mix` under component authority; do not run bridge actions in this posture. Resolve metadata-prep blockers first, then re-check this template.
 {% elif no_control_capable_reason == 'target_not_control_expected' %}
 - Active runtime target is currently not expected to expose a direct control host. Treat as non-actionable host warning suppression state unless your target contract should be control-capable.
 {% elif control_host_blocker == 'LEGACY_HELPER_FALLBACK_ACTIVE' and esp_handoff_status in ['pending_refresh', 'no_host'] and selected_target not in invalid %}
@@ -614,9 +625,9 @@ AVAILABLE SOURCES    : {{ available_sources if available_sources | length > 0 el
 - Target selection is stable, but host contract soft warnings are present. Monitor `sensor.ma_control_hosts` / `sensor.ma_control_host` quality before non-dry-run actions.
 {% elif selected_target in invalid %}
 - No selected scheduler candidate in current snapshot. Check decision reason for helper-fallback rejection or host/control-capability gaps, then rerun `spectra_ls.run_scheduler_choice` after contract/profile recovery.
-{% elif validation_verdict == 'PASS' and scheduler_ready and bridge_verdict == 'PASS' and bridge_ready and candidate_count | int(0) > 0 and selected_in_options %}
+{% elif validation_verdict == 'PASS' and scheduler_ready and (bridge_verdict == 'PASS' or bridge_skip_component_no_mix) and (bridge_ready or bridge_skip_component_no_mix) and candidate_count | int(0) > 0 and selected_in_options %}
 - All green in this snapshot: scheduler + bridge are PASS and target/options are aligned. No action required.
-{% elif validation_verdict == 'PASS' and scheduler_ready and selected_target not in invalid and selected_in_options %}
+{% elif validation_verdict == 'PASS' and scheduler_ready and selected_target not in invalid and selected_in_options and not bridge_action_required %}
 - Scheduler readiness is healthy and selected target/options are aligned. No scheduler-choice action required in this snapshot.
 {% elif authority_mode != 'component' %}
 - Apply is guard-blocked by authority. Run `spectra_ls.run_metadata_trial_bridge_scaffold` (it now performs automatic component-authority target recovery before trial checks).
@@ -624,7 +635,7 @@ AVAILABLE SOURCES    : {{ available_sources if available_sources | length > 0 el
 - Selected target is not in helper options. Run `spectra_ls.run_metadata_trial_bridge_scaffold` to auto-sync options and recover a control-capable target.
 {% elif apply_status in ['blocked_authority','blocked_debounce','blocked_reentrancy','blocked_option_mismatch','blocked_no_candidate'] %}
 - Last apply was guard-blocked. Run `spectra_ls.run_metadata_trial_bridge_scaffold` to auto-recover target/options, then re-run this template.
-{% elif metadata_bridge_validation.verdict is defined and metadata_bridge_validation.verdict != 'PASS' %}
+{% elif bridge_action_required %}
 - Run `spectra_ls.run_metadata_trial_bridge_scaffold` with dry-run defaults; it auto-recovers target/options first, then reports remaining bridge blockers.
 {% elif apply_status in ['dry_run_ok','noop_already_selected','write_applied'] %}
 - Scheduler apply path is healthy in this snapshot.

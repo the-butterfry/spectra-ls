@@ -1,6 +1,7 @@
 # Description: Audio controls package for Spectra LS System (TCP-only) with host-resolved control routing.
-# Version: 2026.05.03.2
-# Last updated: 2026-05-03
+# Version: 2026.05.04.2
+# Last updated: 2026-05-04
+# PARITY DIRECTIVE: Behavior/contract edits require same-slice runtime+component parity review and version-metadata review.
 # Update version/date whenever you change this file.
 
 binary_sensor:
@@ -556,11 +557,42 @@ text_sensor:
       return std::string("${meta_source_label_auto}");
   - platform: homeassistant
     id: ha_now_playing_entity
-    entity_id: sensor.now_playing_entity
+    entity_id: ${ha_ma_now_playing_entity}
     internal: true
+    on_value:
+      - lambda: |-
+          static std::string last_entity;
+          const std::string cur = x.c_str();
+          if (cur == last_entity) return;
+          last_entity = cur;
+          const uint32_t now = millis();
+          id(meta_refresh_force) = true;
+          id(ha_audio_last_meta_ms) = now;
+          id(ha_audio1_last_meta_ms) = now;
+          ESP_LOGI("ha_meta", "now_playing_entity changed='%s' (forced refresh)", cur.c_str());
+      - script.execute: compute_display_state
+  - platform: homeassistant
+    id: ha_now_playing_friendly
+    entity_id: ${ha_ma_now_playing_friendly}
+    internal: true
+    on_value:
+      - lambda: |-
+          id(meta_refresh_force) = true;
+      - script.execute: compute_display_state
+  - platform: homeassistant
+    id: ha_now_playing_preview_key
+    entity_id: ${ha_ma_now_playing_preview_key}
+    internal: true
+    on_value:
+      - lambda: |-
+          id(meta_refresh_force) = true;
+          const uint32_t now = millis();
+          id(ha_audio_last_meta_ms) = now;
+          id(ha_audio1_last_meta_ms) = now;
+      - script.execute: compute_display_state
   - platform: homeassistant
     id: ma_active_target
-    entity_id: input_select.ma_active_target
+    entity_id: ${ha_ma_active_target}
     internal: true
     on_value:
       - lambda: |-
@@ -579,7 +611,7 @@ text_sensor:
           std::string value = target;
           if (value.empty()) value = "-";
           ESP_LOGI("ma", "active_target=%s", value.c_str());
-          // Control host/port resolved by HA (sensor.ma_control_hosts / sensor.ma_control_port).
+          // Control host/port resolved by HA substitutions (component route feeds + runtime port shim).
       - if:
           condition:
             lambda: |-
@@ -598,15 +630,15 @@ text_sensor:
             - homeassistant.service:
                 service: homeassistant.update_entity
                 data:
-                  entity_id: sensor.ma_control_targets
+                  entity_id: ${ha_ma_control_targets}
             - homeassistant.service:
                 service: homeassistant.update_entity
                 data:
-                  entity_id: sensor.ma_control_hosts
+                  entity_id: ${ha_ma_control_hosts}
             - homeassistant.service:
                 service: homeassistant.update_entity
                 data:
-                  entity_id: sensor.ma_control_host
+                  entity_id: ${ha_ma_control_host}
           else:
             - lambda: |-
                 const uint32_t now = millis();
@@ -622,7 +654,7 @@ text_sensor:
                          (unsigned) now);
   - platform: homeassistant
     id: ma_active_friendly
-    entity_id: sensor.ma_active_friendly
+    entity_id: ${ha_ma_active_friendly}
     internal: true
     on_value:
       - lambda: |-
@@ -631,12 +663,12 @@ text_sensor:
           ESP_LOGI("ma", "active_friendly=%s", value.c_str());
   - platform: homeassistant
     id: ha_control_target_labels
-    entity_id: sensor.ma_control_targets
+    entity_id: ${ha_ma_control_targets}
     attribute: labels
     internal: true
   - platform: homeassistant
     id: ha_control_target_entities
-    entity_id: sensor.ma_control_targets
+    entity_id: ${ha_ma_control_targets}
     attribute: entities
     internal: true
   - platform: homeassistant
@@ -651,7 +683,7 @@ text_sensor:
     internal: true
   - platform: homeassistant
     id: ma_control_hosts
-    entity_id: sensor.ma_control_hosts
+    entity_id: ${ha_ma_control_hosts}
     internal: true
     on_value:
       - lambda: |-
@@ -705,7 +737,7 @@ text_sensor:
           ESP_LOGI("ma", "control_hosts=%s", hosts.c_str());
   - platform: homeassistant
     id: ma_control_host
-    entity_id: sensor.ma_control_host
+    entity_id: ${ha_ma_control_host}
     internal: true
     on_value:
       - lambda: |-
@@ -763,7 +795,7 @@ text_sensor:
           ESP_LOGI("ma", "control_host=%s", host.c_str());
   - platform: homeassistant
     id: ma_control_port
-    entity_id: sensor.ma_control_port
+    entity_id: ${ha_ma_control_port}
     internal: true
     on_value:
       - lambda: |-
@@ -834,6 +866,111 @@ text_sensor:
           id(arylic_control_port) = port;
           id(arylic_control_port_last_valid_ms) = now;
           ESP_LOGI("ma", "control_port=%d", port);
+  - platform: homeassistant
+    id: ma_control_hosts_fallback
+    entity_id: ${ha_ma_control_hosts_fallback}
+    internal: true
+    on_value:
+      - lambda: |-
+          const uint32_t now = millis();
+          std::string hosts = x.c_str();
+          std::string low = hosts;
+          for (auto &c : low) c = (char) ::tolower(c);
+          const bool valid = !(hosts.empty() || low == "unknown" || low == "unavailable" || low == "none" || low == "null");
+          if (!valid) return;
+
+          bool primary_valid = false;
+          if (id(ma_control_hosts).has_state()) {
+            std::string primary = id(ma_control_hosts).state.c_str();
+            std::string primary_low = primary;
+            for (auto &c : primary_low) c = (char) ::tolower(c);
+            primary_valid = !(primary.empty() || primary_low == "unknown" || primary_low == "unavailable" || primary_low == "none" || primary_low == "null");
+          }
+
+          if (primary_valid) return;
+          if (hosts != id(arylic_control_hosts)) {
+            ESP_LOGW("ma", "control_hosts fallback applied old='%s' new='%s'", id(arylic_control_hosts).c_str(), hosts.c_str());
+          }
+          id(arylic_control_hosts) = hosts;
+          id(arylic_control_host) = hosts;
+          id(arylic_control_hosts_last_valid_ms) = now;
+          id(control_target_pending_until_ms) = 0;
+          id(control_hosts_fallback_apply_count)++;
+          id(control_fallback_apply_total_count)++;
+          id(control_fallback_last_applied_ms) = now;
+          id(control_fallback_last_applied_type) = "hosts";
+  - platform: homeassistant
+    id: ma_control_host_fallback
+    entity_id: ${ha_ma_control_host_fallback}
+    internal: true
+    on_value:
+      - lambda: |-
+          const uint32_t now = millis();
+          std::string host = x.c_str();
+          std::string low = host;
+          for (auto &c : low) c = (char) ::tolower(c);
+          const bool valid = !(host.empty() || low == "unknown" || low == "unavailable" || low == "none" || low == "null");
+          if (!valid) return;
+
+          bool primary_valid = false;
+          if (id(ma_control_host).has_state()) {
+            std::string primary = id(ma_control_host).state.c_str();
+            std::string primary_low = primary;
+            for (auto &c : primary_low) c = (char) ::tolower(c);
+            primary_valid = !(primary.empty() || primary_low == "unknown" || primary_low == "unavailable" || primary_low == "none" || primary_low == "null");
+          }
+
+          if (primary_valid) return;
+          if (host != id(arylic_control_host)) {
+            ESP_LOGW("ma", "control_host fallback applied old='%s' new='%s'", id(arylic_control_host).c_str(), host.c_str());
+          }
+          id(arylic_control_host) = host;
+          if (id(arylic_control_hosts).empty()) id(arylic_control_hosts) = host;
+          id(arylic_control_hosts_last_valid_ms) = now;
+          id(control_target_pending_until_ms) = 0;
+          id(control_host_fallback_apply_count)++;
+          id(control_fallback_apply_total_count)++;
+          id(control_fallback_last_applied_ms) = now;
+          id(control_fallback_last_applied_type) = "host";
+  - platform: homeassistant
+    id: ma_control_port_fallback
+    entity_id: ${ha_ma_control_port_fallback}
+    internal: true
+    on_value:
+      - lambda: |-
+          const uint32_t now = millis();
+          std::string raw = x.c_str();
+          std::string low = raw;
+          for (auto &c : low) c = (char) ::tolower(c);
+          const bool valid = !(raw.empty() || low == "unknown" || low == "unavailable" || low == "none" || low == "null");
+          if (!valid) return;
+
+          bool primary_valid = false;
+          if (id(ma_control_port).has_state()) {
+            std::string primary = id(ma_control_port).state.c_str();
+            std::string primary_low = primary;
+            for (auto &c : primary_low) c = (char) ::tolower(c);
+            primary_valid = !(primary.empty() || primary_low == "unknown" || primary_low == "unavailable" || primary_low == "none" || primary_low == "null");
+          }
+          if (primary_valid) return;
+
+          char *end = nullptr;
+          long parsed = strtol(raw.c_str(), &end, 10);
+          if (end == raw.c_str()) return;
+          while (*end == ' ' || *end == '\t' || *end == '\n' || *end == '\r') end++;
+          if (*end != '\0') return;
+          if (parsed <= 0 || parsed > 65534) return;
+
+          const int port = (int) parsed;
+          if (port != id(arylic_control_port)) {
+            ESP_LOGW("ma", "control_port fallback applied old=%d new=%d", id(arylic_control_port), port);
+          }
+          id(arylic_control_port) = port;
+          id(arylic_control_port_last_valid_ms) = now;
+          id(control_port_fallback_apply_count)++;
+          id(control_fallback_apply_total_count)++;
+          id(control_fallback_last_applied_ms) = now;
+          id(control_fallback_last_applied_type) = "port";
   - platform: homeassistant
     id: ha_audio_position
     entity_id: ${ha_ma_active_position}
@@ -923,6 +1060,14 @@ text_sensor:
           }
           if (parsed < 0.0f) parsed = 0.0f;
           id(ha_audio_duration_value) = parsed;
+  - platform: homeassistant
+    id: ha_now_playing_freshness_age_s
+    entity_id: ${ha_ma_now_playing_freshness_age_s}
+    internal: true
+    on_value:
+      - lambda: |-
+          id(meta_refresh_force) = true;
+      - script.execute: compute_display_state
   - platform: homeassistant
     id: ha_audio_title
     entity_id: ${ha_ma_active_title}
@@ -1057,7 +1202,7 @@ interval:
       - homeassistant.service:
           service: homeassistant.update_entity
           data:
-            entity_id: input_select.ma_active_target
+            entity_id: ${ha_ma_active_target}
   - interval: ${ha_audio_refresh_ms}ms
     then:
       - if:

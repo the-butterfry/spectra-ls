@@ -1,6 +1,6 @@
 <!-- Description: Retroactive architecture and feature documentation for the MA control hub package split. -->
-<!-- Version: 2026.05.02.4 -->
-<!-- Last updated: 2026-05-02 -->
+<!-- Version: 2026.05.04.3 -->
+<!-- Last updated: 2026-05-04 -->
 
 # MA Control Hub Architecture (Retroactive Baseline)
 
@@ -45,6 +45,7 @@ Defined by `rest.inc` + `rest_command.inc`:
 - active player request surface (`sensor.ma_active_player`)
 - generic MA API POST wrapper (`rest_command.ma_api_command`)
 - profile-aware MA API URL surface (`sensor.ma_api_url`) with active profile visibility (`sensor.ma_server_profile_effective`)
+- LC6-L05 phase-1 bridge note: component snapshot packet `ma_backend_profile` now mirrors runtime profile/effective/API URL state and publishes component diagnostics bridge entities `sensor.component_backend_profile` + `sensor.component_ma_api_url` for migration parity checks
 - command-shape compatibility note: avoid unsupported MA command aliases in REST sensors (for example `players/get_active`); use supported command shapes and template-side selection/parsing.
 
 ### 3) Orchestration script domain
@@ -64,6 +65,8 @@ Defined by `script.inc`:
   - `input_text.ma_metadata_provider_last_item_uri`
   - `input_text.ma_metadata_provider_last_reason`
   - `input_text.ma_metadata_provider_last_updated_at`
+- LC6-L04 retirement contract: runtime provider dispatch now publishes telemetry directly to component service `spectra_ls.set_metadata_provider_packet`; component snapshot/write-controls exposes the authoritative packet at `write_controls.metadata_provider_last` and diagnostics surface `sensor.component_metadata_provider_status` (state=`status`, attributes for providers/response/item_uri/reason/updated_at/age/source).
+- Runtime helper sink (`input_text.ma_metadata_provider_last_*`) is no longer the active telemetry owner; helper writes remain fallback-only compatibility behavior when component sink availability cannot be confirmed.
 - provider summary persistence is bounded/truncated for helper-length safety and now accepts both mapping and list-shaped MA response payloads for resilient provider extraction
 - runtime/component provider-refresh trigger surfaces normalize mixed-type boolean inputs (`true`/`false` strings, numeric values, booleans) to avoid accidental dispatch on string-like falsy payloads
 - explicit read-only lock for write helpers:
@@ -110,7 +113,8 @@ Defined by `template.inc`:
 - Non-music fallback classification remains active for diagnostics/provenance: when `sensor.now_playing_entity` is unavailable but playback context still indicates app/source video hints (for example YouTube/OTT/AppleTV/HDMI), `sensor.now_playing_media_class` may still classify as `non_music` while OLED display remains hidden by policy.
 - YouTube context refinement under rollback policy: runtime media classification now distinguishes music-like YouTube context (for example mix/remix/DJ/radio/live-set cues) from explicit video cues so audio-centric YouTube playback can classify as `music` and pass the music-only display gate.
 - Component parity diagnostics validate this same simplified HA media-contract surface (`media_class`, `display_allowed`, optional `preview_key` observability) so runtime/component drift is explicit in one diagnostics lane without changing source-of-truth ownership.
-- Component now-playing freshness diagnostics use bounded recency fallback parity with runtime stale guards: when `media_position_updated_at` is missing, coordinator freshness age falls back to entity `last_changed` instead of implicitly treating the signal as fresh.
+- Runtime now-playing selector and meta-resolver freshness guards use bounded recency fallback: when `media_position_updated_at` is missing, freshness age falls back to entity `last_updated` then `last_changed` (instead of treating missing clocks as implicitly fresh), preventing stale winner lock while preserving short recency windows after true state transitions.
+- Component now-playing freshness diagnostics retain this same bounded recency fallback parity with runtime stale guards.
 - friendly labels and helper projection sensors
 - ESP-facing handoff note: on active-target changes, ESP requests immediate HA recompute for control-target/host surfaces (`sensor.ma_control_targets`, `sensor.ma_control_hosts`, `sensor.ma_control_host`) to reduce host handoff latency, but forced recompute is reconnect-safe gated (HA API reconnect grace window + template-feed readiness checks) to avoid HA reboot startup assertion races.
 - ESP exported handoff telemetry: ESP now publishes HA-visible diagnostics sensors for handoff status, resolved control target, and OLED/UI status (`sensor.spectra_ls_system_esp_control_handoff_status`, `sensor.spectra_ls_system_esp_control_target`, `sensor.spectra_ls_system_esp_oled_status`) for deterministic operator validation.

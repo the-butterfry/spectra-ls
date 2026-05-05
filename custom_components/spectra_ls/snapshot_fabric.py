@@ -1,6 +1,6 @@
 # Description: Snapshot-fabric workflow for Spectra LS coordinator snapshot and write-controls packet assembly extracted from coordinator.
-# Version: 2026.05.03.3
-# Last updated: 2026-05-03
+# Version: 2026.05.04.2
+# Last updated: 2026-05-04
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -13,6 +13,12 @@ from .const import (
     LEGACY_ACTIVE_TARGET_HELPER,
     LEGACY_CONTROL_HOST,
     LEGACY_CONTROL_TARGETS,
+    LEGACY_META_PROVIDER_LAST_ITEM_URI,
+    LEGACY_META_PROVIDER_LAST_PROVIDERS,
+    LEGACY_META_PROVIDER_LAST_REASON,
+    LEGACY_META_PROVIDER_LAST_RESPONSE,
+    LEGACY_META_PROVIDER_LAST_STATUS,
+    LEGACY_META_PROVIDER_LAST_UPDATED_AT,
     LEGACY_ROOMS_JSON,
     LEGACY_ROOMS_RAW,
     LEGACY_SURFACES,
@@ -34,11 +40,77 @@ class SnapshotFabricWorkflow:
         """Return a dict-valued payload surface or a safe empty dict."""
         return PayloadSurfaceFabric.dict_surface(payload, key)
 
+    @staticmethod
+    def _normalize_helper_text(raw: Any) -> str:
+        value = str(raw or "").strip()
+        if value.lower() in {"", "none", "unknown", "unavailable", "null"}:
+            return ""
+        return value
+
+    def _read_helper_text(self, entity_id: str) -> str:
+        state_obj = self._coordinator.hass.states.get(entity_id)
+        if state_obj is None:
+            return ""
+        return self._normalize_helper_text(state_obj.state)
+
+    def _build_metadata_provider_packet(self) -> dict[str, Any]:
+        c = self._coordinator
+        component_packet = (
+            c.last_metadata_provider_packet if isinstance(getattr(c, "last_metadata_provider_packet", {}), dict) else {}
+        )
+
+        def _packet_text(key: str) -> str:
+            return self._normalize_helper_text(component_packet.get(key, ""))
+
+        status = _packet_text("status")
+        response = _packet_text("response")
+        providers = _packet_text("providers")
+        item_uri = _packet_text("item_uri")
+        reason = _packet_text("reason")
+        updated_at = _packet_text("updated_at")
+        source = _packet_text("source")
+
+        if status == "" and response == "" and providers == "" and item_uri == "" and reason == "" and updated_at == "":
+            status = self._read_helper_text(LEGACY_META_PROVIDER_LAST_STATUS)
+            response = self._read_helper_text(LEGACY_META_PROVIDER_LAST_RESPONSE)
+            providers = self._read_helper_text(LEGACY_META_PROVIDER_LAST_PROVIDERS)
+            item_uri = self._read_helper_text(LEGACY_META_PROVIDER_LAST_ITEM_URI)
+            reason = self._read_helper_text(LEGACY_META_PROVIDER_LAST_REASON)
+            updated_at = self._read_helper_text(LEGACY_META_PROVIDER_LAST_UPDATED_AT)
+            source = "runtime_helper_compatibility_sink"
+
+        age_s = c._timestamp_age_seconds(updated_at) if updated_at else None
+
+        visible = any(
+            text != ""
+            for text in (
+                status,
+                response,
+                providers,
+                item_uri,
+                reason,
+                updated_at,
+            )
+        )
+
+        return {
+            "status": status,
+            "response": response,
+            "providers": providers,
+            "item_uri": item_uri,
+            "reason": reason,
+            "updated_at": updated_at,
+            "age_s": round(float(age_s), 1) if age_s is not None else None,
+            "visible": visible,
+            "source": source or "component_service_packet",
+        }
+
     def build_write_controls(self) -> dict[str, Any]:
         """Build write-controls packet from coordinator and meta-fabric surfaces."""
         c = self._coordinator
         meta_policy = c._meta_fabric.build_meta_policy_surface()
         metadata_surfaces = c._meta_fabric.build_write_controls_metadata_surfaces()
+        metadata_provider_last = self._build_metadata_provider_packet()
 
         return {
             "authority_mode": c._write_authority_mode,
@@ -47,6 +119,7 @@ class SnapshotFabricWorkflow:
             "in_progress": c._write_in_progress,
             "last_attempt": c._last_write_attempt,
             **metadata_surfaces,
+            "metadata_provider_last": metadata_provider_last,
             "scheduler_last_decision": c._last_scheduler_decision,
             "scheduler_last_apply": c._last_scheduler_apply,
             "target_options_last_attempt": c._last_target_options_attempt,

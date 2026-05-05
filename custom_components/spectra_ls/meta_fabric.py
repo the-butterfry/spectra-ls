@@ -1,6 +1,6 @@
 # Description: Meta fabric startup-orchestration workflow for Spectra LS metadata recovery and MA boot-gate readiness semantics.
-# Version: 2026.05.03.15
-# Last updated: 2026-05-03
+# Version: 2026.05.04.1
+# Last updated: 2026-05-04
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -382,6 +382,24 @@ class MetaFabricWorkflow:
             dry_run=dry_run,
             force=force,
             include_none=include_none,
+            correlation_id=correlation_id,
+        )
+
+    async def async_set_active_target(
+        self,
+        *,
+        target: str,
+        dry_run: bool,
+        force: bool,
+        sync_options_if_missing: bool,
+        correlation_id: str | None,
+    ) -> dict[str, Any]:
+        """Set active-target helper selection through component-guarded explicit target contract."""
+        return await self._selection_fabric.async_set_active_target(
+            target=target,
+            dry_run=dry_run,
+            force=force,
+            sync_options_if_missing=sync_options_if_missing,
             correlation_id=correlation_id,
         )
 

@@ -1,6 +1,6 @@
 # Description: Extracted metadata stack workflows for Spectra LS (metadata prep/bridge/cutover validation and metadata trial services).
-# Version: 2026.05.03.8
-# Last updated: 2026-05-03
+# Version: 2026.05.04.2
+# Last updated: 2026-05-04
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -93,6 +93,14 @@ class MetadataStackWorkflow:
 			"resolver_status": "never_attempted",
 			"trial_status": "never_attempted",
 		}
+		self._last_metadata_override_attempt: dict[str, Any] = {
+			"status": "never_attempted",
+			"requested_at": None,
+			"completed_at": None,
+			"reason": "No metadata override apply/clear attempts requested yet",
+			"enable": False,
+			"entity_id": "",
+		}
 
 	@property
 	def metadata_trial_in_progress(self) -> bool:
@@ -110,8 +118,155 @@ class MetadataStackWorkflow:
 	def last_metadata_bridge_attempt(self) -> dict[str, Any]:
 		return self._last_metadata_bridge_attempt
 
+	@property
+	def last_metadata_override_attempt(self) -> dict[str, Any]:
+		return self._last_metadata_override_attempt
+
 	def set_last_metadata_bridge_attempt(self, payload: dict[str, Any]) -> None:
 		self._last_metadata_bridge_attempt = payload
+
+	async def async_set_metadata_override(
+		self,
+		*,
+		enable: bool,
+		entity_id: str | None,
+		dry_run: bool,
+		force: bool,
+		reason: str,
+		correlation_id: str | None,
+	) -> dict[str, Any]:
+		c = self._coordinator
+		requested_at = datetime.now(UTC).isoformat()
+		corr = (correlation_id or "").strip() or f"meta-override-{uuid4().hex[:12]}"
+		requested_entity = (entity_id or "").strip()
+		reason_norm = (reason or "").strip()
+
+		override_active_state = c.hass.states.get(LEGACY_META_OVERRIDE_ACTIVE)
+		override_entity_state = c.hass.states.get(LEGACY_META_OVERRIDE_ENTITY)
+		override_active_exists = override_active_state is not None
+		override_entity_exists = override_entity_state is not None
+		current_override_active = c._normalize_state(
+			override_active_state.state if override_active_state is not None else ""
+		) == "on"
+		current_override_entity = str(
+			override_entity_state.state if override_entity_state is not None else ""
+		).strip()
+
+		result: dict[str, Any] = {
+			"status": "pending",
+			"reason": "",
+			"requested_at": requested_at,
+			"completed_at": requested_at,
+			"correlation_id": corr,
+			"authority_mode": c._write_authority_mode,
+			"dry_run": bool(dry_run),
+			"force": bool(force),
+			"enable": bool(enable),
+			"entity_id": requested_entity,
+			"override_active_entity": LEGACY_META_OVERRIDE_ACTIVE,
+			"override_entity_helper": LEGACY_META_OVERRIDE_ENTITY,
+			"override_active_exists": override_active_exists,
+			"override_entity_exists": override_entity_exists,
+			"current_override_active": current_override_active,
+			"current_override_entity": current_override_entity,
+			"operator_reason": reason_norm,
+		}
+
+		if enable and not c._is_resolved_state(requested_entity):
+			result["status"] = "blocked_missing_entity"
+			result["reason"] = "entity_id is required when enable=true"
+		elif enable and c.hass.states.get(requested_entity) is None:
+			result["status"] = "blocked_entity_not_found"
+			result["reason"] = "Requested metadata entity is not present in HA state registry"
+		elif not override_active_exists or not override_entity_exists:
+			result["status"] = "blocked_missing_override_helpers"
+			result["reason"] = "Metadata override helper entities are missing"
+		else:
+			WritePathFabric.apply_standard_write_guards(
+				c,
+				result,
+				force=force,
+				dry_run=dry_run,
+				authority_required=WRITE_AUTH_COMPONENT,
+				authority_block_reason="Write authority is not component; metadata override apply/clear is blocked",
+			)
+
+		desired_entity = requested_entity if enable else ""
+		if (
+			result["status"] == "pending"
+			and current_override_active == bool(enable)
+			and current_override_entity == desired_entity
+		):
+			result["status"] = "noop_already_applied"
+			result["reason"] = "Metadata override helper state already matches requested payload"
+
+		if result["status"] == "pending" and dry_run:
+			result["status"] = "dry_run_ok"
+			result["reason"] = "Metadata override guards passed (dry run)"
+
+		if result["status"] == "pending":
+			c._write_in_progress = True
+			try:
+				if enable:
+					await c.hass.services.async_call(
+						"input_text",
+						"set_value",
+						{
+							"entity_id": LEGACY_META_OVERRIDE_ENTITY,
+							"value": requested_entity,
+						},
+						blocking=True,
+					)
+					await c.hass.services.async_call(
+						"input_boolean",
+						"turn_on",
+						{
+							"entity_id": LEGACY_META_OVERRIDE_ACTIVE,
+						},
+						blocking=True,
+					)
+				else:
+					await c.hass.services.async_call(
+						"input_boolean",
+						"turn_off",
+						{
+							"entity_id": LEGACY_META_OVERRIDE_ACTIVE,
+						},
+						blocking=True,
+					)
+					await c.hass.services.async_call(
+						"input_text",
+						"set_value",
+						{
+							"entity_id": LEGACY_META_OVERRIDE_ENTITY,
+							"value": "",
+						},
+						blocking=True,
+					)
+
+				result["status"] = "write_applied"
+				result["reason"] = "Metadata override helper state updated successfully"
+			except Exception as err:  # pragma: no cover - defensive runtime guard
+				result["status"] = "write_error"
+				result["reason"] = "Service call failed while applying metadata override state"
+				result["error"] = str(err)
+			finally:
+				c._write_in_progress = False
+
+		if result["status"] in {"dry_run_ok", "noop_already_applied", "write_applied", "write_error"}:
+			WritePathFabric.mark_write_touch(c)
+
+		result["completed_at"] = datetime.now(UTC).isoformat()
+		self._last_metadata_override_attempt = result
+		WritePathFabric.stamp_last_write_attempt(
+			c,
+			result=result,
+			source="set_metadata_override",
+			correlation_id=corr,
+			active_target=desired_entity,
+		)
+		c.refresh_snapshot()
+		return result
 
 	@staticmethod
 	def metadata_trial_audit_missing_fields(payload: dict[str, Any]) -> list[str]:
@@ -401,6 +556,9 @@ class MetadataStackWorkflow:
 		pos_age_from_position = c._timestamp_age_seconds(state.attributes.get("media_position_updated_at"))
 		pos_age_source = "media_position_updated_at"
 		pos_age_s = pos_age_from_position
+		if pos_age_s is None:
+			pos_age_s = c._timestamp_age_seconds(state.last_updated)
+			pos_age_source = "last_updated" if pos_age_s is not None else "missing"
 		if pos_age_s is None:
 			pos_age_s = c._timestamp_age_seconds(state.last_changed)
 			pos_age_source = "last_changed" if pos_age_s is not None else "missing"

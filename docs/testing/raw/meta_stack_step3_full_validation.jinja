@@ -1,6 +1,6 @@
 {# Description: Full copy/paste Developer Tools template for Step-3 metadata-stack runtime validation (scheduler + metadata policy + stale root-cause + ESP UX gate). #}
-{# Version: 2026.05.02.1 #}
-{# Last updated: 2026-05-02 #}
+{# Version: 2026.05.04.1 #}
+{# Last updated: 2026-05-04 #}
 
 {# =========================
   Meta Stack Step-3 Full Validation (Runtime)
@@ -86,14 +86,22 @@
   )
 %}
 {% set ma_handoff_uri_valid = (ma_handoff_uri | string | trim | lower) not in invalid and ':' in (ma_handoff_uri | string) %}
-{% set ma_provider_status = states('input_text.ma_metadata_provider_last_status') %}
-{% set ma_provider_response = states('input_text.ma_metadata_provider_last_response') %}
-{% set ma_provider_providers = states('input_text.ma_metadata_provider_last_providers') %}
-{% set ma_provider_item_uri = states('input_text.ma_metadata_provider_last_item_uri') %}
-{% set ma_provider_reason = states('input_text.ma_metadata_provider_last_reason') %}
-{% set ma_provider_updated = states('input_text.ma_metadata_provider_last_updated_at') %}
+{% set component_provider_entity = 'sensor.component_metadata_provider_status' %}
+{% set component_provider_status = states(component_provider_entity) %}
+{% set component_provider_response = state_attr(component_provider_entity, 'response') %}
+{% set component_provider_providers = state_attr(component_provider_entity, 'providers') %}
+{% set component_provider_item_uri = state_attr(component_provider_entity, 'item_uri') %}
+{% set component_provider_reason = state_attr(component_provider_entity, 'reason') %}
+{% set component_provider_updated = state_attr(component_provider_entity, 'updated_at') %}
+{% set component_provider_age = state_attr(component_provider_entity, 'age_s') %}
+{% set ma_provider_status = component_provider_status if component_provider_status not in invalid else states('input_text.ma_metadata_provider_last_status') %}
+{% set ma_provider_response = component_provider_response if component_provider_response not in invalid else states('input_text.ma_metadata_provider_last_response') %}
+{% set ma_provider_providers = component_provider_providers if component_provider_providers not in invalid else states('input_text.ma_metadata_provider_last_providers') %}
+{% set ma_provider_item_uri = component_provider_item_uri if component_provider_item_uri not in invalid else states('input_text.ma_metadata_provider_last_item_uri') %}
+{% set ma_provider_reason = component_provider_reason if component_provider_reason not in invalid else states('input_text.ma_metadata_provider_last_reason') %}
+{% set ma_provider_updated = component_provider_updated if component_provider_updated not in invalid else states('input_text.ma_metadata_provider_last_updated_at') %}
 {% set ma_provider_updated_ts = as_timestamp(ma_provider_updated) if ma_provider_updated not in invalid else none %}
-{% set ma_provider_age_s = (as_timestamp(now()) - ma_provider_updated_ts) if ma_provider_updated_ts is not none else none %}
+{% set ma_provider_age_s = component_provider_age if component_provider_age is number else ((as_timestamp(now()) - ma_provider_updated_ts) if ma_provider_updated_ts is not none else none) %}
 {% set ma_provider_visible = ma_provider_status not in invalid or ma_provider_response not in invalid or ma_provider_providers not in invalid %}
 {% set ma_provider_parse_hint =
   'dispatch_not_attempted_or_uri_unresolved' if not ma_handoff_uri_valid and not ma_provider_visible

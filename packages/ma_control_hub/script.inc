@@ -1,6 +1,6 @@
 # Description: Music Assistant control hub scripts (target options, auto-select, control helpers).
-# Version: 2026.05.01.7
-# Last updated: 2026-05-01
+# Version: 2026.05.04.2
+# Last updated: 2026-05-04
 # Update version/date whenever you change this file.
 # HUB MUST-READ: Contract parser methodology.
 # - For complex attributes (`rooms`, `candidates_json`, etc.), prefer native sequence/mapping values first.
@@ -11,6 +11,10 @@
 ma_update_target_options:
   mode: restart
   sequence:
+    - choose:
+        - conditions: "{{ states('sensor.ma_authority_mode') | lower == 'component' }}"
+          sequence:
+            - stop: "Legacy target-options writer disabled (component authority mode active)."
     - variables:
         rooms: >-
           {% set rooms_raw = state_attr('sensor.spectra_ls_rooms_json','rooms_json') | default([], true) %}
@@ -158,26 +162,40 @@ ma_update_target_options:
 ma_cycle_target:
   mode: restart
   sequence:
-    - service: input_boolean.turn_on
-      data:
-        entity_id: input_boolean.ma_override_active
-    - variables:
-        options: "{{ state_attr('input_select.ma_active_target','options') or [] }}"
-        current: "{{ states('input_select.ma_active_target') }}"
     - choose:
-        - conditions: "{{ options | length > 0 }}"
+        - conditions: "{{ states('sensor.ma_authority_mode') | lower == 'component' }}"
           sequence:
-            - variables:
-                idx: "{{ options.index(current) if current in options else -1 }}"
-                next: "{{ options[(idx + 1) % (options | length)] }}"
-            - service: input_select.select_option
+            - service: spectra_ls.cycle_active_target
               data:
-                entity_id: input_select.ma_active_target
-                option: "{{ next }}"
+                dry_run: false
+                force: true
+                include_none: false
+        - conditions: "{{ states('sensor.ma_authority_mode') | lower != 'component' }}"
+          sequence:
+            - service: input_boolean.turn_on
+              data:
+                entity_id: input_boolean.ma_override_active
+            - variables:
+                options: "{{ state_attr('input_select.ma_active_target','options') or [] }}"
+                current: "{{ states('input_select.ma_active_target') }}"
+            - choose:
+                - conditions: "{{ options | length > 0 }}"
+                  sequence:
+                    - variables:
+                        idx: "{{ options.index(current) if current in options else -1 }}"
+                        next: "{{ options[(idx + 1) % (options | length)] }}"
+                    - service: input_select.select_option
+                      data:
+                        entity_id: input_select.ma_active_target
+                        option: "{{ next }}"
 
 ma_auto_select:
   mode: restart
   sequence:
+    - choose:
+        - conditions: "{{ states('sensor.ma_authority_mode') | lower == 'component' }}"
+          sequence:
+            - stop: "Legacy auto-select disabled (component authority mode active)."
     - variables:
         override_on: "{{ is_state('input_boolean.ma_override_active','on') }}"
         options: "{{ state_attr('input_select.ma_active_target','options') or [] }}"
@@ -447,6 +465,9 @@ ma_send_metadata_to_providers:
   sequence:
     - variables:
         reason_text: "{{ reason | default('manual_dispatch', true) }}"
+        component_sink_available: >-
+          {% set sink_state = states('sensor.component_metadata_provider_status') | lower %}
+          {{ sink_state not in ['unknown','unavailable','none',''] }}
         force_refresh_bool: >-
           {% if force_refresh is not defined %}
             {{ true }}
@@ -515,30 +536,43 @@ ma_send_metadata_to_providers:
     - choose:
         - conditions: "{{ not item_uri_is_valid }}"
           sequence:
-            - service: input_text.set_value
-              data:
-                entity_id: input_text.ma_metadata_provider_last_status
-                value: "skipped_invalid_uri"
-            - service: input_text.set_value
-              data:
-                entity_id: input_text.ma_metadata_provider_last_response
-                value: "No valid MA item URI resolved"
-            - service: input_text.set_value
-              data:
-                entity_id: input_text.ma_metadata_provider_last_providers
-                value: "no_dispatch_invalid_uri"
-            - service: input_text.set_value
-              data:
-                entity_id: input_text.ma_metadata_provider_last_item_uri
-                value: "{{ item_uri }}"
-            - service: input_text.set_value
-              data:
-                entity_id: input_text.ma_metadata_provider_last_reason
-                value: "{{ reason_text }}"
-            - service: input_text.set_value
-              data:
-                entity_id: input_text.ma_metadata_provider_last_updated_at
-                value: "{{ now() }}"
+            - choose:
+                - conditions: "{{ component_sink_available }}"
+                  sequence:
+                    - service: spectra_ls.set_metadata_provider_packet
+                      data:
+                        status: "skipped_invalid_uri"
+                        response: "No valid MA item URI resolved"
+                        providers: "no_dispatch_invalid_uri"
+                        item_uri: "{{ item_uri }}"
+                        reason: "{{ reason_text }}"
+                        updated_at: "{{ now() }}"
+                        source: "runtime_script_invalid_uri"
+              default:
+                - service: input_text.set_value
+                  data:
+                    entity_id: input_text.ma_metadata_provider_last_status
+                    value: "skipped_invalid_uri"
+                - service: input_text.set_value
+                  data:
+                    entity_id: input_text.ma_metadata_provider_last_response
+                    value: "No valid MA item URI resolved"
+                - service: input_text.set_value
+                  data:
+                    entity_id: input_text.ma_metadata_provider_last_providers
+                    value: "no_dispatch_invalid_uri"
+                - service: input_text.set_value
+                  data:
+                    entity_id: input_text.ma_metadata_provider_last_item_uri
+                    value: "{{ item_uri }}"
+                - service: input_text.set_value
+                  data:
+                    entity_id: input_text.ma_metadata_provider_last_reason
+                    value: "{{ reason_text }}"
+                - service: input_text.set_value
+                  data:
+                    entity_id: input_text.ma_metadata_provider_last_updated_at
+                    value: "{{ now() }}"
             - stop: >-
                 Metadata provider refresh skipped: no valid MA item URI resolved
                 (candidate='{{ item_uri }}').
@@ -639,30 +673,43 @@ ma_send_metadata_to_providers:
         response_compact: "{{ (response_raw | string)[:250] }}"
         status_text: >-
           {{ ('error_' ~ response_status) if response_status >= 400 else ('ok_' ~ (response_status if response_status > 0 else 200)) }}
-    - service: input_text.set_value
-      data:
-        entity_id: input_text.ma_metadata_provider_last_status
-        value: "{{ status_text }}"
-    - service: input_text.set_value
-      data:
-        entity_id: input_text.ma_metadata_provider_last_response
-        value: "{{ response_compact }}"
-    - service: input_text.set_value
-      data:
-        entity_id: input_text.ma_metadata_provider_last_providers
-        value: "{{ provider_summary_compact }}"
-    - service: input_text.set_value
-      data:
-        entity_id: input_text.ma_metadata_provider_last_item_uri
-        value: "{{ item_uri }}"
-    - service: input_text.set_value
-      data:
-        entity_id: input_text.ma_metadata_provider_last_reason
-        value: "{{ reason_text }}"
-    - service: input_text.set_value
-      data:
-        entity_id: input_text.ma_metadata_provider_last_updated_at
-        value: "{{ now() }}"
+    - choose:
+        - conditions: "{{ component_sink_available }}"
+          sequence:
+            - service: spectra_ls.set_metadata_provider_packet
+              data:
+                status: "{{ status_text }}"
+                response: "{{ response_compact }}"
+                providers: "{{ provider_summary_compact }}"
+                item_uri: "{{ item_uri }}"
+                reason: "{{ reason_text }}"
+                updated_at: "{{ now() }}"
+                source: "runtime_script_response"
+      default:
+        - service: input_text.set_value
+          data:
+            entity_id: input_text.ma_metadata_provider_last_status
+            value: "{{ status_text }}"
+        - service: input_text.set_value
+          data:
+            entity_id: input_text.ma_metadata_provider_last_response
+            value: "{{ response_compact }}"
+        - service: input_text.set_value
+          data:
+            entity_id: input_text.ma_metadata_provider_last_providers
+            value: "{{ provider_summary_compact }}"
+        - service: input_text.set_value
+          data:
+            entity_id: input_text.ma_metadata_provider_last_item_uri
+            value: "{{ item_uri }}"
+        - service: input_text.set_value
+          data:
+            entity_id: input_text.ma_metadata_provider_last_reason
+            value: "{{ reason_text }}"
+        - service: input_text.set_value
+          data:
+            entity_id: input_text.ma_metadata_provider_last_updated_at
+            value: "{{ now() }}"
     - choose:
         - conditions: >-
             {{ ma_metadata_refresh_response is mapping and

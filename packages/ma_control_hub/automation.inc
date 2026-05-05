@@ -1,6 +1,6 @@
 # Description: MA control hub automations for startup sync, target selection, and override lifecycle.
-# Version: 2026.05.01.1
-# Last updated: 2026-05-01
+# Version: 2026.05.04.1
+# Last updated: 2026-05-04
 # HUB MUST-READ: Contract parser methodology.
 # - For complex attributes (`rooms`, `candidates_json`, etc.), prefer native sequence/mapping values first.
 # - Only parse string JSON when trimmed payload starts with `[` or `{` and is not unknown/unavailable/none/''.
@@ -22,6 +22,8 @@
     - platform: time_pattern
       minutes: "/1"
   action:
+    - condition: template
+      value_template: "{{ states('sensor.ma_authority_mode') | lower != 'component' }}"
     - choose:
         - conditions: "{{ trigger.platform == 'homeassistant' }}"
           sequence:
@@ -51,6 +53,8 @@
     - platform: event
       event_type: state_changed
   condition:
+    - condition: template
+      value_template: "{{ states('sensor.ma_authority_mode') | lower != 'component' }}"
     - condition: template
       value_template: >-
         {% if trigger.platform != 'event' %}
@@ -94,6 +98,8 @@
     - platform: state
       entity_id: input_select.ma_active_target
   condition:
+    - condition: template
+      value_template: "{{ states('sensor.ma_authority_mode') | lower != 'component' }}"
     - condition: state
       entity_id: binary_sensor.ma_control_ambiguous
       state: "on"
@@ -114,6 +120,8 @@
       to: "on"
       for: "00:00:05"
   condition:
+    - condition: template
+      value_template: "{{ states('sensor.ma_authority_mode') | lower != 'component' }}"
     - condition: state
       entity_id: input_boolean.ma_override_active
       state: "on"
@@ -135,6 +143,8 @@
     - platform: state
       entity_id: sensor.ma_control_targets
   action:
+    - condition: template
+      value_template: "{{ states('sensor.ma_authority_mode') | lower != 'component' }}"
     - choose:
         - conditions: "{{ trigger.platform == 'homeassistant' }}"
           sequence:

@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.05.04.7 -->
+<!-- Version: 2026.05.04.14 -->
 <!-- Last updated: 2026-05-04 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -27,6 +27,68 @@ Latest run update (2026-05-04, Slice-BQ LC-05 legacy scaffold constant governanc
 - Runtime track disposition: compatibility-shimmed (no runtime behavior mutation).
 - Component track disposition: implemented (constant governance split + diagnostics exposure).
 - P1/P2/P3 impact check: no source-of-truth ownership change; migration governance/retirement traceability hardening only.
+
+Latest run update (2026-05-04, Slice-BR ESP legacy rip-out inventory documentation):
+
+- Added explicit ESP legacy retirement inventory coverage to `docs/roadmap/LEGACY-CODEPATH-CLEANUP-TRACKER.md` for fallback host/port bindings, fallback listeners, metadata helper passthrough bindings, and dual-path devtools compatibility references.
+- Mapped each retained ESP compatibility surface to retirement gates (`LC-06` / `LC-07` / `LC-08`) with concrete exit criteria for eventual removal.
+- Runtime track disposition: compatibility-shimmed (docs-only slice; no runtime behavior mutation).
+- Component track disposition: compatibility-shimmed (docs-only slice; no component behavior mutation).
+- P1/P2/P3 impact check: no source-of-truth ownership change; retirement traceability and cleanup completeness hardening only.
+
+Latest run update (2026-05-04, Slice-BS LC-06 runtime retirement decomposition):
+
+- Decomposed LC-06 (`packages/ma_control_hub/*`) from a single placeholder into explicit retirement lanes (writer lane, override lane, metadata override helper storage lane, provider telemetry helper sink, server-profile/API helper stack, and metadata resolver read surfaces).
+- Added lane-level replacement targets and execution order in `docs/roadmap/LEGACY-CODEPATH-CLEANUP-TRACKER.md`; LC-06 status moved to `active` (decomposition complete, implementation pending).
+- Runtime track disposition: compatibility-shimmed (docs-only planning slice; no runtime behavior mutation).
+- Component track disposition: compatibility-shimmed (docs-only planning slice; no component behavior mutation).
+- P1/P2/P3 impact check: no source-of-truth ownership change; retirement sequencing clarity and traceability hardening only.
+
+Latest run update (2026-05-04, Slice-BT LC-07/LC-08 execution sweep):
+
+- Added component-owned metadata override status entities (`binary_sensor.component_metadata_override_active`, `sensor.component_metadata_override_entity`) and switched ESP metadata override substitutions to consume component surfaces.
+- Added ESP fallback-hit evidence counters and runtime telemetry surfaces (`esp_control_fallback_*`) so LC-07 fallback retirement can be gated on measured non-use instead of log sampling alone.
+- Runtime track disposition: implemented (ESP substitution/telemetry hardening only; fallback listeners intentionally retained pending soak evidence).
+- Component track disposition: implemented (metadata override status packet surfaces published for ESP consumers).
+- P1/P2/P3 impact check: no source-of-truth ownership change; LC-07/LC-08 execution evidence and read-lane cutover hardening only.
+
+Latest run update (2026-05-04, Slice-BV Arylic HTTP connect-reset churn stabilization):
+
+- Hardened ESP Arylic HTTP failure handling so unknown-transport hosts escalate quickly to long backoff windows (up to max at fail>=3) and suppress scheme-flip probe churn when no known-good HTTP transport history exists for that host.
+- Verified in-session build + OTA + live logs on `192.168.10.40`; runtime now backs off to `120000ms` on sustained reset churn while control path remains healthy (`ESP Control Handoff Status=ready`, fallback counters unchanged at zero).
+- Runtime track disposition: implemented (poll/backoff stabilization only; control-route ownership unchanged).
+- Component track disposition: compatibility-shimmed (component contracts unchanged; equivalent failure mode not in component lane).
+- P1/P2/P3 impact check: no source-of-truth ownership change; runtime transport-noise suppression and LC-07 soak safety hardening only.
+
+Latest run update (2026-05-04, Slice-BW LC6-L04 provider telemetry helper-sink migration bridge):
+
+- Added component-owned provider telemetry packet mirror in snapshot write-controls (`write_controls.metadata_provider_last`) and published diagnostics sensor `sensor.component_metadata_provider_status` (status/providers/response/item_uri/reason/updated_at/age/source).
+- Migrated active validation templates to component-first provider telemetry reads with bounded runtime helper fallback for compatibility during staged retirement.
+- Runtime track disposition: compatibility-shimmed (runtime helper sink writes retained as temporary source while consumers cut over).
+- Component track disposition: implemented (component packet/sensor now authoritative consumer surface).
+- P1/P2/P3 impact check: no source-of-truth ownership change; LC6-L04 consumer cutover bridge and retirement readiness hardening only.
+
+Latest run update (2026-05-04, Slice-BX LC6-L04 runtime provider sink retirement):
+
+- Added component telemetry ingest service `spectra_ls.set_metadata_provider_packet` and coordinator-owned packet state so provider diagnostics are sourced from component state instead of runtime helper sink writes.
+- Updated runtime provider dispatch (`script.ma_send_metadata_to_providers`) to publish telemetry via component service in normal operation, with bounded helper-write fallback only when component sink is unavailable.
+- Runtime track disposition: implemented (helper sink removed from active provider dispatch path; fallback-only compatibility retained).
+- Component track disposition: implemented (service + snapshot packet now authoritative telemetry owner for provider refresh diagnostics).
+- P1/P2/P3 impact check: no source-of-truth ownership change; LC6-L04 sink retirement execution and migration safety hardening only.
+
+Latest run update (2026-05-04, Slice-BY LC6-L05 server-profile/API helper-stack migration bridge phase-1):
+
+- Extended component diagnostics packet `ma_backend_profile` with explicit MA API URL capture (`sensor.ma_api_url`) alongside profile/effective URL state and published component-facing bridge entities `sensor.component_backend_profile` + `sensor.component_ma_api_url`.
+- Runtime track disposition: compatibility-shimmed (runtime profile/url helpers remain source while bridge consumers cut over).
+- Component track disposition: implemented (component snapshot/sensor bridge surfaces now available for deterministic LC6-L05 parity validation).
+- P1/P2/P3 impact check: no source-of-truth ownership change; LC6-L05 bridge execution and retirement-readiness hardening only.
+
+Latest run update (2026-05-04, Slice-BZ scheduler deterministic guidance consistency hardening):
+
+- Updated deterministic validation template to treat `skipped_component_startup_no_mix` bridge posture under component authority as non-actionable bridge failure context, preventing contradictory `RUN_BRIDGE` hints while metadata-prep blockers are the real next action.
+- Runtime track disposition: compatibility-shimmed (diagnostics-only template behavior hardening).
+- Component track disposition: implemented (operator guidance now aligns with no-mix startup semantics).
+- P1/P2/P3 impact check: no source-of-truth ownership change; diagnostics actionability consistency hardening only.
 
 ## Custom-Component Parallel Program (Required)
 

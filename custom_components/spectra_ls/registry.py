@@ -1,5 +1,5 @@
 # Description: Registry scaffold helpers for Spectra LS Phase 2 read-only target normalization and deterministic payload parsing with helper/active-target fallback seeding hardening plus host-type capability/path classification safeguards.
-# Version: 2026.05.03.1
+# Version: 2026.05.03.2
 # Last updated: 2026-05-03
 # PARITY DIRECTIVE (until full cutover): runtime-affecting contract behavior changed here must be mirrored/reconciled in `packages/` + `esphome/`
 # in the same slice, with explicit implemented/shim/defer two-track disposition and version-metadata review.
@@ -600,6 +600,32 @@ def build_registry_snapshot(
 
         resolution = resolver_fn(hass, target)
         effective_host = _clean_host(resolution.get("host", ""))
+        active_target_host_fallback_applied = False
+        if (
+            not effective_host
+            and active_target_seed
+            and target == active_target_seed
+            and control_host
+        ):
+            effective_host = control_host
+            active_target_host_fallback_applied = True
+
+            fallback_candidates = resolution.get("candidates", []) if isinstance(resolution, dict) else []
+            if not isinstance(fallback_candidates, list):
+                fallback_candidates = []
+            fallback_candidates = [
+                row for row in fallback_candidates if isinstance(row, dict)
+            ]
+            fallback_candidates.append(
+                _candidate_row("active_target.control_host_fallback", control_host)
+            )
+            resolution = {
+                **(resolution if isinstance(resolution, dict) else {}),
+                "host": effective_host,
+                "reason": "active_target.control_host_fallback",
+                "candidates": fallback_candidates,
+                "resolved": True,
+            }
         normalized_room_control_path = str(room_control_path or "").strip().lower()
 
         resolved_control_path = "unknown"
@@ -608,6 +634,8 @@ def build_registry_snapshot(
                 resolved_control_path = "linkplay_tcp"
             elif normalized_room_control_path in SUPPORTED_CONTROL_PATHS:
                 resolved_control_path = normalized_room_control_path
+            elif active_target_host_fallback_applied:
+                resolved_control_path = "linkplay_tcp"
 
         control_capable = bool(effective_host) and resolved_control_path in SUPPORTED_CONTROL_PATHS
         feature_profile = _build_feature_profile(hass, target, entity_reg, device_reg)

@@ -1,6 +1,6 @@
 # Description: Spectra LS OLED-only peripherals package (no LED rings) for Control Board v2.
-# Version: 2026.05.02.1
-# Last updated: 2026-05-02
+# Version: 2026.05.03.3
+# Last updated: 2026-05-03
 # Update version/date whenever you change this file.
 esphome:
   name: ${device_name}
@@ -206,6 +206,9 @@ interval:
           if (src.empty() && id(ha_audio_source).has_state() && !id(ha_audio_source).state.empty()) {
             src = id(ha_audio_source).state.c_str();
           }
+          if (src.empty() && id(ha_now_playing_friendly).has_state() && !id(ha_now_playing_friendly).state.empty()) {
+            src = id(ha_now_playing_friendly).state.c_str();
+          }
 
           std::string ary_title = (id(arylic_title).has_state() && !id(arylic_title).state.empty()) ? id(arylic_title).state.c_str() : "";
           std::string ary_artist = (id(arylic_artist).has_state() && !id(arylic_artist).state.empty()) ? id(arylic_artist).state.c_str() : "";
@@ -225,6 +228,19 @@ interval:
           std::string album1 = (id(ha_audio_album).has_state() && !id(ha_audio_album).state.empty()) ? id(ha_audio_album).state.c_str() : "";
           std::string app1 = (id(ha_audio_app).has_state() && !id(ha_audio_app).state.empty()) ? id(ha_audio_app).state.c_str() : "";
           std::string source1 = (id(ha_audio_source).has_state() && !id(ha_audio_source).state.empty()) ? id(ha_audio_source).state.c_str() : "";
+          std::string friendly1 = (id(ha_now_playing_friendly).has_state() && !id(ha_now_playing_friendly).state.empty()) ? id(ha_now_playing_friendly).state.c_str() : "";
+          float now_playing_freshness_age_s = -1.0f;
+          if (id(ha_now_playing_freshness_age_s).has_state()) {
+            const std::string freshness_raw = id(ha_now_playing_freshness_age_s).state.c_str();
+            char *end = nullptr;
+            const float parsed = ::strtof(freshness_raw.c_str(), &end);
+            if (end != freshness_raw.c_str()) {
+              while (*end == ' ' || *end == '\t' || *end == '\n' || *end == '\r') end++;
+              if (*end == '\0') {
+                now_playing_freshness_age_s = parsed;
+              }
+            }
+          }
 
           auto has_meta = [](const std::string &t, const std::string &a, const std::string &al) {
             (void) al;
@@ -259,6 +275,7 @@ interval:
           artist1 = clean_meta(artist1);
           album1 = clean_meta(album1);
           source1 = clean_meta(source1);
+          friendly1 = clean_meta(friendly1);
           std::string ha_media_class = "none";
           if (id(ha_audio_media_class).has_state()) {
             ha_media_class = lower_ascii(id(ha_audio_media_class).state.c_str());
@@ -476,7 +493,10 @@ interval:
           if (is_generic_source_placeholder(src_ctx)) src_ctx.clear();
           std::string app_label_ctx = app_label;
           if (is_generic_source_placeholder(app_label_ctx)) app_label_ctx.clear();
-          const bool source_context = !source_label.empty() || !source_raw_ctx.empty() || !src_ctx.empty() || !app_label_ctx.empty();
+          std::string friendly_ctx = friendly1;
+          if (is_generic_source_placeholder(friendly_ctx)) friendly_ctx.clear();
+          const bool source_context = !source_label.empty() || !source_raw_ctx.empty() || !src_ctx.empty() || !app_label_ctx.empty() || !friendly_ctx.empty();
+          if (source_label.empty() && !friendly_ctx.empty()) source_label = friendly_ctx;
           if (source_label.empty() && source_context) source_label = "SRC";
           std::string source_pill = source_label;
           if (source_pill.size() > 6) source_pill = source_pill.substr(0, 6);
@@ -488,6 +508,18 @@ interval:
           }
 
           if (playing_no_meta && !enforce_non_music_blank) {
+            const float freshness_guard_s = ((float) meta_stale_ms / 1000.0f) + 2.0f;
+            const bool freshness_gate_ok =
+              now_playing_freshness_age_s < 0.0f || now_playing_freshness_age_s <= freshness_guard_s;
+            if (!freshness_gate_ok) {
+              title.clear();
+              artist.clear();
+              album.clear();
+              source_label.clear();
+              source_pill.clear();
+              src_display.clear();
+            }
+            if (freshness_gate_ok) {
             if (!id(np_raw_title).empty()) title = id(np_raw_title);
             if (!id(np_raw_artist).empty()) artist = id(np_raw_artist);
             if (!id(np_raw_album).empty()) album = id(np_raw_album);
@@ -503,6 +535,7 @@ interval:
               } else if (live_transport_playing) {
                 title = "PLAYING";
               }
+            }
             }
           }
 

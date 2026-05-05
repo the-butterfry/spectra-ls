@@ -1,6 +1,6 @@
 # Description: Service definitions for Spectra LS Phase 2/3 diagnostics, Phase 4 Slice-01/Slice-03 diagnostics scaffolding, Phase 5 metadata trial contract, and Phase 6/8 control-center settings, fast-remap presets, selection-ownership migration services, execution, and expanded authority-contract response echo.
-# Version: 2026.05.03.6
-# Last updated: 2026-05-03
+# Version: 2026.05.04.3
+# Last updated: 2026-05-04
 # PARITY DIRECTIVE: Behavior/contract edits must include same-slice two-track parity review and version-metadata review (runtime + component).
 
 get_authority_contract:
@@ -297,6 +297,129 @@ track_last_valid_target:
     correlation_id:
       name: Correlation ID
       description: Optional correlation tag for this tracking attempt.
+      required: false
+      selector:
+        text:
+
+set_active_target:
+  name: Set active target
+  description: Apply explicit target selection to input_select.ma_active_target through component-guarded write semantics.
+  fields:
+    target:
+      name: Target entity ID
+      description: Required media-player target entity ID to select (for example `media_player.living_room`).
+      required: true
+      selector:
+        text:
+    dry_run:
+      name: Dry run
+      description: If true, validate guards/options without writing helper state.
+      required: false
+      selector:
+        boolean:
+    force:
+      name: Force
+      description: If true, bypass debounce/reentrancy soft guards for explicit operator-forced attempts.
+      required: false
+      selector:
+        boolean:
+    sync_options_if_missing:
+      name: Sync options if missing
+      description: If true, attempt to sync helper options from component scaffold plan before applying target.
+      required: false
+      selector:
+        boolean:
+    correlation_id:
+      name: Correlation ID
+      description: Optional correlation tag for this explicit target-set attempt.
+      required: false
+      selector:
+        text:
+
+set_metadata_override:
+  name: Set metadata override
+  description: Apply or clear metadata override helper state through component-guarded write semantics.
+  fields:
+    enable:
+      name: Enable override
+      description: If true, enable override and apply `entity_id`; if false, clear override and helper entity value.
+      required: true
+      selector:
+        boolean:
+    entity_id:
+      name: Metadata entity ID
+      description: Metadata entity ID to apply when override is enabled (for example `media_player.office`).
+      required: false
+      selector:
+        text:
+    dry_run:
+      name: Dry run
+      description: If true, validate guards/input shape without writing helper state.
+      required: false
+      selector:
+        boolean:
+    force:
+      name: Force
+      description: If true, bypass debounce/reentrancy soft guards for explicit operator-forced attempts.
+      required: false
+      selector:
+        boolean:
+    reason:
+      name: Reason
+      description: Optional operator reason string captured in write-attempt audit payload.
+      required: false
+      selector:
+        text:
+    correlation_id:
+      name: Correlation ID
+      description: Optional correlation tag for this metadata override write attempt.
+      required: false
+      selector:
+        text:
+
+set_metadata_provider_packet:
+  name: Set metadata provider packet
+  description: Ingest provider-refresh telemetry into component-owned diagnostics packet (`write_controls.metadata_provider_last`) for LC6-L04 runtime sink retirement.
+  fields:
+    status:
+      name: Status
+      description: Provider refresh status token (for example `ok_200`, `error_500`, `skipped_invalid_uri`).
+      required: false
+      selector:
+        text:
+    response:
+      name: Response summary
+      description: Compact response payload summary (bounded text).
+      required: false
+      selector:
+        text:
+    providers:
+      name: Provider summary
+      description: Compact provider result summary string (for example `provider_a:ok; provider_b:error`).
+      required: false
+      selector:
+        text:
+    item_uri:
+      name: Item URI
+      description: MA item URI dispatched in provider refresh request.
+      required: false
+      selector:
+        text:
+    reason:
+      name: Reason
+      description: Operator/runtime reason string for telemetry attribution.
+      required: false
+      selector:
+        text:
+    updated_at:
+      name: Updated at
+      description: Optional timestamp string for packet freshness (auto-generated when omitted).
+      required: false
+      selector:
+        text:
+    source:
+      name: Source
+      description: Optional source token describing packet publisher (for example runtime script path).
       required: false
       selector:
         text:

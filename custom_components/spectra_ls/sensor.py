@@ -1,5 +1,5 @@
 # Description: Sensor entities for Spectra LS shadow parity routing surfaces with Phase 3 write-control, Phase 4 diagnostics attributes, and Phase 6/8 control-center settings/readiness/last-attempt visibility, including recorder-safe attribute payload sizing and shared MA authority-contract packet propagation.
-# Version: 2026.05.04.4
+# Version: 2026.05.04.5
 # Last updated: 2026-05-04
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
@@ -239,6 +239,76 @@ def _component_metadata_provider_packet(data: dict[str, Any]) -> dict[str, Any]:
         return {}
     packet = write_controls.get("metadata_provider_last", {})
     return packet if isinstance(packet, dict) else {}
+
+
+def _component_runtime_track_disposition(data: dict[str, Any]) -> str:
+    """Return current runtime-track disposition for CA closeout consumers."""
+    route_trace = _dict_surface(data, "route_trace")
+    contract = _dict_surface(data, "contract_validation")
+    route_decision = str(route_trace.get("decision", "") or "").strip()
+    contract_valid = bool(contract.get("valid", False))
+    if route_decision and contract_valid:
+        return "compatibility-shimmed"
+    return "deferred with rationale"
+
+
+def _component_component_track_disposition(data: dict[str, Any]) -> str:
+    """Return current component-track disposition for CA closeout consumers."""
+    metadata_prep = _dict_surface(data, "metadata_prep_validation")
+    handoff = _dict_surface(data, "handoff_inventory")
+    prep_ready = bool(metadata_prep.get("ready_for_metadata_handoff", False))
+    metadata_lane = str(handoff.get("metadata_resolver_status", "") or "").strip().lower()
+    if prep_ready or metadata_lane == "implemented":
+        return "implemented"
+    return "compatibility-shimmed"
+
+
+def _component_lc06_final_disposition(data: dict[str, Any]) -> str:
+    """Return closeout disposition summary for LC-06 runtime retirement lanes."""
+    backend = _component_ma_backend_profile(data)
+    backend_ready = bool(backend.get("profile_resolved", False)) and bool(
+        backend.get("api_url_resolved", False)
+    )
+    return "compatibility-shimmed" if backend_ready else "deferred with rationale"
+
+
+def _component_lc07_final_disposition(data: dict[str, Any]) -> str:
+    """Return closeout disposition summary for LC-07 fallback listener lanes."""
+    route_trace = _dict_surface(data, "route_trace")
+    decision = str(route_trace.get("decision", "") or "").strip().lower()
+    if decision == "route_linkplay_tcp":
+        return "compatibility-shimmed"
+    return "deferred with rationale"
+
+
+def _component_lc08_final_disposition(data: dict[str, Any]) -> str:
+    """Return closeout disposition summary for LC-08 diagnostics fallback lanes."""
+    metadata_prep = _dict_surface(data, "metadata_prep_validation")
+    checks = metadata_prep.get("checks", {}) if isinstance(metadata_prep.get("checks", {}), dict) else {}
+    component_ready = bool(metadata_prep.get("ready_for_metadata_handoff", False))
+    fresh_signal = bool(checks.get("now_playing_fresh_play_signal", False))
+    if component_ready or fresh_signal:
+        return "compatibility-shimmed"
+    return "deferred with rationale"
+
+
+def _component_retirement_ledger_consistency(data: dict[str, Any]) -> str:
+    """Return deterministic ledger-consistency status for closeout validators."""
+    required = (
+        "route_trace",
+        "contract_validation",
+        "metadata_prep_validation",
+        "host_control_cutover_gate",
+        "write_controls",
+    )
+    missing = [key for key in required if not isinstance(data.get(key, {}), dict)]
+    if missing:
+        return "blocked"
+    runtime_disposition = _component_runtime_track_disposition(data)
+    component_disposition = _component_component_track_disposition(data)
+    if runtime_disposition and component_disposition:
+        return "clean"
+    return "blocked"
 
 
 class SpectraLsComponentActiveTargetSensor(CoordinatorEntity, SensorEntity):
@@ -795,6 +865,102 @@ class SpectraLsComponentMetadataProviderStatusSensor(CoordinatorEntity, SensorEn
         }
 
 
+class SpectraLsComponentRuntimeTrackDispositionSensor(CoordinatorEntity, SensorEntity):
+    """Component closeout surface for runtime-track disposition."""
+
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:timeline-alert"
+    _attr_name = "Component Runtime Track Disposition"
+    _attr_unique_id = "spectra_ls_component_runtime_track_disposition"
+
+    @property
+    def native_value(self):
+        return _component_runtime_track_disposition(self.coordinator.data)
+
+
+class SpectraLsComponentComponentTrackDispositionSensor(CoordinatorEntity, SensorEntity):
+    """Component closeout surface for component-track disposition."""
+
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:timeline-check"
+    _attr_name = "Component Component Track Disposition"
+    _attr_unique_id = "spectra_ls_component_component_track_disposition"
+
+    @property
+    def native_value(self):
+        return _component_component_track_disposition(self.coordinator.data)
+
+
+class SpectraLsComponentLc06FinalDispositionSensor(CoordinatorEntity, SensorEntity):
+    """Component closeout surface for LC-06 final disposition."""
+
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:format-list-checks"
+    _attr_name = "Component LC06 Final Disposition"
+    _attr_unique_id = "spectra_ls_component_lc06_final_disposition"
+
+    @property
+    def native_value(self):
+        return _component_lc06_final_disposition(self.coordinator.data)
+
+
+class SpectraLsComponentLc07FinalDispositionSensor(CoordinatorEntity, SensorEntity):
+    """Component closeout surface for LC-07 final disposition."""
+
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:format-list-checks"
+    _attr_name = "Component LC07 Final Disposition"
+    _attr_unique_id = "spectra_ls_component_lc07_final_disposition"
+
+    @property
+    def native_value(self):
+        return _component_lc07_final_disposition(self.coordinator.data)
+
+
+class SpectraLsComponentLc08FinalDispositionSensor(CoordinatorEntity, SensorEntity):
+    """Component closeout surface for LC-08 final disposition."""
+
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:format-list-checks"
+    _attr_name = "Component LC08 Final Disposition"
+    _attr_unique_id = "spectra_ls_component_lc08_final_disposition"
+
+    @property
+    def native_value(self):
+        return _component_lc08_final_disposition(self.coordinator.data)
+
+
+class SpectraLsComponentRetirementLedgerConsistencySensor(CoordinatorEntity, SensorEntity):
+    """Component closeout surface for retirement-ledger consistency."""
+
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:ledger"
+    _attr_name = "Component Retirement Ledger Consistency"
+    _attr_unique_id = "spectra_ls_component_retirement_ledger_consistency"
+
+    @property
+    def native_value(self):
+        return _component_retirement_ledger_consistency(self.coordinator.data)
+
+    @property
+    def extra_state_attributes(self):
+        data = self.coordinator.data
+        return {
+            "runtime_track_disposition": _component_runtime_track_disposition(data),
+            "component_track_disposition": _component_component_track_disposition(data),
+            "lc06_final_disposition": _component_lc06_final_disposition(data),
+            "lc07_final_disposition": _component_lc07_final_disposition(data),
+            "lc08_final_disposition": _component_lc08_final_disposition(data),
+            "captured_at": data.get("captured_at"),
+        }
+
+
 class SpectraLsShadowSensor(CoordinatorEntity, SensorEntity):
     """Generic read-only shadow sensor."""
 
@@ -1196,6 +1362,12 @@ async def async_setup_entry(
             SpectraLsComponentMetaCandidatesSensor(coordinator),
             SpectraLsComponentMetadataOverrideEntitySensor(coordinator),
             SpectraLsComponentMetadataProviderStatusSensor(coordinator),
+            SpectraLsComponentRuntimeTrackDispositionSensor(coordinator),
+            SpectraLsComponentComponentTrackDispositionSensor(coordinator),
+            SpectraLsComponentLc06FinalDispositionSensor(coordinator),
+            SpectraLsComponentLc07FinalDispositionSensor(coordinator),
+            SpectraLsComponentLc08FinalDispositionSensor(coordinator),
+            SpectraLsComponentRetirementLedgerConsistencySensor(coordinator),
             SpectraLsHostResolutionStatusSensor(coordinator),
             SpectraLsHostAuthorityCutoverGateSensor(coordinator),
             SpectraLsSchedulerDecisionSensor(coordinator),

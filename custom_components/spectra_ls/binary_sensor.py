@@ -1,5 +1,5 @@
 # Description: Binary sensor entities for Spectra LS shadow parity routing surfaces with Phase 3 write-control, Phase 4 diagnostics attributes, and Phase 6 control-center settings visibility, including host-cutover readiness and shared MA authority-contract packet propagation.
-# Version: 2026.05.04.2
+# Version: 2026.05.04.3
 # Last updated: 2026-05-04
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
@@ -242,6 +242,55 @@ class SpectraLsComponentMetadataOverrideActiveBinarySensor(CoordinatorEntity, Bi
         }
 
 
+class SpectraLsComponentRollbackSafePostureBinarySensor(CoordinatorEntity, BinarySensorEntity):
+    """Component closeout binary surface for rollback-safe posture."""
+
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:backup-restore"
+    _attr_name = "Component Rollback Safe Posture"
+    _attr_unique_id = "spectra_ls_component_rollback_safe_posture"
+
+    @property
+    def is_on(self) -> bool:
+        data = self.coordinator.data
+        route_trace = data.get("route_trace", {}) if isinstance(data.get("route_trace", {}), dict) else {}
+        contract = (
+            data.get("contract_validation", {})
+            if isinstance(data.get("contract_validation", {}), dict)
+            else {}
+        )
+        write_controls = (
+            data.get("write_controls", {}) if isinstance(data.get("write_controls", {}), dict) else {}
+        )
+        route_decision = str(route_trace.get("decision", "") or "").strip().lower()
+        authority_mode = str(write_controls.get("authority_mode", "") or "").strip().lower()
+        contract_valid = bool(contract.get("valid", False))
+        return route_decision == "route_linkplay_tcp" and authority_mode in {
+            "legacy",
+            "component",
+        } and contract_valid
+
+    @property
+    def extra_state_attributes(self):
+        data = self.coordinator.data
+        route_trace = data.get("route_trace", {}) if isinstance(data.get("route_trace", {}), dict) else {}
+        contract = (
+            data.get("contract_validation", {})
+            if isinstance(data.get("contract_validation", {}), dict)
+            else {}
+        )
+        write_controls = (
+            data.get("write_controls", {}) if isinstance(data.get("write_controls", {}), dict) else {}
+        )
+        return {
+            "route_decision": route_trace.get("decision", ""),
+            "authority_mode": write_controls.get("authority_mode", ""),
+            "contract_valid": contract.get("valid", False),
+            "captured_at": data.get("captured_at"),
+        }
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
@@ -256,5 +305,6 @@ async def async_setup_entry(
             SpectraLsComponentNowPlayingDisplayAllowedBinarySensor(coordinator),
             SpectraLsComponentMetaLowConfidenceBinarySensor(coordinator),
             SpectraLsComponentMetadataOverrideActiveBinarySensor(coordinator),
+            SpectraLsComponentRollbackSafePostureBinarySensor(coordinator),
         ]
     )

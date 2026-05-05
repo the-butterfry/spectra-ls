@@ -1,6 +1,6 @@
 # Description: Validation/control fabric workflow for Spectra LS snapshot validation assembly extracted from meta-fabric.
-# Version: 2026.05.03.3
-# Last updated: 2026-05-03
+# Version: 2026.05.05.1
+# Last updated: 2026-05-05
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -15,6 +15,7 @@ from .const import (
     LEGACY_META_CONFIDENCE_MIN,
     LEGACY_META_PAUSED_HIDE_S,
     LEGACY_META_STALE_S,
+    METADATA_AUTH_OWNER_COMPONENT,
     LEGACY_ROOMS_JSON,
     LEGACY_ROOMS_RAW,
     LEGACY_SURFACES,
@@ -125,6 +126,9 @@ class ValidationFabricWorkflow:
         auto_select_attempt: dict[str, Any],
         metadata_attempt: dict[str, Any],
         metadata_bridge_attempt: dict[str, Any],
+        metadata_prep_validation: dict[str, Any],
+        metadata_bridge_validation: dict[str, Any],
+        component_now_playing_entity: str,
     ) -> dict[str, str]:
         """Evaluate handoff scaffold status ladder for target-options, auto-select, and metadata lanes."""
         target_options_status = "planned"
@@ -148,9 +152,26 @@ class ValidationFabricWorkflow:
         )
         metadata_attempt_status = str(metadata_attempt.get("status", "") or "")
         metadata_bridge_status = str(metadata_bridge_attempt.get("status", "") or "")
+        prep_values = (
+            metadata_prep_validation.get("values", {})
+            if isinstance(metadata_prep_validation.get("values", {}), dict)
+            else {}
+        )
+        prep_now_playing_entity = str(prep_values.get("now_playing_entity", "") or "").strip()
+        resolved_component_now_playing_entity = prep_now_playing_entity or str(component_now_playing_entity or "").strip()
+        component_authority_ready = (
+            bool(metadata_prep_validation.get("ready_for_metadata_handoff", False))
+            and bool(metadata_prep_validation.get("metadata_cutover_active", False))
+            and str(metadata_prep_validation.get("metadata_authority_owner", "") or "") == METADATA_AUTH_OWNER_COMPONENT
+            and resolved_component_now_playing_entity.lower() not in {"", "none", "unknown", "unavailable"}
+        )
+        bridge_ready = bool(metadata_bridge_validation.get("ready_for_bridge", False)) or (
+            metadata_bridge_status == "skipped_component_startup_no_mix" and component_authority_ready
+        )
         if (
             metadata_attempt_status in {"dry_run_ok", "noop_already_selected", "write_applied"}
             or metadata_bridge_status == "bridge_completed"
+            or (component_authority_ready and bridge_ready)
         ):
             metadata_status = "implemented"
 

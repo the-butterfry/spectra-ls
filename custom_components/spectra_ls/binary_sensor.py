@@ -1,6 +1,6 @@
 # Description: Binary sensor entities for Spectra LS shadow parity routing surfaces with Phase 3 write-control, Phase 4 diagnostics attributes, and Phase 6 control-center settings visibility, including host-cutover readiness and shared MA authority-contract packet propagation.
-# Version: 2026.05.03.1
-# Last updated: 2026-05-03
+# Version: 2026.05.04.2
+# Last updated: 2026-05-04
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -14,7 +14,13 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .authority_contract import build_authority_contract_packet
-from .const import DOMAIN
+from .const import (
+    DOMAIN,
+    LEGACY_META_CONFIDENCE_MIN,
+    LEGACY_META_OVERRIDE_ACTIVE,
+    LEGACY_META_OVERRIDE_ENTITY,
+    LEGACY_META_RESOLVER,
+)
 
 
 class SpectraLsShadowControlCapableBinarySensor(CoordinatorEntity, BinarySensorEntity):
@@ -106,6 +112,136 @@ class SpectraLsHostCutoverGateReadyBinarySensor(CoordinatorEntity, BinarySensorE
         }
 
 
+class SpectraLsComponentNowPlayingDisplayAllowedBinarySensor(CoordinatorEntity, BinarySensorEntity):
+    """Component-native now-playing display-policy contract surface."""
+
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:television-play"
+    _attr_name = "Component Now Playing Display Allowed"
+    _attr_unique_id = "spectra_ls_component_now_playing_display_allowed"
+
+    @property
+    def is_on(self) -> bool:
+        metadata_prep = self.coordinator.data.get("metadata_prep_validation", {})
+        values = metadata_prep.get("values", {}) if isinstance(metadata_prep.get("values", {}), dict) else {}
+        return bool(values.get("now_playing_display_allowed", False))
+
+    @property
+    def extra_state_attributes(self):
+        data = self.coordinator.data
+        metadata_prep = data.get("metadata_prep_validation", {}) if isinstance(data.get("metadata_prep_validation", {}), dict) else {}
+        values = metadata_prep.get("values", {}) if isinstance(metadata_prep.get("values", {}), dict) else {}
+        checks = metadata_prep.get("checks", {}) if isinstance(metadata_prep.get("checks", {}), dict) else {}
+        return {
+            "now_playing_media_class": values.get("now_playing_media_class", ""),
+            "expected_display_allowed": values.get("expected_display_allowed"),
+            "display_contract_consistent": checks.get("now_playing_display_contract_consistent"),
+            "music_guard_active": values.get("music_guard_active"),
+            "captured_at": data.get("captured_at"),
+        }
+
+
+class SpectraLsComponentMetaLowConfidenceBinarySensor(CoordinatorEntity, BinarySensorEntity):
+    """Component-native metadata low-confidence contract surface."""
+
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:alert-circle-outline"
+    _attr_name = "Component Meta Low Confidence"
+    _attr_unique_id = "spectra_ls_component_meta_low_confidence"
+
+    @property
+    def is_on(self) -> bool:
+        candidate_state = self.coordinator.hass.states.get("sensor.spectra_ls_component_meta_candidates")
+        if candidate_state is not None and isinstance(candidate_state.attributes, dict):
+            attrs = candidate_state.attributes
+            low_conf = attrs.get("low_confidence")
+            if isinstance(low_conf, bool):
+                return low_conf
+
+            try:
+                best_score = float(attrs.get("best_score", 0))
+            except (TypeError, ValueError):
+                best_score = 0.0
+
+            try:
+                confidence_min = float(attrs.get("confidence_min", 4.0))
+            except (TypeError, ValueError):
+                confidence_min = 4.0
+
+            best_entity = str(attrs.get("best_entity", "") or "").strip()
+            return best_entity == "" or best_score < confidence_min
+
+        resolver_state = self.coordinator.hass.states.get(LEGACY_META_RESOLVER)
+        confidence_min_state = self.coordinator.hass.states.get(LEGACY_META_CONFIDENCE_MIN)
+
+        try:
+            confidence_min = float(confidence_min_state.state) if confidence_min_state is not None else 4.0
+        except (TypeError, ValueError):
+            confidence_min = 4.0
+
+        if resolver_state is None:
+            return True
+
+        best_entity = str(resolver_state.attributes.get("best_entity", "") or "").strip()
+        try:
+            best_score = float(resolver_state.attributes.get("best_score", 0))
+        except (TypeError, ValueError):
+            best_score = 0.0
+
+        return best_entity == "" or best_score < confidence_min
+
+    @property
+    def extra_state_attributes(self):
+        candidate_state = self.coordinator.hass.states.get("sensor.spectra_ls_component_meta_candidates")
+        attrs = candidate_state.attributes if candidate_state is not None and isinstance(candidate_state.attributes, dict) else {}
+        return {
+            "best_entity": attrs.get("best_entity", ""),
+            "best_score": attrs.get("best_score", 0),
+            "confidence_min": attrs.get("confidence_min", 4.0),
+            "candidate_count": attrs.get("candidate_count", 0),
+            "captured_at": self.coordinator.data.get("captured_at"),
+        }
+
+
+class SpectraLsComponentMetadataOverrideActiveBinarySensor(CoordinatorEntity, BinarySensorEntity):
+    """Component-owned metadata override active status surface (LC-08)."""
+
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:toggle-switch"
+    _attr_name = "Component Metadata Override Active"
+    _attr_unique_id = "spectra_ls_component_metadata_override_active"
+
+    @property
+    def is_on(self) -> bool:
+        override_active = self.coordinator.hass.states.get(LEGACY_META_OVERRIDE_ACTIVE)
+        if override_active is None:
+            return False
+        state = str(override_active.state or "").strip().lower()
+        return state in {"on", "true", "1"}
+
+    @property
+    def extra_state_attributes(self):
+        override_entity = self.coordinator.hass.states.get(LEGACY_META_OVERRIDE_ENTITY)
+        override_entity_value = ""
+        if override_entity is not None:
+            value = str(override_entity.state or "").strip()
+            if value.lower() not in {"", "none", "unknown", "unavailable", "null"}:
+                override_entity_value = value
+
+        metadata_attempt = self.coordinator.metadata_stack.last_metadata_override_attempt
+        return {
+            "override_entity": override_entity_value,
+            "last_attempt_status": metadata_attempt.get("status", "unknown"),
+            "last_attempt_reason": metadata_attempt.get("reason", ""),
+            "last_attempt_requested_at": metadata_attempt.get("requested_at"),
+            "last_attempt_completed_at": metadata_attempt.get("completed_at"),
+            "captured_at": self.coordinator.data.get("captured_at"),
+        }
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
@@ -117,5 +253,8 @@ async def async_setup_entry(
         [
             SpectraLsShadowControlCapableBinarySensor(coordinator),
             SpectraLsHostCutoverGateReadyBinarySensor(coordinator),
+            SpectraLsComponentNowPlayingDisplayAllowedBinarySensor(coordinator),
+            SpectraLsComponentMetaLowConfidenceBinarySensor(coordinator),
+            SpectraLsComponentMetadataOverrideActiveBinarySensor(coordinator),
         ]
     )

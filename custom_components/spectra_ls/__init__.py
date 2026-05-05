@@ -1,6 +1,6 @@
 # Description: Spectra LS custom integration setup for shadow parity, Phase 3 guarded routing write-path services, Phase 4 diagnostics scaffolding services (F4-S01/F4-S03), Phase 5 metadata trial contract service wiring, and Phase 6 control-center settings/execution services including bounded startup auto-recovery scheduling and selection-ownership migration services with hardened authority-contract response service support.
-# Version: 2026.05.03.8
-# Last updated: 2026-05-03
+# Version: 2026.05.04.13
+# Last updated: 2026-05-04
 # PARITY DIRECTIVE: Behavior/contract edits must include same-slice two-track parity review and version-metadata review (runtime + component).
 
 from __future__ import annotations
@@ -18,6 +18,7 @@ from .authority_contract import build_authority_contract_packet
 from .const import (
     CONTROL_CENTER_DEFAULTS,
     DOMAIN,
+    OPT_DEFAULT_WRITE_AUTHORITY_MODE,
     PLATFORMS,
     SERVICE_DUMP_ROUTE_TRACE,
     SERVICE_METADATA_WRITE_TRIAL,
@@ -42,6 +43,7 @@ from .const import (
     SERVICE_EXECUTE_CONTROL_CENTER_INPUT,
     SERVICE_SET_CONTROL_CENTER_SETTINGS,
     SERVICE_VALIDATE_SCHEDULER,
+    WRITE_AUTH_COMPONENT,
     SERVICE_RUN_SCHEDULER_CHOICE,
     SERVICE_APPLY_SCHEDULER_CHOICE,
     SERVICE_BUILD_TARGET_OPTIONS_SCAFFOLD,
@@ -51,6 +53,9 @@ from .const import (
     SERVICE_CYCLE_ACTIVE_TARGET,
     SERVICE_RESTORE_LAST_VALID_TARGET,
     SERVICE_TRACK_LAST_VALID_TARGET,
+    SERVICE_SET_ACTIVE_TARGET,
+    SERVICE_SET_METADATA_OVERRIDE,
+    SERVICE_SET_METADATA_PROVIDER_PACKET,
     normalize_control_center_settings,
 )
 from .coordinator import SpectraLsShadowCoordinator
@@ -92,6 +97,9 @@ _DOMAIN_SERVICE_NAMES: tuple[str, ...] = (
     SERVICE_CYCLE_ACTIVE_TARGET,
     SERVICE_RESTORE_LAST_VALID_TARGET,
     SERVICE_TRACK_LAST_VALID_TARGET,
+    SERVICE_SET_ACTIVE_TARGET,
+    SERVICE_SET_METADATA_OVERRIDE,
+    SERVICE_SET_METADATA_PROVIDER_PACKET,
 )
 
 
@@ -232,6 +240,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     options_update_unsub = entry.add_update_listener(_handle_options_update)
     hass.data[DOMAIN][f"{entry.entry_id}_options_unsub"] = options_update_unsub
 
+    def _default_authority_mode() -> str:
+        _ = entry.options.get(OPT_DEFAULT_WRITE_AUTHORITY_MODE, WRITE_AUTH_COMPONENT)
+        return WRITE_AUTH_COMPONENT
+
     async def _service_rebuild_registry(_call: ServiceCall) -> None:
         await coordinator.async_rebuild_registry()
 
@@ -242,7 +254,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await coordinator.async_dump_route_trace()
 
     async def _service_set_write_authority(call: ServiceCall) -> None:
-        mode = str(call.data.get("mode", "legacy"))
+        mode = str(call.data.get("mode", _default_authority_mode()))
         reason = str(call.data.get("reason", ""))
         await coordinator.async_set_write_authority(mode=mode, reason=reason)
 
@@ -252,7 +264,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await coordinator.async_route_write_trial(correlation_id=correlation_id, force=force)
 
     async def _service_metadata_write_trial(call: ServiceCall) -> None:
-        mode = str(call.data.get("mode", "legacy"))
+        mode = str(call.data.get("mode", _default_authority_mode()))
         window_id = str(call.data.get("window_id", "")).strip()
         reason = str(call.data.get("reason", "")).strip()
         dry_run = _coerce_bool(call.data.get("dry_run"), default=True)
@@ -416,7 +428,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         return host_gate
 
     async def _service_run_p3_s03_sequence(call: ServiceCall) -> None:
-        mode = str(call.data.get("mode", "legacy"))
+        mode = str(call.data.get("mode", _default_authority_mode()))
         reason = str(call.data.get("reason", ""))
 
         await coordinator.async_set_write_authority(mode=mode, reason=reason)
@@ -427,7 +439,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await coordinator.metadata_stack.async_validate_metadata_prep()
 
     async def _service_run_p5_s02_sequence(call: ServiceCall) -> None:
-        mode = str(call.data.get("mode", "legacy"))
+        mode = str(call.data.get("mode", _default_authority_mode()))
         reason = str(call.data.get("reason", "P5-S02 one-shot sequence"))
         window_id = str(call.data.get("window_id", "")).strip()
         dry_run = _coerce_bool(call.data.get("dry_run"), default=True)
@@ -465,7 +477,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await coordinator.async_validate_capability_profile()
 
     async def _service_run_f4_s01_sequence(call: ServiceCall) -> None:
-        mode = str(call.data.get("mode", "legacy"))
+        mode = str(call.data.get("mode", _default_authority_mode()))
         reason = str(call.data.get("reason", ""))
 
         stages: list[tuple[str, Any, tuple[Any, ...], dict[str, Any]]] = [
@@ -484,7 +496,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await coordinator.async_validate_action_catalog()
 
     async def _service_run_f4_s02_sequence(call: ServiceCall) -> None:
-        mode = str(call.data.get("mode", "legacy"))
+        mode = str(call.data.get("mode", _default_authority_mode()))
         reason = str(call.data.get("reason", ""))
 
         stages: list[tuple[str, Any, tuple[Any, ...], dict[str, Any]]] = [
@@ -504,7 +516,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await coordinator.async_validate_crossfade_balance()
 
     async def _service_run_f4_s03_sequence(call: ServiceCall) -> None:
-        mode = str(call.data.get("mode", "legacy"))
+        mode = str(call.data.get("mode", _default_authority_mode()))
         reason = str(call.data.get("reason", ""))
 
         stages: list[tuple[str, Any, tuple[Any, ...], dict[str, Any]]] = [
@@ -648,11 +660,66 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             source="service_track_last_valid_target",
         )
 
+    async def _service_set_active_target(call: ServiceCall) -> None:
+        target = str(call.data.get("target", "") or "").strip()
+        dry_run = _coerce_bool(call.data.get("dry_run"), default=False)
+        force = _coerce_bool(call.data.get("force"), default=False)
+        sync_options_if_missing = _coerce_bool(call.data.get("sync_options_if_missing"), default=False)
+        correlation_id = str(call.data.get("correlation_id", "") or "").strip() or None
+        await coordinator.async_set_active_target(
+            target=target,
+            dry_run=dry_run,
+            force=force,
+            sync_options_if_missing=sync_options_if_missing,
+            correlation_id=correlation_id,
+        )
+
+    async def _service_set_metadata_override(call: ServiceCall) -> None:
+        enable = _coerce_bool(call.data.get("enable"), default=False)
+        entity_id = str(call.data.get("entity_id", "") or "").strip() or None
+        dry_run = _coerce_bool(call.data.get("dry_run"), default=False)
+        force = _coerce_bool(call.data.get("force"), default=False)
+        reason = str(call.data.get("reason", "") or "").strip()
+        correlation_id = str(call.data.get("correlation_id", "") or "").strip() or None
+        await coordinator.metadata_stack.async_set_metadata_override(
+            enable=enable,
+            entity_id=entity_id,
+            dry_run=dry_run,
+            force=force,
+            reason=reason,
+            correlation_id=correlation_id,
+        )
+
+    async def _service_set_metadata_provider_packet(call: ServiceCall) -> None:
+        status = str(call.data.get("status", "") or "")
+        response = str(call.data.get("response", "") or "")
+        providers = str(call.data.get("providers", "") or "")
+        item_uri = str(call.data.get("item_uri", "") or "")
+        reason = str(call.data.get("reason", "") or "")
+        updated_at = str(call.data.get("updated_at", "") or "")
+        source = str(call.data.get("source", "") or "")
+
+        await coordinator.async_set_metadata_provider_packet(
+            status=status,
+            response=response,
+            providers=providers,
+            item_uri=item_uri,
+            reason=reason,
+            updated_at=updated_at,
+            source=source,
+        )
+
     async def _service_set_control_center_settings(call: ServiceCall) -> None:
         raw_patch = {key: call.data.get(key) for key in CONTROL_CENTER_DEFAULTS.keys() if key in call.data}
         merged = normalize_control_center_settings({**entry.options, **raw_patch})
-        hass.config_entries.async_update_entry(entry, options=merged)
-        await coordinator.async_apply_control_center_settings(merged)
+        preserved_options = {
+            key: value
+            for key, value in entry.options.items()
+            if key not in CONTROL_CENTER_DEFAULTS
+        }
+        updated_options = {**preserved_options, **merged}
+        hass.config_entries.async_update_entry(entry, options=updated_options)
+        await coordinator.async_apply_control_center_settings(updated_options)
 
     async def _service_execute_control_center_input(call: ServiceCall) -> None:
         input_event = str(call.data.get("input_event", "") or "").strip()
@@ -701,6 +768,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         (SERVICE_CYCLE_ACTIVE_TARGET, _service_cycle_active_target, None),
         (SERVICE_RESTORE_LAST_VALID_TARGET, _service_restore_last_valid_target, None),
         (SERVICE_TRACK_LAST_VALID_TARGET, _service_track_last_valid_target, None),
+        (SERVICE_SET_ACTIVE_TARGET, _service_set_active_target, None),
+        (SERVICE_SET_METADATA_OVERRIDE, _service_set_metadata_override, None),
+        (SERVICE_SET_METADATA_PROVIDER_PACKET, _service_set_metadata_provider_packet, None),
     )
 
     for service_name, handler, supports_response in service_registrations:

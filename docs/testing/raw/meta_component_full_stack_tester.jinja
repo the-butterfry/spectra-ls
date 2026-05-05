@@ -1,6 +1,6 @@
 {# Description: Full-stack one-screen Spectra LS component validation template for HA Developer Tools. #}
-{# Version: 2026.05.03.60 #}
-{# Last updated: 2026-05-03 #}
+{# Version: 2026.05.04.1 #}
+{# Last updated: 2026-05-04 #}
 
 {% set invalid = ['','none','unknown','unavailable','null'] %}
 
@@ -47,6 +47,9 @@
 {% set now_playing_entity = states('sensor.now_playing_entity') %}
 {% set now_playing_state = states('sensor.now_playing_state') %}
 {% set now_playing_title = states('sensor.now_playing_title') %}
+{% set now_playing_preview_key = states('sensor.now_playing_preview_key') %}
+{% set now_playing_freshness_age_s_raw = states('sensor.now_playing_freshness_age_s') %}
+{% set now_playing_freshness_age_s = now_playing_freshness_age_s_raw | float(none) if now_playing_freshness_age_s_raw not in invalid else none %}
 {% set active_meta_entity = states('sensor.ma_active_meta_entity') %}
 
 {% set esp_handoff_entity = 'sensor.spectra_ls_system_esp_control_handoff_status' if states['sensor.spectra_ls_system_esp_control_handoff_status'] is not none else '' %}
@@ -54,7 +57,11 @@
 {% set esp_handoff_state = states(esp_handoff_entity) if esp_handoff_entity != '' else 'missing' %}
 {% set esp_oled_state = states(esp_oled_entity) if esp_oled_entity != '' else 'missing' %}
 {% set esp_runtime_visible = esp_handoff_entity != '' and esp_oled_entity != '' %}
-{% set esp_runtime_ready = esp_runtime_visible and esp_handoff_state not in invalid and esp_oled_state not in invalid %}
+{% set esp_mode_prefix = (esp_oled_state.split('|', 1)[0] if esp_oled_state is string and '|' in esp_oled_state else '') %}
+{% set esp_oled_payload = (esp_oled_state.split('oled:', 1)[1] if esp_oled_state is string and 'oled:' in esp_oled_state else '') %}
+{% set esp_lighting_blank_ok = esp_mode_prefix == 'lighting' and (esp_oled_payload | trim) in ['-', ''] %}
+{% set esp_oled_ready = esp_oled_state not in invalid or esp_lighting_blank_ok %}
+{% set esp_runtime_ready = esp_runtime_visible and esp_handoff_state not in invalid and esp_oled_ready %}
 
 {% set host_sensor = states('sensor.ma_control_host') %}
 {% set hosts_sensor = states('sensor.ma_control_hosts') %}
@@ -116,7 +123,10 @@
 - Control host(s): **{{ host_sensor }} / {{ hosts_sensor }}**
 - Meta entity: **{{ active_meta_entity }}**
 - Now playing: **{{ now_playing_entity }} | {{ now_playing_state }} | {{ now_playing_title }}**
+- Preview key: **{{ now_playing_preview_key if now_playing_preview_key not in invalid else 'missing' }}**
+- Freshness age (s): **{{ (now_playing_freshness_age_s | round(1)) if now_playing_freshness_age_s is not none else 'missing' }}**
 - ESP handoff/oled: **{{ esp_handoff_state }} / {{ esp_oled_state }}**
+- ESP oled mode-semantic: **{{ 'lighting_blank_expected' if esp_lighting_blank_ok else 'normal' }}**
 
 ### Contract + parity
 - contract ready/valid: **{{ contract_ready }} / {{ contract_valid }}**
@@ -129,7 +139,7 @@
 - selection handoff: **{{ handoff_verdict }}**
 - metadata prep: **{{ metadata_verdict }}** (ready={{ metadata_prep.ready_for_metadata_handoff if metadata_prep.ready_for_metadata_handoff is defined else false }})
 - metadata blockers: **{{ (metadata_blockers | join(', ')) if (metadata_blockers | length) > 0 else 'none' }}**
-- esp runtime telemetry: **{{ 'ready' if esp_runtime_ready else 'degraded_or_missing' }}**
+- esp runtime telemetry: **{{ 'ready' if esp_runtime_ready else 'degraded_or_missing' }}**{% if esp_lighting_blank_ok %} (lighting blank expected){% endif %}
 - host cutover gate: **ready={{ host_cutover_ready }} / activation={{ host_activation_ready }}**
 - authority contract ready: **{{ authority_contract_ready }}**
 - authority reasons: **{{ (authority_reasons | join(', ')) if (authority_reasons | length) > 0 else 'none' }}**

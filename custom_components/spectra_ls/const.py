@@ -1,5 +1,5 @@
 # Description: Constants for Spectra LS custom integration shadow parity, Phase 3 guarded routing write-path controls, Phase 4 diagnostics scaffolding (F4-S01/F4-S03), Phase 5 metadata trial contract service, and Phase 6/8 control-center settings and fast-remap preset contracts including startup MA-readiness gating constants and selection-ownership migration services.
-# Version: 2026.05.04.3
+# Version: 2026.05.04.6
 # Last updated: 2026-05-04
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
@@ -46,6 +46,7 @@ SERVICE_RESTORE_LAST_VALID_TARGET = "restore_last_valid_target"
 SERVICE_TRACK_LAST_VALID_TARGET = "track_last_valid_target"
 SERVICE_SET_ACTIVE_TARGET = "set_active_target"
 SERVICE_SET_METADATA_OVERRIDE = "set_metadata_override"
+SERVICE_SET_METADATA_PROVIDER_PACKET = "set_metadata_provider_packet"
 
 PLATFORMS: tuple[Platform, ...] = (
     Platform.SENSOR,
@@ -93,6 +94,12 @@ LEGACY_META_STALE = "binary_sensor.ma_meta_stale"
 LEGACY_META_PAUSED_HIDE_S = "input_number.ma_meta_paused_hide_s"
 LEGACY_META_STALE_S = "input_number.ma_meta_stale_s"
 LEGACY_META_CONFIDENCE_MIN = "input_number.ma_meta_confidence_min"
+LEGACY_META_PROVIDER_LAST_STATUS = "input_text.ma_metadata_provider_last_status"
+LEGACY_META_PROVIDER_LAST_RESPONSE = "input_text.ma_metadata_provider_last_response"
+LEGACY_META_PROVIDER_LAST_PROVIDERS = "input_text.ma_metadata_provider_last_providers"
+LEGACY_META_PROVIDER_LAST_ITEM_URI = "input_text.ma_metadata_provider_last_item_uri"
+LEGACY_META_PROVIDER_LAST_REASON = "input_text.ma_metadata_provider_last_reason"
+LEGACY_META_PROVIDER_LAST_UPDATED_AT = "input_text.ma_metadata_provider_last_updated_at"
 
 # --- Auto-metadata policy defaults ---
 # These are the canonical fallback values used when the HA helper is unavailable.
@@ -133,6 +140,7 @@ LEGACY_CONTROL_HOST = "sensor.ma_control_host"
 LEGACY_CONTROL_TARGETS = "sensor.ma_control_targets"
 LEGACY_SERVER_PROFILE = "input_select.ma_server_profile"
 LEGACY_SERVER_PROFILE_EFFECTIVE = "sensor.ma_server_profile_effective"
+LEGACY_MA_API_URL = "sensor.ma_api_url"
 LEGACY_ROOMS_JSON = "sensor.spectra_ls_rooms_json"
 LEGACY_ROOMS_RAW = "sensor.spectra_ls_rooms_raw"
 
@@ -181,6 +189,13 @@ LEGACY_RETIRE_CANDIDATE_CONSTANTS: dict[str, str] = {
     "LEGACY_ACTIVE_DURATION": LEGACY_ACTIVE_DURATION,
     "LEGACY_SERVER_PROFILE": LEGACY_SERVER_PROFILE,
     "LEGACY_SERVER_PROFILE_EFFECTIVE": LEGACY_SERVER_PROFILE_EFFECTIVE,
+    "LEGACY_MA_API_URL": LEGACY_MA_API_URL,
+    "LEGACY_META_PROVIDER_LAST_STATUS": LEGACY_META_PROVIDER_LAST_STATUS,
+    "LEGACY_META_PROVIDER_LAST_RESPONSE": LEGACY_META_PROVIDER_LAST_RESPONSE,
+    "LEGACY_META_PROVIDER_LAST_PROVIDERS": LEGACY_META_PROVIDER_LAST_PROVIDERS,
+    "LEGACY_META_PROVIDER_LAST_ITEM_URI": LEGACY_META_PROVIDER_LAST_ITEM_URI,
+    "LEGACY_META_PROVIDER_LAST_REASON": LEGACY_META_PROVIDER_LAST_REASON,
+    "LEGACY_META_PROVIDER_LAST_UPDATED_AT": LEGACY_META_PROVIDER_LAST_UPDATED_AT,
 }
 
 LEGACY_RETIREMENT_GATES: dict[str, str] = {

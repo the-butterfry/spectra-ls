@@ -1,6 +1,6 @@
 # Description: Spectra LS UI/menu input handling + UI fonts + now-playing helper sensors.
-# Version: 2026.04.27.1
-# Last updated: 2026-04-27
+# Version: 2026.05.04.2
+# Last updated: 2026-05-04
 # Update version/date whenever you change this file.
 #
 # Sections:
@@ -112,26 +112,16 @@ script:
           const bool enable = id(meta_menu_selected_enable);
           const std::string entity = id(meta_menu_selected_entity);
           ESP_LOGI("meta", "menu select enable=%d entity='%s'", enable ? 1 : 0, entity.c_str());
-      - if:
-          condition:
-            lambda: |-
-              return id(meta_menu_selected_enable);
-          then:
-            - homeassistant.service:
-                service: input_boolean.turn_on
-                data:
-                  entity_id: ${ha_ma_meta_override_active}
-          else:
-            - homeassistant.service:
-                service: input_boolean.turn_off
-                data:
-                  entity_id: ${ha_ma_meta_override_active}
       - homeassistant.service:
-          service: input_text.set_value
+          service: spectra_ls.set_metadata_override
           data:
-            entity_id: ${ha_ma_meta_override_entity}
-            value: !lambda |-
+            enable: !lambda |-
+              return id(meta_menu_selected_enable);
+            entity_id: !lambda |-
               return id(meta_menu_selected_enable) ? id(meta_menu_selected_entity) : std::string("");
+            dry_run: "false"
+            force: "false"
+            reason: "esp_menu_metadata_override_selection"
 
   - id: apply_control_target_selection
     mode: restart
@@ -142,11 +132,13 @@ script:
               return id(control_target_prompt_commit) && !id(control_target_prompt_entity).empty();
           then:
             - homeassistant.service:
-                service: input_select.select_option
+                service: spectra_ls.set_active_target
                 data:
-                  entity_id: input_select.ma_active_target
-                  option: !lambda |-
+                  target: !lambda |-
                     return id(control_target_prompt_entity);
+                  dry_run: "false"
+                  force: "false"
+                  sync_options_if_missing: "false"
             - lambda: |-
                 id(control_target_prompt_commit) = false;
 

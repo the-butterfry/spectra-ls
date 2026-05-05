@@ -1,6 +1,6 @@
 <!-- Description: End-user overview for the Spectra L/S Home Assistant + ESPHome system. -->
-<!-- Version: 2026.05.03.1 -->
-<!-- Last updated: 2026-05-03 -->
+<!-- Version: 2026.05.04.2 -->
+<!-- Last updated: 2026-05-04 -->
 
 # Spectra L/S
 
@@ -18,6 +18,8 @@ Current operating posture:
 
 - The legacy runtime path (`packages/` + `esphome/`) is now treated as a **sealed rollback-safe baseline**.
 - The custom integration (`custom_components/spectra_ls`) is the **primary path for net-new control-plane and feature growth**.
+- Active target/host authority now runs in **component-primary non-hybrid mode** during normal operation (legacy writer lanes are authority-gated and only remain as rollback-safe fallback semantics).
+- Authority mode is now **component-pinned** in active operation (legacy authority-mode selection is disabled), and component auto-select keeps current valid target by default unless explicitly forced.
 - The legacy `control-py` path is **archived exploration history** on `main` and is no longer a development or run target.
 - Legacy path changes are still allowed for compatibility, safety, and rollback integrity — but not for unbounded new ownership behavior.
 

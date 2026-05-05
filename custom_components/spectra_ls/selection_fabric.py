@@ -1,6 +1,6 @@
 # Description: Selection-fabric workflow for Spectra LS scheduler, target-options, and helper write orchestration extracted from meta-fabric.
-# Version: 2026.05.03.3
-# Last updated: 2026-05-03
+# Version: 2026.05.04.5
+# Last updated: 2026-05-04
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -809,6 +809,9 @@ class SelectionFabricWorkflow:
 
         helper_current_resolved = c._is_resolved_state(helper_current)
         helper_current_in_options = helper_current_resolved and helper_current in helper_options
+        if helper_current_in_options and not force:
+            selected_target = helper_current
+            selection_reason = "component_sticky_current_target"
         if selected_target == "" and helper_current_in_options:
             selected_target = helper_current
             selection_reason = "helper_current_fallback"
@@ -1267,6 +1270,158 @@ class SelectionFabricWorkflow:
             source="cycle_active_target",
             correlation_id=corr,
             active_target=next_target,
+        )
+        c.async_set_updated_data(c._build_snapshot())
+        return result
+
+    async def async_set_active_target(
+        self,
+        *,
+        target: str,
+        dry_run: bool,
+        force: bool,
+        sync_options_if_missing: bool,
+        correlation_id: str | None,
+    ) -> dict[str, Any]:
+        """Set active-target helper selection through component-guarded explicit target contract."""
+        c = self._coordinator
+        requested_at = datetime.now(UTC).isoformat()
+        corr = (correlation_id or "").strip() or f"set-active-target-{uuid4().hex[:12]}"
+
+        requested_target = str(target or "").strip()
+        helper_state = c.hass.states.get(LEGACY_ACTIVE_TARGET_HELPER)
+        helper_current = str(helper_state.state if helper_state is not None else "").strip()
+        helper_options: list[str] = []
+        if helper_state is not None:
+            helper_options = WritePathFabric.normalize_options(helper_state.attributes.get("options", []))
+
+        result: dict[str, Any] = {
+            "status": "pending",
+            "reason": "",
+            "requested_at": requested_at,
+            "completed_at": requested_at,
+            "correlation_id": corr,
+            "authority_mode": c._write_authority_mode,
+            "dry_run": bool(dry_run),
+            "force": bool(force),
+            "sync_options_if_missing": bool(sync_options_if_missing),
+            "helper_entity": LEGACY_ACTIVE_TARGET_HELPER,
+            "helper_exists": helper_state is not None,
+            "helper_current": helper_current,
+            "helper_options_count": len(helper_options),
+            "requested_target": requested_target,
+            "selected_target": requested_target,
+        }
+
+        if requested_target == "" or not c._is_resolved_state(requested_target):
+            result["status"] = "blocked_invalid_target"
+            result["reason"] = "Requested target is unresolved"
+        elif c._normalize_state(requested_target) == "none":
+            result["status"] = "blocked_invalid_target"
+            result["reason"] = "Requested target cannot be none"
+        elif helper_state is None:
+            result["status"] = "blocked_missing_target_helper"
+            result["reason"] = "Target helper entity is missing"
+
+        WritePathFabric.apply_standard_write_guards(
+            c,
+            result,
+            force=bool(force),
+            dry_run=bool(dry_run),
+            authority_required=WRITE_AUTH_COMPONENT,
+            authority_block_reason="Write authority is legacy; explicit target set is intentionally blocked",
+        )
+
+        if result["status"] == "pending" and requested_target not in helper_options:
+            if dry_run and sync_options_if_missing:
+                result["options_sync_planned"] = True
+            elif sync_options_if_missing:
+                scaffolds = c._build_component_scaffolds()
+                target_options_plan = (
+                    scaffolds.get("target_options_plan", {})
+                    if isinstance(scaffolds.get("target_options_plan", {}), dict)
+                    else {}
+                )
+                planned_options = (
+                    target_options_plan.get("proposed_options", [])
+                    if isinstance(target_options_plan.get("proposed_options", []), list)
+                    else []
+                )
+                planned_options = [
+                    str(item).strip() for item in planned_options if isinstance(item, str) and str(item).strip()
+                ]
+                if requested_target in planned_options:
+                    try:
+                        await c.hass.services.async_call(
+                            "input_select",
+                            "set_options",
+                            {
+                                "entity_id": LEGACY_ACTIVE_TARGET_HELPER,
+                                "options": planned_options,
+                            },
+                            blocking=True,
+                        )
+                        helper_options = planned_options
+                        result["options_synced"] = True
+                        result["helper_options_count"] = len(helper_options)
+                    except Exception as err:  # pragma: no cover - defensive runtime guard
+                        result["status"] = "write_error"
+                        result["reason"] = "Failed syncing helper options before explicit target set"
+                        result["error"] = str(err)
+                else:
+                    result["status"] = "blocked_option_mismatch"
+                    result["reason"] = "Requested target is not present in helper options"
+            else:
+                result["status"] = "blocked_option_mismatch"
+                result["reason"] = "Requested target is not present in helper options"
+
+        if result["status"] == "pending" and helper_current == requested_target:
+            result["status"] = "noop_already_selected"
+            result["reason"] = "Helper already matches requested target"
+
+        if result["status"] == "pending" and dry_run:
+            result["status"] = "dry_run_ok"
+            result["reason"] = "Explicit target-set guards passed (dry run)"
+
+        if result["status"] == "pending":
+            c._write_in_progress = True
+            try:
+                await c.hass.services.async_call(
+                    "input_select",
+                    "select_option",
+                    {
+                        "entity_id": LEGACY_ACTIVE_TARGET_HELPER,
+                        "option": requested_target,
+                    },
+                    blocking=True,
+                )
+                result["status"] = "write_applied"
+                result["reason"] = "Requested target applied successfully"
+
+                await self.async_track_last_valid_target(
+                    dry_run=False,
+                    force=True,
+                    correlation_id=f"{corr}-track",
+                    source="set_active_target",
+                )
+            except Exception as err:  # pragma: no cover - defensive runtime guard
+                result["status"] = "write_error"
+                result["reason"] = "Service call failed during explicit target set"
+                result["error"] = str(err)
+            finally:
+                c._write_in_progress = False
+
+        if result["status"] in {"dry_run_ok", "noop_already_selected", "write_applied", "write_error"}:
+            WritePathFabric.mark_write_touch(c)
+
+        result["completed_at"] = datetime.now(UTC).isoformat()
+        c._last_set_active_target_attempt = result
+        WritePathFabric.stamp_last_write_attempt(
+            c,
+            result=result,
+            source="set_active_target",
+            correlation_id=corr,
+            active_target=requested_target,
         )
         c.async_set_updated_data(c._build_snapshot())
         return result

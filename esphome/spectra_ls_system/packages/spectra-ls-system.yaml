@@ -1,6 +1,6 @@
 # Description: Spectra LS core state + globals + system intervals + shared scripts.
-# Version: 2026.05.03.1
-# Last updated: 2026-05-03
+# Version: 2026.05.04.11
+# Last updated: 2026-05-04
 # Update version/date whenever you change this file.
 #
 # Sections:
@@ -216,6 +216,22 @@ globals:
     restore_value: no
     initial_value: "0"
   - id: arylic_http_pref_last_success_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: arylic_http_pref_host_alt
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: arylic_http_pref_scheme_alt
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: arylic_http_pref_port_alt
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: arylic_http_pref_alt_last_success_ms
     type: uint32_t
     restore_value: no
     initial_value: "0"
@@ -1121,12 +1137,36 @@ globals:
     type: std::string
     restore_value: no
     initial_value: '""'
+  - id: control_fallback_apply_total_count
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: control_hosts_fallback_apply_count
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: control_host_fallback_apply_count
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: control_port_fallback_apply_count
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: control_fallback_last_applied_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: control_fallback_last_applied_type
+    type: std::string
+    restore_value: no
+    initial_value: '"none"'
 
 # === HTTP request (Arylic TCP status) ===
 http_request:
   id: arylic_http
   useragent: esphome/${device_name}
-  timeout: 1s
+  timeout: ${arylic_http_timeout_ms}ms
   verify_ssl: false
 
 text_sensor:
@@ -1180,11 +1220,15 @@ text_sensor:
       };
 
       const std::string target = id(ma_active_target).has_state() ? id(ma_active_target).state.c_str() : "";
-      const std::string hosts = id(ma_control_hosts).has_state() ? id(ma_control_hosts).state.c_str() : "";
-      const std::string host = id(ma_control_host).has_state() ? id(ma_control_host).state.c_str() : "";
+      const std::string friendly = id(ma_active_friendly).has_state() ? id(ma_active_friendly).state.c_str() : "";
+      const std::string hosts_state = id(ma_control_hosts).has_state() ? id(ma_control_hosts).state.c_str() : "";
+      const std::string host_state = id(ma_control_host).has_state() ? id(ma_control_host).state.c_str() : "";
+      const std::string hosts_cached = id(arylic_control_hosts);
+      const std::string host_cached = id(arylic_control_host);
+      const bool host_ready = is_resolved(host_state) || is_resolved(hosts_state) || is_resolved(host_cached) || is_resolved(hosts_cached);
 
-      if (!is_resolved(target)) return std::string("no_target");
-      if (is_resolved(host) || is_resolved(hosts)) return std::string("ready");
+      if (!is_resolved(target) && !is_resolved(friendly) && !host_ready) return std::string("no_target");
+      if (host_ready) return std::string("ready");
       if (id(control_target_pending_until_ms) > now) return std::string("pending_refresh");
       return std::string("no_host");
   - platform: template
@@ -1251,9 +1295,72 @@ text_sensor:
         }
       }
       line = sanitize_ascii(line);
-      if (line.empty()) line = "-";
+      if (line.empty()) {
+        if (id(screen_mode) == 0) {
+          line = "LIGHTING";
+        } else {
+          line = "-";
+        }
+      }
       if (line.size() > 32) line = line.substr(0, 32);
       return mode + "|oled:" + line;
+  - platform: template
+    name: "ESP Control Fallback Last Type"
+    id: esp_control_fallback_last_type
+    internal: false
+    update_interval: 5s
+    lambda: |-
+      return id(control_fallback_last_applied_type);
+
+sensor:
+  - platform: template
+    name: "ESP Control Fallback Apply Count"
+    id: esp_control_fallback_apply_count
+    internal: false
+    update_interval: 30s
+    state_class: total_increasing
+    accuracy_decimals: 0
+    lambda: |-
+      return (float) id(control_fallback_apply_total_count);
+  - platform: template
+    name: "ESP Control Hosts Fallback Count"
+    id: esp_control_hosts_fallback_apply_count
+    internal: false
+    update_interval: 30s
+    state_class: total_increasing
+    accuracy_decimals: 0
+    lambda: |-
+      return (float) id(control_hosts_fallback_apply_count);
+  - platform: template
+    name: "ESP Control Host Fallback Count"
+    id: esp_control_host_fallback_apply_count
+    internal: false
+    update_interval: 30s
+    state_class: total_increasing
+    accuracy_decimals: 0
+    lambda: |-
+      return (float) id(control_host_fallback_apply_count);
+  - platform: template
+    name: "ESP Control Port Fallback Count"
+    id: esp_control_port_fallback_apply_count
+    internal: false
+    update_interval: 30s
+    state_class: total_increasing
+    accuracy_decimals: 0
+    lambda: |-
+      return (float) id(control_port_fallback_apply_count);
+  - platform: template
+    name: "ESP Control Fallback Last Age"
+    id: esp_control_fallback_last_age_s
+    internal: false
+    unit_of_measurement: "s"
+    accuracy_decimals: 1
+    update_interval: 5s
+    lambda: |-
+      if (id(control_fallback_last_applied_ms) == 0) return -1.0f;
+      const uint32_t now = millis();
+      if (now < id(control_fallback_last_applied_ms)) return 0.0f;
+      return (float) ((now - id(control_fallback_last_applied_ms)) / 1000.0f);
 
 # === System intervals ===
 interval:
@@ -1294,6 +1401,35 @@ interval:
                       }
                       return false;
                     }
+                    const uint32_t since_input_ms = now - id(last_input_ms);
+                    if (since_input_ms < ${arylic_http_poll_input_guard_ms}) {
+                      if (${arylic_http_diag_log_enabled} &&
+                          ((now - id(arylic_http_diag_last_log_ms)) >= ${arylic_http_diag_log_interval_ms})) {
+                        id(arylic_http_diag_last_log_ms) = now;
+                        ESP_LOGI("arylic_http_diag", "poll_skip reason=input_guard since_input_ms=%u guard_ms=%u host=%s scheme=%s port=%d",
+                                 (unsigned) since_input_ms,
+                                 (unsigned) ${arylic_http_poll_input_guard_ms},
+                                 id(arylic_http_host_active).c_str(),
+                                 id(arylic_http_scheme_active).c_str(),
+                                 id(arylic_http_port_active));
+                      }
+                      return false;
+                    }
+
+                    std::string ha_state_l = id(ha_audio_state).has_state() ? id(ha_audio_state).state.c_str() : "";
+                    for (auto &c : ha_state_l) c = (char) ::tolower(c);
+                    const bool ha_idle_transition = (ha_state_l == "idle" || ha_state_l == "off" || ha_state_l == "standby");
+                    if (ha_idle_transition && id(arylic_playing_state)) {
+                      if (${arylic_http_diag_log_enabled} &&
+                          ((now - id(arylic_http_diag_last_log_ms)) >= ${arylic_http_diag_log_interval_ms})) {
+                        id(arylic_http_diag_last_log_ms) = now;
+                        ESP_LOGI("arylic_http_diag", "poll_skip reason=ha_idle_transition playing=1 host=%s scheme=%s port=%d",
+                                 id(arylic_http_host_active).c_str(),
+                                 id(arylic_http_scheme_active).c_str(),
+                                 id(arylic_http_port_active));
+                      }
+                      return false;
+                    }
 
                     auto clean = [](std::string value) -> std::string {
                       size_t start = value.find_first_not_of(" \t");
@@ -1328,13 +1464,25 @@ interval:
 
                     if (probe_host != id(arylic_http_host_active)) {
                       id(arylic_http_host_active) = probe_host;
-                      const bool host_has_preferred_scheme =
-                          (id(arylic_http_pref_host) == probe_host) &&
+                      std::string pref_scheme;
+                      int pref_port = 0;
+                      bool host_has_preferred_scheme = false;
+                      if ((id(arylic_http_pref_host) == probe_host) &&
                           (id(arylic_http_pref_scheme) == "http" || id(arylic_http_pref_scheme) == "https") &&
-                          (id(arylic_http_pref_port) > 0 && id(arylic_http_pref_port) <= 65534);
+                          (id(arylic_http_pref_port) > 0 && id(arylic_http_pref_port) <= 65534)) {
+                        pref_scheme = id(arylic_http_pref_scheme);
+                        pref_port = id(arylic_http_pref_port);
+                        host_has_preferred_scheme = true;
+                      } else if ((id(arylic_http_pref_host_alt) == probe_host) &&
+                                 (id(arylic_http_pref_scheme_alt) == "http" || id(arylic_http_pref_scheme_alt) == "https") &&
+                                 (id(arylic_http_pref_port_alt) > 0 && id(arylic_http_pref_port_alt) <= 65534)) {
+                        pref_scheme = id(arylic_http_pref_scheme_alt);
+                        pref_port = id(arylic_http_pref_port_alt);
+                        host_has_preferred_scheme = true;
+                      }
                       if (host_has_preferred_scheme) {
-                        id(arylic_http_scheme_active) = id(arylic_http_pref_scheme);
-                        id(arylic_http_port_active) = id(arylic_http_pref_port);
+                        id(arylic_http_scheme_active) = pref_scheme;
+                        id(arylic_http_port_active) = pref_port;
                       } else {
                         id(arylic_http_scheme_active) = "${arylic_http_scheme}";
                         id(arylic_http_port_active) = ${arylic_http_port};
@@ -1382,7 +1530,14 @@ interval:
                               if (response->status_code < 200 || response->status_code >= 300) {
                                 int fails = id(arylic_http_fail_count) + 1;
                                 id(arylic_http_fail_count) = fails;
-                                const uint32_t backoff_ms = (fails >= 6) ? 60000 : (fails >= 4) ? 30000 : (fails >= 2) ? 15000 : 5000;
+                                const bool has_known_good_transport =
+                                    (((id(arylic_http_pref_host) == id(arylic_http_host_active)) && (id(arylic_http_pref_last_success_ms) > 0)) ||
+                                     ((id(arylic_http_pref_host_alt) == id(arylic_http_host_active)) && (id(arylic_http_pref_alt_last_success_ms) > 0)));
+                                const uint32_t backoff_ms = ((!has_known_good_transport && fails >= 3) ? ${arylic_http_backoff_max_ms}
+                                                           : (fails >= 5) ? ${arylic_http_backoff_max_ms}
+                                                           : (fails >= 3) ? ${arylic_http_backoff_third_ms}
+                                                           : (fails >= 2) ? ${arylic_http_backoff_second_ms}
+                                                                         : ${arylic_http_backoff_first_ms});
                                 id(arylic_http_pause_until_ms) = millis() + backoff_ms;
                                 if (${arylic_http_diag_log_enabled}) {
                                   ESP_LOGI("arylic_http_diag", "poll_http_error status=%d elapsed_ms=%u fail_count=%d next_backoff_ms=%u host=%s scheme=%s port=%d",
@@ -1394,16 +1549,27 @@ interval:
                                            id(arylic_http_scheme_active).c_str(),
                                            id(arylic_http_port_active));
                                 }
-                                if (fails >= 2) {
+                                if (fails >= 4) {
                                   const bool preferred_for_host =
-                                      (id(arylic_http_pref_host) == id(arylic_http_host_active)) &&
-                                      (id(arylic_http_pref_scheme) == "http" || id(arylic_http_pref_scheme) == "https") &&
-                                      (id(arylic_http_scheme_active) == id(arylic_http_pref_scheme));
+                                      (((id(arylic_http_pref_host) == id(arylic_http_host_active)) &&
+                                        (id(arylic_http_pref_scheme) == "http" || id(arylic_http_pref_scheme) == "https") &&
+                                        (id(arylic_http_scheme_active) == id(arylic_http_pref_scheme))) ||
+                                       ((id(arylic_http_pref_host_alt) == id(arylic_http_host_active)) &&
+                                        (id(arylic_http_pref_scheme_alt) == "http" || id(arylic_http_pref_scheme_alt) == "https") &&
+                                        (id(arylic_http_scheme_active) == id(arylic_http_pref_scheme_alt))));
                                   if (preferred_for_host) {
                                     ESP_LOGW("arylic_http", "probe fallback suppressed host=%s keep preferred %s:%d",
                                              id(arylic_http_host_active).c_str(),
                                              id(arylic_http_scheme_active).c_str(),
                                              id(arylic_http_port_active));
+                                    return;
+                                  }
+                                  if (!has_known_good_transport) {
+                                    ESP_LOGW("arylic_http", "probe fallback suppressed host=%s no known-good transport yet (scheme=%s port=%d fail=%d)",
+                                             id(arylic_http_host_active).c_str(),
+                                             id(arylic_http_scheme_active).c_str(),
+                                             id(arylic_http_port_active),
+                                             fails);
                                     return;
                                   }
                                   const bool use_https = id(arylic_http_scheme_active) == "https";
@@ -1423,10 +1589,25 @@ interval:
                               }
                               id(arylic_http_fail_count) = 0;
                               id(arylic_http_pause_until_ms) = 0;
-                              id(arylic_http_pref_host) = id(arylic_http_host_active);
-                              id(arylic_http_pref_scheme) = id(arylic_http_scheme_active);
-                              id(arylic_http_pref_port) = id(arylic_http_port_active);
-                              id(arylic_http_pref_last_success_ms) = now_ms;
+                              if (id(arylic_http_pref_host) == id(arylic_http_host_active)) {
+                                id(arylic_http_pref_scheme) = id(arylic_http_scheme_active);
+                                id(arylic_http_pref_port) = id(arylic_http_port_active);
+                                id(arylic_http_pref_last_success_ms) = now_ms;
+                              } else if (id(arylic_http_pref_host_alt) == id(arylic_http_host_active)) {
+                                id(arylic_http_pref_scheme_alt) = id(arylic_http_scheme_active);
+                                id(arylic_http_pref_port_alt) = id(arylic_http_port_active);
+                                id(arylic_http_pref_alt_last_success_ms) = now_ms;
+                              } else {
+                                id(arylic_http_pref_host_alt) = id(arylic_http_pref_host);
+                                id(arylic_http_pref_scheme_alt) = id(arylic_http_pref_scheme);
+                                id(arylic_http_pref_port_alt) = id(arylic_http_pref_port);
+                                id(arylic_http_pref_alt_last_success_ms) = id(arylic_http_pref_last_success_ms);
+
+                                id(arylic_http_pref_host) = id(arylic_http_host_active);
+                                id(arylic_http_pref_scheme) = id(arylic_http_scheme_active);
+                                id(arylic_http_pref_port) = id(arylic_http_port_active);
+                                id(arylic_http_pref_last_success_ms) = now_ms;
+                              }
                               const std::string &payload = body;
                                 if (${arylic_http_diag_log_enabled} &&
                                   (elapsed_ms >= 250 ||
@@ -1617,7 +1798,14 @@ interval:
                               id(arylic_http_request_start_ms) = 0;
                               int fails = id(arylic_http_fail_count) + 1;
                               id(arylic_http_fail_count) = fails;
-                              const uint32_t backoff_ms = (fails >= 6) ? 60000 : (fails >= 4) ? 30000 : (fails >= 2) ? 15000 : 5000;
+                                const bool has_known_good_transport =
+                                  (((id(arylic_http_pref_host) == id(arylic_http_host_active)) && (id(arylic_http_pref_last_success_ms) > 0)) ||
+                                   ((id(arylic_http_pref_host_alt) == id(arylic_http_host_active)) && (id(arylic_http_pref_alt_last_success_ms) > 0)));
+                                const uint32_t backoff_ms = ((!has_known_good_transport && fails >= 3) ? ${arylic_http_backoff_max_ms}
+                                             : (fails >= 5) ? ${arylic_http_backoff_max_ms}
+                                                         : (fails >= 3) ? ${arylic_http_backoff_third_ms}
+                                                         : (fails >= 2) ? ${arylic_http_backoff_second_ms}
+                                                     : ${arylic_http_backoff_first_ms});
                               id(arylic_http_pause_until_ms) = millis() + backoff_ms;
                               if (${arylic_http_diag_log_enabled}) {
                                 ESP_LOGI("arylic_http_diag", "poll_error elapsed_ms=%u fail_count=%d next_backoff_ms=%u host=%s scheme=%s port=%d",
@@ -1628,16 +1816,27 @@ interval:
                                          id(arylic_http_scheme_active).c_str(),
                                          id(arylic_http_port_active));
                               }
-                              if (fails >= 2) {
+                              if (fails >= 4) {
                                 const bool preferred_for_host =
-                                    (id(arylic_http_pref_host) == id(arylic_http_host_active)) &&
-                                    (id(arylic_http_pref_scheme) == "http" || id(arylic_http_pref_scheme) == "https") &&
-                                    (id(arylic_http_scheme_active) == id(arylic_http_pref_scheme));
+                                    (((id(arylic_http_pref_host) == id(arylic_http_host_active)) &&
+                                      (id(arylic_http_pref_scheme) == "http" || id(arylic_http_pref_scheme) == "https") &&
+                                      (id(arylic_http_scheme_active) == id(arylic_http_pref_scheme))) ||
+                                     ((id(arylic_http_pref_host_alt) == id(arylic_http_host_active)) &&
+                                      (id(arylic_http_pref_scheme_alt) == "http" || id(arylic_http_pref_scheme_alt) == "https") &&
+                                      (id(arylic_http_scheme_active) == id(arylic_http_pref_scheme_alt))));
                                 if (preferred_for_host) {
                                   ESP_LOGW("arylic_http", "probe fallback suppressed host=%s keep preferred %s:%d",
                                            id(arylic_http_host_active).c_str(),
                                            id(arylic_http_scheme_active).c_str(),
                                            id(arylic_http_port_active));
+                                  return;
+                                }
+                                if (!has_known_good_transport) {
+                                  ESP_LOGW("arylic_http", "probe fallback suppressed host=%s no known-good transport yet (scheme=%s port=%d fail=%d)",
+                                           id(arylic_http_host_active).c_str(),
+                                           id(arylic_http_scheme_active).c_str(),
+                                           id(arylic_http_port_active),
+                                           fails);
                                   return;
                                 }
                                 const bool use_https = id(arylic_http_scheme_active) == "https";

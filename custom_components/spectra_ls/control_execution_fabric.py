@@ -1,6 +1,6 @@
 # Description: Control-execution fabric workflow for Spectra LS control-center settings/input and guarded write-trial services extracted from coordinator.
-# Version: 2026.05.03.3
-# Last updated: 2026-05-03
+# Version: 2026.05.04.5
+# Last updated: 2026-05-04
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -13,6 +13,7 @@ from uuid import uuid4
 from .const import (
     CONTROL_CENTER_INPUT_EVENTS,
     LEGACY_ACTIVE_TARGET_HELPER,
+    OPT_DEFAULT_WRITE_AUTHORITY_MODE,
     WRITE_AUTH_COMPONENT,
     normalize_control_center_settings,
 )
@@ -149,13 +150,22 @@ class ControlExecutionFabricWorkflow:
     async def async_set_write_authority(self, mode: str, reason: str = "") -> None:
         """Set write authority mode for guarded routing write-path trials."""
         c = self._coordinator
+        requested_mode = str(mode or "").strip().lower()
         normalized_mode = c._normalize_write_authority(mode)
         c._write_authority_mode = normalized_mode
+
+        options = dict(c._entry.options)
+        persisted_mode = str(options.get(OPT_DEFAULT_WRITE_AUTHORITY_MODE, "") or "").strip().lower()
+        if persisted_mode != normalized_mode:
+            options[OPT_DEFAULT_WRITE_AUTHORITY_MODE] = normalized_mode
+            c.hass.config_entries.async_update_entry(c._entry, options=options)
+
         c._last_write_attempt = {
             "status": "authority_set",
             "timestamp": datetime.now(UTC).isoformat(),
             "authority_mode": normalized_mode,
-            "reason": (reason or "").strip() or "Authority mode updated",
+            "requested_mode": requested_mode,
+            "reason": (reason or "").strip() or "Authority mode pinned to component",
             "correlation_id": f"authority-{uuid4().hex[:12]}",
         }
         c.async_set_updated_data(c._build_snapshot())

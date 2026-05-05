@@ -1,6 +1,6 @@
 # Description: Scaffold-fabric workflow for Spectra LS scaffold/inventory/backend assembly extracted from meta-fabric.
-# Version: 2026.05.03.1
-# Last updated: 2026-05-03
+# Version: 2026.05.04.1
+# Last updated: 2026-05-04
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -12,6 +12,7 @@ from .const import (
     LEGACY_ACTIVE_TARGET_HELPER,
     LEGACY_CONTROL_HOST,
     LEGACY_CONTROL_TARGETS,
+    LEGACY_MA_API_URL,
     LEGACY_META_DETECTED_ENTITY,
     LEGACY_META_OVERRIDE_ACTIVE,
     LEGACY_META_OVERRIDE_ENTITY,
@@ -225,6 +226,7 @@ class ScaffoldFabricWorkflow:
         c = self._coordinator
         profile_state = c.hass.states.get(LEGACY_SERVER_PROFILE)
         profile_effective_state = c.hass.states.get(LEGACY_SERVER_PROFILE_EFFECTIVE)
+        api_url_state = c.hass.states.get(LEGACY_MA_API_URL)
 
         profile_value = ""
         if profile_state is not None:
@@ -234,11 +236,18 @@ class ScaffoldFabricWorkflow:
         if profile_effective_state is not None:
             selected_url = str(profile_effective_state.attributes.get("selected_url", "") or "").strip()
 
+        api_url = ""
+        if api_url_state is not None:
+            api_url = str(api_url_state.state or "").strip()
+
         return {
             "profile_entity": LEGACY_SERVER_PROFILE,
             "effective_entity": LEGACY_SERVER_PROFILE_EFFECTIVE,
+            "api_url_entity": LEGACY_MA_API_URL,
             "profile": profile_value,
             "selected_url": selected_url,
+            "api_url": api_url,
             "profile_resolved": c._is_resolved_state(profile_value),
             "selected_url_resolved": c._is_resolved_state(selected_url),
+            "api_url_resolved": c._is_resolved_state(api_url),
         }

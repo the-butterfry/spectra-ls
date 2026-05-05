@@ -1,5 +1,5 @@
 # Description: Spectra LS System substitutions for ESPHome main config and packages.
-# Version: 2026.05.04.3
+# Version: 2026.05.04.4
 # Last updated: 2026-05-04
 # Spectra LS substitutions scoped to spectra_ls_system.
 # Use absolute paths for assets so this file can move with spectra_ls_system.
@@ -135,8 +135,8 @@ ha_ma_now_playing_preview_key: sensor.component_now_playing_preview_key
 ha_ma_now_playing_freshness_age_s: sensor.component_now_playing_freshness_age
 ha_ma_meta_candidates: sensor.component_meta_candidates
 ha_ma_meta_low_confidence: binary_sensor.component_meta_low_confidence
-ha_ma_meta_override_active: input_boolean.ma_meta_override_active
-ha_ma_meta_override_entity: input_text.ma_meta_override_entity
+ha_ma_meta_override_active: binary_sensor.component_metadata_override_active
+ha_ma_meta_override_entity: sensor.component_metadata_override_entity
 ha_ma_control_targets: sensor.component_control_targets
 ha_ma_control_hosts: sensor.component_control_hosts
 ha_ma_control_host: sensor.component_control_host

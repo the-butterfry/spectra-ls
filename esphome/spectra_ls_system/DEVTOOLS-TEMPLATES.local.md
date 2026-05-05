@@ -1,6 +1,6 @@
 <!-- Description: Copy/paste Home Assistant Dev Tools template diagnostics for Spectra LS System. -->
-<!-- Version: 2026.05.03.54 -->
-<!-- Last updated: 2026-05-03 -->
+<!-- Version: 2026.05.05.1 -->
+<!-- Last updated: 2026-05-05 -->
 
 # Spectra LS System — Dev Tools Template Validation
 
@@ -23,6 +23,13 @@
   - `docs/testing/raw/f4_s01_capability_profile_validation.jinja`
   - `docs/testing/raw/meta_oled_control_host_flapping_diagnostic.jinja`
   - `docs/testing/raw/meta_component_full_stack_tester.jinja`
+
+LC6-L05 phase-2 consumer note:
+
+- Prefer component backend/API sensors first in diagnostics reads:
+  - `sensor.component_backend_profile`
+  - `sensor.component_ma_api_url`
+- Use runtime helper/API surfaces only as compatibility fallback while retirement gates remain open.
 
 ## 1) Overall Spectra LS Health Check (Comprehensive)
 
@@ -58,6 +65,7 @@
   'script.ma_auto_select',
   'script.ma_set_volume',
   'script.ma_set_balance',
+  'sensor.component_ma_api_url',
   'sensor.ma_api_url'
 ] %}
 
@@ -193,7 +201,7 @@
 {% endfor %}
 
 ### Notes
-- `rest_command.*` does not expose a normal state entity, so this template verifies package health via sentinels (`sensor.ma_api_url`, scripts).
+- `rest_command.*` does not expose a normal state entity, so this template verifies package health via sentinels (`sensor.component_ma_api_url` primary, `sensor.ma_api_url` fallback, plus scripts).
 - Automation health is checked by `automation.attributes.id` (stable), not alias/entity slug names (which can vary).
 - If helpers/scripts are missing here, package loading is still broken.
 ```

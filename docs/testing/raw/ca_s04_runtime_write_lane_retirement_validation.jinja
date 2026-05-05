@@ -1,0 +1,92 @@
+{# Description: Raw copy/paste Jinja template for CA-S04 runtime write-lane retirement wave-1 readiness (authority posture, lane statuses, blocker taxonomy, and deterministic next action). #}
+{# Version: 2026.05.05.1 #}
+{# Last updated: 2026-05-05 #}
+
+{% set invalid = ['', 'none', 'unknown', 'unavailable', 'None', none] %}
+
+{% set shadow_entity = 'sensor.shadow_active_target' if states['sensor.shadow_active_target'] is not none else 'sensor.spectra_ls_shadow_active_target' %}
+{% set shadow_exists = states[shadow_entity] is not none %}
+
+{% set write_controls = state_attr(shadow_entity, 'write_controls') if shadow_exists else {} %}
+{% if write_controls is not mapping %}{% set write_controls = {} %}{% endif %}
+
+{% set scheduler_validation = state_attr(shadow_entity, 'scheduler_validation') if shadow_exists else {} %}
+{% if scheduler_validation is not mapping %}{% set scheduler_validation = {} %}{% endif %}
+
+{% set authority_mode = (write_controls.authority_mode if write_controls.authority_mode is defined else 'unknown') %}
+{% set scheduler_apply = write_controls.scheduler_last_apply if write_controls.scheduler_last_apply is defined and write_controls.scheduler_last_apply is mapping else {} %}
+{% set auto_select_attempt = write_controls.auto_select_last_attempt if write_controls.auto_select_last_attempt is defined and write_controls.auto_select_last_attempt is mapping else {} %}
+
+{% set scheduler_apply_status = (scheduler_apply.status if scheduler_apply.status is defined else 'never_attempted') %}
+{% set auto_select_status = (auto_select_attempt.status if auto_select_attempt.status is defined else 'never_attempted') %}
+{% set scheduler_ready = (scheduler_validation.ready_for_scheduler_use if scheduler_validation.ready_for_scheduler_use is defined else false) %}
+{% set scheduler_verdict = (scheduler_validation.verdict if scheduler_validation.verdict is defined else 'missing') %}
+
+{% set lc6_l01_status = 'ready' %}
+{% set lc6_l01_reasons = [] %}
+{% if authority_mode != 'component' %}
+  {% set lc6_l01_status = 'blocked' %}
+  {% set lc6_l01_reasons = lc6_l01_reasons + ['authority_not_component'] %}
+{% endif %}
+{% if scheduler_ready == false or scheduler_verdict != 'PASS' %}
+  {% set lc6_l01_status = 'hold' if lc6_l01_status != 'blocked' else lc6_l01_status %}
+  {% set lc6_l01_reasons = lc6_l01_reasons + ['scheduler_not_ready_for_retirement'] %}
+{% endif %}
+
+{% set lc6_l03_status = 'hold' %}
+{% set lc6_l03_reasons = ['metadata_override_helper_storage_still_compat'] %}
+
+{% set component_backend = states('sensor.component_backend_profile') %}
+{% set component_api = states('sensor.component_ma_api_url') %}
+{% set lc6_l05_status = 'ready' if component_backend not in invalid and component_api not in invalid else 'hold' %}
+{% set lc6_l05_reasons = [] if lc6_l05_status == 'ready' else ['component_backend_or_api_unresolved'] %}
+
+{% set blockers = namespace(items=[]) %}
+{% if lc6_l01_status != 'ready' %}
+  {% set blockers.items = blockers.items + ['lc6_l01_not_ready'] %}
+{% endif %}
+{% if lc6_l03_status != 'ready' %}
+  {% set blockers.items = blockers.items + ['lc6_l03_not_ready'] %}
+{% endif %}
+{% if lc6_l05_status != 'ready' %}
+  {% set blockers.items = blockers.items + ['lc6_l05_not_ready'] %}
+{% endif %}
+
+{% if scheduler_apply_status in ['blocked_authority','blocked_debounce','blocked_reentrancy','blocked_option_mismatch','blocked_no_candidate'] %}
+  {% set blockers.items = blockers.items + ['helper_writer_guard_blocked'] %}
+{% endif %}
+
+{% set retirement_ready = lc6_l01_status == 'ready' and lc6_l03_status == 'ready' and lc6_l05_status == 'ready' and (blockers.items | length == 0) %}
+{% set verdict = 'PASS' if retirement_ready else ('WARN' if shadow_exists else 'FAIL') %}
+
+### CA-S04 Runtime Write-Lane Retirement Validation
+- Result: **{{ verdict }}**
+- Shadow entity: **{{ shadow_entity }}** (exists={{ shadow_exists }})
+- Authority mode: **{{ authority_mode }}**
+- Scheduler readiness/verdict: **{{ scheduler_ready }} / {{ scheduler_verdict }}**
+- Scheduler apply status: **{{ scheduler_apply_status }}**
+- Auto-select status: **{{ auto_select_status }}**
+
+### Wave-1 lane readiness
+- `LC6-L01` active-target writer lane: **{{ lc6_l01_status }}** (reasons={{ lc6_l01_reasons }})
+- `LC6-L03` metadata override helper-storage lane: **{{ lc6_l03_status }}** (reasons={{ lc6_l03_reasons }})
+- `LC6-L05` server-profile/API helper-stack lane: **{{ lc6_l05_status }}** (reasons={{ lc6_l05_reasons }})
+
+### Retirement blocker taxonomy
+- retirement_ready: **{{ retirement_ready }}**
+- blockers: **{{ blockers.items }}**
+
+### Deterministic next action
+{% if not shadow_exists %}
+- Shadow entity missing. Load `custom_components/spectra_ls` and retry.
+{% elif authority_mode != 'component' %}
+- Set authority to component mode, then rerun this template.
+{% elif lc6_l05_status != 'ready' %}
+- Stabilize component backend/API surfaces (`sensor.component_backend_profile`, `sensor.component_ma_api_url`) before wave-1 retirement claims.
+{% elif lc6_l01_status != 'ready' %}
+- Resolve scheduler readiness and guard blockers before retiring active-target writer lane.
+{% elif lc6_l03_status != 'ready' %}
+- Keep metadata override helper storage in bounded compatibility mode; record explicit defer rationale.
+{% else %}
+- Wave-1 lanes are ready for retirement progression in this snapshot.
+{% endif %}

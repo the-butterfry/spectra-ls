@@ -1,6 +1,6 @@
 <!-- Description: Documentation index for Spectra L/S technical, onboarding, roadmap, and operations artifacts. -->
-<!-- Version: 2026.04.22.5 -->
-<!-- Last updated: 2026-04-22 -->
+<!-- Version: 2026.05.05.8 -->
+<!-- Last updated: 2026-05-05 -->
 
 # Spectra L/S Documentation Index
 
@@ -25,6 +25,14 @@ If you are new: read `README.md` first, then this file, then `docs/roadmap/v-nex
 - `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`
 - `docs/roadmap/v-next-NOTES.md`
 - `docs/program/PARALLEL-PROGRAM-PLAYBOOK.md`
+- `docs/program/CA-S01D-PROOF-PACKET-CHECKLIST.md`
+- `docs/program/CA-S02B-RESOLVER-REPLAY-CHECKLIST.md`
+- `docs/program/CA-S03-CONSUMER-PROJECTION-CUTOVER-CHECKLIST.md`
+- `docs/program/CA-S04-RUNTIME-WRITE-LANE-RETIREMENT-CHECKLIST.md`
+- `docs/program/CA-S05-ESP-FALLBACK-LISTENER-SOAK-CHECKLIST.md`
+- `docs/program/CA-S06-RUNTIME-WRITE-HELPER-RETIREMENT-WAVE2-CHECKLIST.md`
+- `docs/program/CA-S07-LEGACY-DIAGNOSTICS-TEMPLATE-FALLBACK-CLEANUP-CHECKLIST.md`
+- `docs/program/CA-S08-DOMAIN-CLOSEOUT-ROLLBACK-SEAL-CHECKLIST.md`
 
 ## Architecture
 
@@ -34,6 +42,11 @@ If you are new: read `README.md` first, then this file, then `docs/roadmap/v-nex
 ## Testing and diagnostics
 
 - Dev Tools templates: `docs/testing/DEVTOOLS-TEMPLATES.local.md`
+- CA-S04 runtime write-lane validation template: `docs/testing/raw/ca_s04_runtime_write_lane_retirement_validation.jinja`
+- CA-S05 fallback-listener soak validation template: `docs/testing/raw/ca_s05_esp_fallback_listener_soak_validation.jinja`
+- CA-S06 runtime write/helper wave-2 validation template: `docs/testing/raw/ca_s06_runtime_write_helper_retirement_wave2_validation.jinja`
+- CA-S07 diagnostics/template fallback cleanup validation template: `docs/testing/raw/ca_s07_legacy_diagnostics_template_fallback_cleanup_validation.jinja`
+- CA-S08 domain closeout + rollback-safe seal validation template: `docs/testing/raw/ca_s08_domain_closeout_rollback_seal_validation.jinja`
 
 ## Cleanup and maintenance
 

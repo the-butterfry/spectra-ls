@@ -1,6 +1,6 @@
 <!-- Description: Practical setup/deploy/integration guide for Spectra on Home Assistant with clear operator outcomes and failure actions. -->
-<!-- Version: 2026.04.29.16 -->
-<!-- Last updated: 2026-04-29 -->
+<!-- Version: 2026.05.05.1 -->
+<!-- Last updated: 2026-05-05 -->
 
 # User Setup, Deploy, and HA Integration
 
@@ -115,7 +115,12 @@ Recommended operator flow:
 1. set your Beta URL in `input_text.ma_server_url_beta`,
 2. set your Stable URL in `input_text.ma_server_url_stable`,
 3. switch `input_select.ma_server_profile` between `beta` and `stable` as needed,
-4. confirm `sensor.ma_server_profile_effective` and `sensor.ma_api_url` before running checks.
+4. confirm backend/API surfaces before running checks.
+
+Phase-2 preference order:
+
+- primary: `sensor.component_backend_profile`, `sensor.component_ma_api_url`
+- compatibility fallback: `sensor.ma_server_profile_effective`, `sensor.ma_api_url`
 
 This keeps testing fast and reversible while preserving the discovery-first/fail-closed routing posture.
 

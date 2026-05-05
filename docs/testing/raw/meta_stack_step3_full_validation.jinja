@@ -1,6 +1,6 @@
 {# Description: Full copy/paste Developer Tools template for Step-3 metadata-stack runtime validation (scheduler + metadata policy + stale root-cause + ESP UX gate). #}
-{# Version: 2026.05.04.1 #}
-{# Last updated: 2026-05-04 #}
+{# Version: 2026.05.05.2 #}
+{# Last updated: 2026-05-05 #}
 
 {# =========================
   Meta Stack Step-3 Full Validation (Runtime)
@@ -56,8 +56,8 @@
 {% set np_recent_play = metadata_checks.now_playing_recent_play_progress if metadata_checks.now_playing_recent_play_progress is defined else 'n/a' %}
 {% set np_recent_paused = metadata_checks.now_playing_recent_paused_progress if metadata_checks.now_playing_recent_paused_progress is defined else 'n/a' %}
 {% set np_entity = metadata_values.now_playing_entity if metadata_values.now_playing_entity is defined else states('sensor.now_playing_entity') %}
-{% set np_state = states('sensor.now_playing_state') | lower %}
-{% set np_title = states('sensor.now_playing_title') %}
+{% set np_state = (metadata_values.now_playing_state if metadata_values.now_playing_state is defined else states('sensor.now_playing_state')) | lower %}
+{% set np_title = metadata_values.now_playing_title if metadata_values.now_playing_title is defined else states('sensor.now_playing_title') %}
 {% set np_age_s = metadata_values.now_playing_position_age_s if metadata_values.now_playing_position_age_s is defined else 'n/a' %}
 {% set meta_stale_s = metadata_values.meta_stale_s if metadata_values.meta_stale_s is defined else states('input_number.ma_meta_stale_s') | float(45) %}
 {% set paused_hide_s = metadata_values.paused_hide_s if metadata_values.paused_hide_s is defined else states('input_number.ma_meta_paused_hide_s') | float(600) %}
@@ -103,6 +103,17 @@
 {% set ma_provider_updated_ts = as_timestamp(ma_provider_updated) if ma_provider_updated not in invalid else none %}
 {% set ma_provider_age_s = component_provider_age if component_provider_age is number else ((as_timestamp(now()) - ma_provider_updated_ts) if ma_provider_updated_ts is not none else none) %}
 {% set ma_provider_visible = ma_provider_status not in invalid or ma_provider_response not in invalid or ma_provider_providers not in invalid %}
+{% set component_backend_profile_state = states('sensor.component_backend_profile') %}
+{% set component_api_url_state = states('sensor.component_ma_api_url') %}
+{% set runtime_backend_profile_state = states('sensor.ma_server_profile_effective') %}
+{% set runtime_api_url_state = states('sensor.ma_api_url') %}
+{% set backend_profile_value = component_backend_profile_state if component_backend_profile_state not in invalid else runtime_backend_profile_state %}
+{% set backend_profile_source = 'sensor.component_backend_profile' if component_backend_profile_state not in invalid else ('sensor.ma_server_profile_effective' if runtime_backend_profile_state not in invalid else 'unresolved') %}
+{% set backend_selected_url = state_attr('sensor.component_backend_profile','selected_url') if component_backend_profile_state not in invalid else state_attr('sensor.ma_server_profile_effective','selected_url') %}
+{% set backend_selected_url_resolved = backend_selected_url not in invalid %}
+{% set effective_api_url = component_api_url_state if component_api_url_state not in invalid else runtime_api_url_state %}
+{% set effective_api_url_source = 'sensor.component_ma_api_url' if component_api_url_state not in invalid else ('sensor.ma_api_url' if runtime_api_url_state not in invalid else 'unresolved') %}
+{% set effective_api_url_valid = effective_api_url not in invalid and '/api' in (effective_api_url | string) %}
 {% set ma_provider_parse_hint =
   'dispatch_not_attempted_or_uri_unresolved' if not ma_handoff_uri_valid and not ma_provider_visible
   else (
@@ -248,6 +259,12 @@
 - `last_updated_at`: **{{ ma_provider_updated if ma_provider_updated not in invalid else 'n/a' }}**
 - `last_response_age_s`: **{{ ma_provider_age_s | round(1) if ma_provider_age_s is not none else 'n/a' }}**
 - `provider_parse_hint`: **{{ ma_provider_parse_hint }}**
+
+### LC6-L05 backend/API consumer surfaces
+- `effective_backend_profile`: **{{ backend_profile_value if backend_profile_value not in invalid else 'n/a' }}** (source=`{{ backend_profile_source }}`)
+- `selected_backend_url`: **{{ backend_selected_url if backend_selected_url_resolved else 'n/a' }}**
+- `effective_api_url`: **{{ effective_api_url if effective_api_url not in invalid else 'n/a' }}** (source=`{{ effective_api_url_source }}`)
+- `effective_api_url_valid`: **{{ effective_api_url_valid }}**
 
 ### HA media-class contract (authoritative policy)
 - `now_playing_media_class`: **{{ media_class if media_class_valid else ('invalid:' ~ media_class_raw) }}**

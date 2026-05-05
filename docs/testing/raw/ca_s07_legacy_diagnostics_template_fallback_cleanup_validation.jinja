@@ -1,0 +1,64 @@
+{# Description: CA-S07 one-screen validator for LC-08 diagnostics/template fallback cleanup readiness. #}
+{# Version: 2026.05.05.1 #}
+{# Last updated: 2026-05-05 #}
+
+{% set required_component = [
+  'sensor.component_now_playing_entity',
+  'sensor.component_now_playing_state',
+  'sensor.component_now_playing_title',
+  'sensor.component_now_playing_source'
+] %}
+
+{% set resolved_component = namespace(count=0, missing=[]) %}
+{% for entity_id in required_component %}
+  {% set value = states(entity_id) %}
+  {% if value not in ['unknown', 'unavailable', '', none] %}
+    {% set resolved_component.count = resolved_component.count + 1 %}
+  {% else %}
+    {% set resolved_component.missing = resolved_component.missing + [entity_id] %}
+  {% endif %}
+{% endfor %}
+
+{# Baseline LC-08 reference inventory contract for this slice publication. #}
+{% set legacy_fallback_reference_inventory = [
+  'docs/testing/DEVTOOLS-TEMPLATES.local.md::legacy_sensor_ma_*',
+  'docs/testing/raw/scheduler_apply_deterministic_validation.jinja::runtime_fallback_branch',
+  'esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md::legacy_input_ma_*'
+] %}
+{% set legacy_fallback_reference_count = legacy_fallback_reference_inventory | count %}
+
+{# Runtime fallback hit signal (bounded indicator for cleanup readiness, not hard runtime verdict). #}
+{% set runtime_fallback_hits = states('sensor.esp_control_fallback_apply_count') | int(0) %}
+
+{% set blockers = namespace(items=[]) %}
+{% if resolved_component.count < (required_component | count) %}
+  {% set blockers.items = blockers.items + ['component_surface_missing'] %}
+{% endif %}
+{% if legacy_fallback_reference_count == 0 %}
+  {% set blockers.items = blockers.items + ['legacy_reference_unclassified'] %}
+{% endif %}
+{% if runtime_fallback_hits > 0 %}
+  {% set blockers.items = blockers.items + ['fallback_hits_unexplained'] %}
+{% endif %}
+{% if (required_component | count) == 0 %}
+  {% set blockers.items = blockers.items + ['missing_required_evidence'] %}
+{% endif %}
+
+{% set verdict = 'READY' if (blockers.items | count) == 0 else ('HOLD' if 'fallback_hits_unexplained' not in blockers.items else 'BLOCKED') %}
+
+CA-S07 LC-08 Diagnostics/Template Fallback Cleanup Validation
+=============================================================
+
+verdict={{ verdict }}
+component_first_consumers_ready={{ 'true' if resolved_component.count == (required_component | count) else 'false' }}
+required_component_surface_count={{ required_component | count }}
+resolved_component_surface_count={{ resolved_component.count }}
+missing_component_surfaces={{ resolved_component.missing | join(',') if (resolved_component.missing | count) > 0 else 'none' }}
+
+legacy_fallback_reference_count={{ legacy_fallback_reference_count }}
+fallback_reference_inventory={{ legacy_fallback_reference_inventory | join(' | ') }}
+runtime_fallback_hits={{ runtime_fallback_hits }}
+
+blocker_count={{ blockers.items | count }}
+blockers={{ blockers.items | join(',') if (blockers.items | count) > 0 else 'none' }}
+next_action={% if verdict == 'READY' %}prepare_ca_s07_cleanup_closeout_packet{% elif verdict == 'HOLD' %}classify_remaining_legacy_references_and_rerun{% else %}resolve_fallback_hits_or_missing_component_surfaces_then_rerun{% endif %}

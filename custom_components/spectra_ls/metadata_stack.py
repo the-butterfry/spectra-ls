@@ -1,6 +1,6 @@
 # Description: Extracted metadata stack workflows for Spectra LS (metadata prep/bridge/cutover validation and metadata trial services).
-# Version: 2026.05.04.2
-# Last updated: 2026-05-04
+# Version: 2026.05.05.3
+# Last updated: 2026-05-05
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -311,7 +311,20 @@ class MetadataStackWorkflow:
 			if isinstance(scaffolds.get("metadata_resolver_plan", {}), dict)
 			else {}
 		)
-		resolver_selected = str(resolver_plan.get("selected_meta_entity", "") or "").strip()
+		prep_values = (
+			metadata_prep_validation.get("values", {})
+			if isinstance(metadata_prep_validation.get("values", {}), dict)
+			else {}
+		)
+		component_now_playing_entity = str(
+			prep_values.get("now_playing_entity", "")
+			or c.hass.states.get("sensor.component_now_playing_entity").state
+			if c.hass.states.get("sensor.component_now_playing_entity") is not None
+			else ""
+		).strip()
+		resolver_selected = str(
+			resolver_plan.get("selected_meta_entity", "") or component_now_playing_entity
+		).strip()
 		resolver_attempt = self._last_metadata_resolver_attempt if isinstance(self._last_metadata_resolver_attempt, dict) else {}
 		bridge_attempt = self._last_metadata_bridge_attempt if isinstance(self._last_metadata_bridge_attempt, dict) else {}
 		trial_attempt = self._last_metadata_trial_attempt if isinstance(self._last_metadata_trial_attempt, dict) else {}
@@ -336,19 +349,41 @@ class MetadataStackWorkflow:
 
 		metadata_prep_ready = bool(metadata_prep_validation.get("ready_for_metadata_handoff", False))
 		metadata_cutover_active = bool(metadata_prep_validation.get("metadata_cutover_active", False))
+		component_mode_active = c._write_authority_mode == WRITE_AUTH_COMPONENT
+		bridge_skip_component_no_mix = (
+			component_mode_active and bridge_status == "skipped_component_startup_no_mix"
+		)
+		component_resolver_authority_ready = (
+			metadata_prep_ready
+			and metadata_cutover_active
+			and c._is_resolved_state(component_now_playing_entity)
+		)
 		trial_authority_legacy = c._write_authority_mode == WRITE_AUTH_LEGACY or bridge_status == "bridge_completed"
-		trial_authority_satisfied = trial_authority_legacy or metadata_cutover_active
+		trial_authority_satisfied = (
+			trial_authority_legacy
+			or metadata_cutover_active
+			or (bridge_skip_component_no_mix and component_resolver_authority_ready)
+		)
 		resolver_candidate_present = c._is_resolved_state(resolver_selected)
-		resolver_stage_ok = resolver_status in {"dry_run_ok", "noop_already_selected", "write_applied"}
-		trial_stage_required = not metadata_cutover_active
+		resolver_stage_required = not (bridge_skip_component_no_mix and component_resolver_authority_ready)
+		resolver_stage_ok = (
+			resolver_status in {"dry_run_ok", "noop_already_selected", "write_applied"}
+			or not resolver_stage_required
+		)
+		if not resolver_stage_required and resolver_status == "never_attempted":
+			resolver_status = "skipped_component_authority_active"
+		trial_stage_required = not metadata_cutover_active and not bridge_skip_component_no_mix
 		trial_stage_ok = trial_status in {"dry_run_ok", "noop_applied"} or not trial_stage_required
 
 		checks = {
 			"metadata_prep_ready": metadata_prep_ready,
 			"resolver_candidate_present": resolver_candidate_present,
+			"component_resolver_authority_ready": component_resolver_authority_ready,
+			"bridge_skip_component_no_mix": bridge_skip_component_no_mix,
 			"trial_authority_legacy": trial_authority_legacy,
 			"trial_authority_satisfied": trial_authority_satisfied,
 			"resolver_stage_ok": resolver_stage_ok,
+			"resolver_stage_required": resolver_stage_required,
 			"trial_stage_ok": trial_stage_ok,
 			"trial_stage_required": trial_stage_required,
 			"metadata_cutover_active": metadata_cutover_active,
@@ -374,7 +409,7 @@ class MetadataStackWorkflow:
 			blocking_reasons.append("resolver_candidate_missing")
 		if ma_boot_ready and not trial_authority_satisfied:
 			blocking_reasons.append("trial_authority_not_legacy")
-		if not resolver_stage_ok and resolver_status != "never_attempted":
+		if resolver_stage_required and not resolver_stage_ok and resolver_status != "never_attempted":
 			blocking_reasons.append("resolver_stage_not_ok")
 		if trial_stage_required and not trial_stage_ok and trial_status != "never_attempted":
 			blocking_reasons.append("trial_stage_not_ok")
@@ -715,6 +750,44 @@ class MetadataStackWorkflow:
 
 		return False
 
+	def _select_component_now_playing_entity(
+		self,
+		*,
+		route_trace: dict[str, Any],
+		active_meta_entity: str,
+		legacy_now_playing_entity: str,
+	) -> tuple[str, str]:
+		"""Select component-preferred now-playing entity with route/target-first freshness ordering."""
+		c = self._coordinator
+		active_target = str(route_trace.get("active_target", "") or "").strip()
+		candidates: list[tuple[str, str]] = [
+			(active_target, "route_active_target"),
+			(active_meta_entity, "active_meta_entity"),
+			(legacy_now_playing_entity, "legacy_now_playing_entity"),
+		]
+
+		seen: set[str] = set()
+		normalized_candidates: list[tuple[str, str]] = []
+		for entity_id, source in candidates:
+			entity_norm = str(entity_id or "").strip()
+			if not c._is_resolved_state(entity_norm):
+				continue
+			if entity_norm in seen:
+				continue
+			seen.add(entity_norm)
+			normalized_candidates.append((entity_norm, source))
+
+		for entity_id, source in normalized_candidates:
+			signal = self._build_now_playing_signal(entity_id)
+			if bool(signal.get("fresh_play_signal", False)):
+				return entity_id, source
+
+		for entity_id, source in normalized_candidates:
+			if c.hass.states.get(entity_id) is not None:
+				return entity_id, f"{source}_fallback"
+
+		return "", "unresolved"
+
 	def build_metadata_prep_validation(
 		self,
 		*,
@@ -751,11 +824,35 @@ class MetadataStackWorkflow:
 		now_playing_display_allowed_raw = c.hass.states.get(LEGACY_NOW_PLAYING_DISPLAY_ALLOWED)
 
 		active_meta_entity = active_meta_raw.state if active_meta_raw is not None else "missing"
-		now_playing_entity = now_playing_entity_raw.state if now_playing_entity_raw is not None else "missing"
+		legacy_now_playing_entity = now_playing_entity_raw.state if now_playing_entity_raw is not None else "missing"
+		component_now_playing_entity, component_now_playing_entity_source = self._select_component_now_playing_entity(
+			route_trace=route_trace,
+			active_meta_entity=active_meta_entity,
+			legacy_now_playing_entity=legacy_now_playing_entity,
+		)
+		now_playing_entity = component_now_playing_entity or legacy_now_playing_entity
 		now_playing_state = now_playing_state_raw.state if now_playing_state_raw is not None else "missing"
 		now_playing_title = now_playing_title_raw.state if now_playing_title_raw is not None else "missing"
 		now_playing_position = now_playing_position_raw.state if now_playing_position_raw is not None else "missing"
 		now_playing_duration = now_playing_duration_raw.state if now_playing_duration_raw is not None else "missing"
+		now_playing_artist = ""
+		now_playing_album = ""
+		now_playing_source = ""
+		selected_state_obj = c.hass.states.get(now_playing_entity) if c._is_resolved_state(now_playing_entity) else None
+		if selected_state_obj is not None:
+			now_playing_state = str(selected_state_obj.state or "").strip() or now_playing_state
+			selected_title = str(selected_state_obj.attributes.get("media_title", "") or "").strip()
+			if selected_title:
+				now_playing_title = selected_title
+			now_playing_artist = str(selected_state_obj.attributes.get("media_artist", "") or "").strip()
+			now_playing_album = str(selected_state_obj.attributes.get("media_album_name", "") or "").strip()
+			now_playing_source = str(selected_state_obj.attributes.get("source", "") or "").strip()
+			selected_position = selected_state_obj.attributes.get("media_position")
+			if isinstance(selected_position, (int, float)):
+				now_playing_position = str(float(selected_position))
+			selected_duration = selected_state_obj.attributes.get("media_duration")
+			if isinstance(selected_duration, (int, float)):
+				now_playing_duration = str(float(selected_duration))
 		ma_active_duration = ma_active_duration_raw.state if ma_active_duration_raw is not None else "missing"
 		now_playing_media_class = c._normalize_state(
 			now_playing_media_class_raw.state if now_playing_media_class_raw is not None else "missing"
@@ -1048,6 +1145,7 @@ class MetadataStackWorkflow:
 				"now_playing_paused_without_fresh_signal": paused_without_fresh_signal,
 				"now_playing_long_idle_stale_hidden": long_idle_stale_hidden,
 				"now_playing_suppression_reason": now_playing_signal.get("suppression_reason", ""),
+				"component_now_playing_entity_source": component_now_playing_entity_source,
 				"active_playback_signal": active_playback_signal,
 				"playing_with_missing_duration_contract": playing_with_missing_duration_contract,
 				"metadata_component_mode_active": bool(metadata_authority.get("component_mode_active", False)),
@@ -1056,9 +1154,14 @@ class MetadataStackWorkflow:
 			},
 			"values": {
 				"active_meta_entity": active_meta_entity,
+				"legacy_now_playing_entity": legacy_now_playing_entity,
+				"component_now_playing_entity_source": component_now_playing_entity_source,
 				"now_playing_entity": now_playing_entity,
 				"now_playing_state": now_playing_state,
 				"now_playing_title": now_playing_title,
+				"now_playing_artist": now_playing_artist,
+				"now_playing_album": now_playing_album,
+				"now_playing_source": now_playing_source,
 				"now_playing_position": now_playing_position_v,
 				"now_playing_duration": now_playing_duration_v,
 				"ma_active_duration": ma_active_duration_v,

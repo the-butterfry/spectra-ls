@@ -1,6 +1,6 @@
 # Description: Scaffold-fabric workflow for Spectra LS scaffold/inventory/backend assembly extracted from meta-fabric.
-# Version: 2026.05.04.1
-# Last updated: 2026-05-04
+# Version: 2026.05.05.1
+# Last updated: 2026-05-05
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -181,12 +181,33 @@ class ScaffoldFabricWorkflow:
         auto_select_attempt = c._last_auto_select_attempt if isinstance(c._last_auto_select_attempt, dict) else {}
         metadata_attempt = c.metadata_stack.last_metadata_resolver_attempt
         metadata_bridge_attempt = c.metadata_stack.last_metadata_bridge_attempt
+        metadata_prep_validation = (
+            c.data.get("metadata_prep_validation", {})
+            if isinstance(getattr(c, "data", {}), dict)
+            and isinstance(c.data.get("metadata_prep_validation", {}), dict)
+            else {}
+        )
+        metadata_bridge_validation = (
+            c.data.get("metadata_bridge_validation", {})
+            if isinstance(getattr(c, "data", {}), dict)
+            and isinstance(c.data.get("metadata_bridge_validation", {}), dict)
+            else {}
+        )
+        component_now_playing_entity_state = c.hass.states.get("sensor.component_now_playing_entity")
+        component_now_playing_entity = (
+            str(component_now_playing_entity_state.state or "").strip()
+            if component_now_playing_entity_state is not None
+            else ""
+        )
         status_surfaces = self._validation_fabric.evaluate_handoff_scaffold_statuses(
             component_scaffolds=component_scaffolds,
             target_options_attempt=target_options_attempt,
             auto_select_attempt=auto_select_attempt,
             metadata_attempt=metadata_attempt,
             metadata_bridge_attempt=metadata_bridge_attempt,
+            metadata_prep_validation=metadata_prep_validation,
+            metadata_bridge_validation=metadata_bridge_validation,
+            component_now_playing_entity=component_now_playing_entity,
         )
         target_options_status = str(status_surfaces.get("target_options_status", "planned") or "planned")
         auto_select_status = str(status_surfaces.get("auto_select_status", "planned") or "planned")

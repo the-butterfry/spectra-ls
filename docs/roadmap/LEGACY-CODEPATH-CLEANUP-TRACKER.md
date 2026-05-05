@@ -1,6 +1,6 @@
 <!-- Description: Legacy codepath cleanup tracker for runtime/component/ESP retirement tasks during component-first migration. -->
-<!-- Version: 2026.05.04.11 -->
-<!-- Last updated: 2026-05-04 -->
+<!-- Version: 2026.05.05.7 -->
+<!-- Last updated: 2026-05-05 -->
 
 # Legacy Codepath Cleanup Tracker
 
@@ -47,6 +47,31 @@ The table below catalogs currently retained ESP compatibility surfaces that are 
 
 ## LC-06 runtime package legacy inventory (decomposed 2026-05-04)
 
+CA-S04 wave-1 baseline update (2026-05-05):
+
+- Published deterministic CA-S04 runtime write-lane retirement checklist + one-screen validation template for wave-1 lanes (`LC6-L01`, `LC6-L03`, `LC6-L05`) to keep retirement readiness fail-closed and auditable before lane-disabling edits.
+- Runtime lane status remains compatibility-shimmed pending lane-level readiness evidence; component lane status is implemented for authority/readiness evidence publication.
+
+CA-S05 LC-07 fallback-listener soak baseline update (2026-05-05):
+
+- Published deterministic CA-S05 soak checklist + one-screen validator for fallback-listener retirement evidence (`ESP-L04`, `ESP-L05`, `ESP-L06`) with explicit fail-closed blocker taxonomy.
+- LC-07 remains active and compatibility-shimmed until clean pre/in/post window packets show zero fallback applies with safe authority/route posture.
+
+CA-S06 LC-06 wave-2 baseline update (2026-05-05):
+
+- Published deterministic CA-S06 wave-2 checklist + one-screen validator for remaining LC-06 runtime tails (`LC6-L01`, `LC6-L03`, `LC6-L06`, `LC6-L02`) with explicit lane-disposition and fail-closed blocker rules.
+- LC-06 remains active and compatibility-shimmed until each wave-2 lane is closed as retired, compatibility-shimmed, or deferred-with-rationale under explicit evidence packets.
+
+CA-S07 LC-08 fallback cleanup baseline update (2026-05-05):
+
+- Published deterministic CA-S07 checklist + one-screen validator for legacy diagnostics/template fallback cleanup verification with explicit component-first readiness and fallback-inventory blocker taxonomy.
+- LC-08 remains active and compatibility-shimmed until legacy fallback references are fully dispositioned (retired or explicitly deferred with rationale) under explicit evidence packets.
+
+CA-S08 final seal baseline update (2026-05-05):
+
+- Published deterministic CA-S08 closeout checklist + one-screen validator for final `LC-06`/`LC-07`/`LC-08` disposition capture, rollback-safe posture assertion, and closure ledger consistency checks.
+- CA-S08 closeout governance posture is validated (closure verdict semantics + two-track packet requirements are now canonical); lane rows for LC-06/LC-07/LC-08 remain explicitly `active` until lane-level retirement/defer decisions are executed under those validated gates.
+
 This table breaks `packages/ma_control_hub/*` into concrete retirement lanes so implementation can proceed incrementally with explicit parity gates.
 
 | Lane ID | Runtime surface group | Primary files | Replacement contract target | Gate ID | Disposition |
@@ -55,7 +80,7 @@ This table breaks `packages/ma_control_hub/*` into concrete retirement lanes so 
 | LC6-L02 | Override-flag writer lane (`input_boolean.ma_override_active` lifecycle) | `packages/ma_control_hub/script.inc`, `packages/ma_control_hub/input_boolean.inc` | Component authority/selection policy state packet | LC-06B | deferred with rationale (still used for bounded legacy mode + rollback semantics) |
 | LC6-L03 | Metadata override helper storage (`input_boolean.ma_meta_override_active`, `input_text.ma_meta_override_entity`) | `packages/ma_control_hub/template.inc`, `packages/ma_control_hub/input_boolean.inc`, `packages/ma_control_hub/input_text.inc` | Component metadata override status packet + service telemetry | LC-06C / LC-08 | compatibility-shimmed (service-mediated writes landed; helper storage still consumed by runtime templates) |
 | LC6-L04 | Provider telemetry helper sink (`input_text.ma_metadata_provider_last_*`) | `packages/ma_control_hub/script.inc`, `packages/ma_control_hub/input_text.inc` | Component diagnostics/write-attempt packet fields | LC-06D | validated (2026-05-04 Slice-BX: runtime provider dispatch now publishes telemetry through component service `spectra_ls.set_metadata_provider_packet`; runtime helper sink retained as fallback-only path when component sink is unavailable) |
-| LC6-L05 | Server-profile + API URL helper stack (`input_select.ma_server_profile`, `input_text.ma_server_url*`, `sensor.ma_api_url`, rest/rest_command) | `packages/ma_control_hub/template.inc`, `rest.inc`, `rest_command.inc`, `input_select.inc`, `input_text.inc` | Component options/config-entry endpoint contract | LC-06E | active (2026-05-04 Slice-BY phase-1 bridge: component diagnostics surfaces for backend profile/API URL published from `ma_backend_profile` snapshot packet; runtime helper stack still source for parity bridge) |
+| LC6-L05 | Server-profile + API URL helper stack (`input_select.ma_server_profile`, `input_text.ma_server_url*`, `sensor.ma_api_url`, rest/rest_command) | `packages/ma_control_hub/template.inc`, `rest.inc`, `rest_command.inc`, `input_select.inc`, `input_text.inc` | Component options/config-entry endpoint contract | LC-06E | active (2026-05-04 Slice-BY phase-1 bridge complete; 2026-05-05 Slice-CA phase-2 consumer cutover: active diagnostics/operator templates now consume `sensor.component_backend_profile` + `sensor.component_ma_api_url` first with runtime helper/API fallback retained for compatibility evidence windows) |
 | LC6-L06 | Runtime metadata resolver read surfaces (`sensor.ma_meta_*`, resolver templates used by diagnostics/devtools) | `packages/ma_control_hub/template.inc`, `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md` | Component metadata packet family (`sensor.component_*` / diagnostics packet) | LC-06F | active (inventory mapped; staged consumer cleanup pending) |
 
 ### LC-06 execution order (current recommendation)

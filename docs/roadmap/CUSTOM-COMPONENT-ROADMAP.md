@@ -1,6 +1,6 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.05.04.14 -->
-<!-- Last updated: 2026-05-04 -->
+<!-- Version: 2026.05.05.18 -->
+<!-- Last updated: 2026-05-05 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
 
@@ -18,6 +18,204 @@ Execution playbook reference: `docs/program/PARALLEL-PROGRAM-PLAYBOOK.md`.
 - Minimal hardcoded install-specific entity IDs.
 - Backward-compatible migration before replacement.
 - Audio and lighting are first-class depth domains, while input primitives remain mappable for broader Home Assistant control domains.
+
+Latest run update (2026-05-05, CA-S02A resolver determinism scoring matrix + acceptance packet fields):
+
+Latest run update (2026-05-05, CA-S08 closeout board-state validation seal):
+
+- Promoted canonical execution board state for `CA-S08` from `Active` to `Validated` after closeout evidence maintenance and ledger wording normalization.
+- Sealed immediate execution pointer posture to no-further-activation baseline unless explicit plan delta reopens scope.
+- Runtime track disposition: compatibility-shimmed (rollback-safe baseline remains intentionally bounded).
+- Component track disposition: implemented (component-first closeout packet ownership remains canonical).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; governance-state consistency hardening only.
+- Immediate execution slice pointer: CA program closeout maintenance complete; hold validated baseline unless explicit plan delta reopens scope.
+
+Latest run update (2026-05-05, CA-S08 domain closeout packet + rollback-safe seal + retirement ledger closure):
+
+- Published `docs/program/CA-S08-DOMAIN-CLOSEOUT-ROLLBACK-SEAL-CHECKLIST.md` as normative final-seal closeout checklist for LC-06/07/08 domain closure.
+- Published `docs/testing/raw/ca_s08_domain_closeout_rollback_seal_validation.jinja` for one-screen final disposition + rollback posture + ledger consistency validation.
+- Synced CA-S08 contract in `docs/architecture/COMPONENT-DATA-FABRIC-ARCHITECTURE.md`, closure baseline note in `docs/roadmap/LEGACY-CODEPATH-CLEANUP-TRACKER.md`, and docs index discoverability in `docs/README.md`.
+- Runtime track disposition: compatibility-shimmed (runtime rollback-safe compatibility baseline remains explicit and bounded).
+- Component track disposition: implemented (component-first closure packet contract now explicit for final seal validation).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; final closure governance and rollback-safety proofing hardening only.
+- Immediate execution slice pointer: CA program closeout evidence maintenance complete (no additional CA lane activation required absent plan delta).
+
+Latest run update (2026-05-05, CA-S07 legacy diagnostics/template fallback strip + cleanup verification):
+
+- Published `docs/program/CA-S07-LEGACY-DIAGNOSTICS-TEMPLATE-FALLBACK-CLEANUP-CHECKLIST.md` as normative LC-08 cleanup checklist with deterministic fallback cleanup assertions.
+- Published `docs/testing/raw/ca_s07_legacy_diagnostics_template_fallback_cleanup_validation.jinja` for one-screen component-surface readiness + fallback inventory validation.
+- Synced CA-S07 contract in `docs/architecture/COMPONENT-DATA-FABRIC-ARCHITECTURE.md`, LC-08 tracker baseline in `docs/roadmap/LEGACY-CODEPATH-CLEANUP-TRACKER.md`, and docs index discoverability in `docs/README.md`.
+- Runtime track disposition: compatibility-shimmed (legacy diagnostics/template fallback references remain bounded pending closure evidence).
+- Component track disposition: implemented (component-first diagnostics/template contract readiness now explicit and measurable).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; LC-08 closure-governance and cleanup verification hardening only.
+- Immediate execution slice pointer: `CA-S08` completed; proceed with closeout evidence maintenance only if plan delta requires updates.
+
+Latest run update (2026-05-05, CA-S06 runtime write/helper retirement wave-2 tails):
+
+- Published `docs/program/CA-S06-RUNTIME-WRITE-HELPER-RETIREMENT-WAVE2-CHECKLIST.md` as normative wave-2 retirement checklist for remaining LC-06 tail lanes.
+- Published `docs/testing/raw/ca_s06_runtime_write_helper_retirement_wave2_validation.jinja` for one-screen lane disposition and blocker evidence capture.
+- Synced CA-S06 contract in `docs/architecture/COMPONENT-DATA-FABRIC-ARCHITECTURE.md`, LC-06 tracker baseline in `docs/roadmap/LEGACY-CODEPATH-CLEANUP-TRACKER.md`, and docs index discoverability in `docs/README.md`.
+- Runtime track disposition: compatibility-shimmed (runtime tails remain bounded pending lane-level closure evidence).
+- Component track disposition: implemented (replacement component contract lanes now explicitly represented in CA-S06 artifacts).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; LC-06 wave-2 retirement-readiness governance hardening only.
+- Immediate execution slice pointer: `CA-S07` next (legacy diagnostics/template fallback strip + cleanup verification).
+
+Latest run update (2026-05-05, CA-S05 ESP fallback-listener soak evidence + fail-closed retirement gates):
+
+- Published `docs/program/CA-S05-ESP-FALLBACK-LISTENER-SOAK-CHECKLIST.md` as normative LC-07 soak/retirement-gate artifact with deterministic packet fields and blocker taxonomy.
+- Published validator template `docs/testing/raw/ca_s05_esp_fallback_listener_soak_validation.jinja` for one-screen fallback-listener readiness evidence capture.
+- Synced CA-S05 contract language in `docs/architecture/COMPONENT-DATA-FABRIC-ARCHITECTURE.md`, LC-07 tracker alignment in `docs/roadmap/LEGACY-CODEPATH-CLEANUP-TRACKER.md`, and docs index discoverability in `docs/README.md`.
+- Runtime track disposition: compatibility-shimmed (fallback listeners remain bounded compatibility lane pending clean soak evidence windows).
+- Component track disposition: implemented (component-first route feed + fallback telemetry interpretation contract now explicit and consumable).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; LC-07 retirement-readiness governance hardening only.
+- Immediate execution slice pointer: `CA-S06` next (runtime write/helper retirement wave-2 tails).
+
+Latest run update (2026-05-05, CA-S04 runtime write-lane retirement wave-1 baseline):
+
+- Published `docs/program/CA-S04-RUNTIME-WRITE-LANE-RETIREMENT-CHECKLIST.md` as normative wave-1 retirement checklist + sample evidence packet for runtime write/helper lanes.
+- Published validator template `docs/testing/raw/ca_s04_runtime_write_lane_retirement_validation.jinja` for deterministic lane-readiness and blocker evidence capture.
+- Synced CA-S04 contract language in `docs/architecture/COMPONENT-DATA-FABRIC-ARCHITECTURE.md` and LC-06 tracker alignment note in `docs/roadmap/LEGACY-CODEPATH-CLEANUP-TRACKER.md`.
+- Runtime track disposition: compatibility-shimmed (runtime write lanes remain bounded pending readiness closure evidence).
+- Component track disposition: implemented (authority/readiness evidence contract now explicit and consumable).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; runtime write-lane retirement readiness hardening only.
+- Immediate execution slice pointer: `CA-S05` next (ESP fallback-listener soak evidence + fail-closed retirement gates).
+
+Latest run update (2026-05-05, CA-S02A resolver determinism scoring matrix + acceptance packet fields):
+
+Latest run update (2026-05-05, CA-S03 component-first consumer projection cutover baseline):
+
+- Published `docs/program/CA-S03-CONSUMER-PROJECTION-CUTOVER-CHECKLIST.md` as normative CA-S03 projection-cutover checklist + deterministic sample evidence packet.
+- Updated active scheduler consumer template `docs/testing/raw/scheduler_apply_deterministic_validation.jinja` with CA-S03 projection telemetry/readiness output (effective source lanes, runtime fallback counters, component surface availability counters, and deterministic cutover-ready blocker packet).
+- Added CA-S03 contract section in `docs/architecture/COMPONENT-DATA-FABRIC-ARCHITECTURE.md` and docs index discoverability in `docs/README.md`.
+- Runtime track disposition: compatibility-shimmed (runtime fallback read surfaces retained as compatibility lane only).
+- Component track disposition: implemented (component-first projection observability and cutover-readiness packet now explicit in active diagnostics consumer output).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; projection-consumer migration hardening only.
+- Immediate execution slice pointer: `CA-S04` next (runtime write-lane retirement wave 1).
+
+Latest run update (2026-05-05, CA-S02A resolver determinism scoring matrix + acceptance packet fields):
+
+Latest run update (2026-05-05, CA-S02B resolver replay validation checklist + deterministic sample packet publication):
+
+- Published `docs/program/CA-S02B-RESOLVER-REPLAY-CHECKLIST.md` as normative replay-validation artifact with deterministic checklist, replay pass/warn/fail policy, no-go conditions, and canonical sample acceptance packet.
+- Added CA-S02B replay contract section in `docs/architecture/COMPONENT-DATA-FABRIC-ARCHITECTURE.md` and docs index discoverability link in `docs/README.md`.
+- Runtime track disposition: compatibility-shimmed (runtime compatibility/rollback lanes unchanged; replay proof remains governance/evidence lane).
+- Component track disposition: implemented (replay-validation contract + sample packet now explicit and auditable).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; CA-S02 replay-governance determinism hardening only.
+- Immediate execution slice pointer: `CA-S03` next (component-first consumer projection cutover).
+
+Latest run update (2026-05-05, CA-S02A resolver determinism scoring matrix + acceptance packet fields):
+
+- Published normative resolver determinism scoring matrix, tie-break order, and required acceptance packet schema fields in `docs/architecture/COMPONENT-DATA-FABRIC-ARCHITECTURE.md`.
+- Runtime track disposition: compatibility-shimmed (runtime compatibility/rollback lanes unchanged).
+- Component track disposition: implemented (resolver scoring + acceptance evidence contract now explicit and auditable).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; CA-S02 resolver-governance determinism hardening only.
+- Immediate execution slice pointer: `CA-S02B` next (resolver replay validation checklist + deterministic sample packet publication).
+
+Latest run update (2026-05-05, CA-S01D proof-packet checklist + closure rubric publication):
+
+- Published `docs/program/CA-S01D-PROOF-PACKET-CHECKLIST.md` as normative CA-S01 closure artifact with required packet sections, deterministic gates (`G1..G7`), and closure scoring policy (`PASS/WARN/FAIL`) plus no-go conditions.
+- Updated docs index (`docs/README.md`) so operators/developers can discover the closure artifact directly from governance entry points.
+- Runtime track disposition: compatibility-shimmed (runtime lane unchanged; rollback/evidence lane retained).
+- Component track disposition: implemented (CA-S01 closure governance now explicit and auditable).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; closure-governance determinism hardening only.
+- Immediate execution slice pointer at time of slice: `CA-S02A` (now completed in subsequent updates).
+
+Latest run update (2026-05-05, CA-S01C metadata-prep key-safe template access sweep):
+
+- Hardened `docs/testing/raw/p3_s03_metadata_prep_validation.jinja` to use explicit key-safe indexing for metadata-prep payload map fields (`metadata/checks/values`) to avoid template-engine ambiguity from mapping dot-access.
+- Runtime track disposition: compatibility-shimmed (runtime compatibility read surfaces unchanged).
+- Component track disposition: implemented (component metadata payload consumers in active diagnostics template now deterministic/key-safe).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; diagnostics-read contract determinism hardening only.
+- Immediate execution slice pointer at time of slice: `CA-S01D` (now completed in subsequent updates).
+
+Latest run update (2026-05-05, CA-S01B authority-token + resolver-invariant contract table publication):
+
+- Published normative CA-S01 contract tables in `docs/architecture/COMPONENT-DATA-FABRIC-ARCHITECTURE.md` for authority tokens and resolver invariants, including required degraded tokens and blocker mappings for stage-required vs stage-skipped bridge/trial semantics.
+- Runtime track disposition: compatibility-shimmed (runtime compatibility lane unchanged).
+- Component track disposition: implemented (canonical CA-S01 contract table now explicit and auditable).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; contract-audit determinism hardening only.
+
+Latest run update (2026-05-05, CA-S01A metadata-values key-safe diagnostics hardening):
+
+- Hardened `docs/testing/raw/scheduler_apply_deterministic_validation.jinja` metadata values extraction to explicit key-safe access (`metadata_prep_validation['values']`) to eliminate dict-method collision ambiguity from `.values` lookups.
+- Component-first now-playing/source diagnostics preference remains unchanged; only payload-key determinism was hardened.
+- Runtime track disposition: compatibility-shimmed (runtime fallback read surfaces retained during compatibility windows).
+- Component track disposition: implemented (component metadata packet diagnostics lane remains primary and deterministic).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; CA-S01 contract determinism hardening only.
+- Immediate execution slice pointer at time of slice: `CA-S01B` (now completed in subsequent updates).
+
+Latest run update (2026-05-05, CA roadmap codification + CA-S01 activation):
+
+- Codified the accepted canonical execution board as `CA-S01..CA-S08` and activated `CA-S01` as the current slice baseline.
+- Lane model adopted as working system-of-record: `CORE` (contracts/resolver truth), `PROJ` (consumer cutovers), `COMPAT` (legacy retirement waves), `OPS` (closeout + rollback-safe seal).
+- LC retirement mapping formalized in-board: `LC-06 -> CA-S04/CA-S06`, `LC-07 -> CA-S05`, `LC-08 -> CA-S03/CA-S07`.
+- Runtime track disposition: compatibility-shimmed (rollback-safe baseline retained; no ownership expansion in codification slice).
+- Component track disposition: implemented (canonical program published and active).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; governance/sequence hardening only.
+
+## Canonical Architecture execution board (active)
+
+| Slice | Lane | Objective | Legacy mapping | Status |
+| --- | --- | --- | --- | --- |
+| CA-S01 | CORE | Canonical contract freeze + authority boundary lock + consumer proof packet | Foundation for LC-06/07/08 retirement safety | Validated |
+| CA-S02 | CORE | Resolver determinism/provenance scoring hardening | Supports LC-08 diagnostics retirement | Validated |
+| CA-S03 | PROJ | Component-first consumer projection cutover | LC-08 primary lane | Validated |
+| CA-S04 | COMPAT | Runtime write/helper retirement wave 1 | LC-06 wave 1 | Validated |
+| CA-S05 | COMPAT | ESP fallback listener retirement evidence + fail-closed gates | LC-07 | Validated |
+| CA-S06 | COMPAT | Runtime write/helper retirement wave 2 | LC-06 wave 2 | Validated |
+| CA-S07 | PROJ | Legacy diagnostics/template fallback strip + cleanup verification | LC-08 closure | Validated |
+| CA-S08 | OPS | Domain closeout packet + rollback-safe seal + retirement ledger closure | LC-06/07/08 final seal | Validated |
+
+Required CA slice gate (anti-fluff):
+
+- deliver consumer-usable output in-slice (no scaffolding-only closure),
+- publish explicit two-track disposition (`implemented`, `compatibility-shimmed`, or `deferred with rationale`),
+- include closure proof packet + rollback posture evidence.
+
+Latest run update (2026-05-05, Slice-CE resolver-authority component activation):
+
+- Implemented resolver-authority readiness semantics in `custom_components/spectra_ls/metadata_stack.py` so component no-mix startup posture can satisfy bridge readiness when metadata prep/cutover/component now-playing authority are healthy.
+- Updated handoff inventory status logic in `custom_components/spectra_ls/validation_fabric.py` + `custom_components/spectra_ls/scaffold_fabric.py` to classify metadata resolver lane as `implemented` from active component authority readiness, not only explicit write-attempt telemetry.
+- Runtime track disposition: compatibility-shimmed (legacy resolver surfaces retained as fallback-only compatibility lane).
+- Component track disposition: implemented (resolver-authority status and readiness now derive from active component authority state).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; resolver-authority activation reliability and migration-status truthfulness hardening only.
+- README/wiki parity: no material operator workflow contract change.
+
+Latest run update (2026-05-05, Slice-CD scheduler diagnostics rewire to component now-playing sensors):
+
+- Rewired `docs/testing/raw/scheduler_apply_deterministic_validation.jinja` to consume component now-playing sensors first (`sensor.component_now_playing_entity/state/title/artist/album/source`) instead of relying primarily on nested shadow metadata attributes.
+- Retained metadata-prep values and runtime sensors as explicit compatibility fallback lanes only.
+- Runtime track disposition: compatibility-shimmed (runtime now-playing/source surfaces retained as diagnostics fallback).
+- Component track disposition: implemented (component sensor truth surfaces now drive scheduler diagnostics lane).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; diagnostics read-lane reliability hardening only.
+- README/wiki parity: no material operator workflow contract change.
+
+Latest run update (2026-05-05, Slice-CC scheduler template component-first now-playing consumer cleanup):
+
+- Updated `docs/testing/raw/scheduler_apply_deterministic_validation.jinja` to read now-playing entity/state/title/artist/album from component metadata-prep values first, with legacy runtime `sensor.now_playing_*` surfaces as compatibility fallback.
+- Expanded `custom_components/spectra_ls/metadata_stack.py` metadata-prep values payload with selected winner context fields (`now_playing_artist`, `now_playing_album`, `now_playing_source`) so component diagnostics consumers can stay on component lane.
+- Clarified all-green deterministic-next-action wording so bridge satisfaction is treated as `PASS` or intentional `skipped_component_startup_no_mix` posture.
+- Runtime track disposition: compatibility-shimmed (runtime now-playing surfaces retained only as diagnostics fallback lane).
+- Component track disposition: implemented (scheduler diagnostics template now consumes component-selected now-playing lane first).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; diagnostics consumer-lane migration and wording precision hardening only.
+- README/wiki parity: no material operator workflow contract change.
+
+Latest run update (2026-05-05, Slice-CB component now-playing winner truthfulness fix):
+
+- Implemented component-side now-playing winner selection in `custom_components/spectra_ls/metadata_stack.py` so component diagnostics prefer fresh route-active target and active-meta candidates before legacy now-playing fallback.
+- Component metadata prep now derives now-playing state/title/position/duration from the selected component winner entity.
+- Runtime track disposition: compatibility-shimmed (runtime legacy selectors intentionally unchanged in this slice).
+- Component track disposition: implemented (winner selection and published now-playing values are now component-decided).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; component diagnostics correctness hardening only.
+- README/wiki parity: no material operator workflow contract change.
+
+Latest run update (2026-05-05, Slice-CA LC6-L05 phase-2 consumer cutover):
+
+- Migrated active diagnostics/operator consumer templates to component-first backend/API reads (`sensor.component_backend_profile`, `sensor.component_ma_api_url`) while retaining runtime helper/API fallback surfaces for compatibility validation windows.
+- Runtime track disposition: compatibility-shimmed (helper/API surfaces intentionally retained for fallback + parity evidence).
+- Component track disposition: implemented (bridge entities are now the primary consumer read lane for LC6-L05 validation packets).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; phase-2 consumer-lane migration progression only.
+- README/wiki parity: wiki setup guidance updated to reflect phase-2 preference order; README parity unchanged (no material end-user workflow contract change).
 
 Latest run update (2026-05-04, Slice-BP LC-01 component entity namespace binding remap):
 

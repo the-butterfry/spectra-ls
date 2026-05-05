@@ -1,8 +1,319 @@
 <!-- Description: Component-first canonical playback data-fabric architecture for robust multi-source metadata/progress ownership in Spectra LS. -->
-<!-- Version: 2026.05.03.7 -->
-<!-- Last updated: 2026-05-03 -->
+<!-- Version: 2026.05.05.11 -->
+<!-- Last updated: 2026-05-05 -->
 
 # Spectra LS Component Data Fabric Architecture (Canonical Playback Contract)
+
+## Latest implementation note (2026-05-05, CA-S08 closeout validation seal)
+
+- CA-S08 closeout governance is sealed as validated at the board level (`docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`) while preserving explicit lane-level LC-06/07/08 retirement/defer execution gates in `docs/roadmap/LEGACY-CODEPATH-CLEANUP-TRACKER.md`.
+- Final-seal evidence contract remains authoritative in `docs/program/CA-S08-DOMAIN-CLOSEOUT-ROLLBACK-SEAL-CHECKLIST.md` and `docs/testing/raw/ca_s08_domain_closeout_rollback_seal_validation.jinja`.
+- Runtime track disposition remains compatibility-shimmed (rollback-safe baseline explicitly bounded); component track disposition remains implemented (component-first closeout contract remains canonical).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; closeout state consistency and ledger integrity hardening only.
+
+## Latest implementation note (2026-05-05, Slice-CE)
+
+- Resolver-authority bridge readiness now supports explicit component no-mix startup posture as a valid satisfied state when metadata prep is ready, cutover is active, and component now-playing authority is resolved.
+- Handoff inventory metadata resolver lane now classifies as `implemented` from active component-authority readiness (owner/cutover/bridge-satisfaction + resolved component now-playing entity), not only from explicit resolver/trial write-attempt telemetry.
+- Legacy resolver surfaces remain compatibility fallback only and are no longer required for component resolver-authority readiness classification in diagnostics.
+
+## CA-S01B canonical contract tables (authority tokens + resolver invariants)
+
+These tables are normative for CA-S01 freeze validation.
+
+### Authority token contract table
+
+| Surface | Allowed values | Required meaning | Fail/degraded handling |
+| --- | --- | --- | --- |
+| `health.authority_mode` | `ma_primary`, `ma_degraded_fallback` | Primary authority state for canonical playback contract | Any non-allowed value is invalid contract shape |
+| `metadata_authority_owner` | `component_contract_surfaces`, `legacy_runtime_compat` | Active metadata write/ownership lane | Non-component owner under CA-S01 active mode must emit explicit blocker reason |
+| `health.reasons[*]` | tokenized reason strings | Deterministic degraded attribution | Missing reason tokens on degraded mode is contract-incomplete |
+
+Required degraded tokens (minimum set when degraded):
+
+- `ma_degraded_fallback_active`
+- `ma_payload_stale`
+- `ma_payload_shape_invalid`
+- `ma_api_unreachable`
+
+### Resolver invariant contract table
+
+| Invariant ID | Condition | Required result | Blocker token on violation |
+| --- | --- | --- | --- |
+| `resolver.inv.01` | metadata prep ready and cutover active with resolved component now-playing entity | Bridge satisfaction may pass under intentional no-mix startup posture | `resolver_candidate_missing` |
+| `resolver.inv.02` | resolver stage required | resolver status must be one of `dry_run_ok`, `noop_already_selected`, `write_applied` | `resolver_stage_not_ok` |
+| `resolver.inv.03` | resolver stage not required (component no-mix satisfied) | resolver status may be `skipped_component_authority_active` without failure | none (informational skip) |
+| `resolver.inv.04` | trial stage required | trial status must be one of `dry_run_ok`, `noop_applied` | `trial_stage_not_ok` |
+| `resolver.inv.05` | trial stage not required due active cutover/no-mix satisfaction | no trial failure should be emitted solely for non-attempted stage | none (stage intentionally skipped) |
+
+CA-S01 acceptance rule: contract is freeze-ready only when authority token table and resolver invariants pass with deterministic tokenized reasons for any degraded state.
+
+## CA-S02A resolver determinism scoring contract (matrix + acceptance packet)
+
+This section is normative for CA-S02A execution and acceptance.
+
+### Resolver scoring matrix (deterministic)
+
+Per-candidate score:
+
+$$
+S = w_c C + w_f F + w_m M + w_s P
+$$
+
+Where:
+
+- $C$: normalized confidence score $[0,1]$
+- $F$: normalized freshness score $[0,1]$
+- $M$: normalized match-strength score $[0,1]$
+- $P$: normalized source-priority score $[0,1]$
+
+Default CA-S02A weights:
+
+| Metric | Symbol | Weight | Notes |
+| --- | --- | --- | --- |
+| Confidence | $C$ | 0.35 | Contract-shape and field validity confidence |
+| Freshness | $F$ | 0.30 | Age/clock recency for candidate evidence |
+| Match strength | $M$ | 0.20 | Track/entity correlation quality |
+| Source priority | $P$ | 0.15 | Preferred authority/source order |
+
+Weight invariants:
+
+- weights must sum to $1.0$,
+- no weight may be negative,
+- any weight-set change requires explicit plan-delta logging.
+
+### Deterministic tie-break order
+
+When two candidates have equal $S$ within epsilon (`<= 0.001`), apply this strict order:
+
+1. higher freshness ($F$),
+2. higher confidence ($C$),
+3. higher source priority ($P$),
+4. lexicographically stable `source_ref` ordering.
+
+### Resolver acceptance packet fields (required)
+
+A CA-S02 acceptance packet for resolver determinism must include:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `schema_version` | string | yes | Acceptance packet schema tag |
+| `slice_id` | string | yes | Expected `CA-S02A` |
+| `parity_stamp` | string | yes | Deterministic run stamp |
+| `weights` | object | yes | Active `{confidence,freshness,match_strength,source_priority}` |
+| `tie_break_policy` | string | yes | Policy identifier/version |
+| `candidate_count` | integer | yes | Number of evaluated candidates |
+| `top_candidates` | array | yes | Ranked top set with per-metric breakdown |
+| `winner` | object | yes | Selected candidate and total score |
+| `winner_provenance` | object | yes | Source + authority context for winner |
+| `determinism_replay_hash` | string | yes | Stable hash proving replay-consistent ordering |
+| `blocking_reasons` | array | yes | Deterministic blocker list (empty allowed) |
+| `runtime_track_disposition` | string | yes | Two-track disposition value |
+| `component_track_disposition` | string | yes | Two-track disposition value |
+
+### CA-S02A pass criteria
+
+`CA-S02A` is pass-ready only when all are true:
+
+1. identical candidate input payloads produce identical winner + rank order,
+2. acceptance packet contains all required fields,
+3. tie-break policy resolves epsilon ties without nondeterministic ordering,
+4. blocking reasons are tokenized and stable across replay.
+
+## CA-S02B resolver replay validation contract (checklist + sample packet publication)
+
+This section is normative for CA-S02B execution and acceptance.
+
+### Required CA-S03 artifact
+
+- `docs/program/CA-S02B-RESOLVER-REPLAY-CHECKLIST.md` is the authoritative replay-validation checklist and deterministic sample acceptance packet source for CA-S02B.
+
+### Required replay assertions
+
+For identical `input_payload_hash` and `resolver_config_hash`:
+
+1. winner target must remain stable,
+2. ranked ordering must remain stable,
+3. score totals must remain stable within epsilon policy,
+4. replay hash must remain stable,
+5. blocker tokens must remain stable.
+
+### CA-S02B pass criteria
+
+`CA-S02B` is pass-ready only when:
+
+1. checklist-required replay matrix runs are completed,
+2. deterministic sample packet schema is published and complete,
+3. no unexplained winner/rank/hash drift exists under identical fingerprints,
+4. two-track disposition and P1/P2/P3 impact statement are explicit.
+
+## CA-S03 consumer projection cutover contract (templates/diagnostics/sensors)
+
+This section is normative for CA-S03 execution and acceptance.
+
+### Required artifact
+
+- `docs/program/CA-S03-CONSUMER-PROJECTION-CUTOVER-CHECKLIST.md` is the authoritative consumer projection cutover checklist and sample evidence packet source for CA-S03.
+
+### Required projection assertions
+
+For active projection consumers:
+
+1. effective source lane must be emitted per projected field,
+2. component-first lane must be preferred when available,
+3. runtime fallback use must be counted and reasoned,
+4. cutover readiness must be emitted with explicit blocker reasons.
+
+### CA-S03 pass criteria
+
+`CA-S03` is pass-ready only when:
+
+1. projection checklist-required fields and fallback counters are published,
+2. consumer output includes deterministic `projection_cutover_ready` posture,
+3. fallback usage (if present) is explicit and non-contradictory,
+4. two-track disposition and P1/P2/P3 impact statement are explicit.
+
+## CA-S04 runtime write-lane retirement contract (wave-1)
+
+This section is normative for CA-S04 execution and acceptance.
+
+### Required CA-S04 artifact
+
+- `docs/program/CA-S04-RUNTIME-WRITE-LANE-RETIREMENT-CHECKLIST.md` is the authoritative wave-1 runtime write-lane retirement checklist and sample evidence packet source.
+
+### Required wave-1 assertions
+
+For wave-1 lanes (`LC6-L01`, `LC6-L03`, `LC6-L05`):
+
+1. lane readiness must be emitted as `ready|hold|blocked` with explicit reasons,
+2. authority and helper-write guard posture must be visible,
+3. blocker taxonomy must be tokenized and deterministic,
+4. retirement readiness must fail-closed when required signals are missing.
+
+### CA-S04 pass criteria
+
+`CA-S04` is pass-ready only when:
+
+1. all wave-1 lane statuses are published with deterministic reasons,
+2. helper writer guard outcomes are visible and non-contradictory,
+3. blocker taxonomy is complete and stable,
+4. two-track disposition and P1/P2/P3 impact statement are explicit.
+
+## CA-S05 ESP fallback-listener soak contract (LC-07)
+
+This section is normative for CA-S05 execution and acceptance.
+
+### Required CA-S05 artifacts
+
+- `docs/program/CA-S05-ESP-FALLBACK-LISTENER-SOAK-CHECKLIST.md` is the authoritative soak/retirement-gate checklist.
+- `docs/testing/raw/ca_s05_esp_fallback_listener_soak_validation.jinja` is the one-screen deterministic validator for readiness/blocker evidence.
+
+### Required LC-07 assertions
+
+For fallback-listener lanes (`ESP-L04`, `ESP-L05`, `ESP-L06`):
+
+1. pre/in/post soak windows must be captured,
+2. fallback apply counters must be explicit and deterministic,
+3. authority/route posture must remain safe and non-contradictory,
+4. contract/parity cleanliness must fail-closed on missing required evidence,
+5. retirement recommendation must be derived from blocker taxonomy, not free-form interpretation.
+
+### CA-S05 pass criteria
+
+`CA-S05` is pass-ready only when:
+
+1. at least one complete pre/in/post evidence packet is captured,
+2. fallback apply counters remain zero across the packet window,
+3. authority/route posture remains safe for supported path operation,
+4. blocker taxonomy is complete, deterministic, and empty for READY posture,
+5. two-track disposition and P1/P2/P3 impact statement are explicit.
+
+## CA-S06 runtime write/helper retirement contract (wave-2 tails)
+
+This section is normative for CA-S06 execution and acceptance.
+
+### Required CA-S06 artifacts
+
+- `docs/program/CA-S06-RUNTIME-WRITE-HELPER-RETIREMENT-WAVE2-CHECKLIST.md` is the authoritative wave-2 tail-lane checklist.
+- `docs/testing/raw/ca_s06_runtime_write_helper_retirement_wave2_validation.jinja` is the one-screen deterministic validator for lane disposition evidence.
+
+### Required wave-2 assertions
+
+For wave-2 tail lanes (`LC6-L01`, `LC6-L03`, `LC6-L06`, `LC6-L02`):
+
+1. each lane must have explicit disposition,
+2. retained lanes must be explicitly compatibility-shimmed or deferred-with-rationale,
+3. replacement component contract presence must be visible,
+4. blocker taxonomy must be deterministic,
+5. missing required evidence must fail closed.
+
+### CA-S06 pass criteria
+
+`CA-S06` is pass-ready only when:
+
+1. all target lane dispositions are published and non-contradictory,
+2. retained compatibility tails include explicit rationale,
+3. component replacement contract surfaces are present for active consumers,
+4. blocker taxonomy is complete/stable and empty for READY posture,
+5. two-track disposition and P1/P2/P3 impact statement are explicit.
+
+## CA-S07 legacy diagnostics/template fallback cleanup contract (LC-08)
+
+This section is normative for CA-S07 execution and acceptance.
+
+### Required CA-S07 artifacts
+
+- `docs/program/CA-S07-LEGACY-DIAGNOSTICS-TEMPLATE-FALLBACK-CLEANUP-CHECKLIST.md` is the authoritative LC-08 cleanup checklist.
+- `docs/testing/raw/ca_s07_legacy_diagnostics_template_fallback_cleanup_validation.jinja` is the one-screen deterministic validator for fallback cleanup readiness.
+
+### Required CA-S07 assertions
+
+For legacy diagnostics/template fallback lanes:
+
+1. component-first consumer surfaces must be verified,
+2. legacy fallback references must be inventoried and classified,
+3. runtime fallback hits must be explicit and justified when non-zero,
+4. blocker taxonomy must be deterministic,
+5. missing required evidence must fail closed.
+
+### CA-S07 pass criteria
+
+`CA-S07` is pass-ready only when:
+
+1. required component diagnostics/template surfaces are resolved,
+2. legacy fallback inventory is complete and non-contradictory,
+3. fallback hits are zero or explicitly bounded with rationale,
+4. blocker taxonomy is complete/stable and empty for READY posture,
+5. two-track disposition and P1/P2/P3 impact statement are explicit.
+
+## CA-S08 domain closeout + rollback-safe seal contract (LC-06/07/08 final seal)
+
+This section is normative for CA-S08 execution and acceptance.
+
+### Required CA-S08 artifacts
+
+- `docs/program/CA-S08-DOMAIN-CLOSEOUT-ROLLBACK-SEAL-CHECKLIST.md` is the authoritative final closeout checklist.
+- `docs/testing/raw/ca_s08_domain_closeout_rollback_seal_validation.jinja` is the one-screen deterministic validator for final-seal readiness.
+
+### Required CA-S08 assertions
+
+For final closeout lanes:
+
+1. LC-06, LC-07, and LC-08 each have explicit final disposition,
+2. non-retired lanes include explicit bounded rationale,
+3. rollback-safe runtime compatibility posture remains explicit,
+4. component-first ownership posture remains explicit and non-contradictory,
+5. closure ledger consistency is explicit across changelog, architecture, roadmap boards, and tracker.
+
+### CA-S08 pass criteria
+
+`CA-S08` is pass-ready only when:
+
+1. final dispositions for LC-06/07/08 are present and non-contradictory,
+2. rollback-safe posture is explicitly asserted,
+3. ledger consistency is clean,
+4. blocker taxonomy is complete/stable and empty for READY posture,
+5. two-track disposition and P1/P2/P3 impact statement are explicit.
 
 ## Why this exists
 

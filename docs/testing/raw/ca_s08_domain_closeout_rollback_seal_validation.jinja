@@ -1,0 +1,37 @@
+{# Description: CA-S08 one-screen validator for domain closeout and rollback-safe seal evidence. #}
+{# Version: 2026.05.05.1 #}
+{# Last updated: 2026-05-05 #}
+
+{%- set lc06 = states('sensor.component_lc06_final_disposition') | lower -%}
+{%- set lc07 = states('sensor.component_lc07_final_disposition') | lower -%}
+{%- set lc08 = states('sensor.component_lc08_final_disposition') | lower -%}
+{%- set rollback_safe = states('binary_sensor.component_rollback_safe_posture') | lower -%}
+{%- set ledger_consistency = states('sensor.component_retirement_ledger_consistency') | lower -%}
+{%- set runtime_disposition = states('sensor.component_runtime_track_disposition') | lower -%}
+{%- set component_disposition = states('sensor.component_component_track_disposition') | lower -%}
+
+{%- set blockers = namespace(items=[]) -%}
+{%- if lc06 in ['unknown', 'unavailable', '', 'none'] -%}{%- set blockers.items = blockers.items + ['missing_lc06_disposition'] -%}{%- endif -%}
+{%- if lc07 in ['unknown', 'unavailable', '', 'none'] -%}{%- set blockers.items = blockers.items + ['missing_lc07_disposition'] -%}{%- endif -%}
+{%- if lc08 in ['unknown', 'unavailable', '', 'none'] -%}{%- set blockers.items = blockers.items + ['missing_lc08_disposition'] -%}{%- endif -%}
+{%- if rollback_safe not in ['on', 'true'] -%}{%- set blockers.items = blockers.items + ['rollback_posture_missing'] -%}{%- endif -%}
+{%- if ledger_consistency not in ['clean', 'ok', 'pass'] -%}{%- set blockers.items = blockers.items + ['ledger_inconsistency_detected'] -%}{%- endif -%}
+{%- if runtime_disposition in ['unknown', 'unavailable', '', 'none'] or component_disposition in ['unknown', 'unavailable', '', 'none'] -%}
+  {%- set blockers.items = blockers.items + ['two_track_disposition_missing'] -%}
+{%- endif -%}
+
+{%- set verdict = 'READY' if (blockers.items | length) == 0 else 'HOLD' -%}
+{%- set next_action = 'CA program closeout seal complete. Maintain rollback-safe compatibility baseline evidence.' if verdict == 'READY' else 'Resolve blockers and re-run CA-S08 validator before claiming final closure.' -%}
+
+CA-S08 | DOMAIN CLOSEOUT + ROLLBACK-SAFE SEAL
+- slice_id: CA-S08
+- lc06_final_disposition: {{ lc06 }}
+- lc07_final_disposition: {{ lc07 }}
+- lc08_final_disposition: {{ lc08 }}
+- rollback_safe_posture: {{ rollback_safe }}
+- ledger_consistency: {{ ledger_consistency }}
+- runtime_track_disposition: {{ runtime_disposition }}
+- component_track_disposition: {{ component_disposition }}
+- blocking_reasons: {{ blockers.items | join(',') if (blockers.items | length) > 0 else 'none' }}
+- closure_verdict: {{ verdict }}
+- next_action: {{ next_action }}

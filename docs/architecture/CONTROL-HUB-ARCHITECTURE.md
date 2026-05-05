@@ -1,6 +1,6 @@
 <!-- Description: Retroactive architecture and feature documentation for the MA control hub package split. -->
-<!-- Version: 2026.05.04.3 -->
-<!-- Last updated: 2026-05-04 -->
+<!-- Version: 2026.05.05.2 -->
+<!-- Last updated: 2026-05-05 -->
 
 # MA Control Hub Architecture (Retroactive Baseline)
 
@@ -46,6 +46,8 @@ Defined by `rest.inc` + `rest_command.inc`:
 - generic MA API POST wrapper (`rest_command.ma_api_command`)
 - profile-aware MA API URL surface (`sensor.ma_api_url`) with active profile visibility (`sensor.ma_server_profile_effective`)
 - LC6-L05 phase-1 bridge note: component snapshot packet `ma_backend_profile` now mirrors runtime profile/effective/API URL state and publishes component diagnostics bridge entities `sensor.component_backend_profile` + `sensor.component_ma_api_url` for migration parity checks
+- LC6-L05 phase-2 consumer note: diagnostics/operator validation consumers now read component backend/API entities first (`sensor.component_backend_profile`, `sensor.component_ma_api_url`) and only fall back to runtime helper/API surfaces (`sensor.ma_server_profile_effective`, `sensor.ma_api_url`) for compatibility windows
+- Slice-CB component now-playing truthfulness note: component metadata prep now selects its own now-playing winner (route active target → active meta entity → legacy now-playing fallback) with freshness gating, rather than blindly mirroring legacy `sensor.now_playing_entity`.
 - command-shape compatibility note: avoid unsupported MA command aliases in REST sensors (for example `players/get_active`); use supported command shapes and template-side selection/parsing.
 
 ### 3) Orchestration script domain

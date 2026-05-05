@@ -1,0 +1,74 @@
+{# Description: CA-S06 one-screen runtime write/helper retirement wave-2 validator for LC-06 tails. #}
+{# Version: 2026.05.05.1 #}
+{# Last updated: 2026-05-05 #}
+
+{% set s = states.sensor %}
+
+{% set authority_mode = s.shadow_active_target.attributes.write_controls.authority_mode if s.shadow_active_target is defined and s.shadow_active_target else 'unknown' %}
+{% set route_decision = s.shadow_active_target.attributes.route_trace.decision if s.shadow_active_target is defined and s.shadow_active_target and s.shadow_active_target.attributes.route_trace is defined else 'unknown' %}
+
+{# Lane dispositions for CA-S06 baseline publication (can be updated as implementation advances). #}
+{% set lane_l01_disposition = 'compatibility-shimmed' %}
+{% set lane_l03_disposition = 'compatibility-shimmed' %}
+{% set lane_l06_disposition = 'compatibility-shimmed' %}
+{% set lane_l02_disposition = 'deferred_with_rationale' %}
+
+{% set component_contract_presence = namespace(count=0, total=3) %}
+{% if states('sensor.component_now_playing_entity') not in ['unknown', 'unavailable', '', none] %}
+  {% set component_contract_presence.count = component_contract_presence.count + 1 %}
+{% endif %}
+{% if states('sensor.component_now_playing_title') not in ['unknown', 'unavailable', '', none] %}
+  {% set component_contract_presence.count = component_contract_presence.count + 1 %}
+{% endif %}
+{% if states('sensor.component_now_playing_source') not in ['unknown', 'unavailable', '', none] %}
+  {% set component_contract_presence.count = component_contract_presence.count + 1 %}
+{% endif %}
+
+{% set runtime_legacy_surface_presence = namespace(count=0, total=3) %}
+{% if states('sensor.ma_meta_resolver') not in ['unknown', 'unavailable', '', none] %}
+  {% set runtime_legacy_surface_presence.count = runtime_legacy_surface_presence.count + 1 %}
+{% endif %}
+{% if states('input_boolean.ma_meta_override_active') not in ['unknown', 'unavailable', '', none] %}
+  {% set runtime_legacy_surface_presence.count = runtime_legacy_surface_presence.count + 1 %}
+{% endif %}
+{% if states('input_text.ma_meta_override_entity') not in ['unknown', 'unavailable', '', none] %}
+  {% set runtime_legacy_surface_presence.count = runtime_legacy_surface_presence.count + 1 %}
+{% endif %}
+
+{% set blockers = namespace(items=[]) %}
+{% if authority_mode not in ['legacy', 'component'] %}
+  {% set blockers.items = blockers.items + ['authority_not_safe'] %}
+{% endif %}
+{% if route_decision not in ['route_linkplay_tcp'] %}
+  {% set blockers.items = blockers.items + ['route_not_supported'] %}
+{% endif %}
+{% if lane_l01_disposition == '' or lane_l03_disposition == '' or lane_l06_disposition == '' or lane_l02_disposition == '' %}
+  {% set blockers.items = blockers.items + ['missing_lane_disposition'] %}
+{% endif %}
+{% if component_contract_presence.count == 0 %}
+  {% set blockers.items = blockers.items + ['component_contract_missing'] %}
+{% endif %}
+{% if authority_mode == 'unknown' or route_decision == 'unknown' %}
+  {% set blockers.items = blockers.items + ['missing_required_evidence'] %}
+{% endif %}
+
+{% set verdict = 'READY' if (blockers.items | count) == 0 else ('HOLD' if 'missing_required_evidence' not in blockers.items and 'component_contract_missing' not in blockers.items else 'BLOCKED') %}
+
+CA-S06 LC-06 Wave-2 Runtime Tail Validation
+===========================================
+
+verdict={{ verdict }}
+authority_mode={{ authority_mode }}
+route_decision={{ route_decision }}
+
+lane_l01_disposition={{ lane_l01_disposition }}
+lane_l03_disposition={{ lane_l03_disposition }}
+lane_l06_disposition={{ lane_l06_disposition }}
+lane_l02_disposition={{ lane_l02_disposition }}
+
+component_contract_presence={{ component_contract_presence.count }}/{{ component_contract_presence.total }}
+runtime_legacy_surface_presence={{ runtime_legacy_surface_presence.count }}/{{ runtime_legacy_surface_presence.total }}
+
+blocker_count={{ blockers.items | count }}
+blockers={{ blockers.items | join(',') if (blockers.items | count) > 0 else 'none' }}
+next_action={% if verdict == 'READY' %}prepare_ca_s06_lane_closeout_packet{% elif verdict == 'HOLD' %}complete_remaining_lane_disposition_evidence{% else %}capture_missing_component_or_required_evidence_then_rerun{% endif %}

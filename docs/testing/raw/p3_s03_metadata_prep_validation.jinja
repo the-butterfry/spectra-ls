@@ -1,6 +1,6 @@
 {# Description: Raw copy/paste Jinja template for Spectra LS Phase 3 S03 metadata-prep diagnostics validation. #}
-{# Version: 2026.04.19.6 #}
-{# Last updated: 2026-04-19 #}
+{# Version: 2026.05.05.1 #}
+{# Last updated: 2026-05-05 #}
 
 {# =========================
   Phase 3 S03 Metadata-Prep Validation (custom_components/spectra_ls)
@@ -40,12 +40,12 @@
 {% set selection = state_attr(s_target, 'selection_handoff_validation') or {} %}
 {% set write_controls = state_attr(s_target, 'write_controls') or {} %}
 
-{% set verdict = metadata.verdict if metadata is mapping and metadata.verdict is defined else 'missing' %}
-{% set ready = metadata.ready_for_metadata_handoff if metadata is mapping and metadata.ready_for_metadata_handoff is defined else false %}
+{% set verdict = metadata['verdict'] if metadata is mapping and 'verdict' in metadata else 'missing' %}
+{% set ready = metadata['ready_for_metadata_handoff'] if metadata is mapping and 'ready_for_metadata_handoff' in metadata else false %}
 
-{% set missing_required = metadata.missing_required if metadata is mapping and metadata.missing_required is defined else [] %}
-{% set checks = metadata.checks if metadata is mapping and metadata.checks is defined and metadata.checks is mapping else {} %}
-{% set values = metadata.values if metadata is mapping and metadata.values is defined and metadata.values is mapping else {} %}
+{% set missing_required = metadata['missing_required'] if metadata is mapping and 'missing_required' in metadata else [] %}
+{% set checks = metadata['checks'] if metadata is mapping and 'checks' in metadata and metadata['checks'] is mapping else {} %}
+{% set values = metadata['values'] if metadata is mapping and 'values' in metadata and metadata['values'] is mapping else {} %}
 
 {% set check_active_meta = checks.active_meta_entity_resolved if checks.active_meta_entity_resolved is defined else false %}
 {% set check_now_playing_entity = checks.now_playing_entity_resolved if checks.now_playing_entity_resolved is defined else false %}
@@ -59,10 +59,10 @@
 {% set probe_now_playing_state = values.now_playing_state if values.now_playing_state is defined and values.now_playing_state != 'missing' else states('sensor.now_playing_state') %}
 {% set probe_now_playing_title = values.now_playing_title if values.now_playing_title is defined and values.now_playing_title != 'missing' else states('sensor.now_playing_title') %}
 
-{% set contract_valid = contract.valid if contract is mapping and contract.valid is defined else false %}
-{% set route_decision = route_trace.decision if route_trace is mapping and route_trace.decision is defined else '' %}
-{% set selection_verdict = selection.verdict if selection is mapping and selection.verdict is defined else 'missing' %}
-{% set authority_mode = write_controls.authority_mode if write_controls is mapping and write_controls.authority_mode is defined else 'missing' %}
+{% set contract_valid = contract['valid'] if contract is mapping and 'valid' in contract else false %}
+{% set route_decision = route_trace['decision'] if route_trace is mapping and 'decision' in route_trace else '' %}
+{% set selection_verdict = selection['verdict'] if selection is mapping and 'verdict' in selection else 'missing' %}
+{% set authority_mode = write_controls['authority_mode'] if write_controls is mapping and 'authority_mode' in write_controls else 'missing' %}
 {% set captured_at = state_attr(s_target,'captured_at') | default('', true) %}
 {% set captured_ts = as_timestamp(captured_at) if captured_at not in ['', 'unknown', 'unavailable', 'none', none] else none %}
 {% set captured_age_s = (as_timestamp(now()) - captured_ts) if captured_ts is not none else none %}

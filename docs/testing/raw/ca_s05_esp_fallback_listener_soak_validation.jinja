@@ -1,0 +1,60 @@
+{# Description: CA-S05 one-screen fallback-listener soak readiness validator for LC-07 retirement gates. #}
+{# Version: 2026.05.05.1 #}
+{# Last updated: 2026-05-05 #}
+
+{% set s = states.sensor %}
+{% set b = states.binary_sensor %}
+
+{% set authority_mode = s.shadow_active_target.attributes.write_controls.authority_mode if s.shadow_active_target is defined and s.shadow_active_target else 'unknown' %}
+{% set route_decision = s.shadow_active_target.attributes.route_trace.decision if s.shadow_active_target is defined and s.shadow_active_target and s.shadow_active_target.attributes.route_trace is defined else 'unknown' %}
+{% set contract_valid = s.shadow_active_target.attributes.contract_validation.valid if s.shadow_active_target is defined and s.shadow_active_target and s.shadow_active_target.attributes.contract_validation is defined else none %}
+{% set unresolved_required = s.shadow_active_target.attributes.contract_validation.unresolved_required | default(999) if s.shadow_active_target is defined and s.shadow_active_target and s.shadow_active_target.attributes.contract_validation is defined else 999 %}
+{% set mismatches = s.shadow_active_target.attributes.parity_validation.mismatches | count if s.shadow_active_target is defined and s.shadow_active_target and s.shadow_active_target.attributes.parity_validation is defined and s.shadow_active_target.attributes.parity_validation.mismatches is defined else 999 %}
+
+{% set c_hosts = states('sensor.esp_control_hosts_fallback_count') | int(0) %}
+{% set c_host = states('sensor.esp_control_host_fallback_count') | int(0) %}
+{% set c_port = states('sensor.esp_control_port_fallback_count') | int(0) %}
+{% set c_total = c_hosts + c_host + c_port %}
+
+{% set last_type = states('sensor.esp_control_fallback_last_type') %}
+{% set last_age = states('sensor.esp_control_fallback_last_age_s') %}
+
+{% set blockers = namespace(items=[]) %}
+{% if authority_mode not in ['legacy', 'component'] %}
+  {% set blockers.items = blockers.items + ['authority_not_safe'] %}
+{% endif %}
+{% if route_decision not in ['route_linkplay_tcp'] %}
+  {% set blockers.items = blockers.items + ['route_not_stable'] %}
+{% endif %}
+{% if contract_valid != true or unresolved_required != 0 or mismatches != 0 %}
+  {% set blockers.items = blockers.items + ['contract_not_clean'] %}
+{% endif %}
+{% if c_total > 0 %}
+  {% set blockers.items = blockers.items + ['fallback_listener_applied'] %}
+{% endif %}
+{% if authority_mode == 'unknown' or route_decision == 'unknown' %}
+  {% set blockers.items = blockers.items + ['missing_required_evidence'] %}
+{% endif %}
+
+{% set verdict = 'READY' if (blockers.items | count) == 0 else ('HOLD' if 'fallback_listener_applied' not in blockers.items and 'missing_required_evidence' not in blockers.items else 'BLOCKED') %}
+
+CA-S05 LC-07 Fallback Listener Soak Validation
+=============================================
+
+verdict={{ verdict }}
+authority_mode={{ authority_mode }}
+route_decision={{ route_decision }}
+contract_valid={{ contract_valid }}
+unresolved_required={{ unresolved_required }}
+mismatches={{ mismatches }}
+
+fallback_count_hosts={{ c_hosts }}
+fallback_count_host={{ c_host }}
+fallback_count_port={{ c_port }}
+fallback_count_total={{ c_total }}
+fallback_last_type={{ last_type }}
+fallback_last_age_s={{ last_age }}
+
+blocker_count={{ blockers.items | count }}
+blockers={{ blockers.items | join(',') if (blockers.items | count) > 0 else 'none' }}
+next_action={% if verdict == 'READY' %}ready_for_ca_s05_evidence_packet_closeout{% elif 'fallback_listener_applied' in blockers.items %}investigate_component_feed_instability_then_rerun_soak{% elif 'contract_not_clean' in blockers.items %}repair_contract_or_parity_break_then_rerun{% else %}capture_missing_required_evidence_and_rerun{% endif %}

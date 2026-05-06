@@ -1,7 +1,9 @@
 # Description: Music Assistant control hub scripts (target options, auto-select, control helpers).
-# Version: 2026.05.04.2
-# Last updated: 2026-05-04
+# Version: 2026.05.05.2
+# Last updated: 2026-05-05
 # Update version/date whenever you change this file.
+# PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
+# and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 # HUB MUST-READ: Contract parser methodology.
 # - For complex attributes (`rooms`, `candidates_json`, etc.), prefer native sequence/mapping values first.
 # - Only parse string JSON when trimmed payload starts with `[` or `{` and is not unknown/unavailable/none/''.
@@ -15,6 +17,9 @@ ma_update_target_options:
         - conditions: "{{ states('sensor.ma_authority_mode') | lower == 'component' }}"
           sequence:
             - stop: "Legacy target-options writer disabled (component authority mode active)."
+        - conditions: "{{ not is_state('input_boolean.ma_control_fallback_enabled','on') }}"
+          sequence:
+            - stop: "Legacy target-options writer dormant (fallback participation disabled)."
     - variables:
         rooms: >-
           {% set rooms_raw = state_attr('sensor.spectra_ls_rooms_json','rooms_json') | default([], true) %}
@@ -143,15 +148,6 @@ ma_update_target_options:
         entity_id: input_select.ma_active_target
         options: "{{ final_options }}"
     - choose:
-        - conditions: "{{ detected_candidate not in ['','none','unknown','unavailable'] and detected_candidate not in (state_attr('input_select.ma_active_target','options') or []) }}"
-          sequence:
-            - service: input_select.set_options
-              data:
-                entity_id: input_select.ma_active_target
-                options:
-                  - none
-                  - "{{ detected_candidate }}"
-    - choose:
         - conditions: "{{ current_is_none or current not in (state_attr('input_select.ma_active_target','options') or []) }}"
           sequence:
             - service: input_select.select_option
@@ -170,7 +166,7 @@ ma_cycle_target:
                 dry_run: false
                 force: true
                 include_none: false
-        - conditions: "{{ states('sensor.ma_authority_mode') | lower != 'component' }}"
+        - conditions: "{{ states('sensor.ma_authority_mode') | lower != 'component' and is_state('input_boolean.ma_control_fallback_enabled','on') }}"
           sequence:
             - service: input_boolean.turn_on
               data:
@@ -188,6 +184,8 @@ ma_cycle_target:
                       data:
                         entity_id: input_select.ma_active_target
                         option: "{{ next }}"
+      default:
+        - stop: "Legacy cycle-target branch dormant (fallback participation disabled)."
 
 ma_auto_select:
   mode: restart
@@ -196,6 +194,9 @@ ma_auto_select:
         - conditions: "{{ states('sensor.ma_authority_mode') | lower == 'component' }}"
           sequence:
             - stop: "Legacy auto-select disabled (component authority mode active)."
+        - conditions: "{{ not is_state('input_boolean.ma_control_fallback_enabled','on') }}"
+          sequence:
+            - stop: "Legacy auto-select dormant (fallback participation disabled)."
     - variables:
         override_on: "{{ is_state('input_boolean.ma_override_active','on') }}"
         options: "{{ state_attr('input_select.ma_active_target','options') or [] }}"

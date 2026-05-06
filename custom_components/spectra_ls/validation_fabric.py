@@ -1,5 +1,5 @@
 # Description: Validation/control fabric workflow for Spectra LS snapshot validation assembly extracted from meta-fabric.
-# Version: 2026.05.05.1
+# Version: 2026.05.05.3
 # Last updated: 2026-05-05
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
@@ -13,6 +13,8 @@ from .const import (
     LEGACY_CONTROL_HOST,
     LEGACY_CONTROL_TARGETS,
     LEGACY_META_CONFIDENCE_MIN,
+    LEGACY_META_OVERRIDE_ACTIVE,
+    LEGACY_META_OVERRIDE_ENTITY,
     LEGACY_META_PAUSED_HIDE_S,
     LEGACY_META_STALE_S,
     METADATA_AUTH_OWNER_COMPONENT,
@@ -88,11 +90,35 @@ class ValidationFabricWorkflow:
     def build_write_controls_metadata_surfaces(self) -> dict[str, Any]:
         """Build metadata-related write-control surfaces for coordinator snapshot payload."""
         c = self._coordinator
+        override_active_state = c.hass.states.get(LEGACY_META_OVERRIDE_ACTIVE)
+        override_entity_state = c.hass.states.get(LEGACY_META_OVERRIDE_ENTITY)
+
+        override_active_norm = c._normalize_state(
+            override_active_state.state if override_active_state is not None else ""
+        )
+        override_active = override_active_norm in {"on", "true", "1"}
+
+        override_entity = str(override_entity_state.state if override_entity_state is not None else "").strip()
+        if override_entity.lower() in {"", "none", "unknown", "unavailable", "null"}:
+            override_entity = ""
+
+        last_override_attempt = c.metadata_stack.last_metadata_override_attempt
+
         return {
             "metadata_trial_in_progress": c.metadata_stack.metadata_trial_in_progress,
             "metadata_trial_last_attempt": c.metadata_stack.last_metadata_trial_attempt,
             "metadata_resolver_last_attempt": c.metadata_stack.last_metadata_resolver_attempt,
             "metadata_bridge_last_attempt": c.metadata_stack.last_metadata_bridge_attempt,
+            "metadata_override_last_attempt": last_override_attempt,
+            "metadata_override": {
+                "active": override_active,
+                "entity": override_entity,
+                "last_attempt_status": str(last_override_attempt.get("status", "") or ""),
+                "last_attempt_reason": str(last_override_attempt.get("reason", "") or ""),
+                "last_attempt_requested_at": last_override_attempt.get("requested_at"),
+                "last_attempt_completed_at": last_override_attempt.get("completed_at"),
+                "source": "component_packet_over_legacy_storage",
+            },
         }
 
     def build_meta_policy_surface(self) -> dict[str, Any]:
@@ -479,6 +505,8 @@ class ValidationFabricWorkflow:
             verdict = "FAIL"
         elif "selected_target_host_unresolved" in blocking_reasons:
             verdict = "WARN"
+        elif "control_hosts_unresolved" in blocking_reasons:
+            verdict = "WARN"
 
         return {
             "verdict": verdict,
@@ -486,7 +514,11 @@ class ValidationFabricWorkflow:
             "active_target": active_target,
             "selected_target": selected_target_id,
             "selected_target_host": selected_target_host,
-            "ready_for_cutover": verdict == "PASS" and selected_target_host_resolved,
+            "ready_for_cutover": (
+                verdict == "PASS"
+                and selected_target_host_resolved
+                and control_hosts_resolved
+            ),
             "checks": {
                 "active_target_resolved": active_target_resolved,
                 "selected_target_matches_active": selected_target_matches_active,

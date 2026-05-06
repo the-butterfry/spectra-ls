@@ -1,11 +1,34 @@
 # Description: MA control hub automations for startup sync, target selection, and override lifecycle.
-# Version: 2026.05.04.1
-# Last updated: 2026-05-04
+# Version: 2026.05.05.1
+# Last updated: 2026-05-05
+# PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
+# and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 # HUB MUST-READ: Contract parser methodology.
 # - For complex attributes (`rooms`, `candidates_json`, etc.), prefer native sequence/mapping values first.
 # - Only parse string JSON when trimmed payload starts with `[` or `{` and is not unknown/unavailable/none/''.
 # - Never assume attribute payloads are string-only.
 # - Some readers may still be unpatched; if you touch or find one, patch it to this dual-mode contract in the same change.
+
+- id: ma_enforce_component_dormant_fallback_mode
+  alias: "MA: Enforce dormant fallback in component mode"
+  mode: restart
+  trigger:
+    - platform: homeassistant
+      event: start
+    - platform: state
+      entity_id: sensor.ma_authority_mode
+      to: "component"
+      for: "00:00:02"
+  condition:
+    - condition: template
+      value_template: "{{ states('sensor.ma_authority_mode') | lower == 'component' }}"
+    - condition: state
+      entity_id: input_boolean.ma_control_fallback_enabled
+      state: "on"
+  action:
+    - service: input_boolean.turn_off
+      data:
+        entity_id: input_boolean.ma_control_fallback_enabled
 
 - id: ma_update_target_options_start
   alias: "MA: Update target options (startup)"
@@ -23,7 +46,7 @@
       minutes: "/1"
   action:
     - condition: template
-      value_template: "{{ states('sensor.ma_authority_mode') | lower != 'component' }}"
+      value_template: "{{ states('sensor.ma_authority_mode') | lower != 'component' and is_state('input_boolean.ma_control_fallback_enabled','on') }}"
     - choose:
         - conditions: "{{ trigger.platform == 'homeassistant' }}"
           sequence:
@@ -54,7 +77,7 @@
       event_type: state_changed
   condition:
     - condition: template
-      value_template: "{{ states('sensor.ma_authority_mode') | lower != 'component' }}"
+      value_template: "{{ states('sensor.ma_authority_mode') | lower != 'component' and is_state('input_boolean.ma_control_fallback_enabled','on') }}"
     - condition: template
       value_template: >-
         {% if trigger.platform != 'event' %}
@@ -83,6 +106,8 @@
       entity_id: input_select.ma_active_target
   condition:
     - condition: template
+      value_template: "{{ states('sensor.ma_authority_mode') | lower != 'component' and is_state('input_boolean.ma_control_fallback_enabled','on') }}"
+    - condition: template
       value_template: >-
         {% set t = states('input_select.ma_active_target') %}
         {{ t not in ['none','unknown','unavailable',''] and states[t] is not none }}
@@ -99,7 +124,7 @@
       entity_id: input_select.ma_active_target
   condition:
     - condition: template
-      value_template: "{{ states('sensor.ma_authority_mode') | lower != 'component' }}"
+      value_template: "{{ states('sensor.ma_authority_mode') | lower != 'component' and is_state('input_boolean.ma_control_fallback_enabled','on') }}"
     - condition: state
       entity_id: binary_sensor.ma_control_ambiguous
       state: "on"
@@ -121,7 +146,7 @@
       for: "00:00:05"
   condition:
     - condition: template
-      value_template: "{{ states('sensor.ma_authority_mode') | lower != 'component' }}"
+      value_template: "{{ states('sensor.ma_authority_mode') | lower != 'component' and is_state('input_boolean.ma_control_fallback_enabled','on') }}"
     - condition: state
       entity_id: input_boolean.ma_override_active
       state: "on"
@@ -144,7 +169,7 @@
       entity_id: sensor.ma_control_targets
   action:
     - condition: template
-      value_template: "{{ states('sensor.ma_authority_mode') | lower != 'component' }}"
+      value_template: "{{ states('sensor.ma_authority_mode') | lower != 'component' and is_state('input_boolean.ma_control_fallback_enabled','on') }}"
     - choose:
         - conditions: "{{ trigger.platform == 'homeassistant' }}"
           sequence:
@@ -175,6 +200,8 @@
       entity_id: binary_sensor.ma_no_control_capable_hosts
       to: "off"
   action:
+    - condition: template
+      value_template: "{{ states('sensor.ma_authority_mode') | lower != 'component' and is_state('input_boolean.ma_control_fallback_enabled','on') }}"
     - choose:
         - conditions: "{{ trigger.to_state is not none and trigger.to_state.state == 'on' }}"
           sequence:

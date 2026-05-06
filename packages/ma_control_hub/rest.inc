@@ -1,13 +1,19 @@
 # Description: MA control hub REST sensors for MA player snapshots.
-# Version: 2026.04.23.2
-# Last updated: 2026-04-23
+# Version: 2026.05.05.3
+# Last updated: 2026-05-05
 # HUB MUST-READ: Contract parser methodology.
 # - For complex attributes (`rooms`, `candidates_json`, etc.), prefer native sequence/mapping values first.
 # - Only parse string JSON when trimmed payload starts with `[` or `{` and is not unknown/unavailable/none/''.
 # - Never assume attribute payloads are string-only.
 # - Some readers may still be unpatched; if you touch or find one, patch it to this dual-mode contract in the same change.
 
-- resource_template: "{{ states('sensor.ma_api_url') }}"
+- resource_template: >-
+    {% set component_api = states('sensor.component_ma_api_url') %}
+    {% if component_api not in ['unknown','unavailable','none',''] %}
+      {{ component_api }}
+    {% else %}
+      {{ states('sensor.ma_api_url') }}
+    {% endif %}
   method: POST
   headers:
     Content-Type: "application/json"
@@ -28,7 +34,13 @@
         {% endif %}
       json_attributes:
         - result
-- resource_template: "{{ states('sensor.ma_api_url') }}"
+- resource_template: >-
+    {% set component_api = states('sensor.component_ma_api_url') %}
+    {% if component_api not in ['unknown','unavailable','none',''] %}
+      {{ component_api }}
+    {% else %}
+      {{ states('sensor.ma_api_url') }}
+    {% endif %}
   method: POST
   headers:
     Content-Type: "application/json"

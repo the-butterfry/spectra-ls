@@ -1,8 +1,75 @@
 <!-- Description: Component-first canonical playback data-fabric architecture for robust multi-source metadata/progress ownership in Spectra LS. -->
-<!-- Version: 2026.05.05.11 -->
+<!-- Version: 2026.05.05.21 -->
 <!-- Last updated: 2026-05-05 -->
 
 # Spectra LS Component Data Fabric Architecture (Canonical Playback Contract)
+
+## Latest implementation note (2026-05-05, Slice-CS meta-stack validation optimization + contract hardening)
+
+- Removed runtime target-options clobber branch in `script.ma_update_target_options` so detected-candidate merges no longer collapse options to a two-entry list.
+- Hardened runtime host-target reconciliation and control-port contract semantics: host matching now normalizes host/host:port forms, and `sensor.ma_control_port` now resolves from component port contract first with bounded default fallback.
+- Tightened component route-safety packet semantics so unresolved control-host posture downgrades readiness/verdict appropriately instead of passing silently.
+- Updated P3 candidate parity validator semantics for component payload shape (`state_count >= row_count`) to reduce false WARN/FAIL outcomes when component packets are valid.
+- Runtime track disposition remains compatibility-shimmed (fallback retained; correctness/determinism hardening only); component track disposition remains implemented (component contracts primary).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; diagnostics/readiness correctness + validator signal quality hardening only.
+
+## Latest implementation note (2026-05-05, Slice-CR legacy-active participation dormant-by-default gate)
+
+- Runtime control-hub legacy-active automations/scripts are now explicitly dormant unless both conditions are true: non-component authority mode and `input_boolean.ma_control_fallback_enabled == on`.
+- ESP fallback-listener apply lanes (`ma_control_hosts_fallback`, `ma_control_host_fallback`, `ma_control_port_fallback`) now require explicit fallback-enable helper state before applying compatibility feeds.
+- Runtime track disposition remains compatibility-shimmed (fallback lanes retained but default-dormant; no active legacy write-participation in component mode); component track disposition remains implemented (component contracts remain default active participant).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; active-lane participation hardening and rollback-safe fallback gating only.
+
+## Latest implementation note (2026-05-05, Slice-CQ LC6-L06 non-override candidate consumer bridge)
+
+- Started deferred non-override LC6-L06 tail execution by migrating P3 candidate-focused validator consumers to component-first candidate surfaces with bounded legacy fallback.
+- `docs/testing/raw/p3_s03_metadata_prep_validation.jinja` and `docs/testing/raw/p3_candidate_payload_parity_validation.jinja` now prefer `sensor.component_meta_candidates` (and companion low-confidence semantics) before `sensor.ma_meta_candidates` compatibility reads.
+- Runtime track disposition remains compatibility-shimmed (legacy `sensor.ma_meta_candidates` retained as bounded fallback continuity lane); component track disposition remains implemented (component candidate contract primary for validator consumers).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; non-override diagnostics consumer determinism hardening only.
+
+## Latest implementation note (2026-05-05, Slice-CP LC6-L06 override-consumer campaign closeout + deferred remainder seal)
+
+- Override-focused LC6-L06 consumer migration scope is now closed as component-first across runtime template and diagnostics/devtools validator/checklist surfaces.
+- Remaining non-override runtime resolver tails are explicitly dispositioned as deferred-with-rationale pending broader component packet-family parity expansion.
+- Runtime track disposition remains compatibility-shimmed (bounded compatibility/deferred tails explicit); component track disposition remains implemented (component metadata override diagnostics contracts primary).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; closeout ledger clarity and deferred-tail governance hardening only.
+
+## Latest implementation note (2026-05-05, Slice-CN + Slice-CO LC6-L06 checklist/validator override-gate hardening)
+
+- End-to-end checklist and CA-S06 wave-2 validator consumers now require explicit component metadata override diagnostics visibility, with legacy helper references retained as bounded compatibility fallback/evidence lanes only.
+- Runtime track disposition remains compatibility-shimmed (helper storage retained as bounded compatibility evidence source); component track disposition remains implemented (component diagnostics entities remain primary).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; checklist/validator consumer gate determinism hardening only.
+
+## Latest implementation note (2026-05-05, Slice-CL + Slice-CM LC6-L06 package-loader/retirement-validator consumer bridge)
+
+- DevTools package-loader and CA-S06 wave-2 validator consumers now emphasize component metadata override diagnostics contracts first, with legacy helper visibility retained as bounded compatibility telemetry.
+- Runtime track disposition remains compatibility-shimmed (helper storage retained as bounded compatibility source); component track disposition remains implemented (component diagnostics entities remain primary).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; validation/devtools consumer read-lane determinism hardening only.
+
+## Latest implementation note (2026-05-05, Slice-CJ + Slice-CK LC6-L06 validation/devtools metadata override consumer bridge)
+
+- Step-3 validation gate and active DevTools comprehensive health-check consumer reads now prefer component metadata override diagnostics contracts with bounded legacy helper fallback.
+- Runtime track disposition remains compatibility-shimmed (helper storage retained as bounded compatibility source); component track disposition remains implemented (component diagnostics entities remain primary).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; validation/devtools consumer read-lane determinism hardening only.
+
+## Latest implementation note (2026-05-05, Slice-CI LC6-L06 runtime metadata override consumer bridge)
+
+- Runtime metadata override consumer reads now prefer component diagnostics contracts (`binary_sensor.component_metadata_override_active`, `sensor.component_metadata_override_entity`) with bounded helper fallback.
+- Runtime track disposition remains compatibility-shimmed (helper storage retained as bounded compatibility source); component track disposition remains implemented (component diagnostics/packet lane is primary).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; runtime read-lane migration hardening only.
+
+## Latest implementation note (2026-05-05, Slice-CH LC6-L06 metadata override diagnostics consumer cleanup)
+
+- Component metadata override diagnostics consumers now enforce packet-only reads from `write_controls.metadata_override` and no longer read legacy helper entities directly.
+- Runtime track disposition remains compatibility-shimmed (legacy helper storage retained as bounded compatibility lane); component track disposition remains implemented (consumer read lane is component packet contract only).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; diagnostics read-lane determinism hardening only.
+
+## Latest implementation note (2026-05-05, Slice-CG LC-08 metadata override packet-first surfaces)
+
+- Component write-controls now publish metadata override packet surfaces (`active`, `entity`, attempt status/reason/timestamps, source) so diagnostics consumers can read component packet contracts first instead of direct helper coupling.
+- Component metadata override diagnostics entities now consume packet-first values with bounded helper fallback only when packet values are unresolved.
+- Runtime track disposition remains compatibility-shimmed (helper storage still bounded compatibility lane); component track disposition is implemented (consumer read lane moved to component packet contract).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; diagnostics contract-read determinism and migration-readiness hardening only.
 
 ## Latest implementation note (2026-05-05, CA-S08 closeout validation seal)
 

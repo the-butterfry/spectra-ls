@@ -1,5 +1,5 @@
 <!-- Description: Legacy codepath cleanup tracker for runtime/component/ESP retirement tasks during component-first migration. -->
-<!-- Version: 2026.05.05.7 -->
+<!-- Version: 2026.05.05.11 -->
 <!-- Last updated: 2026-05-05 -->
 
 # Legacy Codepath Cleanup Tracker
@@ -72,6 +72,12 @@ CA-S08 final seal baseline update (2026-05-05):
 - Published deterministic CA-S08 closeout checklist + one-screen validator for final `LC-06`/`LC-07`/`LC-08` disposition capture, rollback-safe posture assertion, and closure ledger consistency checks.
 - CA-S08 closeout governance posture is validated (closure verdict semantics + two-track packet requirements are now canonical); lane rows for LC-06/LC-07/LC-08 remain explicitly `active` until lane-level retirement/defer decisions are executed under those validated gates.
 
+Slice-CR dormant-by-default active-participation baseline update (2026-05-05):
+
+- Runtime legacy-active control-hub automation/script lanes now require explicit fallback-enable helper state (`input_boolean.ma_control_fallback_enabled`) in addition to non-component authority posture.
+- ESP fallback listener apply lanes (`ESP-L04`, `ESP-L05`, `ESP-L06`) now no-op unless the same fallback-enable helper is explicitly enabled.
+- LC-06/LC-07/LC-08 remain `active` for retirement governance, but default runtime posture is now component-primary with legacy compatibility lanes dormant unless intentionally opened.
+
 This table breaks `packages/ma_control_hub/*` into concrete retirement lanes so implementation can proceed incrementally with explicit parity gates.
 
 | Lane ID | Runtime surface group | Primary files | Replacement contract target | Gate ID | Disposition |
@@ -80,8 +86,8 @@ This table breaks `packages/ma_control_hub/*` into concrete retirement lanes so 
 | LC6-L02 | Override-flag writer lane (`input_boolean.ma_override_active` lifecycle) | `packages/ma_control_hub/script.inc`, `packages/ma_control_hub/input_boolean.inc` | Component authority/selection policy state packet | LC-06B | deferred with rationale (still used for bounded legacy mode + rollback semantics) |
 | LC6-L03 | Metadata override helper storage (`input_boolean.ma_meta_override_active`, `input_text.ma_meta_override_entity`) | `packages/ma_control_hub/template.inc`, `packages/ma_control_hub/input_boolean.inc`, `packages/ma_control_hub/input_text.inc` | Component metadata override status packet + service telemetry | LC-06C / LC-08 | compatibility-shimmed (service-mediated writes landed; helper storage still consumed by runtime templates) |
 | LC6-L04 | Provider telemetry helper sink (`input_text.ma_metadata_provider_last_*`) | `packages/ma_control_hub/script.inc`, `packages/ma_control_hub/input_text.inc` | Component diagnostics/write-attempt packet fields | LC-06D | validated (2026-05-04 Slice-BX: runtime provider dispatch now publishes telemetry through component service `spectra_ls.set_metadata_provider_packet`; runtime helper sink retained as fallback-only path when component sink is unavailable) |
-| LC6-L05 | Server-profile + API URL helper stack (`input_select.ma_server_profile`, `input_text.ma_server_url*`, `sensor.ma_api_url`, rest/rest_command) | `packages/ma_control_hub/template.inc`, `rest.inc`, `rest_command.inc`, `input_select.inc`, `input_text.inc` | Component options/config-entry endpoint contract | LC-06E | active (2026-05-04 Slice-BY phase-1 bridge complete; 2026-05-05 Slice-CA phase-2 consumer cutover: active diagnostics/operator templates now consume `sensor.component_backend_profile` + `sensor.component_ma_api_url` first with runtime helper/API fallback retained for compatibility evidence windows) |
-| LC6-L06 | Runtime metadata resolver read surfaces (`sensor.ma_meta_*`, resolver templates used by diagnostics/devtools) | `packages/ma_control_hub/template.inc`, `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md` | Component metadata packet family (`sensor.component_*` / diagnostics packet) | LC-06F | active (inventory mapped; staged consumer cleanup pending) |
+| LC6-L05 | Server-profile + API URL helper stack (`input_select.ma_server_profile`, `input_text.ma_server_url*`, `sensor.ma_api_url`, rest/rest_command) | `packages/ma_control_hub/template.inc`, `rest.inc`, `rest_command.inc`, `input_select.inc`, `input_text.inc` | Component options/config-entry endpoint contract | LC-06E | active (2026-05-04 Slice-BY phase-1 bridge complete; 2026-05-05 Slice-CA phase-2 consumer cutover moved diagnostics/operator consumers to component-first; 2026-05-05 Slice-CT tightened runtime REST consumers (`rest.inc`, `rest_command.inc`) to component-first `sensor.component_ma_api_url` with bounded `sensor.ma_api_url` fallback; 2026-05-05 Slice-CU bridged remaining template/read lanes by making `sensor.ma_server_profile_effective` component-first with bounded helper fallback and updating full-stack validator backend/API read-lane checks) |
+| LC6-L06 | Runtime metadata resolver read surfaces (`sensor.ma_meta_*`, resolver templates used by diagnostics/devtools) | `packages/ma_control_hub/template.inc`, `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md` | Component metadata packet family (`sensor.component_*` / diagnostics packet) | LC-06F | deferred with rationale (2026-05-05 Slice-CI..CO override-focused consumers closed as component-first with bounded fallback; remaining non-override resolver tails await broader component packet-family parity expansion and are explicitly bounded compatibility/deferred lanes) |
 
 ### LC-06 execution order (current recommendation)
 

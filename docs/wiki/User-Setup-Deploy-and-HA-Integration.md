@@ -1,5 +1,5 @@
 <!-- Description: Practical setup/deploy/integration guide for Spectra on Home Assistant with clear operator outcomes and failure actions. -->
-<!-- Version: 2026.05.05.1 -->
+<!-- Version: 2026.05.05.2 -->
 <!-- Last updated: 2026-05-05 -->
 
 # User Setup, Deploy, and HA Integration
@@ -121,6 +121,12 @@ Phase-2 preference order:
 
 - primary: `sensor.component_backend_profile`, `sensor.component_ma_api_url`
 - compatibility fallback: `sensor.ma_server_profile_effective`, `sensor.ma_api_url`
+
+Phase-3 runtime/read-lane note:
+
+- Runtime REST consumers and read-lane validation now run component-first for backend/API endpoint surfaces with bounded helper fallback retained for rollback safety.
+- `sensor.ma_server_profile_effective` now resolves component backend-profile first when available, while preserving helper-based fallback semantics.
+- For one-screen validation, use `docs/testing/raw/meta_component_full_stack_tester.jinja` and confirm `backend/api read lane: ready`.
 
 This keeps testing fast and reversible while preserving the discovery-first/fail-closed routing posture.
 

@@ -1,6 +1,6 @@
 <!-- Description: Deterministic end-to-end checklist for Spectra LS metadata-stack stale-healing, policy diagnostics, and ESP UI auto-only behavior validation. -->
-<!-- Version: 2026.05.03.2 -->
-<!-- Last updated: 2026-05-03 -->
+<!-- Version: 2026.05.05.3 -->
+<!-- Last updated: 2026-05-05 -->
 
 # Meta Stack End-to-End Validation Checklist
 
@@ -11,7 +11,7 @@ Use this checklist as the **rolling evidence ledger** for remaining metadata-sta
 - Runtime metadata winner/freshness behavior (`packages/ma_control_hub/template.inc`).
 - Component metadata-policy/suppression diagnostics (`custom_components/spectra_ls/*`).
 - ESP UI auto-only metadata menu behavior (`esphome/spectra_ls_system/packages/spectra-ls-ui.yaml`).
-- Hidden emergency fallback contract continuity (`input_boolean.ma_meta_override_active`, `input_text.ma_meta_override_entity`).
+- Component-first metadata override diagnostics contract continuity (`binary_sensor.component_metadata_override_active`, `sensor.component_metadata_override_entity`) with hidden legacy helper fallback continuity (`input_boolean.ma_meta_override_active`, `input_text.ma_meta_override_entity`).
 
 Out of scope:
 
@@ -34,25 +34,11 @@ Optional deep check (if ambiguity remains):
 
 ## Execution cadence (repeat per slice)
 
-1. **Pre-change baseline capture**
-   - Run templates 1 + 2.
-   - Save status, readiness, active target/path, freshness ages, suppression/policy fields.
-2. **In-change behavior probe**
-   - Trigger deterministic refresh actions:
-     - `spectra_ls.validate_metadata_policy`
-     - `spectra_ls.validate_metadata_prep`
-     - `spectra_ls.validate_contracts`
-   - Re-run templates 1 + 2.
-3. **Ghost/stale guard probe**
-   - Run template 3 when stale/paused/playing confusion is observed.
-   - Record stale reason classification and winner entity evidence.
-4. **ESP UX gate probe**
-   - Confirm metadata menu shows auto-only path in normal operation.
-   - Confirm hidden fallback helpers remain writable and clearable via existing contract.
-5. **Closeout proof packet**
-   - Build proof line.
-   - OTA proof line.
-   - Git sync proof (`HEAD == origin/main`).
+1. **Pre-change baseline capture**: Run templates 1 and 2; save status, readiness, active target/path, freshness ages, and suppression/policy fields.
+2. **In-change behavior probe**: Trigger deterministic refresh actions (`spectra_ls.validate_metadata_policy`, `spectra_ls.validate_metadata_prep`, `spectra_ls.validate_contracts`) and re-run templates 1 and 2.
+3. **Ghost/stale guard probe**: Run template 3 when stale/paused/playing confusion is observed and record stale reason classification plus winner entity evidence.
+4. **ESP UX gate probe**: Confirm metadata menu auto-only behavior, confirm component metadata override diagnostics entities are present/coherent, and confirm hidden fallback helpers remain writable/clearable via compatibility contract.
+5. **Closeout proof packet**: Capture build proof line, OTA proof line, and git sync proof (`HEAD == origin/main`).
 
 ## PASS/WARN/FAIL rubric
 

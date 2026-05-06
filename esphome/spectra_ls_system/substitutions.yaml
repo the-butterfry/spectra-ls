@@ -1,6 +1,6 @@
 # Description: Spectra LS System substitutions for ESPHome main config and packages.
-# Version: 2026.05.04.4
-# Last updated: 2026-05-04
+# Version: 2026.05.05.1
+# Last updated: 2026-05-05
 # Spectra LS substitutions scoped to spectra_ls_system.
 # Use absolute paths for assets so this file can move with spectra_ls_system.
 
@@ -141,6 +141,7 @@ ha_ma_control_targets: sensor.component_control_targets
 ha_ma_control_hosts: sensor.component_control_hosts
 ha_ma_control_host: sensor.component_control_host
 ha_ma_control_port: sensor.component_control_port
+ha_ma_control_fallback_enabled: input_boolean.ma_control_fallback_enabled
 # Compatibility fallback feeds: used only when component-native host surfaces are transiently unresolved.
 ha_ma_control_hosts_fallback: sensor.ma_control_hosts
 ha_ma_control_host_fallback: sensor.ma_control_host

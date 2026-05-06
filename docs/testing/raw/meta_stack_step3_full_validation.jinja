@@ -1,5 +1,5 @@
 {# Description: Full copy/paste Developer Tools template for Step-3 metadata-stack runtime validation (scheduler + metadata policy + stale root-cause + ESP UX gate). #}
-{# Version: 2026.05.05.2 #}
+{# Version: 2026.05.05.3 #}
 {# Last updated: 2026-05-05 #}
 
 {# =========================
@@ -186,7 +186,13 @@
 {% set esp_target = states('sensor.spectra_ls_system_esp_control_target') %}
 {% set esp_oled = states('sensor.spectra_ls_system_esp_oled_status') %}
 {% set esp_handoff_ok = esp_handoff not in invalid and esp_handoff in ['ready','pending_refresh','no_target','no_host'] %}
-{% set esp_auto_only_gate = is_state('input_boolean.ma_meta_override_active','off') and states('input_text.ma_meta_override_entity') in invalid %}
+{% set override_active_component_raw = states('binary_sensor.component_metadata_override_active') | lower %}
+{% set override_active_legacy = 'on' if is_state('input_boolean.ma_meta_override_active','on') else 'off' %}
+{% set override_active_effective = override_active_component_raw if override_active_component_raw in ['on','off','true','false','1','0'] else override_active_legacy %}
+{% set override_entity_component = states('sensor.component_metadata_override_entity') %}
+{% set override_entity_legacy = states('input_text.ma_meta_override_entity') %}
+{% set override_entity_effective = override_entity_component if override_entity_component not in invalid else override_entity_legacy %}
+{% set esp_auto_only_gate = override_active_effective in ['off','false','0'] and override_entity_effective in invalid %}
 
 {% set stale_reason = 'no_clear_reason' %}
 {% if np_entity in invalid and np_title in invalid %}

@@ -1,6 +1,6 @@
 # Description: Audio controls package for Spectra LS System (TCP-only) with host-resolved control routing.
-# Version: 2026.05.04.2
-# Last updated: 2026-05-04
+# Version: 2026.05.05.1
+# Last updated: 2026-05-05
 # PARITY DIRECTIVE: Behavior/contract edits require same-slice runtime+component parity review and version-metadata review.
 # Update version/date whenever you change this file.
 
@@ -100,6 +100,10 @@ binary_sensor:
           if (x) {
             id(audio_wake_until_ms) = now + ${audio_wake_hold_ms};
           }
+  - platform: homeassistant
+    id: ma_control_fallback_enabled
+    entity_id: ${ha_ma_control_fallback_enabled}
+    internal: true
   - platform: homeassistant
     id: ha_audio_display_allowed
     entity_id: ${ha_ma_active_display_allowed}
@@ -872,6 +876,9 @@ text_sensor:
     internal: true
     on_value:
       - lambda: |-
+          const bool fallback_enabled = id(ma_control_fallback_enabled).has_state() && id(ma_control_fallback_enabled).state;
+          if (!fallback_enabled) return;
+
           const uint32_t now = millis();
           std::string hosts = x.c_str();
           std::string low = hosts;
@@ -905,6 +912,9 @@ text_sensor:
     internal: true
     on_value:
       - lambda: |-
+          const bool fallback_enabled = id(ma_control_fallback_enabled).has_state() && id(ma_control_fallback_enabled).state;
+          if (!fallback_enabled) return;
+
           const uint32_t now = millis();
           std::string host = x.c_str();
           std::string low = host;
@@ -938,6 +948,9 @@ text_sensor:
     internal: true
     on_value:
       - lambda: |-
+          const bool fallback_enabled = id(ma_control_fallback_enabled).has_state() && id(ma_control_fallback_enabled).state;
+          if (!fallback_enabled) return;
+
           const uint32_t now = millis();
           std::string raw = x.c_str();
           std::string low = raw;

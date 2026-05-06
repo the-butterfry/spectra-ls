@@ -1,6 +1,6 @@
 # Description: Sensor entities for Spectra LS shadow parity routing surfaces with Phase 3 write-control, Phase 4 diagnostics attributes, and Phase 6/8 control-center settings/readiness/last-attempt visibility, including recorder-safe attribute payload sizing and shared MA authority-contract packet propagation.
-# Version: 2026.05.04.5
-# Last updated: 2026-05-04
+# Version: 2026.05.05.7
+# Last updated: 2026-05-05
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -21,7 +21,6 @@ from .const import (
     DOMAIN,
     LEGACY_META_CANDIDATES,
     LEGACY_META_CONFIDENCE_MIN,
-    LEGACY_META_OVERRIDE_ENTITY,
     LEGACY_META_RESOLVER,
 )
 
@@ -238,6 +237,14 @@ def _component_metadata_provider_packet(data: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(write_controls, dict):
         return {}
     packet = write_controls.get("metadata_provider_last", {})
+    return packet if isinstance(packet, dict) else {}
+
+
+def _component_metadata_override_packet(data: dict[str, Any]) -> dict[str, Any]:
+    write_controls = data.get("write_controls", {})
+    if not isinstance(write_controls, dict):
+        return {}
+    packet = write_controls.get("metadata_override", {})
     return packet if isinstance(packet, dict) else {}
 
 
@@ -812,23 +819,24 @@ class SpectraLsComponentMetadataOverrideEntitySensor(CoordinatorEntity, SensorEn
 
     @property
     def native_value(self):
-        override_state = self.coordinator.hass.states.get(LEGACY_META_OVERRIDE_ENTITY)
-        if override_state is None:
-            return ""
-        value = str(override_state.state or "").strip()
-        if value.lower() in {"", "none", "unknown", "unavailable", "null"}:
-            return ""
-        return value
+        data = self.coordinator.data
+        packet = _component_metadata_override_packet(data)
+        packet_value = str(packet.get("entity", "") or "").strip()
+        if packet_value.lower() not in {"", "none", "unknown", "unavailable", "null"}:
+            return packet_value
+        return ""
 
     @property
     def extra_state_attributes(self):
         data = self.coordinator.data
+        packet = _component_metadata_override_packet(data)
         metadata_attempt = self.coordinator.metadata_stack.last_metadata_override_attempt
         return {
-            "last_attempt_status": metadata_attempt.get("status", "unknown"),
-            "last_attempt_reason": metadata_attempt.get("reason", ""),
-            "last_attempt_requested_at": metadata_attempt.get("requested_at"),
-            "last_attempt_completed_at": metadata_attempt.get("completed_at"),
+            "last_attempt_status": packet.get("last_attempt_status") or metadata_attempt.get("status", "unknown"),
+            "last_attempt_reason": packet.get("last_attempt_reason") or metadata_attempt.get("reason", ""),
+            "last_attempt_requested_at": packet.get("last_attempt_requested_at") or metadata_attempt.get("requested_at"),
+            "last_attempt_completed_at": packet.get("last_attempt_completed_at") or metadata_attempt.get("completed_at"),
+            "source": packet.get("source", "component_packet_missing"),
             "captured_at": data.get("captured_at"),
         }
 

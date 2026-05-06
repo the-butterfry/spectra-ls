@@ -1,6 +1,6 @@
 # Description: Top-level ignore rules for Home Assistant monorepo.
-# Version: 2026.04.21.4
-# Last updated: 2026-04-21
+# Version: 2026.05.04.1
+# Last updated: 2026-05-04
 
 # Secrets / credentials
 secrets.yaml
@@ -74,6 +74,7 @@ custom_components/spectra_ls/**/*.pyo
 
 # Local AC package kept outside Spectra tracked scope
 packages/dst_tuya_ac.yaml
+packages/dst_ge_trash_heatpump.yaml
 
 # Re-ignore archived previous folders after broad re-include rules above
 esphome/control-py/previous/**

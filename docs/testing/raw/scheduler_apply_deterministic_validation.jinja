@@ -1,5 +1,5 @@
 {# Description: Raw copy/paste Jinja template for deterministic scheduler-apply validation (decision + guarded apply + handoff inventory) with explicit MA boot-wait guidance, component-shadow entity preference hardening, contract-invalid/no-candidate operator guidance, live decision-source fallback when last scheduler decision is never_attempted, control-capable helper-fallback eligibility alignment, runtime control-expected reason visibility, legacy-helper-fallback blocker wording alignment, stable-helper/no-candidate action clarification, hotspot-triage diagnostics surfaces, core-health weighted verdict scoring, additive MA-players refresh/capability-feed checks, and CA-S03 projection-cutover telemetry/readiness signals. #}
-{# Version: 2026.05.05.6 #}
+{# Version: 2026.05.05.7 #}
 {# Last updated: 2026-05-05 #}
 
 {# =========================
@@ -303,6 +303,7 @@
 {% set projection_runtime_fallback_hits = (1 if projection_entity_runtime_fallback else 0) + (1 if projection_title_runtime_fallback else 0) + (1 if projection_artist_runtime_fallback else 0) + (1 if projection_album_runtime_fallback else 0) + (1 if projection_source_runtime_fallback else 0) %}
 {% set projection_component_lane_hits = 5 - projection_runtime_fallback_hits %}
 {% set projection_component_unavailable_hits = (1 if component_now_playing_entity_state in invalid else 0) + (1 if component_now_playing_title_state in invalid else 0) + (1 if component_now_playing_artist_state in invalid else 0) + (1 if component_now_playing_album_state in invalid else 0) + (1 if component_now_playing_source_state in invalid else 0) %}
+{% set selected_in_options = selected_target not in invalid and selected_target in helper_options %}
 
 {% set projection_blockers = namespace(items=[]) %}
 {% if projection_runtime_fallback_hits > 0 %}

@@ -1,5 +1,5 @@
 {# Description: Raw copy/paste Jinja template for Spectra LS Phase 3 S03 metadata-prep diagnostics validation. #}
-{# Version: 2026.05.05.1 #}
+{# Version: 2026.05.05.3 #}
 {# Last updated: 2026-05-05 #}
 
 {# =========================
@@ -33,6 +33,13 @@
 {% set s_target = 'sensor.shadow_active_target' if states['sensor.shadow_active_target'] is not none else 'sensor.spectra_ls_shadow_active_target' %}
 {% set s_path = 'sensor.shadow_active_control_path' if states['sensor.shadow_active_control_path'] is not none else 'sensor.spectra_ls_shadow_active_control_path' %}
 {% set freshness_required_s = 300 %}
+{% set s_component_candidates = 'sensor.component_meta_candidates' %}
+{% set s_legacy_candidates = 'sensor.ma_meta_candidates' %}
+{% set s_candidates = s_component_candidates if states[s_component_candidates] is not none else s_legacy_candidates %}
+{% set candidate_source = 'component_primary' if s_candidates == s_component_candidates else 'legacy_fallback' %}
+{% set candidate_best_entity = state_attr(s_candidates, 'best_entity') | default('', true) %}
+{% set candidate_best_score = state_attr(s_candidates, 'best_score') | default(0, true) %}
+{% set candidate_best_raw = state_attr(s_candidates, 'best_candidate_json') | default({'entity': candidate_best_entity, 'score': candidate_best_score}, true) %}
 
 {% set metadata = state_attr(s_target, 'metadata_prep_validation') or {} %}
 {% set contract = state_attr(s_target, 'contract_validation') or {} %}
@@ -127,7 +134,9 @@
 - `sensor.now_playing_entity`: **{{ states('sensor.now_playing_entity') }}**
 - `sensor.now_playing_state`: **{{ states('sensor.now_playing_state') }}**
 - `sensor.now_playing_title`: **{{ states('sensor.now_playing_title') }}**
-- `sensor.ma_meta_candidates` best candidate: **{{ state_attr('sensor.ma_meta_candidates','best_candidate_json') | default('missing', true) }}**
+- `sensor.component_meta_candidates` best entity/score: **{{ {'entity': state_attr('sensor.component_meta_candidates','best_entity') | default('', true), 'score': state_attr('sensor.component_meta_candidates','best_score') | default(0, true)} | tojson }}**
+- `sensor.ma_meta_candidates` best candidate (compat): **{{ state_attr('sensor.ma_meta_candidates','best_candidate_json') | default('missing', true) }}**
+- Effective candidate surface (`{{ s_candidates }}` / {{ candidate_source }}): **{{ candidate_best_raw }}**
 
 ### Recommendation
 {% if effective_verdict == 'PASS' %}

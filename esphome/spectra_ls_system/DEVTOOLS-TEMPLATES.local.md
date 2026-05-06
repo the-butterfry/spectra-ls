@@ -1,5 +1,5 @@
 <!-- Description: Copy/paste Home Assistant Dev Tools template diagnostics for Spectra LS System. -->
-<!-- Version: 2026.05.05.1 -->
+<!-- Version: 2026.05.05.3 -->
 <!-- Last updated: 2026-05-05 -->
 
 # Spectra LS System — Dev Tools Template Validation
@@ -42,7 +42,8 @@ LC6-L05 phase-2 consumer note:
 {% set critical_helpers = [
   'input_select.ma_active_target',
   'input_boolean.ma_override_active',
-  'input_boolean.ma_meta_override_active',
+  'binary_sensor.component_metadata_override_active',
+  'sensor.component_metadata_override_entity',
   'input_number.ma_meta_confidence_min',
   'input_number.ma_meta_stale_s',
   'input_text.ma_server_url',
@@ -1741,7 +1742,6 @@ Unavailable core entities:
 
 {% set helpers = [
   'input_boolean.ma_override_active',
-  'input_boolean.ma_meta_override_active',
   'input_number.ma_balance',
   'input_number.ma_meta_confidence_min',
   'input_number.ma_meta_stale_s',
@@ -1753,7 +1753,6 @@ Unavailable core entities:
   'input_select.ma_active_target',
   'input_text.ma_ambiguous_entities',
   'input_text.ma_server_url',
-  'input_text.ma_meta_override_entity',
   'input_text.ma_last_valid_target',
   'input_text.spectra_ls_target_primary_entity',
   'input_text.spectra_ls_target_primary_meta_entity',
@@ -1761,6 +1760,11 @@ Unavailable core entities:
   'input_text.spectra_ls_target_room_entity',
   'input_text.spectra_ls_target_room_meta_entity',
   'input_text.spectra_ls_target_room_tcp_host'
+] %}
+
+{% set compatibility_helpers = [
+  'input_boolean.ma_meta_override_active',
+  'input_text.ma_meta_override_entity'
 ] %}
 
 {% set script_sentinels = [
@@ -1772,6 +1776,8 @@ Unavailable core entities:
 ] %}
 
 {% set template_sentinels = [
+  'binary_sensor.component_metadata_override_active',
+  'sensor.component_metadata_override_entity',
   'sensor.ma_api_url',
   'sensor.ma_control_host',
   'sensor.ma_control_hosts',
@@ -1798,6 +1804,16 @@ Unavailable core entities:
     {% set ns.ok = ns.ok + 1 %}
   {% endif %}
   {% set ns.rows = ns.rows + [{'entity':eid,'exists':exists,'state':st}] %}
+{% endfor %}
+
+{% set compat = namespace(total=0, present=0, missing=[]) %}
+{% for eid in compatibility_helpers %}
+  {% set compat.total = compat.total + 1 %}
+  {% if states[eid] is not none %}
+    {% set compat.present = compat.present + 1 %}
+  {% else %}
+    {% set compat.missing = compat.missing + [eid] %}
+  {% endif %}
 {% endfor %}
 
 {% for aid in automation_ids %}
@@ -1841,6 +1857,14 @@ Unavailable core entities:
 ### Host include surfaces
 - `input_text.spectra_ls_target_primary_tcp_host`: **{{ target_host }}** (ipv4_like={{ ip_like_primary }})
 - `input_text.spectra_ls_target_room_tcp_host`: **{{ room_host }}** (ipv4_like={{ ip_like_room }})
+
+### Legacy helper compatibility inventory (non-gating)
+- present: **{{ compat.present }}/{{ compat.total }}**
+{% if (compat.missing | length) == 0 %}
+- missing: **none**
+{% else %}
+- missing: **{{ compat.missing | join(', ') }}**
+{% endif %}
 
 ### Missing entities/IDs
 {% if (ns.missing | length) == 0 %}

@@ -1,6 +1,6 @@
 # Description: Template entities for ma_control_hub runtime routing, metadata, and now-playing state surfaces.
-# Version: 2026.05.04.4
-# Last updated: 2026-05-04
+# Version: 2026.05.05.7
+# Last updated: 2026-05-05
 # PARITY DIRECTIVE (until full cutover): any behavior/contract change here requires same-slice custom-component parity review,
 # explicit implemented/shim/defer disposition in docs/CHANGELOG.md, and version-metadata review on both runtime and component tracks.
 # HUB MUST-READ: Contract parser methodology.
@@ -85,9 +85,19 @@
         {% endif %}
     - name: MA Server Profile Effective
       state: >-
-        {% set profile = states('input_select.ma_server_profile') | lower %}
-        {{ profile if profile in ['beta','stable','manual'] else 'manual' }}
+        {% set component_profile = states('sensor.component_backend_profile') | lower %}
+        {% if component_profile in ['beta','stable','manual'] %}
+          {{ component_profile }}
+        {% else %}
+          {% set profile = states('input_select.ma_server_profile') | lower %}
+          {{ profile if profile in ['beta','stable','manual'] else 'manual' }}
+        {% endif %}
       attributes:
+        effective_profile_source: >-
+          {% set component_profile = states('sensor.component_backend_profile') | lower %}
+          {{ 'component_backend_profile' if component_profile in ['beta','stable','manual'] else 'legacy_helper_profile' }}
+        component_profile: "{{ states('sensor.component_backend_profile') }}"
+        component_api_url: "{{ states('sensor.component_ma_api_url') }}"
         selected_url: >-
           {% set profile = states('input_select.ma_server_profile') | lower %}
           {% set manual_base = states('input_text.ma_server_url') %}
@@ -99,6 +109,13 @@
             {{ stable_base if stable_base not in ['unknown','unavailable','', none] else manual_base }}
           {% else %}
             {{ manual_base }}
+          {% endif %}
+        effective_api_url: >-
+          {% set component_api = states('sensor.component_ma_api_url') %}
+          {% if component_api not in ['unknown','unavailable','none',''] %}
+            {{ component_api }}
+          {% else %}
+            {{ states('sensor.ma_api_url') }}
           {% endif %}
         manual_url: "{{ states('input_text.ma_server_url') }}"
         beta_url: "{{ states('input_text.ma_server_url_beta') }}"
@@ -667,8 +684,18 @@
           {% endif %}
           {% set entries = rooms | selectattr('entity','equalto', t) | list %}
           {% set entry = entries[0] if (entries | length) > 0 else none %}
-          {% set override_on = is_state('input_boolean.ma_meta_override_active','on') %}
-          {% set override_entity = states('input_text.ma_meta_override_entity') %}
+          {% set override_on_component_raw = states('binary_sensor.component_metadata_override_active') | lower %}
+          {% set override_on_legacy = is_state('input_boolean.ma_meta_override_active','on') %}
+          {% if override_on_component_raw in ['on','true','1'] %}
+            {% set override_on = true %}
+          {% elif override_on_component_raw in ['off','false','0'] %}
+            {% set override_on = false %}
+          {% else %}
+            {% set override_on = override_on_legacy %}
+          {% endif %}
+          {% set override_entity_component = states('sensor.component_metadata_override_entity') %}
+          {% set override_entity_legacy = states('input_text.ma_meta_override_entity') %}
+          {% set override_entity = override_entity_component if override_entity_component not in ['','none','unknown','unavailable','null'] else override_entity_legacy %}
           {% set detected = states('sensor.ma_meta_detected_entity') %}
           {% set detected_conf = states('sensor.ma_meta_confidence') | int(0) %}
           {% set conf_min = states('input_number.ma_meta_confidence_min') | int(4) %}
@@ -2012,7 +2039,10 @@
           {% endif %}
           {% set ns = namespace(ent='') %}
           {% for r in rooms %}
-            {% if r.tcp_host is defined and r.tcp_host == host and r.entity is defined and r.entity not in ['','none','unknown','unavailable'] %}
+            {% set room_host_raw = (r.tcp_host if r.tcp_host is defined else '') | string %}
+            {% set room_host = room_host_raw.split(':')[0] if ':' in room_host_raw else room_host_raw %}
+            {% set active_host = host.split(':')[0] if ':' in host else host %}
+            {% if room_host == active_host and r.entity is defined and r.entity not in ['','none','unknown','unavailable'] %}
               {% set ns.ent = r.entity %}
             {% endif %}
           {% endfor %}
@@ -2020,7 +2050,13 @@
         {% endif %}
     - name: MA Control Port
       state: >-
-        8899
+        {% set component_port_raw = states('sensor.component_control_port') %}
+        {% set component_port = component_port_raw | int(0) if component_port_raw not in ['','none','unknown','unavailable','null', none] else 0 %}
+        {% if component_port > 0 and component_port <= 65534 %}
+          {{ component_port }}
+        {% else %}
+          8899
+        {% endif %}
     - name: MA Control Transport
       state: >-
         {% set v = states('text_sensor.spectra_ls_system_arylic_http_transport') %}

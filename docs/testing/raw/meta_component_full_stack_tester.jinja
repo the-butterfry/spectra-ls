@@ -1,6 +1,6 @@
 {# Description: Full-stack one-screen Spectra LS component validation template for HA Developer Tools. #}
-{# Version: 2026.05.04.1 #}
-{# Last updated: 2026-05-04 #}
+{# Version: 2026.05.05.1 #}
+{# Last updated: 2026-05-05 #}
 
 {% set invalid = ['','none','unknown','unavailable','null'] %}
 
@@ -65,6 +65,17 @@
 
 {% set host_sensor = states('sensor.ma_control_host') %}
 {% set hosts_sensor = states('sensor.ma_control_hosts') %}
+{% set component_backend_profile = states('sensor.component_backend_profile') %}
+{% set component_api_url = states('sensor.component_ma_api_url') %}
+{% set helper_backend_profile = states('sensor.ma_server_profile_effective') %}
+{% set helper_api_url = states('sensor.ma_api_url') %}
+{% set effective_backend_profile = component_backend_profile if component_backend_profile not in invalid else helper_backend_profile %}
+{% set effective_api_url = component_api_url if component_api_url not in invalid else helper_api_url %}
+{% set backend_source = 'component_primary' if component_backend_profile not in invalid else 'runtime_helper_fallback' %}
+{% set api_source = 'component_primary' if component_api_url not in invalid else 'runtime_helper_fallback' %}
+{% set backend_profile_ready = (effective_backend_profile | lower) in ['beta','stable','manual'] %}
+{% set backend_api_ready = effective_api_url not in invalid and (effective_api_url | lower).startswith('http') %}
+{% set backend_api_contract_ready = backend_profile_ready and backend_api_ready %}
 
 {% set contract_ready_raw = contract_validation.ready if contract_validation.ready is defined else none %}
 {% set contract_valid = contract_validation.valid if contract_validation.valid is defined else false %}
@@ -121,6 +132,8 @@
 - Active target (route/helper): **{{ active_target }} / {{ helper_target }}**
 - Active path/decision: **{{ active_path }} / {{ route_decision }}**
 - Control host(s): **{{ host_sensor }} / {{ hosts_sensor }}**
+- Backend/API (effective): **{{ effective_backend_profile }} / {{ effective_api_url }}**
+- Backend/API source: **{{ backend_source }} / {{ api_source }}**
 - Meta entity: **{{ active_meta_entity }}**
 - Now playing: **{{ now_playing_entity }} | {{ now_playing_state }} | {{ now_playing_title }}**
 - Preview key: **{{ now_playing_preview_key if now_playing_preview_key not in invalid else 'missing' }}**
@@ -139,6 +152,7 @@
 - selection handoff: **{{ handoff_verdict }}**
 - metadata prep: **{{ metadata_verdict }}** (ready={{ metadata_prep.ready_for_metadata_handoff if metadata_prep.ready_for_metadata_handoff is defined else false }})
 - metadata blockers: **{{ (metadata_blockers | join(', ')) if (metadata_blockers | length) > 0 else 'none' }}**
+- backend/api read lane: **{{ 'ready' if backend_api_contract_ready else 'degraded_or_missing' }}**
 - esp runtime telemetry: **{{ 'ready' if esp_runtime_ready else 'degraded_or_missing' }}**{% if esp_lighting_blank_ok %} (lighting blank expected){% endif %}
 - host cutover gate: **ready={{ host_cutover_ready }} / activation={{ host_activation_ready }}**
 - authority contract ready: **{{ authority_contract_ready }}**
@@ -172,6 +186,8 @@
 - Fix required contract surfaces (`missing_required`/`unresolved_required`) before trusting any trial verdict.
 {% elif metadata_verdict != 'PASS' %}
 - Run `spectra_ls.run_p3_s03_sequence` and resolve metadata blockers before advancing.
+{% elif not backend_api_contract_ready %}
+- LC6-L05 backend/API read lane is degraded. Refresh `sensor.component_backend_profile` + `sensor.component_ma_api_url`, then verify fallback surfaces `sensor.ma_server_profile_effective` + `sensor.ma_api_url` are not unresolved, and rerun.
 {% elif not esp_runtime_ready %}
 - Component metadata gates are green, but ESP runtime telemetry is degraded/missing. Verify ESP node online status in ESPHome, then refresh with `homeassistant.update_entity` for `sensor.spectra_ls_system_esp_control_handoff_status` and `sensor.spectra_ls_system_esp_oled_status`, and rerun.
 {% elif metadata_verdict == 'PASS' and not authority_contract_ready %}

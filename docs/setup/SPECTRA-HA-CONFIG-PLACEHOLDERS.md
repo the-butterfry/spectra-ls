@@ -1,6 +1,6 @@
 <!-- Description: Placeholder snippets for integrating Spectra LS into an existing Home Assistant configuration.yaml. -->
-<!-- Version: 2026.04.16.1 -->
-<!-- Last updated: 2026-04-16 -->
+<!-- Version: 2026.05.05.2 -->
+<!-- Last updated: 2026-05-05 -->
 
 # Spectra LS Home Assistant Config Placeholders
 
@@ -26,6 +26,18 @@ template:
 
 command_line:
 ```
+
+## Deploy verification (LC6-L05 backend/API read lanes)
+
+After deploy/reload, verify component-first backend/API endpoint surfaces are healthy:
+
+- primary: `sensor.component_backend_profile`, `sensor.component_ma_api_url`
+- bounded fallback: `sensor.ma_server_profile_effective`, `sensor.ma_api_url`
+
+Expected posture:
+
+- runtime/read consumers prefer component surfaces,
+- helper-backed surfaces remain available as rollback-safe compatibility fallback.
 
 ## Typical existing includes (for reference only)
 

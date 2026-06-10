@@ -1,6 +1,6 @@
 <!-- Description: Detailed wiring, layout, bus, and event-contract protocol for Spectra LS hardware and RP/ESP integration. -->
-<!-- Version: 2026.04.19.1 -->
-<!-- Last updated: 2026-04-19 -->
+<!-- Version: 2026.06.09.1 -->
+<!-- Last updated: 2026-06-09 -->
 
 # Spectra L/S Wiring + Layout Protocol (Detailed)
 
@@ -94,6 +94,28 @@ Reference paths:
   1. bus addressing is collision-checked,
   2. event ID ranges are conflict-checked,
   3. diagnostics templates are updated.
+
+## Control alignment findings (2026-06-09 sweep)
+
+These are active documentation/contract watch-items for upcoming analog expansion:
+
+1. **Mirrored mode-nav overlaps on shared physical buttons**
+
+- RP emits mode-nav IDs (`122/123/124`) by mirroring `next/back/select` in addition to canonical button IDs.
+- In `hardware_mode_system_meta`, this can create dual semantic effects if base handlers and mode handlers are both active.
+- Expansion rule: when introducing new mode classes or analog-triggered mode transitions, explicitly gate shared-button semantics by mode.
+
+1. **Meta-select button contract requires explicit RP emit validation**
+
+- ESP runtime expects `${meta_select_button_id}` (`40`) for `RP Meta Select`.
+- RP mirror mapping currently documents canonical button IDs from `BUTTON_EVENT_IDS` plus mode-nav mirrors.
+- Expansion rule: treat `40` as provisional until RP-side emit path is explicitly confirmed in source and hardware validation.
+
+1. **Selector detents 2/3 are reserved but behavior-collapsed today**
+
+- Substitutions define `hardware_mode_audio_targets=2` and `hardware_mode_audio_transport=3`.
+- Active runtime mode application currently provides distinct branches for `0/1/4` and falls through to general audio/default behavior otherwise.
+- Expansion rule: do not assign user-facing unique analog roles to detents 2/3 without implementing and validating distinct runtime branches.
 
 ## Hyperlinked component detail index
 

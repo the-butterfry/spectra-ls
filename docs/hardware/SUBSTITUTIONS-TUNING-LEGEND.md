@@ -1,6 +1,6 @@
 <!-- Description: Tuning legend for Spectra LS substitutions with baseline profile presets and rollout guidance. -->
-<!-- Version: 2026.04.17.4 -->
-<!-- Last updated: 2026-04-17 -->
+<!-- Version: 2026.06.09.1 -->
+<!-- Last updated: 2026-06-09 -->
 
 # Substitutions Tuning Legend (Stage Profiles)
 
@@ -128,7 +128,7 @@ arylic_tcp_log_interval_ms: "500"
 ```yaml
 volume_pot_send_interval_ms: "25"
 volume_pot_settle_ms: "50"
-volume_pot_jump_steps: "1"
+volume_pot_jump_steps: "3"
 eq_pot_send_interval_ms: "90"
 eq_pot_settle_ms: "60"
 eq_pot_jump_steps: "1"
@@ -143,7 +143,7 @@ arylic_tcp_burst_max_sends: "5"
 arylic_tcp_queue_len: "16"
 arylic_tcp_worker_stack: "4096"
 arylic_tcp_worker_prio: "1"
-arylic_tcp_log_interval_ms: "500"
+arylic_tcp_log_interval_ms: "800"
 
 audio_control_loop_interval_ms: "150"
 ma_target_refresh_interval_ms: "15000"

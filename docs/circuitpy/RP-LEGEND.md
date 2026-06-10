@@ -1,6 +1,6 @@
 <!-- Description: RP2040 firmware module legend, wiring/layout protocol, and component-link map for Spectra LS. -->
-<!-- Version: 2026.04.26.1 -->
-<!-- Last updated: 2026-04-26 -->
+<!-- Version: 2026.06.09.1 -->
+<!-- Last updated: 2026-06-09 -->
 
 # RP2040 Firmware Legend (Spectra LS)
 
@@ -38,9 +38,15 @@ Validated on live hardware with serial evidence:
 Pinned baseline constants in [`code.py`](../../esphome/circuitpy/code.py) (live + mirror):
 
 - `ANALOG_RAW_MIN_CHANGE = 1`
-- `ANALOG_MIN_CHANGE_BY_NAME`: `volume_pot=1`, `eq_bass_pot=2`, `eq_mid_pot=2`, `eq_treble_pot=2`
-- `ANALOG_FILTER_ALPHA_SLOW_BY_NAME`: `volume_pot=0.30`, `eq_bass_pot=0.28`, `eq_mid_pot=0.28`, `eq_treble_pot=0.28`
+- `ANALOG_MIN_CHANGE_BY_NAME`: `volume_pot=2`, `eq_bass_pot=2`, `eq_mid_pot=2`, `eq_treble_pot=2`
+- `ANALOG_FILTER_ALPHA_SLOW_BY_NAME`: `volume_pot=0.24`, `eq_bass_pot=0.24`, `eq_mid_pot=0.24`, `eq_treble_pot=0.24`
 - `ANALOG_POT_ASSUME_ZERO_MAX = 1`
+
+## Current alignment watch-items (2026-06-09)
+
+- Mode-navigation mirrored events (`122/123/124`) share physical sources with `next/back/select` and can overlap with base UI/audio behavior if both handlers are active in the same mode.
+- `meta_select_button_id` is configured as `40` in ESP substitutions, but RP mirror contracts currently publish canonical button IDs via `BUTTON_EVENT_IDS` + mode-nav mirrors; confirm explicit RP emit path for `40` before depending on that button for expansion slices.
+- Hardware selector modes `2` and `3` are reserved in substitutions (`audio_targets`, `audio_transport`) but currently collapse to the general audio/default branch in active hardware-mode application logic; keep this explicit until distinct behavior is implemented.
 
 Operator note: if a future tuning pass regresses endpoint reachability or small-movement feel,
 restore this exact constant set first before introducing additional filter-path complexity.

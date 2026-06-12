@@ -1,6 +1,6 @@
 # Description: Spectra LS lighting hub (rooms/targets from HA Areas).
-# Version: 2026.04.23.1
-# Last updated: 2026-04-23
+# Version: 2026.06.11.13
+# Last updated: 2026-06-11
 # Update version/date whenever you change this file.
 #
 # Notes:
@@ -19,6 +19,39 @@ input_select:
     options:
       - All
     initial: All
+  control_board_wled_source:
+    name: Control Board WLED Source
+    options:
+      - Auto
+    initial: Auto
+
+input_text:
+  control_board_wled_api_url:
+    name: Control Board WLED API URL (Optional)
+    max: 255
+
+input_button:
+  control_board_sync_wled_palette_room:
+    name: Sync Room from WLED Palette
+    icon: mdi:palette-swatch-variant
+
+shell_command:
+  control_board_sync_wled_palette_room: >-
+    /usr/local/bin/python3 /config/bin/spectra_wled_palette_e2e.py
+    --ha-url "http://192.168.10.10:8123"
+    --secrets-file "/config/secrets.yaml"
+    --room "{{ states('input_select.control_board_room') | trim | replace('"', '') if states('input_select.control_board_room') not in ['No Rooms', 'unknown', 'unavailable', 'none', ''] else '' }}"
+    --wled-entity "{{ states('input_select.control_board_wled_source') if states('input_select.control_board_wled_source') not in ['Auto', 'None', 'unknown', 'unavailable', 'none', ''] else '' }}"
+    --wled-url "{{ states('input_text.control_board_wled_api_url') | trim | replace('"', '') if states('input_text.control_board_wled_api_url') not in ['unknown', 'unavailable', 'none', ''] else '' }}"
+    --apply
+    --output /config/docs/testing/raw/_tmp_wled_palette_sync_last.json
+
+script:
+  control_board_sync_wled_palette_room:
+    alias: Spectra LS - Sync Room from WLED Palette
+    mode: restart
+    sequence:
+      - service: shell_command.control_board_sync_wled_palette_room
 
 template:
   - sensor:
@@ -226,6 +259,40 @@ template:
               {% endif %}
             {% endfor %}
             {{ ns.targets | count }}
+
+      - name: Control Board WLED Source Options
+        unique_id: control_board_wled_source_options
+        icon: mdi:led-strip-variant
+        state: >
+          {% set room = states('input_select.control_board_room') %}
+          {% set ns = namespace(room_matches=[], global_matches=[]) %}
+          {% set room_valid = room not in ['', 'unknown', 'unavailable', 'No Rooms'] %}
+          {% for s in states.light %}
+            {% set ent = s.entity_id %}
+            {% set effects = state_attr(ent, 'effect_list') %}
+            {% set ent_low = ent | lower %}
+            {% set name_low = (state_attr(ent, 'friendly_name') or '') | string | lower %}
+            {% set has_large_effect_catalog = effects is sequence and effects is not string and (effects | count) >= 20 %}
+            {% set looks_wled_named = ('wled' in ent_low) or ('wled' in name_low) %}
+            {% if has_large_effect_catalog or looks_wled_named %}
+              {% set ent_room = area_name(area_id(ent)) if area_id(ent) else '' %}
+              {% if room_valid and ent_room == room %}
+                {% if ent not in ns.room_matches %}
+                  {% set ns.room_matches = ns.room_matches + [ent] %}
+                {% endif %}
+              {% else %}
+                {% if ent not in ns.global_matches %}
+                  {% set ns.global_matches = ns.global_matches + [ent] %}
+                {% endif %}
+              {% endif %}
+            {% endif %}
+          {% endfor %}
+          {{ (['Auto'] + ns.room_matches + ns.global_matches) | unique | list | tojson }}
+        attributes:
+          count: >
+            {% set raw = states('sensor.control_board_wled_source_options') %}
+            {% set parsed = (raw if (raw is sequence and raw is not string) else ((raw | trim | from_json(default=[])) if (raw is string and (raw | trim)[0:1] == '[') else [])) %}
+            {{ parsed | count }}
       - name: Control Board Room Area ID
         unique_id: control_board_room_area_id
         icon: mdi:map-marker-radius
@@ -479,3 +546,84 @@ automation:
                 data:
                   entity_id: input_select.control_board_target
                   option: "{{ target_options[0] if target_options | count > 0 else 'All' }}"
+
+  - id: control_board_sync_wled_source_options
+    alias: Control Board - Sync WLED Source Options
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id:
+          - sensor.control_board_wled_source_options
+          - input_select.control_board_room
+      - platform: homeassistant
+        event: start
+      - platform: time_pattern
+        minutes: "/5"
+    action:
+      - variables:
+          option_raw: "{{ states('sensor.control_board_wled_source_options') }}"
+          option_parsed: >
+            {% if option_raw in ['unknown', 'unavailable', ''] %}
+              {{ [] }}
+            {% elif option_raw is string %}
+              {% if (option_raw | trim)[0:1] != '[' %}
+                {{ [] }}
+              {% else %}
+                {{ option_raw | trim | from_json(default=[]) }}
+              {% endif %}
+            {% elif option_raw is iterable %}
+              {{ option_raw }}
+            {% else %}
+              {{ [] }}
+            {% endif %}
+          current_options: "{{ state_attr('input_select.control_board_wled_source', 'options') or [] }}"
+          current: "{{ states('input_select.control_board_wled_source') }}"
+          safe_options: "{{ option_parsed if option_parsed | count > 0 else ['Auto'] }}"
+          options_changed: "{{ current_options | join('||') != safe_options | join('||') }}"
+          needs_reset: "{{ current not in safe_options }}"
+      - choose:
+          - conditions: "{{ options_changed }}"
+            sequence:
+              - service: input_select.set_options
+                data:
+                  entity_id: input_select.control_board_wled_source
+                  options: "{{ safe_options }}"
+      - choose:
+          - conditions: "{{ needs_reset }}"
+            sequence:
+              - service: input_select.select_option
+                data:
+                  entity_id: input_select.control_board_wled_source
+                  option: "{{ safe_options[0] if safe_options | count > 0 else 'Auto' }}"
+
+  - id: control_board_trigger_wled_palette_room_sync
+    alias: Control Board - Trigger WLED Palette Room Sync
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_button.control_board_sync_wled_palette_room
+      - platform: event
+        event_type: call_service
+        event_data:
+          domain: input_button
+          service: press
+    condition:
+      - condition: template
+        value_template: >-
+          {% if trigger.platform != 'event' %}
+            true
+          {% else %}
+            {% set raw = trigger.event.data.service_data.entity_id if trigger.event and trigger.event.data and trigger.event.data.service_data is defined else '' %}
+            {% if raw is string %}
+              {{ raw == 'input_button.control_board_sync_wled_palette_room' }}
+            {% elif raw is sequence %}
+              {{ 'input_button.control_board_sync_wled_palette_room' in raw }}
+            {% else %}
+              false
+            {% endif %}
+          {% endif %}
+      - condition: template
+        value_template: >-
+          {{ states('automation.control_board_sync_to_vulva_button_bind') in ['unknown', 'unavailable', 'off'] }}
+    action:
+      - service: shell_command.control_board_sync_wled_palette_room

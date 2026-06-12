@@ -1,0 +1,105 @@
+{
+  "status": "ok",
+  "mode": "apply",
+  "ha_url": "http://192.168.10.10:8123",
+  "wled_url": "http://192.168.10.251",
+  "room": "",
+  "target_source": "explicit_entities",
+  "target_lights": [
+    "light.play_gradient_tube",
+    "light.reading",
+    "light.star_light"
+  ],
+  "wled": {
+    "on": true,
+    "bri": 145,
+    "playlist_id": -1,
+    "solid_detected": false,
+    "solid_forced": true,
+    "solid_mode": "complementary",
+    "color_strategy": "complementary_from_solid",
+    "source_sample_rgb": [
+      190,
+      61,
+      255
+    ],
+    "segment0_effect": 75,
+    "segment0_palette": 59,
+    "sampled_colors": [
+      [
+        126,
+        255,
+        61
+      ],
+      [
+        61,
+        255,
+        93
+      ],
+      [
+        223,
+        255,
+        61
+      ],
+      [
+        61,
+        255,
+        190
+      ],
+      [
+        255,
+        190,
+        61
+      ],
+      [
+        61,
+        223,
+        255
+      ]
+    ],
+    "palettes_payload_type": "list"
+  },
+  "apply": {
+    "brightness": 145,
+    "transition": 1.2,
+    "results": [
+      {
+        "entity_id": "light.play_gradient_tube",
+        "applied": true,
+        "rgb_color": [
+          126,
+          255,
+          61
+        ],
+        "service_result": []
+      },
+      {
+        "entity_id": "light.reading",
+        "applied": true,
+        "rgb_color": [
+          61,
+          255,
+          93
+        ],
+        "service_result": []
+      },
+      {
+        "entity_id": "light.star_light",
+        "applied": true,
+        "rgb_color": [
+          223,
+          255,
+          61
+        ],
+        "service_result": []
+      }
+    ]
+  },
+  "integration_notes": {
+    "next_step": "Wire this script into a Home Assistant script/shell command, then trigger it from Spectra LS control-center mappings.",
+    "spectra_ls_services": [
+      "spectra_ls.execute_control_center_input",
+      "spectra_ls.set_control_center_settings"
+    ]
+  }
+}

@@ -1,6 +1,6 @@
 # Description: Scaffold-fabric workflow for Spectra LS scaffold/inventory/backend assembly extracted from meta-fabric.
-# Version: 2026.05.05.1
-# Last updated: 2026-05-05
+# Version: 2026.06.05.2
+# Last updated: 2026-06-05
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -121,7 +121,10 @@ class ScaffoldFabricWorkflow:
         meta_resolver_state = c.hass.states.get(LEGACY_META_RESOLVER)
         if meta_resolver_state is not None:
             best_candidate = str(meta_resolver_state.attributes.get("best_entity", "") or "").strip()
-            best_score = int(meta_resolver_state.attributes.get("best_score", 0) or 0)
+            try:
+                best_score = int(float(meta_resolver_state.attributes.get("best_score", 0) or 0))
+            except (TypeError, ValueError):
+                best_score = 0
 
         detected_candidate = str(
             c.hass.states.get(LEGACY_META_DETECTED_ENTITY).state

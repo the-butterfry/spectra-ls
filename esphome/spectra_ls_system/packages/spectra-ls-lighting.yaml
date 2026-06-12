@@ -1,6 +1,6 @@
 # Description: Lighting controls package for Spectra LS System.
-# Version: 2026.04.21.5
-# Last updated: 2026-04-21
+# Version: 2026.06.11.1
+# Last updated: 2026-06-11
 # Update version/date whenever you change this file.
 
 binary_sensor:
@@ -46,6 +46,18 @@ binary_sensor:
       - script.execute: note_user_input
       - script.execute: focus_lighting
       - script.execute: cycle_room
+  - platform: rp2040_uart
+    rp2040_uart_id: rp2040_uart_hub
+    button_id: ${wled_palette_sync_button_id}
+    name: "RP WLED Palette Sync"
+    id: rp_wled_palette_sync
+    internal: true
+    on_press:
+      - lambda: |-
+          ESP_LOGI("input", "Button RP WLED Palette Sync");
+      - script.execute: note_user_input
+      - script.execute: focus_lighting
+      - script.execute: trigger_wled_palette_sync
   - platform: homeassistant
     id: ha_room_on
     name: "Room On (Dynamic)"
@@ -259,6 +271,15 @@ interval:
               }
             }
           }
+
+button:
+  - platform: template
+    name: "WLED Palette Sync"
+    id: wled_palette_sync_button
+    icon: mdi:palette-swatch-variant
+    entity_category: config
+    on_press:
+      - script.execute: trigger_wled_palette_sync
 
 number:
   - platform: template
@@ -714,6 +735,14 @@ script:
               if (room == 2) return std::string("${target_label_polaroid_clock}");
               return std::string("${target_label_reading}");
 
+  - id: trigger_wled_palette_sync
+    mode: restart
+    then:
+      - homeassistant.service:
+          service: script.turn_on
+          data:
+            entity_id: ${ha_wled_palette_sync_script}
+
   - id: apply_lighting_common
     mode: restart
     then:
@@ -778,8 +807,6 @@ script:
               if (id(ha_target_entity_id).has_state() && !id(ha_target_entity_id).state.empty()) return std::string("");
               if (id(ha_room_area_id).has_state()) return std::string(id(ha_room_area_id).state.c_str());
               return std::string("");
-            hs: !lambda |-
-              return str_sprintf("[%.1f, %.1f]", id(lighting_hue), id(lighting_sat));
             brightness: !lambda |-
               float b = id(lighting_brightness);
               if (b < 0.0f) b = 0.0f;

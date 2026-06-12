@@ -1,6 +1,6 @@
 # Description: Template entities for ma_control_hub runtime routing, metadata, and now-playing state surfaces.
-# Version: 2026.05.05.7
-# Last updated: 2026-05-05
+# Version: 2026.05.17.1
+# Last updated: 2026-05-17
 # PARITY DIRECTIVE (until full cutover): any behavior/contract change here requires same-slice custom-component parity review,
 # explicit implemented/shim/defer disposition in docs/CHANGELOG.md, and version-metadata review on both runtime and component tracks.
 # HUB MUST-READ: Contract parser methodology.
@@ -1619,10 +1619,16 @@
         {% set gate_entity = 'sensor.spectra_ls_host_authority_cutover_gate' if states['sensor.spectra_ls_host_authority_cutover_gate'] is not none else '' %}
         {% set gate_attrs = states[gate_entity].attributes if gate_entity != '' and states[gate_entity] is not none else {} %}
         {% set gate_authority_mode = (gate_attrs.authority_mode if gate_attrs.authority_mode is defined else '') | string | lower | trim %}
+        {% set gate_status = (gate_attrs.status if gate_attrs.status is defined else '') | string | lower | trim %}
         {% set component_candidate = gate_attrs.component_authoritative_candidate if gate_attrs.component_authoritative_candidate is defined and gate_attrs.component_authoritative_candidate is mapping else {} %}
+        {% set component_target = (component_candidate.target if component_candidate.target is defined else '') | string | trim %}
         {% set component_host = (component_candidate.host if component_candidate.host is defined else '') | string | trim %}
         {% set component_host_valid = component_host not in invalid + ['None', none] %}
-        {% if gate_authority_mode == 'component' and component_host_valid %}
+        {% set active_target = states('input_select.ma_active_target') | string | trim %}
+        {% set active_target_valid = active_target not in invalid + ['None', none] %}
+        {% set component_target_valid = component_target not in invalid + ['None', none] %}
+        {% set component_target_matches_active = (not active_target_valid) or (component_target_valid and component_target == active_target) %}
+        {% if gate_authority_mode == 'component' and gate_status == 'ready' and component_host_valid and component_target_matches_active %}
           {{ component_host }}
         {% else %}
         {% set target = states('input_select.ma_active_target') %}

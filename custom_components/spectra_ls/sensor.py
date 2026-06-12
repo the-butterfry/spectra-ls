@@ -1,6 +1,6 @@
 # Description: Sensor entities for Spectra LS shadow parity routing surfaces with Phase 3 write-control, Phase 4 diagnostics attributes, and Phase 6/8 control-center settings/readiness/last-attempt visibility, including recorder-safe attribute payload sizing and shared MA authority-contract packet propagation.
-# Version: 2026.05.05.7
-# Last updated: 2026-05-05
+# Version: 2026.06.07.1
+# Last updated: 2026-06-07
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -164,18 +164,36 @@ def _component_active_target(data: dict[str, Any]) -> str:
 
 
 def _component_control_hosts(data: dict[str, Any]) -> str:
+    active_target = _component_active_target(data)
+    active_target_l = active_target.strip().lower()
+    active_target_resolved = active_target_l not in {"", "none", "unknown", "unavailable"}
+
     host_cutover = _dict_surface(data, "host_control_cutover_gate")
+    gate_status = str(host_cutover.get("status", "") or "").strip().lower()
     component_candidate = host_cutover.get("component_authoritative_candidate", {})
     if isinstance(component_candidate, dict):
+        candidate_target = str(component_candidate.get("target", "") or "").strip()
+        candidate_target_l = candidate_target.lower()
+        candidate_target_resolved = candidate_target_l not in {"", "none", "unknown", "unavailable"}
+        candidate_target_matches_active = (
+            (not active_target_resolved)
+            or (candidate_target_resolved and candidate_target_l == active_target_l)
+        )
         candidate_host = str(component_candidate.get("host", "") or "").strip()
-        if candidate_host:
+        if candidate_host and gate_status == "ready" and candidate_target_matches_active:
             return candidate_host
 
     route_trace = _dict_surface(data, "route_trace")
     selected_target = route_trace.get("selected_target", {})
     if isinstance(selected_target, dict):
+        selected_target_id = str(selected_target.get("target", "") or "").strip().lower()
+        selected_target_matches_active = (
+            (not active_target_resolved)
+            or (selected_target_id not in {"", "none", "unknown", "unavailable"}
+                and selected_target_id == active_target_l)
+        )
         selected_host = str(selected_target.get("host", "") or "").strip()
-        if selected_host:
+        if selected_host and selected_target_matches_active:
             return selected_host
 
     parity = _dict_surface(data, "parity")
@@ -607,6 +625,10 @@ class SpectraLsComponentNowPlayingArtistSensor(CoordinatorEntity, SensorEntity):
 
     @property
     def native_value(self):
+        values = _metadata_values(self.coordinator.data)
+        artist = str(values.get("now_playing_artist", "") or "").strip()
+        if artist:
+            return artist
         state_obj = _component_now_playing_state(self)
         return _component_state_attr_text(state_obj, ("media_artist", "artist"))
 
@@ -622,6 +644,10 @@ class SpectraLsComponentNowPlayingAlbumSensor(CoordinatorEntity, SensorEntity):
 
     @property
     def native_value(self):
+        values = _metadata_values(self.coordinator.data)
+        album = str(values.get("now_playing_album", "") or "").strip()
+        if album:
+            return album
         state_obj = _component_now_playing_state(self)
         return _component_state_attr_text(state_obj, ("media_album_name", "media_album", "album"))
 
@@ -637,6 +663,10 @@ class SpectraLsComponentNowPlayingAppSensor(CoordinatorEntity, SensorEntity):
 
     @property
     def native_value(self):
+        values = _metadata_values(self.coordinator.data)
+        app = str(values.get("now_playing_app", "") or "").strip()
+        if app:
+            return app
         state_obj = _component_now_playing_state(self)
         return _component_state_attr_text(state_obj, ("app_name", "media_channel", "app", "application"))
 
@@ -652,6 +682,10 @@ class SpectraLsComponentNowPlayingSourceSensor(CoordinatorEntity, SensorEntity):
 
     @property
     def native_value(self):
+        values = _metadata_values(self.coordinator.data)
+        source = str(values.get("now_playing_source", "") or "").strip()
+        if source:
+            return source
         state_obj = _component_now_playing_state(self)
         return _component_state_attr_text(state_obj, ("source", "source_name", "media_source", "input_source"))
 

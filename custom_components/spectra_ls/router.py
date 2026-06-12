@@ -1,6 +1,6 @@
 # Description: Router scaffold helpers for Spectra LS Phase 2 read-only route-trace visibility with deterministic resolved-path decisions and defer-classification hardening.
-# Version: 2026.04.26.3
-# Last updated: 2026-04-26
+# Version: 2026.06.05.4
+# Last updated: 2026-06-05
 
 from __future__ import annotations
 
@@ -9,7 +9,8 @@ from typing import Any
 
 def build_route_trace(active_target: str, active_control_path: str, registry: dict[str, Any]) -> dict[str, Any]:
     """Build a read-only route trace from active surfaces and registry scaffold."""
-    entries: dict[str, dict[str, Any]] = registry.get("entries", {})
+    entries_raw = registry.get("entries", {}) if isinstance(registry, dict) else {}
+    entries: dict[str, dict[str, Any]] = entries_raw if isinstance(entries_raw, dict) else {}
     target_key = (active_target or "").strip()
     normalized_path = (active_control_path or "").strip()
 
@@ -43,5 +44,7 @@ def build_route_trace(active_target: str, active_control_path: str, registry: di
         "decision": decision,
         "reason": reason,
         "selected_target": selected,
-        "registry_target_count": int(registry.get("target_count", 0) or 0),
+        "registry_target_count": int(registry.get("target_count", 0) or 0)
+        if isinstance(registry, dict)
+        else 0,
     }

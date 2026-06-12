@@ -1,8 +1,16 @@
 <!-- Description: Component-first canonical playback data-fabric architecture for robust multi-source metadata/progress ownership in Spectra LS. -->
-<!-- Version: 2026.05.05.21 -->
-<!-- Last updated: 2026-05-05 -->
+<!-- Version: 2026.06.10.1 -->
+<!-- Last updated: 2026-06-10 -->
 
 # Spectra LS Component Data Fabric Architecture (Canonical Playback Contract)
+
+## Latest implementation note (2026-06-10, passthrough stale-album suppression hygiene)
+
+- Added component metadata-prep hygiene for passthrough/non-meta source windows (optical/line-in/aux/coax/hdmi/arc): when live title is present but app context is absent, stale `media_album_name` carryover from transport entities is now suppressed to avoid mixed-era metadata packets.
+- Published explicit packet telemetry (`passthrough_album_suppressed`) for validator visibility and deterministic diagnosis.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (component metadata hygiene guard in owner path).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; passthrough metadata correctness hardening only.
 
 ## Latest implementation note (2026-05-05, Slice-CS meta-stack validation optimization + contract hardening)
 

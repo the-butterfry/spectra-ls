@@ -1,6 +1,6 @@
 <!-- Description: End-user overview for the Spectra L/S Home Assistant + ESPHome system. -->
-<!-- Version: 2026.05.05.1 -->
-<!-- Last updated: 2026-05-05 -->
+<!-- Version: 2026.06.10.1 -->
+<!-- Last updated: 2026-06-10 -->
 
 # Spectra L/S
 
@@ -97,6 +97,7 @@ Common entry points:
 - Setup placeholders: [`docs/setup/SPECTRA-HA-CONFIG-PLACEHOLDERS.md`](docs/setup/SPECTRA-HA-CONFIG-PLACEHOLDERS.md)
 - Latest project changes: [`docs/CHANGELOG.md`](docs/CHANGELOG.md)
 - Developer onboarding/runbook: [`docs/developer/DEVELOPER-INSTRUCTIONS.md`](docs/developer/DEVELOPER-INSTRUCTIONS.md)
+- WLED palette room E2E test runbook: [`docs/testing/raw/wled_palette_room_e2e_runbook.md`](docs/testing/raw/wled_palette_room_e2e_runbook.md)
 
 Need current execution status? Use [`docs/roadmap/v-next-NOTES.md`](docs/roadmap/v-next-NOTES.md).
 

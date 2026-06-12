@@ -1,6 +1,6 @@
 <!-- Description: Documentation index for Spectra L/S technical, onboarding, roadmap, and operations artifacts. -->
-<!-- Version: 2026.05.05.8 -->
-<!-- Last updated: 2026-05-05 -->
+<!-- Version: 2026.06.10.1 -->
+<!-- Last updated: 2026-06-10 -->
 
 # Spectra L/S Documentation Index
 
@@ -42,6 +42,7 @@ If you are new: read `README.md` first, then this file, then `docs/roadmap/v-nex
 ## Testing and diagnostics
 
 - Dev Tools templates: `docs/testing/DEVTOOLS-TEMPLATES.local.md`
+- WLED palette room E2E runbook: `docs/testing/raw/wled_palette_room_e2e_runbook.md`
 - CA-S04 runtime write-lane validation template: `docs/testing/raw/ca_s04_runtime_write_lane_retirement_validation.jinja`
 - CA-S05 fallback-listener soak validation template: `docs/testing/raw/ca_s05_esp_fallback_listener_soak_validation.jinja`
 - CA-S06 runtime write/helper wave-2 validation template: `docs/testing/raw/ca_s06_runtime_write_helper_retirement_wave2_validation.jinja`

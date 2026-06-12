@@ -1,6 +1,6 @@
 # Description: Spectra LS System substitutions for ESPHome main config and packages.
-# Version: 2026.05.05.1
-# Last updated: 2026-05-05
+# Version: 2026.06.11.1
+# Last updated: 2026-06-11
 # Spectra LS substitutions scoped to spectra_ls_system.
 # Use absolute paths for assets so this file can move with spectra_ls_system.
 
@@ -150,6 +150,8 @@ ha_ma_active_target: sensor.component_active_target
 
 # HA script to apply HS + brightness
 ha_light_script: script.control_board_set_light_dynamic
+# HA script to sync room lights from WLED palette strategy
+ha_wled_palette_sync_script: script.control_board_sync_wled_palette_room
 
 # HA input_select helpers
 input_select_room: input_select.control_board_room
@@ -314,6 +316,8 @@ arylic_source_cycle_codes: "NET,BT,LINE-IN,LINE-IN2"
 arylic_source_cycle_labels: "Wi-Fi,Bluetooth,Line In 1,Line In 2"
 # New physical button for meta source override
 meta_select_button_id: "40"
+# Future physical momentary button placeholder for room palette sync
+wled_palette_sync_button_id: "41"
 # Auto-first UX: keep manual meta picker hidden from normal menu flow.
 # Maintenance-only override: set to "true" locally when explicit manual picker access is needed.
 meta_manual_picker_enabled: "false"

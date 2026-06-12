@@ -1,6 +1,6 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.05.05.30 -->
-<!-- Last updated: 2026-05-05 -->
+<!-- Version: 2026.06.05.1 -->
+<!-- Last updated: 2026-06-05 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
 
@@ -13,6 +13,25 @@ Operator local deployment note (non-contract, do not hardcode in product logic):
 - Current Spectra ESP node management IP: `192.168.10.40`.
 
 Latest run update (2026-05-05, CA-S02A resolver determinism scoring matrix + acceptance packet fields):
+
+Latest run update (2026-06-05, passthrough-source metadata fallback preference):
+
+- parity_stamp: 2026-06-05 / metadata-stack-passthrough-source-fallback / mode=implementation
+- Added non-meta-capable source detection for passthrough inputs (`optical`, `line-in`, `aux`, `coax`, `hdmi`, `arc`) in component metadata selection.
+- When passthrough source is detected, component now-playing entity selection now prefers resolved resolver-selected metadata entity candidates before route-target fallback, preserving fail-closed freshness/signal gating.
+- Runtime track disposition: compatibility-shimmed (runtime behavior unchanged; equivalent failure mode reviewed).
+- Component track disposition: implemented (source-aware metadata candidate preference with explicit diagnostics surfaces).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; metadata quality improvement for passthrough paths only.
+- Immediate execution slice pointer: validate optical/line-in live runs and confirm selected metadata provider freshness vs OLED payload behavior.
+
+Latest run update (2026-05-17, Slice-CW control-host active-target guard slip fix):
+
+- parity_stamp: 2026-05-17 / Slice-CW-control-host-active-target-guard / mode=implementation
+- Fixed stale host-candidate slip across runtime + component host selectors: host-cutover candidate host is now consumed only when gate status is `ready` and candidate target matches active target (or active target unresolved).
+- Runtime track disposition: implemented (runtime `sensor.ma_control_hosts` component-candidate gate hardening).
+- Component track disposition: implemented (component `sensor.component_control_hosts` selector gate hardening).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; host/target coherence correctness hardening only.
+- Immediate execution slice pointer: continue reconnect-window parity verification and fallback-listener retirement evidence lanes.
 
 Latest run update (2026-05-05, Slice-CU LC6-L05 template/read-lane consumer bridge):
 

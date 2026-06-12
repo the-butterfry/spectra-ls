@@ -1,6 +1,6 @@
 # Description: Audio controls package for Spectra LS System (TCP-only) with host-resolved control routing.
-# Version: 2026.05.05.1
-# Last updated: 2026-05-05
+# Version: 2026.06.08.2
+# Last updated: 2026-06-08
 # PARITY DIRECTIVE: Behavior/contract edits require same-slice runtime+component parity review and version-metadata review.
 # Update version/date whenever you change this file.
 
@@ -62,6 +62,7 @@ binary_sensor:
           ESP_LOGI("input", "Button RP Source Toggle");
       - script.execute: note_user_input
       - script.execute: focus_audio
+      - script.execute: show_source_context_popup
       - homeassistant.service:
           service: script.ma_cycle_target
   - platform: rp2040_uart
@@ -575,6 +576,7 @@ text_sensor:
           id(ha_audio1_last_meta_ms) = now;
           ESP_LOGI("ha_meta", "now_playing_entity changed='%s' (forced refresh)", cur.c_str());
       - script.execute: compute_display_state
+      - script.execute: ensure_control_target_sync
   - platform: homeassistant
     id: ha_now_playing_friendly
     entity_id: ${ha_ma_now_playing_friendly}
@@ -1112,6 +1114,18 @@ text_sensor:
     id: ha_audio_source
     entity_id: ${ha_ma_active_source}
     internal: true
+    on_value:
+      - lambda: |-
+          static std::string last_source;
+          std::string cur = x.c_str();
+          std::string low = cur;
+          for (auto &c : low) c = (char) ::tolower(c);
+          const bool resolved = !(low.empty() || low == "unknown" || low == "unavailable" || low == "none" || low == "null");
+          if (resolved && cur != last_source) {
+            last_source = cur;
+            id(show_source_context_popup).execute();
+          }
+      - script.execute: ensure_control_target_sync
   - platform: homeassistant
     id: ha_audio_media_class
     entity_id: ${ha_ma_active_media_class}
@@ -1134,6 +1148,13 @@ text_sensor:
           const std::string cur = x.c_str();
           if (cur == last) return;
           last = cur;
+          const uint32_t now = millis();
+          if (cur == "playing") {
+            id(ha_audio1_last_playing_ms) = now;
+                  id(last_playing_true_ms) = now;
+                  id(audio_wake_until_ms) = now + ${audio_wake_hold_ms};
+            id(meta_refresh_force) = true;
+          }
           if (cur == "unavailable" || cur == "unknown" || cur.empty()) {
             if (id(control_target_ha_reconnect_guard_until_ms) > millis()) {
               ESP_LOGI("ha_state", "ha_audio_state transient during reconnect='%s'", cur.c_str());
@@ -1143,6 +1164,7 @@ text_sensor:
           } else {
             ESP_LOGI("ha_state", "ha_audio_state='%s'", cur.c_str());
           }
+      - script.execute: ensure_control_target_sync
 interval:
   - interval: ${audio_control_loop_interval_ms}ms
     then:
@@ -1218,6 +1240,7 @@ interval:
             entity_id: ${ha_ma_active_target}
   - interval: ${ha_audio_refresh_ms}ms
     then:
+      - script.execute: ensure_control_target_sync
       - if:
           condition:
             lambda: |-
@@ -1233,8 +1256,226 @@ interval:
                 service: homeassistant.update_entity
                 data:
                   entity_id: !lambda 'return id(ma_active_target).state;'
+      - if:
+          condition:
+            lambda: |-
+              auto normalize = [](std::string value) {
+                for (auto &c : value) c = (char) ::tolower(c);
+                return value;
+              };
+              auto unresolved = [&](const std::string &value) {
+                const std::string low = normalize(value);
+                return low.empty() || low == "unknown" || low == "unavailable" || low == "none" || low == "null";
+              };
+              bool playing = false;
+              if (id(ha_audio_state).has_state()) {
+                std::string state = normalize(id(ha_audio_state).state.c_str());
+                playing = (state == "playing");
+              }
+              if (!playing) return false;
+              std::string title = id(ha_audio_title).has_state() ? id(ha_audio_title).state.c_str() : "";
+              std::string artist = id(ha_audio_artist).has_state() ? id(ha_audio_artist).state.c_str() : "";
+              return unresolved(title) && unresolved(artist);
+          then:
+            - homeassistant.service:
+                service: homeassistant.update_entity
+                data:
+                  entity_id: ${ha_ma_now_playing_entity}
+            - homeassistant.service:
+                service: homeassistant.update_entity
+                data:
+                  entity_id: ${ha_ma_now_playing_friendly}
+            - homeassistant.service:
+                service: homeassistant.update_entity
+                data:
+                  entity_id: ${ha_ma_active_title}
+            - homeassistant.service:
+                service: homeassistant.update_entity
+                data:
+                  entity_id: ${ha_ma_active_artist}
+            - homeassistant.service:
+                service: homeassistant.update_entity
+                data:
+                  entity_id: ${ha_ma_active_album}
+            - homeassistant.service:
+                service: homeassistant.update_entity
+                data:
+                  entity_id: ${ha_ma_active_app}
+            - homeassistant.service:
+                service: homeassistant.update_entity
+                data:
+                  entity_id: ${ha_ma_active_source}
+            - homeassistant.service:
+                service: homeassistant.update_entity
+                data:
+                  entity_id: ${ha_ma_active_state}
+            - homeassistant.service:
+                service: homeassistant.update_entity
+                data:
+                  entity_id: ${ha_ma_now_playing_freshness_age_s}
+            - lambda: |-
+                id(meta_refresh_force) = true;
+                id(ha_audio_last_meta_ms) = millis();
+                id(ha_audio1_last_meta_ms) = millis();
+      - if:
+          condition:
+            lambda: |-
+              const uint32_t now = millis();
+              if (now > 180000U) return false;
+              auto normalize = [](std::string value) {
+                for (auto &c : value) c = (char) ::tolower(c);
+                return value;
+              };
+              auto unresolved = [&](const std::string &value) {
+                const std::string low = normalize(value);
+                return low.empty() || low == "unknown" || low == "unavailable" || low == "none" || low == "null";
+              };
+              bool playing = false;
+              if (id(ha_audio_state).has_state()) {
+                std::string state = normalize(id(ha_audio_state).state.c_str());
+                playing = (state == "playing");
+              }
+              if (!playing) return false;
+              std::string title = id(ha_audio_title).has_state() ? id(ha_audio_title).state.c_str() : "";
+              std::string artist = id(ha_audio_artist).has_state() ? id(ha_audio_artist).state.c_str() : "";
+              const bool missing_text = unresolved(title) && unresolved(artist);
+              if (!missing_text) return false;
+              if (id(ha_audio_last_force_refresh_ms) > 0 && (now - id(ha_audio_last_force_refresh_ms)) < 5000U) return false;
+              return true;
+          then:
+            - homeassistant.service:
+                service: homeassistant.update_entity
+                data:
+                  entity_id: ${ha_ma_now_playing_entity}
+            - homeassistant.service:
+                service: homeassistant.update_entity
+                data:
+                  entity_id: ${ha_ma_now_playing_friendly}
+            - homeassistant.service:
+                service: homeassistant.update_entity
+                data:
+                  entity_id: ${ha_ma_active_title}
+            - homeassistant.service:
+                service: homeassistant.update_entity
+                data:
+                  entity_id: ${ha_ma_active_artist}
+            - homeassistant.service:
+                service: homeassistant.update_entity
+                data:
+                  entity_id: ${ha_ma_active_album}
+            - homeassistant.service:
+                service: homeassistant.update_entity
+                data:
+                  entity_id: ${ha_ma_active_app}
+            - homeassistant.service:
+                service: homeassistant.update_entity
+                data:
+                  entity_id: ${ha_ma_active_source}
+            - homeassistant.service:
+                service: homeassistant.update_entity
+                data:
+                  entity_id: ${ha_ma_active_state}
+            - lambda: |-
+                const uint32_t now = millis();
+                id(meta_refresh_force) = true;
+                id(ha_audio_last_force_refresh_ms) = now;
+                id(ha_audio_last_meta_ms) = now;
+                id(ha_audio1_last_meta_ms) = now;
+                id(ha_audio1_last_playing_ms) = now;
+                id(last_playing_true_ms) = now;
+                id(audio_wake_until_ms) = now + ${audio_wake_hold_ms};
 
 script:
+  - id: ensure_control_target_sync
+    mode: restart
+    then:
+      - if:
+          condition:
+            lambda: |-
+              const uint32_t now = millis();
+              auto lower = [](std::string value) {
+                for (auto &c : value) c = (char) ::tolower(c);
+                return value;
+              };
+              auto is_resolved = [&](const std::string &value) {
+                const std::string low = lower(value);
+                return !(low.empty() || low == "unknown" || low == "unavailable" || low == "none" || low == "null");
+              };
+              auto is_passthrough = [&](const std::string &value) {
+                const std::string low = lower(value);
+                return low.find("optical") != std::string::npos ||
+                       low.find("line-in") != std::string::npos ||
+                       low.find("line in") != std::string::npos ||
+                       low.find("aux") != std::string::npos ||
+                       low.find("coax") != std::string::npos ||
+                       low.find("hdmi") != std::string::npos ||
+                       low.find("arc") != std::string::npos;
+              };
+
+              const bool ambiguous = id(ma_control_ambiguous).has_state() && id(ma_control_ambiguous).state;
+              if (ambiguous) return false;
+              if (id(control_target_force_until_ms) > now) return false;
+
+              const std::string active_target = id(ma_active_target).has_state() ? id(ma_active_target).state.c_str() : "";
+              const std::string np_entity = id(ha_now_playing_entity).has_state() ? id(ha_now_playing_entity).state.c_str() : "";
+              const std::string source = id(ha_audio_source).has_state() ? id(ha_audio_source).state.c_str() : "";
+              const std::string state = id(ha_audio_state).has_state() ? lower(id(ha_audio_state).state.c_str()) : "";
+
+              if (!is_passthrough(source)) return false;
+              if (state != "playing" && state != "paused") return false;
+              if (!is_resolved(active_target) || !is_resolved(np_entity)) return false;
+              if (active_target == np_entity) return false;
+              if (np_entity.find("media_player.") != 0) return false;
+              return true;
+          then:
+            - homeassistant.service:
+                service: spectra_ls.set_active_target
+                data:
+                  target: !lambda |-
+                    return id(ha_now_playing_entity).state.c_str();
+            - homeassistant.service:
+                service: script.ma_update_target_options
+            - lambda: |-
+                const uint32_t now = millis();
+                id(control_target_force_until_ms) = now + 2000;
+                id(control_target_pending_until_ms) = now + 6000;
+                id(meta_refresh_force) = true;
+
+  - id: show_source_context_popup
+    mode: restart
+    then:
+      - lambda: |-
+          auto normalize = [](std::string value) {
+            for (auto &c : value) c = (char) ::tolower(c);
+            return value;
+          };
+          auto is_resolved = [&](const std::string &value) {
+            const std::string low = normalize(value);
+            return !(low.empty() || low == "none" || low == "unknown" || low == "unavailable" || low == "null");
+          };
+          auto short_label_from_src = [&](const std::string &src) {
+            const std::string low = normalize(src);
+            if (low.find("airplay") != std::string::npos) return std::string("AIR");
+            if (low.find("bluetooth") != std::string::npos || low == "bt") return std::string("BT");
+            if (low.find("optical") != std::string::npos || low == "opt") return std::string("OPT");
+            if (low.find("coax") != std::string::npos) return std::string("COAX");
+            if (low.find("line") != std::string::npos || low.find("aux") != std::string::npos) return std::string("LINE");
+            if (low.find("network") != std::string::npos || low == "net") return std::string("NET");
+            if (src.empty()) return std::string("SRC");
+            return src;
+          };
+
+          std::string src;
+          if (id(arylic_source).has_state() && !id(arylic_source).state.empty()) src = id(arylic_source).state.c_str();
+          if (src.empty() && !id(arylic_source_state).empty()) src = id(arylic_source_state);
+          if (src.empty() && id(ha_audio_source).has_state()) src = id(ha_audio_source).state.c_str();
+          if (!is_resolved(src)) src.clear();
+
+          std::string label = short_label_from_src(src);
+          id(source_popup_label) = label;
+          id(source_popup_until_ms) = millis() + ${source_popup_ms};
+          id(meta_refresh_force) = true;
+
   - id: focus_audio
     mode: restart
     then:
@@ -1453,12 +1694,33 @@ script:
     parameters:
       target: int
     then:
+      - script.execute: ensure_control_target_sync
       - lambda: |-
           const uint32_t now = millis();
           const bool needs_prompt = false;
           auto pick_hosts = [&]() -> std::string {
-            if (!id(arylic_control_hosts).empty()) return id(arylic_control_hosts);
-            if (!id(arylic_control_host).empty()) return id(arylic_control_host);
+            auto valid = [&](const std::string &value) {
+              if (value.empty()) return false;
+              std::string low = value;
+              for (auto &c : low) c = (char) ::tolower(c);
+              return !(low == "unknown" || low == "unavailable" || low == "none" || low == "null");
+            };
+            if (valid(id(arylic_control_hosts))) return id(arylic_control_hosts);
+            if (valid(id(arylic_control_host))) return id(arylic_control_host);
+            std::string live_hosts = (id(ma_control_hosts).has_state()) ? id(ma_control_hosts).state.c_str() : "";
+            std::string live_host = (id(ma_control_host).has_state()) ? id(ma_control_host).state.c_str() : "";
+            if (valid(live_hosts)) {
+              id(arylic_control_hosts) = live_hosts;
+              id(arylic_control_host) = live_hosts;
+              id(arylic_control_hosts_last_valid_ms) = now;
+              return live_hosts;
+            }
+            if (valid(live_host)) {
+              id(arylic_control_host) = live_host;
+              if (!valid(id(arylic_control_hosts))) id(arylic_control_hosts) = live_host;
+              id(arylic_control_hosts_last_valid_ms) = now;
+              return live_host;
+            }
             return std::string();
           };
           auto log_block = [&](const char *reason) {
@@ -1503,12 +1765,33 @@ script:
       channel: int
       target: int
     then:
+      - script.execute: ensure_control_target_sync
       - lambda: |-
           const uint32_t now = millis();
           const bool needs_prompt = false;
           auto pick_hosts = [&]() -> std::string {
-            if (!id(arylic_control_hosts).empty()) return id(arylic_control_hosts);
-            if (!id(arylic_control_host).empty()) return id(arylic_control_host);
+            auto valid = [&](const std::string &value) {
+              if (value.empty()) return false;
+              std::string low = value;
+              for (auto &c : low) c = (char) ::tolower(c);
+              return !(low == "unknown" || low == "unavailable" || low == "none" || low == "null");
+            };
+            if (valid(id(arylic_control_hosts))) return id(arylic_control_hosts);
+            if (valid(id(arylic_control_host))) return id(arylic_control_host);
+            std::string live_hosts = (id(ma_control_hosts).has_state()) ? id(ma_control_hosts).state.c_str() : "";
+            std::string live_host = (id(ma_control_host).has_state()) ? id(ma_control_host).state.c_str() : "";
+            if (valid(live_hosts)) {
+              id(arylic_control_hosts) = live_hosts;
+              id(arylic_control_host) = live_hosts;
+              id(arylic_control_hosts_last_valid_ms) = now;
+              return live_hosts;
+            }
+            if (valid(live_host)) {
+              id(arylic_control_host) = live_host;
+              if (!valid(id(arylic_control_hosts))) id(arylic_control_hosts) = live_host;
+              id(arylic_control_hosts_last_valid_ms) = now;
+              return live_host;
+            }
             return std::string();
           };
           const char *channel_name = "eq";
@@ -1759,13 +2042,34 @@ script:
     parameters:
       delta: int
     then:
+      - script.execute: ensure_control_target_sync
       - lambda: |-
           if (delta == 0) return;
           const uint32_t now = millis();
           const bool needs_prompt = id(control_target_needs_prompt);
           auto pick_hosts = [&]() -> std::string {
-            if (!id(arylic_control_hosts).empty()) return id(arylic_control_hosts);
-            if (!id(arylic_control_host).empty()) return id(arylic_control_host);
+            auto valid = [&](const std::string &value) {
+              if (value.empty()) return false;
+              std::string low = value;
+              for (auto &c : low) c = (char) ::tolower(c);
+              return !(low == "unknown" || low == "unavailable" || low == "none" || low == "null");
+            };
+            if (valid(id(arylic_control_hosts))) return id(arylic_control_hosts);
+            if (valid(id(arylic_control_host))) return id(arylic_control_host);
+            std::string live_hosts = (id(ma_control_hosts).has_state()) ? id(ma_control_hosts).state.c_str() : "";
+            std::string live_host = (id(ma_control_host).has_state()) ? id(ma_control_host).state.c_str() : "";
+            if (valid(live_hosts)) {
+              id(arylic_control_hosts) = live_hosts;
+              id(arylic_control_host) = live_hosts;
+              id(arylic_control_hosts_last_valid_ms) = now;
+              return live_hosts;
+            }
+            if (valid(live_host)) {
+              id(arylic_control_host) = live_host;
+              if (!valid(id(arylic_control_hosts))) id(arylic_control_hosts) = live_host;
+              id(arylic_control_hosts_last_valid_ms) = now;
+              return live_host;
+            }
             return std::string();
           };
           auto log_block = [&](const char *reason) {

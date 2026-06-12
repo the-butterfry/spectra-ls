@@ -1,6 +1,6 @@
 # Description: Spectra LS core state + globals + system intervals + shared scripts.
-# Version: 2026.05.04.11
-# Last updated: 2026-05-04
+# Version: 2026.06.08.3
+# Last updated: 2026-06-08
 # Update version/date whenever you change this file.
 #
 # Sections:
@@ -1237,9 +1237,13 @@ text_sensor:
     internal: false
     update_interval: 30s
     lambda: |-
-      std::string friendly = id(ma_active_friendly).has_state() ? id(ma_active_friendly).state.c_str() : "";
       std::string target = id(ma_active_target).has_state() ? id(ma_active_target).state.c_str() : "";
-      if (!friendly.empty()) return friendly;
+      auto normalize = [](std::string value) {
+        for (auto &c : value) c = (char) ::tolower(c);
+        return value;
+      };
+      const std::string low = normalize(target);
+      if (!target.empty() && low != "unknown" && low != "unavailable" && low != "none") return target;
       if (!target.empty()) return target;
       return std::string("none");
   - platform: template
@@ -1276,22 +1280,74 @@ text_sensor:
         return !(low.empty() || low == "-" || low == "none" || low == "unknown" || low == "unavailable" || low == "null");
       };
 
+      auto is_passthrough_source = [&](const std::string &value) {
+        const std::string low = lower(value);
+        return low.find("optical") != std::string::npos ||
+               low.find("line-in") != std::string::npos ||
+               low.find("line in") != std::string::npos ||
+               low.find("aux") != std::string::npos ||
+               low.find("coax") != std::string::npos ||
+               low.find("hdmi") != std::string::npos ||
+               low.find("arc") != std::string::npos;
+      };
+
+      auto parse_float = [](const std::string &raw, float fallback) {
+        if (raw.empty()) return fallback;
+        char *end = nullptr;
+        const float parsed = ::strtof(raw.c_str(), &end);
+        if (end == raw.c_str()) return fallback;
+        while (*end == ' ' || *end == '\t' || *end == '\n' || *end == '\r') end++;
+        return (*end == '\0') ? parsed : fallback;
+      };
+
       const std::string media_class = id(ha_audio_media_class).has_state() ? id(ha_audio_media_class).state.c_str() : "unknown";
       const std::string media_class_l = lower(media_class);
       const bool display_allowed = id(ha_audio_display_allowed).has_state() ? id(ha_audio_display_allowed).state : false;
       const bool class_blocks_display =
         (media_class_l.empty() || media_class_l == "none" || media_class_l == "unknown" || media_class_l == "unavailable");
 
+      const bool ha_declares_playing =
+        id(ha_audio_state).has_state() && lower(id(ha_audio_state).state.c_str()) == "playing";
+      const bool transport_declares_playing =
+        (id(arylic_playing).has_state() && id(arylic_playing).state) ||
+        id(arylic_playing_state) ||
+        id(arylic_lr_playing_state);
+
+      float np_freshness_age_s = -1.0f;
+      if (id(ha_now_playing_freshness_age_s).has_state()) {
+        np_freshness_age_s = parse_float(id(ha_now_playing_freshness_age_s).state.c_str(), -1.0f);
+      }
+      const float freshness_gate_s = ((float) ${meta_stale_ms} / 1000.0f) + 2.0f;
+      const bool fresh_clock_evidence = np_freshness_age_s >= 0.0f && np_freshness_age_s <= freshness_gate_s;
+      const bool live_playback_evidence = ha_declares_playing || transport_declares_playing || fresh_clock_evidence;
+
       std::string line =
-        (display_allowed && !class_blocks_display && id(ha_audio_title).has_state())
+        (display_allowed && !class_blocks_display && live_playback_evidence && id(ha_audio_title).has_state())
           ? id(ha_audio_title).state.c_str()
           : "";
 
       // HA contract remains authoritative; this fallback only bridges transient title propagation lag.
-      if (display_allowed && !class_blocks_display && !has_displayable_text(line)) {
+      if (display_allowed && !class_blocks_display && live_playback_evidence && !has_displayable_text(line)) {
         const std::string arylic_title = id(arylic_title_state);
         if (has_displayable_text(arylic_title)) {
           line = arylic_title;
+        }
+      }
+      if (display_allowed && !class_blocks_display && live_playback_evidence && !has_displayable_text(line)) {
+        const std::string raw_source_label = id(np_raw_source_label);
+        const std::string raw_src_display = id(np_raw_src_display);
+        const std::string ha_source = id(ha_audio_source).has_state() ? id(ha_audio_source).state.c_str() : "";
+        const std::string ary_source = id(arylic_source_state);
+        const bool passthrough_context =
+          is_passthrough_source(raw_source_label) ||
+          is_passthrough_source(raw_src_display) ||
+          is_passthrough_source(ha_source) ||
+          is_passthrough_source(ary_source);
+        if (!passthrough_context) {
+          if (has_displayable_text(raw_source_label)) line = raw_source_label;
+          else if (has_displayable_text(raw_src_display)) line = raw_src_display;
+          else if (has_displayable_text(ha_source)) line = ha_source;
+          else if (has_displayable_text(ary_source)) line = ary_source;
         }
       }
       line = sanitize_ascii(line);
@@ -1565,11 +1621,15 @@ interval:
                                     return;
                                   }
                                   if (!has_known_good_transport) {
+                                    const uint32_t suppress_ms = 900000;
+                                    id(arylic_http_pause_until_ms) = millis() + suppress_ms;
                                     ESP_LOGW("arylic_http", "probe fallback suppressed host=%s no known-good transport yet (scheme=%s port=%d fail=%d)",
                                              id(arylic_http_host_active).c_str(),
                                              id(arylic_http_scheme_active).c_str(),
                                              id(arylic_http_port_active),
                                              fails);
+                                    ESP_LOGI("arylic_http", "suppressing additional HTTP probes for %ums (tcp control/handoff path unaffected)",
+                                             (unsigned) suppress_ms);
                                     return;
                                   }
                                   const bool use_https = id(arylic_http_scheme_active) == "https";
@@ -1832,11 +1892,15 @@ interval:
                                   return;
                                 }
                                 if (!has_known_good_transport) {
+                                  const uint32_t suppress_ms = 900000;
+                                  id(arylic_http_pause_until_ms) = millis() + suppress_ms;
                                   ESP_LOGW("arylic_http", "probe fallback suppressed host=%s no known-good transport yet (scheme=%s port=%d fail=%d)",
                                            id(arylic_http_host_active).c_str(),
                                            id(arylic_http_scheme_active).c_str(),
                                            id(arylic_http_port_active),
                                            fails);
+                                  ESP_LOGI("arylic_http", "suppressing additional HTTP probes for %ums (tcp control/handoff path unaffected)",
+                                           (unsigned) suppress_ms);
                                   return;
                                 }
                                 const bool use_https = id(arylic_http_scheme_active) == "https";

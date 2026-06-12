@@ -1,6 +1,6 @@
 # Description: Spectra LS UI/menu input handling + UI fonts + now-playing helper sensors.
-# Version: 2026.05.04.2
-# Last updated: 2026-05-04
+# Version: 2026.06.06.1
+# Last updated: 2026-06-06
 # Update version/date whenever you change this file.
 #
 # Sections:
@@ -865,7 +865,7 @@ text_sensor:
       if (src.empty() && id(ha_audio_source).has_state()) {
         src = id(ha_audio_source).state;
       }
-      if (src.empty()) return std::string("SRC");
+      if (src.empty()) return std::string("");
       return src;
 
   - platform: template

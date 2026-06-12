@@ -1,6 +1,6 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.05.05.30 -->
-<!-- Last updated: 2026-05-05 -->
+<!-- Version: 2026.06.05.1 -->
+<!-- Last updated: 2026-06-05 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
 
@@ -18,6 +18,21 @@ Execution playbook reference: `docs/program/PARALLEL-PROGRAM-PLAYBOOK.md`.
 - Minimal hardcoded install-specific entity IDs.
 - Backward-compatible migration before replacement.
 - Audio and lighting are first-class depth domains, while input primitives remain mappable for broader Home Assistant control domains.
+
+Latest run update (2026-05-17, Slice-CW control-host active-target guard slip fix):
+
+Latest run update (2026-06-05, passthrough-source metadata fallback preference):
+
+- Added non-meta-capable source detection for passthrough inputs (`optical`, `line in`, `line-in`, `aux`, `coax`, `hdmi`, `arc`) in `custom_components/spectra_ls/metadata_stack.py`.
+- For passthrough-active control targets, now-playing entity selection prefers resolved resolver-selected metadata providers before route-target fallback.
+- Runtime track disposition: compatibility-shimmed (runtime behavior unchanged; equivalent failure mode reviewed).
+- Component track disposition: implemented (source-aware metadata-provider preference added).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; metadata quality hardening for passthrough paths only.
+
+- Runtime + component host selectors now require candidate-target alignment with active target (or unresolved active-target posture) and `ready` gate status before consuming host-cutover candidate hosts.
+- Runtime track disposition: implemented.
+- Component track disposition: implemented.
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; host/target coherence correctness hardening only.
 
 Latest run update (2026-05-05, CA-S02A resolver determinism scoring matrix + acceptance packet fields):
 

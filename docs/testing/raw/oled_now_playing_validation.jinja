@@ -1,6 +1,6 @@
 {# Description: Raw copy/paste Developer Tools template to validate OLED, control target, and meta target alignment (including SRC fallback causes). #}
-{# Version: 2026.06.10.1 #}
-{# Last updated: 2026-06-10 #}
+{# Version: 2026.06.12.2 #}
+{# Last updated: 2026-06-12 #}
 
 {# =========================
   OLED + Control Target + Meta Target Validation
@@ -191,6 +191,14 @@
 {% endfor %}
 {% set passthrough_source_detected = passthrough.detected %}
 {% set passthrough_split_brain_risk = passthrough_source_detected and control_target_now_playing_entity_mismatch and effective_state in ['playing', 'paused'] %}
+{% set intentional_control_metadata_divergence = control_target_now_playing_entity_mismatch
+  and metadata_owner_component
+  and not meta_target_entity_mismatch
+  and not control_target_route_mismatch
+  and not control_target_esp_mismatch
+  and not passthrough_split_brain_risk
+  and effective_state in ['playing', 'paused']
+  and effective_display_allowed in ['on', 'true', '1'] %}
 
 {# --- root-cause classification --- #}
 {% set cause = 'healthy_or_non_src_case' %}
@@ -200,6 +208,8 @@
   {% set cause = 'control_target_mismatch_helper_vs_route_active_target' %}
 {% elif passthrough_split_brain_risk %}
   {% set cause = 'passthrough_split_brain_control_target_vs_now_playing_entity' %}
+{% elif intentional_control_metadata_divergence %}
+  {% set cause = 'intentional_control_target_metadata_divergence_component_owner' %}
 {% elif control_target_now_playing_entity_mismatch %}
   {% set cause = 'control_target_vs_now_playing_entity_mismatch' %}
 {% elif meta_target_entity_mismatch and metadata_owner_component %}
@@ -228,7 +238,7 @@
 
 {# --- verdict --- #}
 {% set verdict = 'PASS' %}
-{% if control_target_esp_mismatch or control_target_route_mismatch or control_target_now_playing_entity_mismatch or (meta_target_entity_mismatch and metadata_owner_component) or oled_src_fallback %}
+{% if control_target_esp_mismatch or control_target_route_mismatch or (control_target_now_playing_entity_mismatch and not intentional_control_metadata_divergence) or (meta_target_entity_mismatch and metadata_owner_component) or oled_src_fallback %}
   {% set verdict = 'FAIL' %}
 {% elif cause in ['audio_payload_blank_source_only_no_title', 'audio_payload_blank_expected_passthrough_no_track_metadata'] %}
   {% set verdict = 'WARN' %}
@@ -262,6 +272,7 @@
 - effective vs esp mismatch: **{{ control_target_esp_mismatch }}**
 - control target vs now-playing mismatch: **{{ control_target_now_playing_entity_mismatch }}**
 - passthrough split-brain risk: **{{ passthrough_split_brain_risk }}**
+- intentional transport-vs-metadata divergence accepted: **{{ intentional_control_metadata_divergence }}**
 
 ### Meta-target alignment
 - metadata authority owner: **{{ metadata_owner }}**
@@ -306,6 +317,8 @@
 - Helper target diverges from route-active target. Resolve target-selection alignment before evaluating now-playing render behavior.
 {% elif cause == 'passthrough_split_brain_control_target_vs_now_playing_entity' %}
 - Passthrough source is active, but control target and now-playing entity diverge. Force `spectra_ls.set_active_target` to `{{ effective_entity if effective_entity not in invalid else 'component_now_playing_entity' }}` and recheck host/target alignment after touching a pot.
+{% elif cause == 'intentional_control_target_metadata_divergence_component_owner' %}
+- Control target divergence is expected in this posture (transport control target + component-owned upstream metadata entity) and current packet is healthy. No target-alignment corrective action is required.
 {% elif cause == 'control_target_vs_now_playing_entity_mismatch' %}
 - Control target and now-playing entity diverge. Validate selection authority and active-target updates before investigating OLED formatting.
 {% elif cause == 'meta_target_mismatch_component_owner_active_meta_vs_now_playing_entity' %}

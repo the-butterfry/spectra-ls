@@ -1,6 +1,6 @@
 # Description: Extracted metadata stack workflows for Spectra LS (metadata prep/bridge/cutover validation and metadata trial services).
-# Version: 2026.06.10.1
-# Last updated: 2026-06-10
+# Version: 2026.06.12.2
+# Last updated: 2026-06-12
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -1006,6 +1006,7 @@ class MetadataStackWorkflow:
 		)
 		now_playing_entity = component_now_playing_entity or legacy_now_playing_entity
 		now_playing_state = now_playing_state_raw.state if now_playing_state_raw is not None else "missing"
+		transport_now_playing_state = str(now_playing_state or "").strip()
 		now_playing_title = now_playing_title_raw.state if now_playing_title_raw is not None else "missing"
 		now_playing_position = now_playing_position_raw.state if now_playing_position_raw is not None else "missing"
 		now_playing_duration = now_playing_duration_raw.state if now_playing_duration_raw is not None else "missing"
@@ -1051,7 +1052,21 @@ class MetadataStackWorkflow:
 					passthrough_metadata_promoted = True
 					break
 		if selected_state_obj is not None:
-			now_playing_state = str(selected_state_obj.state or "").strip() or now_playing_state
+			selected_state_norm = str(selected_state_obj.state or "").strip()
+			now_playing_state = selected_state_norm or now_playing_state
+			if passthrough_metadata_promoted and passthrough_source_detected:
+				selected_state_low = c._normalize_state(selected_state_norm)
+				transport_state_low = c._normalize_state(transport_now_playing_state)
+				if transport_state_low == "playing" and selected_state_low in {
+					"",
+					"unknown",
+					"unavailable",
+					"idle",
+					"off",
+					"standby",
+					"paused",
+				}:
+					now_playing_state = transport_now_playing_state
 			selected_title = str(selected_state_obj.attributes.get("media_title", "") or "").strip()
 			if selected_title:
 				now_playing_title = selected_title

@@ -1,6 +1,6 @@
 # Description: Spectra LS OLED-only peripherals package (no LED rings) for Control Board v2.
-# Version: 2026.06.11.1
-# Last updated: 2026-06-11
+# Version: 2026.06.12.2
+# Last updated: 2026-06-12
 # Update version/date whenever you change this file.
 esphome:
   name: ${device_name}
@@ -560,15 +560,22 @@ interval:
               artist.clear();
               album.clear();
               if (!source_hint_window_active) {
-                std::string live_passthrough_label = source_raw_ctx;
-                if (live_passthrough_label.empty()) live_passthrough_label = src_ctx;
-                if (live_passthrough_label.empty()) live_passthrough_label = source_label;
-                if (is_generic_source_placeholder(live_passthrough_label)) live_passthrough_label.clear();
-                source_label = live_passthrough_label;
-                source_pill = live_passthrough_label;
-                src_display = live_passthrough_label;
-                if (live_transport_playing && source_hint_window_active && !live_passthrough_label.empty()) {
-                  title = live_passthrough_label;
+                std::string live_source_context_label = source_raw_ctx;
+                if (live_source_context_label.empty()) live_source_context_label = src_ctx;
+                if (live_source_context_label.empty()) live_source_context_label = source_label;
+                if (is_generic_source_placeholder(live_source_context_label)) live_source_context_label.clear();
+
+                std::string live_passthrough_title_label = app_label_ctx;
+                if (is_source_like_text(live_passthrough_title_label)) live_passthrough_title_label.clear();
+                if (live_passthrough_title_label.empty()) live_passthrough_title_label = friendly_ctx;
+                if (is_generic_source_placeholder(live_passthrough_title_label)) live_passthrough_title_label.clear();
+                if (live_passthrough_title_label.empty()) live_passthrough_title_label = live_source_context_label;
+
+                source_label = live_source_context_label;
+                source_pill = live_source_context_label;
+                src_display = live_source_context_label;
+                if (live_transport_playing && !live_passthrough_title_label.empty()) {
+                  title = live_passthrough_title_label;
                   passthrough_title_fallback_active = true;
                 }
               }

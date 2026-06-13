@@ -1,6 +1,6 @@
 <!-- Description: Retroactive architecture and feature documentation for the active Spectra LS ESPHome runtime codebase. -->
-<!-- Version: 2026.06.09.1 -->
-<!-- Last updated: 2026-06-09 -->
+<!-- Version: 2026.06.12.3 -->
+<!-- Last updated: 2026-06-12 -->
 
 # Spectra LS Runtime Architecture (Retroactive Baseline)
 
@@ -78,6 +78,9 @@ Owned in `packages/spectra-ls-system.yaml`:
 - Passthrough no-text suppression now requires missing playback evidence before forcing blank state; active passthrough windows (playing transport/source context present) remain render-eligible with source-label fallback, while true idle passthrough still fail-closes to blank
 - Source-like title filtering now preserves guarded passthrough fallback titles (for example `Optical In`) in active no-metadata passthrough windows so runtime does not regress to blank/volume-only frames after assigning source fallback text
 - Active passthrough no-metadata fallback now enriches OLED context with a secondary target line (when available) so source-only windows are informative rather than top-line-only
+- Passthrough active no-metadata source fallback guard is corrected so live transport playback can promote source-context title fallback outside source-popup windows; unreachable hint-window condition no longer forces blank `audio|oled:-` during active AppleTV/YouTube optical playback
+- Passthrough active no-metadata title fallback now prefers richer non-source context labels (app/friendly) before raw source labels, while retaining source label as source/pill context; this avoids persistent source-only top-line text (`Optical In`) when better display context is available
+- Runtime metadata candidate scoring now de-prioritizes passthrough transport entities that have no title/artist/app payload and prioritizes metadata-bearing app-context entities, reducing active-meta pinning to source-only transport carriers during Optical/Line-In playback chains
 - ESP `esp_oled_status` export now mirrors runtime source-context fallback when title metadata is absent but playback evidence and display policy allow rendering, preventing false `audio|oled:-` reports while OLED is showing passthrough source context
 - Runtime passthrough source-only fallback was refined to keep concise source context without injected room/target scrolling text in no-metadata windows
 - Runtime audio control send paths (volume/EQ/source) now rehydrate control hosts from live HA control-host sensors at send time when cache was cleared, preventing post-target-churn `no_hosts` dead windows when HA host value does not emit a fresh change event

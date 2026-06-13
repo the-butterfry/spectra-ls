@@ -1,8 +1,15 @@
 <!-- Description: Component-first canonical playback data-fabric architecture for robust multi-source metadata/progress ownership in Spectra LS. -->
-<!-- Version: 2026.06.10.1 -->
-<!-- Last updated: 2026-06-10 -->
+<!-- Version: 2026.06.12.2 -->
+<!-- Last updated: 2026-06-12 -->
 
 # Spectra LS Component Data Fabric Architecture (Canonical Playback Contract)
+
+## Latest implementation note (2026-06-12, passthrough promotion state continuity)
+
+- Added passthrough metadata-promotion state continuity guard in component metadata prep: when passthrough promotion selects an upstream metadata carrier that is `paused`/non-playing while transport lane remains `playing`, component now-playing state now preserves transport `playing` posture so downstream OLED/render consumers keep valid promoted title/app instead of blanking on non-playing promoted-state regression.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (metadata promotion state continuity hardening in owner path).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; passthrough metadata/state contract correctness hardening only.
 
 ## Latest implementation note (2026-06-10, passthrough stale-album suppression hygiene)
 

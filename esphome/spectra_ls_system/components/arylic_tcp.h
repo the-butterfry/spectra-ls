@@ -1,6 +1,6 @@
 // Description: Shared Arylic TCP transport helpers for Spectra LS System (queueing, coalescing, and send path).
-// Version: 2026.04.18.3
-// Last updated: 2026-04-18
+// Version: 2026.06.23.1
+// Last updated: 2026-06-23
 
 #pragma once
 
@@ -125,6 +125,49 @@ struct ArylicTcpRecent {
 static ArylicTcpRecent arylic_tcp_recent[4] = {};
 static uint32_t arylic_tcp_backoff_until_ms = 0;
 static uint8_t arylic_tcp_consecutive_failures = 0;
+static uint32_t arylic_tcp_last_transient_errno_log_ms = 0;
+
+inline bool is_transient_socket_errno(int err) {
+	switch (err) {
+		case EAGAIN:
+		#if EWOULDBLOCK != EAGAIN
+		case EWOULDBLOCK:
+		#endif
+		case EINTR:
+		case ETIMEDOUT:
+		case ECONNABORTED:
+		case ECONNRESET:
+		case ENOTCONN:
+		case EPIPE:
+			return true;
+		default:
+			return false;
+	}
+}
+
+inline void log_socket_failure_errno(const char *stage, const char *host, uint16_t port, int err, uint8_t attempt) {
+	if (is_transient_socket_errno(err)) {
+		const uint32_t now = millis();
+		if (now - arylic_tcp_last_transient_errno_log_ms < 1000U) return;
+		arylic_tcp_last_transient_errno_log_ms = now;
+		ESP_LOGD("arylic_tcp", "%s transient host=%s port=%u errno=%d (%s) attempt=%u",
+				 stage ? stage : "socket",
+				 host ? host : "",
+				 (unsigned) port,
+				 err,
+				 strerror(err),
+				 (unsigned) attempt);
+		return;
+	}
+
+	ESP_LOGW("arylic_tcp", "%s failed host=%s port=%u errno=%d (%s) attempt=%u",
+			 stage ? stage : "socket",
+			 host ? host : "",
+			 (unsigned) port,
+			 err,
+			 strerror(err),
+			 (unsigned) attempt);
+}
 
 inline bool tcp_backoff_active() {
 	if (arylic_tcp_backoff_until_ms == 0) return false;
@@ -391,7 +434,7 @@ inline bool send_payload(const char *host, uint16_t port, const std::string &pay
 	for (uint8_t attempt = 1; attempt <= max_attempts; attempt++) {
 		int sock = ::socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
 		if (sock < 0) {
-			ESP_LOGW("arylic_tcp", "socket() failed host=%s port=%u errno=%d attempt=%u", host, (unsigned) port, errno, (unsigned) attempt);
+			log_socket_failure_errno("socket()", host, port, errno, attempt);
 			note_send_failure(host, port, "socket");
 			if (attempt < max_attempts) vTaskDelay(pdMS_TO_TICKS(20));
 			continue;
@@ -418,7 +461,7 @@ inline bool send_payload(const char *host, uint16_t port, const std::string &pay
 		int conn_res = ::connect(sock, reinterpret_cast<sockaddr *>(&dest), sizeof(dest));
 		if (conn_res != 0) {
 			if (errno != EINPROGRESS) {
-				ESP_LOGW("arylic_tcp", "connect() failed host=%s port=%u errno=%d attempt=%u", host, (unsigned) port, errno, (unsigned) attempt);
+				log_socket_failure_errno("connect()", host, port, errno, attempt);
 				::close(sock);
 				note_send_failure(host, port, "connect_fail");
 				if (attempt < max_attempts) vTaskDelay(pdMS_TO_TICKS(20));
@@ -435,7 +478,7 @@ inline bool send_payload(const char *host, uint16_t port, const std::string &pay
 			int err = 0;
 			socklen_t err_len = sizeof(err);
 			if (::getsockopt(sock, SOL_SOCKET, SO_ERROR, &err, &err_len) != 0 || err != 0) {
-				ESP_LOGW("arylic_tcp", "connect() failed host=%s port=%u errno=%d attempt=%u", host, (unsigned) port, err, (unsigned) attempt);
+				log_socket_failure_errno("connect()", host, port, err, attempt);
 				::close(sock);
 				note_send_failure(host, port, "connect_error");
 				if (attempt < max_attempts) vTaskDelay(pdMS_TO_TICKS(20));
@@ -467,7 +510,7 @@ inline bool send_payload(const char *host, uint16_t port, const std::string &pay
 			if (sent < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
 				continue;
 			}
-			ESP_LOGW("arylic_tcp", "send() failed host=%s port=%u errno=%d attempt=%u", host, (unsigned) port, errno, (unsigned) attempt);
+			log_socket_failure_errno("send()", host, port, errno, attempt);
 			attempt_ok = false;
 			break;
 		}
@@ -518,17 +561,74 @@ inline bool send_passthrough(const char *host, uint16_t port, const char *uart_c
 inline std::vector<std::string> split_hosts(const std::string &csv) {
 	std::vector<std::string> hosts;
 	if (csv.empty()) return hosts;
-	size_t start = 0;
-	while (start < csv.size()) {
-		size_t end = csv.find(',', start);
-		if (end == std::string::npos) end = csv.size();
-		size_t tok_start = csv.find_first_not_of(" \t", start);
-		size_t tok_end = csv.find_last_not_of(" \t", end > 0 ? end - 1 : end);
-		if (tok_start != std::string::npos && tok_start < end && tok_end != std::string::npos && tok_end >= tok_start) {
-			hosts.push_back(csv.substr(tok_start, tok_end - tok_start + 1));
+
+	auto trim_ascii = [](std::string value) {
+		size_t start = value.find_first_not_of(" \t\n\r[]\"'");
+		size_t end = value.find_last_not_of(" \t\n\r[]\"'");
+		if (start == std::string::npos || end == std::string::npos) return std::string();
+		return value.substr(start, end - start + 1);
+	};
+
+	auto normalize_host_token = [&](std::string token) {
+		token = trim_ascii(token);
+		if (token.empty()) return std::string();
+
+		std::string low = token;
+		for (auto &c : low) c = (char) ::tolower(c);
+		if (low == "unknown" || low == "unavailable" || low == "none" || low == "null") return std::string();
+
+		// Strip URL scheme/path/query if present, then host[:port]
+		const size_t scheme = token.find("://");
+		if (scheme != std::string::npos) {
+			token = token.substr(scheme + 3);
+			const size_t slash = token.find('/');
+			if (slash != std::string::npos) token = token.substr(0, slash);
+			token = trim_ascii(token);
+			if (token.empty()) return std::string();
 		}
-		start = end + 1;
+
+		// IPv6 [addr]:port => [addr]
+		if (!token.empty() && token[0] == '[') {
+			const size_t close = token.find(']');
+			if (close != std::string::npos) {
+				return token.substr(0, close + 1);
+			}
+		}
+
+		// host:port => host (single colon only)
+		const size_t first_colon = token.find(':');
+		const size_t last_colon = token.rfind(':');
+		if (first_colon != std::string::npos && first_colon == last_colon) {
+			std::string host_part = trim_ascii(token.substr(0, first_colon));
+			std::string port_part = trim_ascii(token.substr(first_colon + 1));
+			if (!host_part.empty() && !port_part.empty()) {
+				char *end = nullptr;
+				long parsed = strtol(port_part.c_str(), &end, 10);
+				if (end != port_part.c_str() && *end == '\0' && parsed > 0 && parsed <= 65534) {
+					return host_part;
+				}
+			}
+		}
+
+		return token;
+	};
+
+	std::string token;
+	auto push_token = [&]() {
+		std::string host = normalize_host_token(token);
+		if (!host.empty()) hosts.push_back(host);
+		token.clear();
+	};
+
+	for (char ch : csv) {
+		if (ch == ',' || ch == ';' || ch == '|' || ch == '\n' || ch == '\r') {
+			push_token();
+			continue;
+		}
+		token.push_back(ch);
 	}
+	push_token();
+
 	return hosts;
 }
 

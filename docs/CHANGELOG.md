@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.06.23.6 -->
+<!-- Version: 2026.06.23.7 -->
 <!-- Last updated: 2026-06-23 -->
 
 # Changelog
 
 ## 2026-06-23
+
+- Runtime/ESP Arylic TCP Transient-Errno Log-Noise Hardening (`esphome/spectra_ls_system/components/arylic_tcp.h`, `docs/CHANGELOG.md`): reduce repeated warning spam during transient socket churn (for example disconnect/reconnect windows that can surface transport errno noise such as `128`) by classifying expected transient socket errors and throttling them to debug-level cadence while preserving warning-level visibility for non-transient failures. This keeps failure telemetry actionable without flooding logs during expected reconnect behavior and does not change send/retry/backoff semantics. Runtime track disposition: implemented (transport observability hardening in active ESP helper path). Component track disposition: compatibility-shimmed (no `custom_components/spectra_ls` behavior mutation; equivalent failure mode reviewed). P1/P2/P3 impact: no source-of-truth ownership reassignment; observability-noise reduction only. README/wiki parity: no material operator workflow change.
 
 - Component/Metadata Prep Snapshot Crash Fix — mismatch computation ordering (`custom_components/spectra_ls/metadata_stack.py`, `docs/CHANGELOG.md`): fix recurring `UnboundLocalError` during snapshot/validation refresh (`cannot access local variable 'control_target_vs_now_playing_mismatch'`) caused by reading control/meta mismatch booleans before those canonical-target mismatch fields were computed in `build_metadata_prep_validation`. Reordered canonical alias/target mismatch synthesis to execute before divergence/alignment/cause calculations so snapshot packets are always built with initialized mismatch values. Runtime track disposition: compatibility-shimmed (no runtime package/esphome behavior mutation; equivalent consumer failure mode reviewed). Component track disposition: implemented (metadata prep packet build-order correctness hardening in owner path). P1/P2/P3 impact: no source-of-truth ownership reassignment; crash-path elimination and packet determinism hardening only. README/wiki parity: no material operator workflow change.
 

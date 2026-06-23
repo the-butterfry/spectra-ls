@@ -1,10 +1,14 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.06.23.7 -->
+<!-- Version: 2026.06.23.9 -->
 <!-- Last updated: 2026-06-23 -->
 
 # Changelog
 
 ## 2026-06-23
+
+- Runtime/ESP Arylic TCP Connect-Timeout Stability Tuning (`esphome/spectra_ls_system/substitutions.yaml`, `docs/CHANGELOG.md`): fix recurring `connect() timeout` churn under rapid volume-pot sweeps (visible despite reachable `:8899` control port) by increasing the Arylic TCP per-attempt timeout budget so short-lived network jitter and target accept latency no longer fail aggressively at the previous narrow window. This preserves existing queue/coalescing/send semantics and target authority routing while reducing false transport-failure bursts (`reason=connect_timeout`) and improving control continuity during fast interaction windows. Runtime track disposition: implemented (active ESP transport timeout-budget hardening). Component track disposition: compatibility-shimmed (no `custom_components/spectra_ls` behavior mutation; equivalent failure mode reviewed via component host/port authority surfaces). P1/P2/P3 impact: no source-of-truth ownership reassignment; transport stability hardening only. README/wiki parity: no material operator workflow change.
+
+- Runtime/HA WiiM Setup-In-Progress Reload-Loop Guard Fix (`custom_components/wiim/__init__.py`, `docs/CHANGELOG.md`): fix WiiM config entries getting stuck in `setup_in_progress` by tightening config-entry update listener behavior. Listener now reloads only when entry options actually change, and ignores setup-time `async_update_entry` mutations (capability cache, endpoint persistence, title normalization) that previously triggered recursive reload attempts during setup. Runtime track disposition: implemented (WiiM setup lifecycle correctness hardening). Component track disposition: checked/not-applicable (no `custom_components/spectra_ls` behavior mutation in this slice). P1/P2/P3 impact: no source-of-truth ownership reassignment; startup lifecycle stability hardening only. README/wiki parity: no material operator workflow change.
 
 - Runtime/ESP Arylic TCP Transient-Errno Log-Noise Hardening (`esphome/spectra_ls_system/components/arylic_tcp.h`, `docs/CHANGELOG.md`): reduce repeated warning spam during transient socket churn (for example disconnect/reconnect windows that can surface transport errno noise such as `128`) by classifying expected transient socket errors and throttling them to debug-level cadence while preserving warning-level visibility for non-transient failures. This keeps failure telemetry actionable without flooding logs during expected reconnect behavior and does not change send/retry/backoff semantics. Runtime track disposition: implemented (transport observability hardening in active ESP helper path). Component track disposition: compatibility-shimmed (no `custom_components/spectra_ls` behavior mutation; equivalent failure mode reviewed). P1/P2/P3 impact: no source-of-truth ownership reassignment; observability-noise reduction only. README/wiki parity: no material operator workflow change.
 

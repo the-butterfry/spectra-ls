@@ -1,6 +1,6 @@
 # Description: Extracted metadata stack workflows for Spectra LS (metadata prep/bridge/cutover validation and metadata trial services).
-# Version: 2026.06.12.2
-# Last updated: 2026-06-12
+# Version: 2026.06.23.3
+# Last updated: 2026-06-23
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -52,7 +52,6 @@ from .const import (
 	METADATA_CUTOVER_BLOCK_PREP_NOT_READY,
 	METADATA_CUTOVER_BLOCK_RESOLVER_CANDIDATE_MISSING,
 	WRITE_AUTH_COMPONENT,
-	WRITE_AUTH_LEGACY,
 )
 from .write_path_fabric import WritePathFabric
 
@@ -118,6 +117,22 @@ class MetadataStackWorkflow:
 			"app": "",
 			"captured_at": 0.0,
 		}
+		self._last_progress_clock_cache: dict[str, Any] = {
+			"entity": "",
+			"title": "",
+			"source": "",
+			"position": None,
+			"duration": None,
+			"captured_at": 0.0,
+		}
+		self._progress_signal_cache: dict[str, dict[str, Any]] = {}
+		self._selector_lock: dict[str, Any] = {
+			"entity": "",
+			"title": "",
+			"duration": None,
+			"locked_at": 0.0,
+			"last_position": None,
+		}
 
 	@property
 	def metadata_trial_in_progress(self) -> bool:
@@ -141,6 +156,48 @@ class MetadataStackWorkflow:
 
 	def set_last_metadata_bridge_attempt(self, payload: dict[str, Any]) -> None:
 		self._last_metadata_bridge_attempt = payload
+
+	def _entity_payload_meta(self, entity_id: str) -> tuple[str, str, str]:
+		"""Return normalized title/artist/album tuple for an entity."""
+		c = self._coordinator
+		if not c._is_resolved_state(entity_id):
+			return "", "", ""
+		state_obj = c.hass.states.get(entity_id)
+		if state_obj is None:
+			return "", "", ""
+		title = str(state_obj.attributes.get("media_title", "") or "").strip()
+		artist = str(state_obj.attributes.get("media_artist", "") or "").strip()
+		album = str(state_obj.attributes.get("media_album_name", "") or "").strip()
+		return title, artist, album
+
+	def _entity_has_payload_meta(self, entity_id: str) -> bool:
+		title, artist, album = self._entity_payload_meta(entity_id)
+		return bool(title or artist or album)
+
+	def _entity_meta_richness(self, entity_id: str) -> int:
+		c = self._coordinator
+		if not c._is_resolved_state(entity_id):
+			return 0
+		state_obj = c.hass.states.get(entity_id)
+		if state_obj is None:
+			return 0
+
+		title, artist, album = self._entity_payload_meta(entity_id)
+		app_name = str(state_obj.attributes.get("app_name", "") or "").strip()
+		source = str(state_obj.attributes.get("source", "") or "").strip()
+
+		richness = 0
+		if title:
+			richness += 40
+		if artist:
+			richness += 30
+		if album:
+			richness += 25
+		if app_name:
+			richness += 8
+		if source:
+			richness += 5
+		return richness
 
 	async def async_set_metadata_override(
 		self,
@@ -375,9 +432,9 @@ class MetadataStackWorkflow:
 			and metadata_cutover_active
 			and c._is_resolved_state(component_now_playing_entity)
 		)
-		trial_authority_legacy = c._write_authority_mode == WRITE_AUTH_LEGACY or bridge_status == "bridge_completed"
+		trial_authority_component = c._write_authority_mode == WRITE_AUTH_COMPONENT
 		trial_authority_satisfied = (
-			trial_authority_legacy
+			trial_authority_component
 			or metadata_cutover_active
 			or (bridge_skip_component_no_mix and component_resolver_authority_ready)
 		)
@@ -397,7 +454,7 @@ class MetadataStackWorkflow:
 			"resolver_candidate_present": resolver_candidate_present,
 			"component_resolver_authority_ready": component_resolver_authority_ready,
 			"bridge_skip_component_no_mix": bridge_skip_component_no_mix,
-			"trial_authority_legacy": trial_authority_legacy,
+			"trial_authority_component": trial_authority_component,
 			"trial_authority_satisfied": trial_authority_satisfied,
 			"resolver_stage_ok": resolver_stage_ok,
 			"resolver_stage_required": resolver_stage_required,
@@ -425,7 +482,7 @@ class MetadataStackWorkflow:
 		if not resolver_candidate_present:
 			blocking_reasons.append("resolver_candidate_missing")
 		if ma_boot_ready and not trial_authority_satisfied:
-			blocking_reasons.append("trial_authority_not_legacy")
+			blocking_reasons.append("trial_authority_not_component")
 		if resolver_stage_required and not resolver_stage_ok and resolver_status != "never_attempted":
 			blocking_reasons.append("resolver_stage_not_ok")
 		if trial_stage_required and not trial_stage_ok and trial_status != "never_attempted":
@@ -534,8 +591,11 @@ class MetadataStackWorkflow:
 		component_cutover_ready = bool(metadata_prep_ready and resolver_candidate_ready)
 		metadata_cutover_active = bool(component_mode_active and component_cutover_ready)
 
+		# Ownership policy (no legacy fallback in component mode):
+		# - component mode always reports component ownership, even if cutover is not yet active.
+		# - legacy ownership is only reported when component mode itself is not active.
 		metadata_authority_owner = (
-			METADATA_AUTH_OWNER_COMPONENT if metadata_cutover_active else METADATA_AUTH_OWNER_LEGACY
+			METADATA_AUTH_OWNER_COMPONENT if component_mode_active else METADATA_AUTH_OWNER_LEGACY
 		)
 
 		cutover_block_reason = ""
@@ -647,6 +707,24 @@ class MetadataStackWorkflow:
 		media_duration = state.attributes.get("media_duration")
 		position_s = _coerce_number(media_position)
 		duration_s = _coerce_number(media_duration)
+		now_ts = datetime.now(UTC).timestamp()
+		position_change_recent = False
+		if isinstance(position_s, float):
+			cache = self._progress_signal_cache.get(entity_id, {})
+			last_pos = cache.get("position")
+			last_change_at = float(cache.get("last_change_at", 0.0) or 0.0)
+			if isinstance(last_pos, (int, float)):
+				if abs(position_s - float(last_pos)) >= 0.05:
+					last_change_at = now_ts
+			elif last_change_at <= 0.0:
+				last_change_at = now_ts
+			self._progress_signal_cache[entity_id] = {
+				"position": position_s,
+				"sampled_at": now_ts,
+				"last_change_at": last_change_at,
+			}
+			if last_change_at > 0.0:
+				position_change_recent = (now_ts - last_change_at) <= meta_stale_s
 
 		playing_signal = (
 			state_norm == "playing"
@@ -672,6 +750,7 @@ class MetadataStackWorkflow:
 			playing_signal
 			and not playing_at_track_end_stuck
 			and recent_play_progress
+			and position_change_recent
 		)
 		playing_without_fresh_signal = (
 			playing_signal
@@ -679,6 +758,7 @@ class MetadataStackWorkflow:
 				playing_at_track_end_stuck
 				or (not has_progress_clock)
 				or (has_progress_clock and not recent_play_progress)
+				or (has_progress_clock and recent_play_progress and not position_change_recent)
 			)
 		)
 		fresh_play_signal = playing_with_fresh_signal or (paused_signal and recent_paused_progress)
@@ -709,6 +789,7 @@ class MetadataStackWorkflow:
 			"recent_progress": recent_paused_progress,
 			"recent_play_progress": recent_play_progress,
 			"recent_paused_progress": recent_paused_progress,
+			"position_change_recent": position_change_recent,
 			"playing_at_track_end_stuck": playing_at_track_end_stuck,
 			"fresh_play_signal": fresh_play_signal,
 			"playing_without_fresh_signal": playing_without_fresh_signal,
@@ -791,19 +872,22 @@ class MetadataStackWorkflow:
 		resolver_best_candidate: str = "",
 		resolver_detected_candidate: str = "",
 		passthrough_source_detected: bool = False,
-	) -> tuple[str, str]:
-		"""Select component-preferred now-playing entity with route/target-first freshness ordering."""
+	) -> tuple[str, str, dict[str, Any]]:
+		"""Select component-preferred now-playing entity using deterministic policy pools."""
 		c = self._coordinator
 		active_target = str(route_trace.get("active_target", "") or "").strip()
 		resolver_selected = str(resolver_selected_meta_entity or "").strip()
 
 		candidates: list[tuple[str, str]] = []
-		if passthrough_source_detected and c._is_resolved_state(resolver_selected):
-			candidates.append((resolver_selected, "resolver_selected_passthrough"))
-		if passthrough_source_detected and c._is_resolved_state(resolver_best_candidate):
-			candidates.append((str(resolver_best_candidate).strip(), "resolver_best_candidate_passthrough"))
-		if passthrough_source_detected and c._is_resolved_state(resolver_detected_candidate):
-			candidates.append((str(resolver_detected_candidate).strip(), "resolver_detected_candidate_passthrough"))
+		if c._is_resolved_state(resolver_selected):
+			resolver_source = "resolver_selected_passthrough" if passthrough_source_detected else "resolver_selected_candidate"
+			candidates.append((resolver_selected, resolver_source))
+		if c._is_resolved_state(resolver_best_candidate):
+			resolver_source = "resolver_best_candidate_passthrough" if passthrough_source_detected else "resolver_best_candidate"
+			candidates.append((str(resolver_best_candidate).strip(), resolver_source))
+		if c._is_resolved_state(resolver_detected_candidate):
+			resolver_source = "resolver_detected_candidate_passthrough" if passthrough_source_detected else "resolver_detected_candidate"
+			candidates.append((str(resolver_detected_candidate).strip(), resolver_source))
 
 		candidates.extend(
 			[
@@ -824,103 +908,486 @@ class MetadataStackWorkflow:
 			seen.add(entity_norm)
 			normalized_candidates.append((entity_norm, source))
 
-		for entity_id, source in normalized_candidates:
-			if passthrough_source_detected:
-				state_obj = c.hass.states.get(entity_id)
-				state_norm = c._normalize_state(state_obj.state if state_obj is not None else "")
-				has_payload_meta = False
-				if state_obj is not None:
-					title = str(state_obj.attributes.get("media_title", "") or "").strip()
-					artist = str(state_obj.attributes.get("media_artist", "") or "").strip()
-					has_payload_meta = bool(title or artist)
-				if has_payload_meta and state_norm in {"playing", "paused"}:
-					return entity_id, f"{source}_passthrough_meta_lock"
+		def _anchor_tokens(*entity_ids: str) -> list[str]:
+			tokens: set[str] = set()
+			for entity_id in entity_ids:
+				entity_norm = str(entity_id or "").strip().lower()
+				if not c._is_resolved_state(entity_norm):
+					continue
+				parts = entity_norm.replace(".", "_").split("_")
+				for part in parts:
+					part_norm = part.strip()
+					if len(part_norm) >= 3 and part_norm not in {"media", "player", "component", "shadow"}:
+						tokens.add(part_norm)
 
-		def _has_payload_meta(entity_id: str) -> bool:
-			state_obj = c.hass.states.get(entity_id)
-			if state_obj is None:
-				return False
-			title = str(state_obj.attributes.get("media_title", "") or "").strip()
-			artist = str(state_obj.attributes.get("media_artist", "") or "").strip()
-			album = str(state_obj.attributes.get("media_album_name", "") or "").strip()
-			return bool(title or artist or album)
+				state_obj = c.hass.states.get(entity_norm)
+				if state_obj is not None:
+					friendly = str(state_obj.attributes.get("friendly_name", "") or "").strip().lower()
+					for part in friendly.replace("-", " ").replace("_", " ").split():
+						part_norm = part.strip()
+						if len(part_norm) >= 3:
+							tokens.add(part_norm)
+			return sorted(tokens)
 
 		def _has_music_assistant_hint(entity_id: str) -> bool:
 			state_obj = c.hass.states.get(entity_id)
 			if state_obj is None:
 				return False
 			attrs = state_obj.attributes if isinstance(state_obj.attributes, dict) else {}
+			entity_norm = str(entity_id or "").strip().lower()
 			app_id = str(attrs.get("app_id", "") or "").strip().lower()
 			app_name = str(attrs.get("app_name", "") or "").strip().lower()
 			source = str(attrs.get("source", "") or "").strip().lower()
 			return (
-				"music_assistant" in app_id
+				entity_norm.endswith("_ma")
+				or "_ma_" in entity_norm
+				or "_ma." in entity_norm
+				or "music_assistant" in entity_norm
+				or "music_assistant" in app_id
 				or "music assistant" in app_name
 				or "music assistant" in source
 				or "queue" in source
 			)
 
-		def _candidate_score(entity_id: str) -> int:
+		def _is_sparse_transport_meta(entity_id: str) -> bool:
+			state_obj = c.hass.states.get(entity_id)
+			if state_obj is None:
+				return False
+			attrs = state_obj.attributes if isinstance(state_obj.attributes, dict) else {}
+			source = str(attrs.get("source", "") or "").strip().lower()
+			app_name = str(attrs.get("app_name", "") or "").strip().lower()
+			title = str(attrs.get("media_title", "") or "").strip()
+			artist = str(attrs.get("media_artist", "") or "").strip()
+			album = str(attrs.get("media_album_name", "") or "").strip()
+			transport_tokens = ("dlna", "upnp", "airplay", "spotify connect", "chromecast")
+			has_transport_token = any(token in source or token in app_name for token in transport_tokens)
+			has_sparse_payload = bool(title) and not bool(artist) and not bool(album)
+			return has_transport_token and has_sparse_payload and not _has_music_assistant_hint(entity_id)
+
+		def _looks_transport_mirror(entity_id: str) -> bool:
+			state_obj = c.hass.states.get(entity_id)
+			if state_obj is None:
+				return False
+			attrs = state_obj.attributes if isinstance(state_obj.attributes, dict) else {}
+			source = str(attrs.get("source", "") or "").strip().lower()
+			app_name = str(attrs.get("app_name", "") or "").strip().lower()
+			meta_richness = self._entity_meta_richness(entity_id)
+			transport_tokens = ("dlna", "upnp", "airplay", "spotify connect", "chromecast")
+			has_transport_token = any(token in source or token in app_name for token in transport_tokens)
+			return has_transport_token and not _has_music_assistant_hint(entity_id) and meta_richness <= 60
+
+		def _discover_ma_rich_candidates() -> list[tuple[str, str]]:
+			anchors = _anchor_tokens(active_target, active_meta_entity, legacy_now_playing_entity)
+			matches: list[tuple[str, str]] = []
+			fallback_matches: list[tuple[str, str]] = []
+			for state_obj in c.hass.states.async_all("media_player"):
+				entity_id = str(getattr(state_obj, "entity_id", "") or "").strip()
+				if not c._is_resolved_state(entity_id):
+					continue
+				if not _has_music_assistant_hint(entity_id):
+					continue
+				if self._entity_meta_richness(entity_id) < 70:
+					continue
+				state_norm = c._normalize_state(str(getattr(state_obj, "state", "") or ""))
+				if state_norm not in {"playing", "paused"}:
+					continue
+
+				friendly = str(state_obj.attributes.get("friendly_name", "") or "").strip().lower()
+				entity_norm = entity_id.lower()
+				if any(token in entity_norm or token in friendly for token in anchors):
+					matches.append((entity_id, "discovered_ma_rich_candidate"))
+				else:
+					fallback_matches.append((entity_id, "discovered_ma_rich_global_fallback"))
+
+			if len(matches) > 0:
+				return matches
+			return fallback_matches
+
+		def _discover_passthrough_origin_candidates() -> list[tuple[str, str]]:
+			if not passthrough_source_detected:
+				return []
+
+			route_state = c.hass.states.get(active_target) if c._is_resolved_state(active_target) else None
+			route_attrs = route_state.attributes if route_state is not None and isinstance(route_state.attributes, dict) else {}
+			route_title_hint = str(route_attrs.get("media_title", "") or "").strip().lower()
+			route_artist_hint = str(route_attrs.get("media_artist", "") or "").strip().lower()
+			route_has_meta = bool(route_title_hint or route_artist_hint)
+			route_app_hints = {
+				str(route_attrs.get("app_id", "") or "").strip().lower(),
+				str(route_attrs.get("app_name", "") or "").strip().lower(),
+			}
+			route_app_hints = {hint for hint in route_app_hints if hint}
+
+			matches: list[tuple[str, str, int]] = []
+			fallback_matches: list[tuple[str, str, int]] = []
+			for state_obj in c.hass.states.async_all("media_player"):
+				entity_id = str(getattr(state_obj, "entity_id", "") or "").strip()
+				if not c._is_resolved_state(entity_id):
+					continue
+				if entity_id == active_target:
+					continue
+
+				state_norm = c._normalize_state(str(getattr(state_obj, "state", "") or ""))
+				if state_norm not in {"playing", "paused"}:
+					continue
+
+				title = str(state_obj.attributes.get("media_title", "") or "").strip()
+				artist = str(state_obj.attributes.get("media_artist", "") or "").strip()
+				if not (title or artist):
+					continue
+
+				signal = self._build_now_playing_signal(entity_id)
+				fresh_signal = bool(signal.get("fresh_play_signal", False))
+				recent_signal = bool(signal.get("recent_play_progress", False)) or bool(
+					signal.get("recent_paused_progress", False)
+				)
+
+				source_text = str(state_obj.attributes.get("source", "") or "").strip()
+				app_id = str(state_obj.attributes.get("app_id", "") or "").strip().lower()
+				app_name = str(state_obj.attributes.get("app_name", "") or "").strip().lower()
+				has_app_hint = bool(app_id or app_name)
+				paused_origin_passthrough_ok = (
+					state_norm == "paused"
+					and bool(title)
+					and has_app_hint
+				)
+				stale_origin_passthrough_ok = (
+					state_norm == "playing"
+					and bool(title or artist)
+					and self._entity_meta_richness(entity_id) >= 70
+					and not route_has_meta
+				)
+				if not (
+					fresh_signal
+					or recent_signal
+					or paused_origin_passthrough_ok
+					or stale_origin_passthrough_ok
+				):
+					continue
+				if self._is_non_meta_source(source_text) and not has_app_hint:
+					continue
+
+				richness = self._entity_meta_richness(entity_id)
+				score = richness
+				if route_title_hint and title.lower() == route_title_hint:
+					score += 60
+				if route_artist_hint and artist.lower() == route_artist_hint:
+					score += 35
+				if route_app_hints and ((app_id in route_app_hints) or (app_name in route_app_hints)):
+					score += 25
+				if title and artist:
+					score += 10
+
+				if (route_title_hint or route_artist_hint or len(route_app_hints) > 0) and score >= 80:
+					matches.append((entity_id, "discovered_passthrough_origin_candidate", score))
+				elif score >= 70:
+					fallback_matches.append((entity_id, "discovered_passthrough_origin_global_fallback", score))
+
+			ordered_matches = sorted(matches, key=lambda item: (-item[2], item[0]))
+			if len(ordered_matches) > 0:
+				return [(entity_id, source) for entity_id, source, _score in ordered_matches[:3]]
+			ordered_fallbacks = sorted(fallback_matches, key=lambda item: (-item[2], item[0]))
+			return [(entity_id, source) for entity_id, source, _score in ordered_fallbacks[:3]]
+
+		for entity_id, source in _discover_passthrough_origin_candidates():
+			candidates.append((entity_id, source))
+
+		for entity_id, source in _discover_ma_rich_candidates():
+			candidates.append((entity_id, source))
+
+		# Re-normalize after discovery append to preserve deterministic de-dup ordering.
+		seen = set()
+		normalized_candidates = []
+		for entity_id, source in candidates:
+			entity_norm = str(entity_id or "").strip()
+			if not c._is_resolved_state(entity_norm):
+				continue
+			if entity_norm in seen:
+				continue
+			seen.add(entity_norm)
+			normalized_candidates.append((entity_norm, source))
+
+		source_rank = {
+			"resolver_selected_passthrough": 0,
+			"resolver_selected_candidate": 0,
+			"resolver_best_candidate_passthrough": 1,
+			"resolver_best_candidate": 1,
+			"resolver_detected_candidate_passthrough": 2,
+			"resolver_detected_candidate": 2,
+			"discovered_passthrough_origin_candidate": 3,
+			"discovered_passthrough_origin_global_fallback": 4,
+			"active_meta_entity": 5,
+			"route_active_target": 6,
+			"legacy_now_playing_entity": 7,
+			"discovered_ma_rich_candidate": 8,
+			"discovered_ma_rich_global_fallback": 9,
+		}
+
+		candidate_rows: list[dict[str, Any]] = []
+		eligible_rows: list[dict[str, Any]] = []
+		ma_rich_active_exists = False
+
+		for entity_id, source in normalized_candidates:
+			state_obj = c.hass.states.get(entity_id)
+			if state_obj is None:
+				candidate_rows.append(
+					{
+						"entity": entity_id,
+						"source": source,
+						"eligible": False,
+						"pool": "discarded",
+						"reasons": ["state_missing"],
+					}
+				)
+				continue
+
 			signal = self._build_now_playing_signal(entity_id)
+			state_norm = c._normalize_state(str(getattr(state_obj, "state", "") or ""))
+			has_meta = self._entity_has_payload_meta(entity_id)
+			richness = self._entity_meta_richness(entity_id)
+			ma_hint = _has_music_assistant_hint(entity_id)
+			sparse_transport = _is_sparse_transport_meta(entity_id)
+			transport_mirror = _looks_transport_mirror(entity_id)
 			fresh = bool(signal.get("fresh_play_signal", False))
 			recent_play_progress = bool(signal.get("recent_play_progress", False))
 			playing_without_fresh = bool(signal.get("playing_without_fresh_signal", False))
 			stuck_at_track_end = bool(signal.get("playing_at_track_end_stuck", False))
-			has_meta = _has_payload_meta(entity_id)
-			ma_hint = _has_music_assistant_hint(entity_id)
 
-			score = 0
-			if fresh:
-				score += 100
-			if has_meta:
-				score += 60
-			if recent_play_progress:
-				score += 15
-			if ma_hint:
-				score += 35
-			if playing_without_fresh:
-				score -= 60
+			reasons: list[str] = []
+			if state_norm in {"unknown", "unavailable", "off", "standby"}:
+				reasons.append("inactive_state")
 			if stuck_at_track_end:
-				score -= 120
-			return score
+				reasons.append("stuck_track_end")
+			if playing_without_fresh and not has_meta:
+				reasons.append("playing_without_fresh_no_meta")
 
-		# Score candidates to prioritize live metadata carriers over stale transport carriers.
-		# This prevents first-track pinning when route-side entities stay "playing" but no longer
-		# represent the active MA metadata stream.
-		best_entity = ""
-		best_source = ""
-		best_score = -999999
-		for entity_id, source in normalized_candidates:
-			score = _candidate_score(entity_id)
-			if score > best_score:
-				best_score = score
-				best_entity = entity_id
-				best_source = source
-		if best_entity and best_score > 0:
-			return best_entity, f"{best_source}_scored"
+			is_ma_rich = ma_hint and has_meta and richness >= 70 and state_norm in {"playing", "paused"}
+			if is_ma_rich and (fresh or recent_play_progress):
+				ma_rich_active_exists = True
 
-		# Prefer candidates that are both freshness-valid and metadata-bearing.
-		# This is retained as deterministic fallback when scored ranking cannot produce
-		# a positive-confidence winner.
-		for entity_id, source in normalized_candidates:
-			signal = self._build_now_playing_signal(entity_id)
-			if bool(signal.get("fresh_play_signal", False)) and _has_payload_meta(entity_id):
-				return entity_id, f"{source}_fresh_meta"
+			if sparse_transport and ma_rich_active_exists:
+				reasons.append("sparse_transport_blocked_by_ma_rich")
 
-		for entity_id, source in normalized_candidates:
-			signal = self._build_now_playing_signal(entity_id)
-			if bool(signal.get("fresh_play_signal", False)):
-				return entity_id, source
+			pool = "fallback_any"
+			pool_rank = 5
+			if is_ma_rich and fresh:
+				pool = "ma_rich_fresh"
+				pool_rank = 0
+			elif is_ma_rich:
+				pool = "ma_rich_active"
+				pool_rank = 1
+			elif entity_id == active_target and fresh and has_meta:
+				pool = "transport_fresh_meta"
+				pool_rank = 2
+			elif entity_id == active_target and fresh:
+				pool = "transport_fresh"
+				pool_rank = 3
+			elif has_meta:
+				pool = "fallback_meta"
+				pool_rank = 4
 
-		for entity_id, source in normalized_candidates:
-			if _has_payload_meta(entity_id):
-				return entity_id, f"{source}_meta_fallback"
+			if passthrough_source_detected and has_meta and state_norm in {"playing", "paused"}:
+				pool = "passthrough_meta_lock"
+				pool_rank = -1
+
+			eligible = len(reasons) == 0
+			row = {
+				"entity": entity_id,
+				"source": source,
+				"state": state_norm,
+				"eligible": eligible,
+				"pool": pool,
+				"pool_rank": pool_rank,
+				"fresh": fresh,
+				"recent_play_progress": recent_play_progress,
+				"has_meta": has_meta,
+				"meta_richness": richness,
+				"ma_hint": ma_hint,
+				"sparse_transport": sparse_transport,
+				"transport_mirror": transport_mirror,
+				"reasons": reasons,
+			}
+			candidate_rows.append(row)
+			if eligible:
+				eligible_rows.append(row)
+
+		# Apply hard sparse-transport override after global MA-rich presence is known.
+		if ma_rich_active_exists:
+			for row in candidate_rows:
+				if row.get("eligible") and bool(row.get("sparse_transport", False)):
+					row_reasons = row.get("reasons", []) if isinstance(row.get("reasons", []), list) else []
+					if "sparse_transport_blocked_by_ma_rich" not in row_reasons:
+						row_reasons.append("sparse_transport_blocked_by_ma_rich")
+					row["reasons"] = row_reasons
+					row["eligible"] = False
+			eligible_rows = [row for row in candidate_rows if bool(row.get("eligible", False))]
+
+		winner = ""
+		winner_source = "unresolved"
+		winner_pool = "none"
+		winner_reason = "no_eligible_candidate"
+
+		if len(eligible_rows) > 0:
+			def _rank_tuple(row: dict[str, Any]) -> tuple[Any, ...]:
+				entity_id = str(row.get("entity", "") or "")
+				source = str(row.get("source", "") or "")
+				pool_rank = int(row.get("pool_rank", 99) or 99)
+				fresh_rank = 0 if bool(row.get("fresh", False)) else 1
+				has_meta_rank = 0 if bool(row.get("has_meta", False)) else 1
+				recent_rank = 0 if bool(row.get("recent_play_progress", False)) else 1
+				ma_rank = 0 if bool(row.get("ma_hint", False)) else 1
+				mirror_rank = 1 if bool(row.get("transport_mirror", False)) else 0
+				richness_rank = -int(row.get("meta_richness", 0) or 0)
+				src_rank = int(source_rank.get(source, 50))
+				return (
+					pool_rank,
+					fresh_rank,
+					has_meta_rank,
+					recent_rank,
+					ma_rank,
+					mirror_rank,
+					richness_rank,
+					src_rank,
+					entity_id,
+				)
+
+			best_row = sorted(eligible_rows, key=_rank_tuple)[0]
+			winner = str(best_row.get("entity", "") or "")
+			winner_source = str(best_row.get("source", "") or "")
+			winner_pool = str(best_row.get("pool", "") or "")
+			winner_reason = "deterministic_pool_ranking"
+			expected_idle_selector_posture = (
+				winner_pool == "fallback_any"
+				and str(best_row.get("state", "") or "")
+				in {"idle", "off", "stopped", "standby", "unknown", "unavailable"}
+				and not bool(best_row.get("has_meta", False))
+				and not bool(best_row.get("fresh", False))
+			)
+			if expected_idle_selector_posture:
+				winner_pool = "idle_expected"
+				winner_reason = "idle_no_payload_expected_target_hold"
+
+		telemetry = {
+			"winner_entity": winner,
+			"winner_source": winner_source,
+			"winner_pool": winner_pool,
+			"winner_reason": winner_reason,
+			"expected_idle_selector_posture": bool(
+				winner_pool == "idle_expected" and winner_reason == "idle_no_payload_expected_target_hold"
+			),
+			"ma_rich_active_exists": ma_rich_active_exists,
+			"candidate_count": len(candidate_rows),
+			"eligible_count": len(eligible_rows),
+			"candidates": candidate_rows,
+		}
+
+		if winner:
+			lock_now = datetime.now(UTC).timestamp()
+			lock = self._selector_lock if isinstance(self._selector_lock, dict) else {}
+			locked_entity = str(lock.get("entity", "") or "").strip()
+			lock_active = False
+			lock_release_reason = ""
+
+			if c._is_resolved_state(locked_entity):
+				locked_state_obj = c.hass.states.get(locked_entity)
+				if locked_state_obj is None:
+					lock_release_reason = "missing_locked_entity"
+				else:
+					locked_state = c._normalize_state(str(locked_state_obj.state or ""))
+					locked_title = str(locked_state_obj.attributes.get("media_title", "") or "").strip()
+					locked_duration = locked_state_obj.attributes.get("media_duration")
+					locked_position = locked_state_obj.attributes.get("media_position")
+					previous_locked_position = lock.get("last_position")
+					if locked_state in {"idle", "off", "standby", "unknown", "unavailable"}:
+						lock_release_reason = "stop_override"
+					elif (
+						isinstance(locked_position, (int, float))
+						and isinstance(previous_locked_position, (int, float))
+						and abs(float(locked_position) - float(previous_locked_position)) >= 30.0
+					):
+						lock_release_reason = "shuttle_override"
+					elif not bool(locked_title) or not (
+						isinstance(locked_duration, (int, float)) and float(locked_duration) > 0.0
+					):
+						lock_release_reason = "lock_contract_invalid"
+					elif (lock_now - float(lock.get("locked_at", 0.0) or 0.0)) > 180.0:
+						lock_release_reason = "lock_ttl_expired"
+					else:
+						lock_active = True
+						lock["last_position"] = (
+							float(locked_position)
+							if isinstance(locked_position, (int, float))
+							else lock.get("last_position")
+						)
+						self._selector_lock = lock
+
+			if lock_active and locked_entity and locked_entity != winner:
+				winner = locked_entity
+				winner_source = "selector_lock_hold"
+				winner_pool = "locked"
+				winner_reason = "selector_lock_hold"
+
+			winner_state_obj = c.hass.states.get(winner)
+			if winner_state_obj is not None:
+				winner_state = c._normalize_state(str(winner_state_obj.state or ""))
+				winner_title = str(winner_state_obj.attributes.get("media_title", "") or "").strip()
+				winner_duration = winner_state_obj.attributes.get("media_duration")
+				winner_position = winner_state_obj.attributes.get("media_position")
+				if (
+					winner_state in {"playing", "paused"}
+					and bool(winner_title)
+					and isinstance(winner_duration, (int, float))
+					and float(winner_duration) > 0.0
+				):
+					self._selector_lock = {
+						"entity": winner,
+						"title": winner_title,
+						"duration": float(winner_duration),
+						"locked_at": lock_now,
+						"last_position": (
+							float(winner_position)
+							if isinstance(winner_position, (int, float))
+							else None
+						),
+					}
+			elif lock_release_reason:
+				self._selector_lock = {
+					"entity": "",
+					"title": "",
+					"duration": None,
+					"locked_at": 0.0,
+					"last_position": None,
+				}
+
+			telemetry["selector_lock_active"] = bool(self._selector_lock.get("entity", ""))
+			telemetry["selector_lock_entity"] = str(self._selector_lock.get("entity", "") or "")
+			telemetry["selector_lock_release_reason"] = lock_release_reason
+			return winner, f"{winner_source}_{winner_pool}", telemetry
 
 		for entity_id, source in normalized_candidates:
 			if c.hass.states.get(entity_id) is not None:
-				return entity_id, f"{source}_fallback"
+				state_obj = c.hass.states.get(entity_id)
+				state_norm = c._normalize_state(str(state_obj.state or "")) if state_obj is not None else ""
+				title = str(state_obj.attributes.get("media_title", "") or "").strip() if state_obj is not None else ""
+				artist = str(state_obj.attributes.get("media_artist", "") or "").strip() if state_obj is not None else ""
+				album = str(state_obj.attributes.get("media_album_name", "") or "").strip() if state_obj is not None else ""
+				has_meta_payload = bool(title or artist or album)
+				expected_idle_selector_posture = (
+					state_norm in {"idle", "off", "stopped", "standby", "unknown", "unavailable"}
+					and not has_meta_payload
+				)
+				telemetry["winner_entity"] = entity_id
+				telemetry["winner_source"] = source
+				telemetry["winner_pool"] = "idle_expected" if expected_idle_selector_posture else "fallback_any"
+				telemetry["winner_reason"] = (
+					"idle_no_payload_expected_target_hold"
+					if expected_idle_selector_posture
+					else "state_present_fallback"
+				)
+				telemetry["expected_idle_selector_posture"] = expected_idle_selector_posture
+				return entity_id, f"{source}_fallback", telemetry
 
-		return "", "unresolved"
+		return "", "unresolved", telemetry
 
 	def _extract_entity_source_text(self, entity_id: str) -> str:
 		c = self._coordinator
@@ -992,10 +1459,20 @@ class MetadataStackWorkflow:
 		legacy_now_playing_entity = now_playing_entity_raw.state if now_playing_entity_raw is not None else "missing"
 
 		route_active_target = str(route_trace.get("active_target", "") or "").strip()
+		route_active_target_state = c.hass.states.get(route_active_target) if c._is_resolved_state(route_active_target) else None
+		route_active_target_friendly = str(
+			route_active_target_state.attributes.get("friendly_name", "")
+			if route_active_target_state is not None
+			else ""
+		).strip()
 		route_active_source = self._extract_entity_source_text(route_active_target)
 		passthrough_source_detected = self._is_non_meta_source(route_active_source)
 
-		component_now_playing_entity, component_now_playing_entity_source = self._select_component_now_playing_entity(
+		(
+			component_now_playing_entity,
+			component_now_playing_entity_source,
+			component_now_playing_selection,
+		) = self._select_component_now_playing_entity(
 			route_trace=route_trace,
 			active_meta_entity=active_meta_entity,
 			legacy_now_playing_entity=legacy_now_playing_entity,
@@ -1016,6 +1493,16 @@ class MetadataStackWorkflow:
 		selected_state_obj = c.hass.states.get(now_playing_entity) if c._is_resolved_state(now_playing_entity) else None
 		passthrough_metadata_promoted = False
 		passthrough_album_suppressed = False
+		passthrough_device_label_preferred = False
+		passthrough_route_target_label_preferred = False
+		passthrough_source_label_fallback_preferred = False
+		passthrough_route_target_position_fallback_used = False
+		passthrough_route_target_duration_fallback_used = False
+		passthrough_metadata_candidate_position_fallback_used = False
+		passthrough_metadata_candidate_duration_fallback_used = False
+		progress_clock_cache_reused = False
+		progress_clock_cache_cross_entity_reused = False
+		progress_clock_cache_age_s: float | None = None
 		if passthrough_source_detected:
 			selected_title = (
 				str(selected_state_obj.attributes.get("media_title", "") or "").strip()
@@ -1053,6 +1540,7 @@ class MetadataStackWorkflow:
 					break
 		if selected_state_obj is not None:
 			selected_state_norm = str(selected_state_obj.state or "").strip()
+			selected_friendly = str(selected_state_obj.attributes.get("friendly_name", "") or "").strip()
 			now_playing_state = selected_state_norm or now_playing_state
 			if passthrough_metadata_promoted and passthrough_source_detected:
 				selected_state_low = c._normalize_state(selected_state_norm)
@@ -1078,6 +1566,21 @@ class MetadataStackWorkflow:
 				or selected_state_obj.attributes.get("app_id", "")
 				or ""
 			).strip()
+			if passthrough_source_detected:
+				# In passthrough posture, prevent app-name dominance (e.g. "YouTube")
+				# when metadata/app context is sourced from upstream carriers.
+				# Prefer route-target friendly identity first; if route-target is
+				# unresolved, fall back to selected entity friendly/source label.
+				preferred_device_label = route_active_target_friendly or selected_friendly
+				if preferred_device_label:
+					if not now_playing_source or not self._is_non_meta_source(now_playing_source):
+						now_playing_source = preferred_device_label
+					now_playing_app = preferred_device_label
+					passthrough_device_label_preferred = True
+					passthrough_route_target_label_preferred = bool(route_active_target_friendly)
+				elif now_playing_source:
+					now_playing_app = now_playing_source
+					passthrough_source_label_fallback_preferred = True
 			if (
 				passthrough_source_detected
 				and self._is_non_meta_source(now_playing_source)
@@ -1095,8 +1598,73 @@ class MetadataStackWorkflow:
 			if isinstance(selected_position, (int, float)):
 				now_playing_position = str(float(selected_position))
 			selected_duration = selected_state_obj.attributes.get("media_duration")
-			if isinstance(selected_duration, (int, float)):
+			if isinstance(selected_duration, (int, float)) and float(selected_duration) > 0.0:
 				now_playing_duration = str(float(selected_duration))
+
+			# Progress continuity rule for passthrough metadata promotion:
+			# metadata carriers may provide better title/artist but no transport clock.
+			# In that case, keep selected metadata entity while borrowing progress
+			# from the active route target (transport owner) when available.
+			if passthrough_source_detected and c._is_resolved_state(route_active_target):
+				route_target_state_obj = c.hass.states.get(route_active_target)
+				if route_target_state_obj is not None:
+					if not isinstance(selected_position, (int, float)):
+						route_position = route_target_state_obj.attributes.get("media_position")
+						if isinstance(route_position, (int, float)):
+							now_playing_position = str(float(route_position))
+							passthrough_route_target_position_fallback_used = True
+					if not isinstance(selected_duration, (int, float)):
+						route_duration = route_target_state_obj.attributes.get("media_duration")
+						if isinstance(route_duration, (int, float)) and float(route_duration) > 0.0:
+							now_playing_duration = str(float(route_duration))
+							passthrough_route_target_duration_fallback_used = True
+
+			# Root-cause guard: transport passthrough entities can be playback owners with
+			# sparse/invalid duration, while resolver/meta entities hold valid clocks.
+			# Keep exported progress contract coherent by filling missing/invalid clocks
+			# from metadata-capable candidates in deterministic priority order.
+			if passthrough_source_detected:
+				position_missing = not isinstance(selected_position, (int, float))
+				duration_missing_or_invalid = (
+					not isinstance(selected_duration, (int, float))
+					or float(selected_duration) <= 0.0
+				)
+				if position_missing or duration_missing_or_invalid:
+					clock_fallback_candidates = [
+						resolver_selected_meta_entity,
+						resolver_best_candidate,
+						resolver_detected_candidate,
+						active_meta_entity,
+						legacy_now_playing_entity,
+					]
+					seen_clock_entities: set[str] = set()
+					for clock_entity in clock_fallback_candidates:
+						clock_entity_norm = str(clock_entity or "").strip()
+						if not c._is_resolved_state(clock_entity_norm):
+							continue
+						if clock_entity_norm in seen_clock_entities:
+							continue
+						seen_clock_entities.add(clock_entity_norm)
+						clock_state = c.hass.states.get(clock_entity_norm)
+						if clock_state is None:
+							continue
+
+						if position_missing:
+							clock_position = clock_state.attributes.get("media_position")
+							if isinstance(clock_position, (int, float)):
+								now_playing_position = str(float(clock_position))
+								position_missing = False
+								passthrough_metadata_candidate_position_fallback_used = True
+
+						if duration_missing_or_invalid:
+							clock_duration = clock_state.attributes.get("media_duration")
+							if isinstance(clock_duration, (int, float)) and float(clock_duration) > 0.0:
+								now_playing_duration = str(float(clock_duration))
+								duration_missing_or_invalid = False
+								passthrough_metadata_candidate_duration_fallback_used = True
+
+						if not position_missing and not duration_missing_or_invalid:
+							break
 		else:
 			now_playing_app = ""
 		ma_active_duration = ma_active_duration_raw.state if ma_active_duration_raw is not None else "missing"
@@ -1117,7 +1685,7 @@ class MetadataStackWorkflow:
 		now_playing_position_resolved = c._is_resolved_state(now_playing_position)
 		now_playing_duration_resolved = c._is_resolved_state(now_playing_duration)
 		ma_active_duration_resolved = c._is_resolved_state(ma_active_duration)
-		now_playing_media_class_resolved = now_playing_media_class in {"music", "non_music", "none"}
+		now_playing_media_class_resolved = now_playing_media_class in {"music", "none"}
 		now_playing_preview_key_resolved = c._is_resolved_state(now_playing_preview_key)
 		now_playing_display_allowed_resolved = now_playing_display_allowed in {
 			"on",
@@ -1134,21 +1702,7 @@ class MetadataStackWorkflow:
 		now_playing_preview_age_s = c._timestamp_age_seconds(
 			now_playing_preview_key_raw.last_changed if now_playing_preview_key_raw is not None else None
 		)
-		music_guard_active = False
-
-		expected_display_allowed: bool | None
-		if not now_playing_media_class_resolved:
-			expected_display_allowed = None
-		elif now_playing_media_class == "music":
-			expected_display_allowed = True
-		else:
-			expected_display_allowed = False
-
-		media_contract_consistent = (
-			now_playing_display_allowed_resolved
-			and expected_display_allowed is not None
-			and now_playing_display_allowed_value == expected_display_allowed
-		)
+		media_contract_consistent = now_playing_display_allowed_resolved
 
 		route_decision = str(route_trace.get("decision", "") or "")
 		route_trace_present = route_decision != ""
@@ -1169,9 +1723,69 @@ class MetadataStackWorkflow:
 		active_playback_signal = c._normalize_state(now_playing_state) == "playing" or bool(
 			now_playing_signal.get("fresh_play_signal", False)
 		)
+
+		# Progress continuity cache: if active playback briefly loses duration while
+		# position still advances, reuse the latest valid duration for the same entity.
+		now_ts = datetime.now(UTC).timestamp()
+		progress_cache_ttl_s = 300.0
+		if (
+			c._is_resolved_state(now_playing_entity)
+			and isinstance(now_playing_position_v, float)
+			and now_playing_position_v >= 0.0
+			and isinstance(now_playing_duration_v, float)
+			and now_playing_duration_v > 0.0
+		):
+			self._last_progress_clock_cache = {
+				"entity": now_playing_entity,
+				"title": str(now_playing_title or "").strip(),
+				"source": str(now_playing_source or "").strip(),
+				"position": now_playing_position_v,
+				"duration": now_playing_duration_v,
+				"captured_at": now_ts,
+			}
+		elif (
+			active_playback_signal
+			and c._is_resolved_state(now_playing_entity)
+			and isinstance(now_playing_position_v, float)
+			and now_playing_position_v > 0.0
+			and (not isinstance(now_playing_duration_v, float) or now_playing_duration_v <= 0.0)
+		):
+			cache_entity = str(self._last_progress_clock_cache.get("entity", "") or "").strip()
+			cache_title = str(self._last_progress_clock_cache.get("title", "") or "").strip()
+			cache_source = str(self._last_progress_clock_cache.get("source", "") or "").strip()
+			cache_duration = self._last_progress_clock_cache.get("duration")
+			cache_captured_at = float(self._last_progress_clock_cache.get("captured_at", 0.0) or 0.0)
+			incoming_title = str(now_playing_title or "").strip()
+			incoming_source = str(now_playing_source or "").strip()
+			continuity_title_ok = bool(cache_title) and (incoming_title == "" or incoming_title == cache_title)
+			continuity_source_ok = (cache_source == "") or (incoming_source == "") or (incoming_source == cache_source)
+			cross_entity_passthrough_continuity = (
+				passthrough_source_detected and continuity_title_ok and continuity_source_ok
+			)
+			if (
+				(cache_entity == now_playing_entity or cross_entity_passthrough_continuity)
+				and isinstance(cache_duration, (int, float))
+				and float(cache_duration) > 0.0
+				and cache_captured_at > 0.0
+			):
+				age_s = max(0.0, now_ts - cache_captured_at)
+				if age_s <= progress_cache_ttl_s:
+					now_playing_duration_v = float(cache_duration)
+					now_playing_duration = str(now_playing_duration_v)
+					progress_clock_cache_reused = True
+					progress_clock_cache_cross_entity_reused = (
+						cache_entity != now_playing_entity and cross_entity_passthrough_continuity
+					)
+					progress_clock_cache_age_s = age_s
+
+		# Normalize contract-ready progress fields after cache recovery.
+		now_playing_position_resolved = isinstance(now_playing_position_v, float) and now_playing_position_v >= 0.0
+		now_playing_duration_resolved = isinstance(now_playing_duration_v, float) and now_playing_duration_v > 0.0
+		if not now_playing_duration_resolved:
+			now_playing_duration = "missing"
+			now_playing_duration_v = None
 		passthrough_metadata_cache_reused = False
 		cache_age_s: float | None = None
-		now_ts = datetime.now(UTC).timestamp()
 		cache_ttl_s = 240.0
 		if active_playback_signal and (now_playing_title or now_playing_artist or now_playing_album):
 			cache_title = str(self._last_passthrough_metadata_cache.get("title", "") or "").strip()
@@ -1229,18 +1843,41 @@ class MetadataStackWorkflow:
 						now_playing_app = cache_app
 						fields_filled = True
 					passthrough_metadata_cache_reused = fields_filled
-		playing_with_missing_duration_contract = (
+		raw_playing_with_missing_duration_contract = (
 			active_playback_signal
 			and isinstance(now_playing_position_v, float)
 			and now_playing_position_v > 0
-			and isinstance(now_playing_duration_v, float)
-			and now_playing_duration_v <= 0
+			and (not isinstance(now_playing_duration_v, float) or now_playing_duration_v <= 0)
 		)
 		playing_without_fresh_signal = bool(now_playing_signal.get("playing_without_fresh_signal", False))
 		paused_without_fresh_signal = bool(now_playing_signal.get("paused_without_fresh_signal", False))
 		long_idle_stale_hidden = bool(now_playing_signal.get("long_idle_stale_hidden", False))
 		playing_at_track_end_stuck = bool(now_playing_signal.get("playing_at_track_end_stuck", False))
 		now_playing_fresh_play_signal = bool(now_playing_signal.get("fresh_play_signal", False))
+		now_playing_title_signal_ready = now_playing_title_resolved or (
+			now_playing_fresh_play_signal and active_meta_entity_resolved
+		)
+		if (not now_playing_title_signal_ready) and (playing_without_fresh_signal or long_idle_stale_hidden):
+			now_playing_state = "idle"
+			active_playback_signal = False
+			now_playing_source = ""
+			now_playing_app = ""
+		now_playing_state_norm = c._normalize_state(now_playing_state)
+		now_playing_identity_meta_present = bool(
+			c._is_resolved_state(now_playing_title) or c._is_resolved_state(now_playing_artist)
+		)
+		display_force_off_idle_no_meta = (
+			now_playing_state_norm in {"idle", "off", "stopped", "standby", "unknown", "unavailable"}
+			and not now_playing_identity_meta_present
+		)
+		if display_force_off_idle_no_meta:
+			now_playing_display_allowed_value = False
+			now_playing_source = ""
+			now_playing_app = ""
+		passthrough_cutover_timing_override = False
+		playing_with_missing_duration_contract = (
+			raw_playing_with_missing_duration_contract and now_playing_title_signal_ready
+		)
 		resolved_active_playback_contract = (
 			active_playback_signal
 			and now_playing_title_resolved
@@ -1253,9 +1890,6 @@ class MetadataStackWorkflow:
 			and not playing_with_missing_duration_contract
 		)
 		freshness_gate_satisfied = now_playing_fresh_play_signal or resolved_active_playback_contract
-		now_playing_title_signal_ready = now_playing_title_resolved or (
-			now_playing_fresh_play_signal and active_meta_entity_resolved
-		)
 		resolver_plan = resolver_plan
 		resolver_selected = str(resolver_plan.get("selected_meta_entity", "") or "").strip()
 		metadata_authority = self._resolve_metadata_authority_state(
@@ -1275,7 +1909,85 @@ class MetadataStackWorkflow:
 		metadata_authority_owner = str(metadata_authority.get("metadata_authority_owner", METADATA_AUTH_OWNER_LEGACY))
 		metadata_cutover_active = bool(metadata_authority.get("metadata_cutover_active", False))
 		cutover_block_reason = str(metadata_authority.get("cutover_block_reason", METADATA_CUTOVER_BLOCK_NOT_CUT_OVER) or "")
-		no_authority_expansion = c._write_authority_mode in {WRITE_AUTH_LEGACY, WRITE_AUTH_COMPONENT}
+		no_authority_expansion = c._write_authority_mode == WRITE_AUTH_COMPONENT
+
+		# Compatibility aliases: keep deterministic resolved entity IDs when route/selection
+		# surfaces are sparse or temporarily emit unresolved placeholder states.
+		selected_entity_alias = ""
+		for candidate in (now_playing_entity, route_active_target, active_meta_entity):
+			candidate_norm = str(candidate or "").strip()
+			if c._is_resolved_state(candidate_norm):
+				selected_entity_alias = candidate_norm
+				break
+
+		route_target_entity_alias = ""
+		for candidate in (route_active_target, selected_entity_alias):
+			candidate_norm = str(candidate or "").strip()
+			if c._is_resolved_state(candidate_norm):
+				route_target_entity_alias = candidate_norm
+				break
+
+		canonical_control_target = route_target_entity_alias or selected_entity_alias
+		canonical_meta_target = (
+			active_meta_entity if c._is_resolved_state(active_meta_entity) else selected_entity_alias
+		)
+		control_target_vs_now_playing_mismatch = (
+			c._is_resolved_state(canonical_control_target)
+			and c._is_resolved_state(now_playing_entity)
+			and canonical_control_target != now_playing_entity
+		)
+		meta_target_vs_now_playing_mismatch = (
+			c._is_resolved_state(canonical_meta_target)
+			and c._is_resolved_state(now_playing_entity)
+			and canonical_meta_target != now_playing_entity
+		)
+		intentional_control_metadata_divergence = (
+			control_target_vs_now_playing_mismatch
+			and metadata_authority_owner == METADATA_AUTH_OWNER_COMPONENT
+			and not meta_target_vs_now_playing_mismatch
+			and now_playing_state_norm in {"playing", "paused"}
+			and now_playing_display_allowed_value
+		)
+		if intentional_control_metadata_divergence:
+			canonical_alignment_state = "intentional_divergence_component_owner"
+		elif control_target_vs_now_playing_mismatch or (
+			meta_target_vs_now_playing_mismatch
+			and metadata_authority_owner == METADATA_AUTH_OWNER_COMPONENT
+		):
+			canonical_alignment_state = "mismatch"
+		else:
+			canonical_alignment_state = "aligned"
+
+		if display_force_off_idle_no_meta or not now_playing_display_allowed_value:
+			canonical_oled_posture = "display_policy_suppressed"
+		elif now_playing_title_signal_ready:
+			canonical_oled_posture = "title_ready"
+		elif passthrough_source_detected and now_playing_state_norm in {"playing", "paused"}:
+			canonical_oled_posture = "passthrough_no_track_metadata"
+		elif freshness_gate_satisfied:
+			canonical_oled_posture = "freshness_ready_no_title"
+		else:
+			canonical_oled_posture = "no_viable_payload"
+
+		canonical_oled_payload_ready = bool(
+			now_playing_title_signal_ready and now_playing_display_allowed_value and not display_force_off_idle_no_meta
+		)
+		if intentional_control_metadata_divergence:
+			canonical_cause_hint = "intentional_control_target_metadata_divergence_component_owner"
+		elif control_target_vs_now_playing_mismatch:
+			canonical_cause_hint = "control_target_vs_now_playing_entity_mismatch"
+		elif meta_target_vs_now_playing_mismatch and metadata_authority_owner == METADATA_AUTH_OWNER_COMPONENT:
+			canonical_cause_hint = "meta_target_mismatch_component_owner_active_meta_vs_now_playing_entity"
+		elif canonical_oled_posture == "display_policy_suppressed":
+			canonical_cause_hint = "display_policy_suppressed"
+		elif canonical_oled_posture == "passthrough_no_track_metadata":
+			canonical_cause_hint = "audio_payload_blank_expected_passthrough_no_track_metadata"
+		elif canonical_oled_posture == "no_viable_payload":
+			canonical_cause_hint = "no_viable_now_playing_contract_fields"
+		elif not freshness_gate_satisfied:
+			canonical_cause_hint = "metadata_freshness_stale"
+		else:
+			canonical_cause_hint = "healthy_or_contract_ready"
 
 		authority_gate_results = {
 			"ma_api_reachable": bool(contract_valid and route_trace_present),
@@ -1288,9 +2000,19 @@ class MetadataStackWorkflow:
 				and not playing_at_track_end_stuck
 			),
 		}
+		expected_component_idle_authority_posture = (
+			no_authority_expansion
+			and cutover_block_reason == METADATA_CUTOVER_BLOCK_PREP_NOT_READY
+			and now_playing_state_norm in {"idle", "off", "stopped", "standby", "unknown", "unavailable"}
+			and not now_playing_title_signal_ready
+			and not freshness_gate_satisfied
+		)
 		authority_mode = (
 			FABRIC_AUTH_MODE_PRIMARY
-			if all(bool(value) for value in authority_gate_results.values())
+			if (
+				all(bool(value) for value in authority_gate_results.values())
+				or expected_component_idle_authority_posture
+			)
 			else FABRIC_AUTH_MODE_DEGRADED_FALLBACK
 		)
 		authority_reasons: list[str] = []
@@ -1341,14 +2063,12 @@ class MetadataStackWorkflow:
 			blocking_reasons.append("now_playing_media_class_unresolved")
 		if not now_playing_display_allowed_resolved:
 			blocking_reasons.append("now_playing_display_allowed_unresolved")
-		if now_playing_media_class_resolved and not media_contract_consistent:
-			blocking_reasons.append("now_playing_display_contract_mismatch")
 		if not candidate_payload_ready:
 			blocking_reasons.append("candidate_payload_not_ready")
 		if not route_trace_present:
 			blocking_reasons.append("route_trace_missing")
 		if not no_authority_expansion:
-			blocking_reasons.append("authority_mode_not_legacy")
+			blocking_reasons.append("authority_mode_not_component")
 		if playing_with_missing_duration_contract:
 			blocking_reasons.append("playing_with_missing_duration_contract")
 		if (
@@ -1382,8 +2102,6 @@ class MetadataStackWorkflow:
 			verdict = "FAIL"
 		elif not now_playing_media_class_resolved or not now_playing_display_allowed_resolved:
 			verdict = "WARN"
-		elif not media_contract_consistent:
-			verdict = "WARN"
 		elif not no_authority_expansion:
 			verdict = "WARN"
 		elif playing_with_missing_duration_contract:
@@ -1406,6 +2124,15 @@ class MetadataStackWorkflow:
 		return {
 			"verdict": verdict,
 			"ready_for_metadata_handoff": verdict == "PASS",
+			"canonical_summary": {
+				"control_target": canonical_control_target,
+				"meta_target": canonical_meta_target,
+				"now_playing_entity": now_playing_entity,
+				"alignment_state": canonical_alignment_state,
+				"oled_posture": canonical_oled_posture,
+				"oled_payload_ready": canonical_oled_payload_ready,
+				"cause_hint": canonical_cause_hint,
+			},
 			"required_entities": required_entities,
 			"missing_required": missing_required,
 			"contract_valid": contract_valid,
@@ -1431,22 +2158,73 @@ class MetadataStackWorkflow:
 				"now_playing_preview_key_resolved": now_playing_preview_key_resolved,
 				"now_playing_display_allowed_resolved": now_playing_display_allowed_resolved,
 				"now_playing_display_contract_consistent": media_contract_consistent,
-				"now_playing_expected_display_allowed": expected_display_allowed,
-				"now_playing_music_guard_active": music_guard_active,
+				"now_playing_display_force_off_idle_no_meta": display_force_off_idle_no_meta,
 				"candidate_payload_ready": candidate_payload_ready,
 				"route_trace_present": route_trace_present,
 				"no_authority_expansion": no_authority_expansion,
 				"now_playing_fresh_play_signal": now_playing_fresh_play_signal,
 				"now_playing_freshness_gate_satisfied": freshness_gate_satisfied,
+				"expected_component_idle_authority_posture": expected_component_idle_authority_posture,
 				"resolved_active_playback_contract": resolved_active_playback_contract,
 				"now_playing_recent_play_progress": now_playing_signal.get("recent_play_progress"),
 				"now_playing_recent_paused_progress": now_playing_signal.get("recent_paused_progress"),
+				"now_playing_position_change_recent": now_playing_signal.get("position_change_recent", False),
 				"now_playing_playing_at_track_end_stuck": playing_at_track_end_stuck,
 				"now_playing_playing_without_fresh_signal": playing_without_fresh_signal,
 				"now_playing_paused_without_fresh_signal": paused_without_fresh_signal,
 				"now_playing_long_idle_stale_hidden": long_idle_stale_hidden,
 				"now_playing_suppression_reason": now_playing_signal.get("suppression_reason", ""),
 				"component_now_playing_entity_source": component_now_playing_entity_source,
+				"component_now_playing_selection_winner_pool": str(
+					component_now_playing_selection.get("winner_pool", "")
+					if isinstance(component_now_playing_selection, dict)
+					else ""
+				),
+				"component_now_playing_selection_winner_reason": str(
+					component_now_playing_selection.get("winner_reason", "")
+					if isinstance(component_now_playing_selection, dict)
+					else ""
+				),
+				"component_now_playing_selection_winner_entity": str(
+					component_now_playing_selection.get("winner_entity", "")
+					if isinstance(component_now_playing_selection, dict)
+					else ""
+				),
+				"component_now_playing_selection_winner_source": str(
+					component_now_playing_selection.get("winner_source", "")
+					if isinstance(component_now_playing_selection, dict)
+					else ""
+				),
+				"component_now_playing_selection_ma_rich_active_exists": bool(
+					component_now_playing_selection.get("ma_rich_active_exists", False)
+					if isinstance(component_now_playing_selection, dict)
+					else False
+				),
+				"component_now_playing_selection_eligible_count": int(
+					component_now_playing_selection.get("eligible_count", 0)
+					if isinstance(component_now_playing_selection, dict)
+					else 0
+				),
+				"component_now_playing_selection_candidate_count": int(
+					component_now_playing_selection.get("candidate_count", 0)
+					if isinstance(component_now_playing_selection, dict)
+					else 0
+				),
+				"component_now_playing_selection_lock_active": bool(
+					component_now_playing_selection.get("selector_lock_active", False)
+					if isinstance(component_now_playing_selection, dict)
+					else False
+				),
+				"component_now_playing_selection_lock_entity": str(
+					component_now_playing_selection.get("selector_lock_entity", "")
+					if isinstance(component_now_playing_selection, dict)
+					else ""
+				),
+				"component_now_playing_selection_lock_release_reason": str(
+					component_now_playing_selection.get("selector_lock_release_reason", "")
+					if isinstance(component_now_playing_selection, dict)
+					else ""
+				),
 				"passthrough_source_detected": passthrough_source_detected,
 				"route_active_source": route_active_source,
 				"resolver_selected_meta_entity_resolved": c._is_resolved_state(resolver_selected_meta_entity),
@@ -1457,28 +2235,96 @@ class MetadataStackWorkflow:
 				"resolver_best_candidate_resolved": c._is_resolved_state(resolver_best_candidate),
 				"resolver_detected_candidate_resolved": c._is_resolved_state(resolver_detected_candidate),
 				"passthrough_metadata_promoted": passthrough_metadata_promoted,
+				"passthrough_device_label_preferred": passthrough_device_label_preferred,
+				"passthrough_route_target_label_preferred": passthrough_route_target_label_preferred,
+				"passthrough_source_label_fallback_preferred": passthrough_source_label_fallback_preferred,
 				"passthrough_album_suppressed": passthrough_album_suppressed,
+				"passthrough_route_target_position_fallback_used": passthrough_route_target_position_fallback_used,
+				"passthrough_route_target_duration_fallback_used": passthrough_route_target_duration_fallback_used,
+				"passthrough_metadata_candidate_position_fallback_used": passthrough_metadata_candidate_position_fallback_used,
+				"passthrough_metadata_candidate_duration_fallback_used": passthrough_metadata_candidate_duration_fallback_used,
+				"progress_clock_cache_reused": progress_clock_cache_reused,
+				"progress_clock_cache_cross_entity_reused": progress_clock_cache_cross_entity_reused,
+				"progress_clock_cache_age_s": round(progress_clock_cache_age_s, 1)
+				if isinstance(progress_clock_cache_age_s, float)
+				else None,
 				"passthrough_metadata_cache_reused": passthrough_metadata_cache_reused,
 				"passthrough_metadata_cache_age_s": round(cache_age_s, 1)
 				if isinstance(cache_age_s, float)
 				else None,
 				"active_playback_signal": active_playback_signal,
+				"raw_playing_with_missing_duration_contract": raw_playing_with_missing_duration_contract,
+				"passthrough_cutover_timing_override": passthrough_cutover_timing_override,
 				"playing_with_missing_duration_contract": playing_with_missing_duration_contract,
 				"metadata_component_mode_active": bool(metadata_authority.get("component_mode_active", False)),
 				"metadata_resolver_candidate_ready": bool(metadata_authority.get("resolver_candidate_ready", False)),
 				"metadata_component_cutover_ready": bool(metadata_authority.get("component_cutover_ready", False)),
+				"canonical_alignment_aligned": canonical_alignment_state == "aligned",
+				"canonical_alignment_intentional_divergence": canonical_alignment_state
+				== "intentional_divergence_component_owner",
+				"canonical_alignment_mismatch": canonical_alignment_state == "mismatch",
+				"canonical_oled_payload_ready": canonical_oled_payload_ready,
 			},
 			"values": {
 				"active_meta_entity": active_meta_entity,
 				"legacy_now_playing_entity": legacy_now_playing_entity,
 				"component_now_playing_entity_source": component_now_playing_entity_source,
+				"component_now_playing_selection": component_now_playing_selection,
+				"component_now_playing_selection_winner_entity": str(
+					component_now_playing_selection.get("winner_entity", "")
+					if isinstance(component_now_playing_selection, dict)
+					else ""
+				),
+				"component_now_playing_selection_winner_source": str(
+					component_now_playing_selection.get("winner_source", "")
+					if isinstance(component_now_playing_selection, dict)
+					else ""
+				),
+				"component_now_playing_selection_winner_pool": str(
+					component_now_playing_selection.get("winner_pool", "")
+					if isinstance(component_now_playing_selection, dict)
+					else ""
+				),
+				"component_now_playing_selection_winner_reason": str(
+					component_now_playing_selection.get("winner_reason", "")
+					if isinstance(component_now_playing_selection, dict)
+					else ""
+				),
 				"passthrough_source_detected": passthrough_source_detected,
 				"route_active_source": route_active_source,
 				"resolver_selected_meta_entity": resolver_selected_meta_entity,
 				"resolver_best_candidate": resolver_best_candidate,
 				"resolver_detected_candidate": resolver_detected_candidate,
 				"passthrough_metadata_promoted": passthrough_metadata_promoted,
+				"passthrough_device_label_preferred": passthrough_device_label_preferred,
+				"passthrough_route_target_label_preferred": passthrough_route_target_label_preferred,
+				"passthrough_source_label_fallback_preferred": passthrough_source_label_fallback_preferred,
 				"passthrough_album_suppressed": passthrough_album_suppressed,
+				"passthrough_route_target_position_fallback_used": passthrough_route_target_position_fallback_used,
+				"passthrough_route_target_duration_fallback_used": passthrough_route_target_duration_fallback_used,
+				"passthrough_metadata_candidate_position_fallback_used": passthrough_metadata_candidate_position_fallback_used,
+				"passthrough_metadata_candidate_duration_fallback_used": passthrough_metadata_candidate_duration_fallback_used,
+				"progress_clock_cache_reused": progress_clock_cache_reused,
+				"progress_clock_cache_cross_entity_reused": progress_clock_cache_cross_entity_reused,
+				"progress_clock_cache_age_s": round(progress_clock_cache_age_s, 1)
+				if isinstance(progress_clock_cache_age_s, float)
+				else None,
+				"route_active_target": route_active_target,
+				"route_active_target_friendly": route_active_target_friendly,
+				# Compatibility aliases for downstream tooling that still expects
+				# selection/route naming from older packet shapes.
+				"selected_entity": selected_entity_alias,
+				"route_target_entity": route_target_entity_alias,
+				"canonical_control_target": canonical_control_target,
+				"canonical_meta_target": canonical_meta_target,
+				"canonical_now_playing_entity": now_playing_entity,
+				"canonical_alignment_state": canonical_alignment_state,
+				"canonical_oled_posture": canonical_oled_posture,
+				"canonical_oled_payload_ready": canonical_oled_payload_ready,
+				"canonical_cause_hint": canonical_cause_hint,
+				"control_target_vs_now_playing_mismatch": control_target_vs_now_playing_mismatch,
+				"meta_target_vs_now_playing_mismatch": meta_target_vs_now_playing_mismatch,
+				"intentional_control_metadata_divergence": intentional_control_metadata_divergence,
 				"passthrough_metadata_cache_reused": passthrough_metadata_cache_reused,
 				"passthrough_metadata_cache_age_s": round(cache_age_s, 1)
 				if isinstance(cache_age_s, float)
@@ -1496,11 +2342,10 @@ class MetadataStackWorkflow:
 				"now_playing_media_class": now_playing_media_class,
 				"now_playing_preview_key": now_playing_preview_key,
 				"now_playing_display_allowed": now_playing_display_allowed_value,
+				"now_playing_display_force_off_idle_no_meta": display_force_off_idle_no_meta,
 				"now_playing_preview_age_s": round(now_playing_preview_age_s, 1)
 				if isinstance(now_playing_preview_age_s, float)
 				else None,
-				"music_guard_active": music_guard_active,
-				"expected_display_allowed": expected_display_allowed,
 				"now_playing_position_age_s": now_playing_signal.get("position_age_s"),
 				"now_playing_position_age_source": now_playing_signal.get("position_age_source", "missing"),
 				"meta_stale_s": now_playing_signal.get("meta_stale_s"),
@@ -1775,20 +2620,10 @@ class MetadataStackWorkflow:
 				if selected_meta == "":
 					selected_meta = str(resolver_result.get("selected_meta_entity", "") or "").strip()
 
-				trial_mode = WRITE_AUTH_LEGACY
-				if bool(resolver_window.get("metadata_cutover_active", False)):
-					trial_mode = WRITE_AUTH_COMPONENT
+				trial_mode = WRITE_AUTH_COMPONENT
 				result["stages"]["trial_authority_mode"] = trial_mode
 
-				if trial_mode == WRITE_AUTH_LEGACY and c._write_authority_mode != WRITE_AUTH_LEGACY:
-					await c.async_set_write_authority(
-						mode=WRITE_AUTH_LEGACY,
-						reason=f"{operator_reason} (trial-stage)",
-					)
-					result["stages"]["set_legacy_authority"] = "applied"
-				elif trial_mode == WRITE_AUTH_LEGACY:
-					result["stages"]["set_legacy_authority"] = "noop_already_legacy"
-				elif c._write_authority_mode != WRITE_AUTH_COMPONENT:
+				if c._write_authority_mode != WRITE_AUTH_COMPONENT:
 					await c.async_set_write_authority(
 						mode=WRITE_AUTH_COMPONENT,
 						reason=f"{operator_reason} (trial-stage)",
@@ -1820,8 +2655,7 @@ class MetadataStackWorkflow:
 					result["status"] = "blocked_trial_stage"
 					result["reason"] = "Metadata trial stage did not pass guards"
 				else:
-					proof_stage = "post_trial_stage_component" if trial_mode == WRITE_AUTH_COMPONENT else "post_trial_stage_legacy"
-					result["cutover_proof"]["in_window"] = _capture_cutover_proof(proof_stage)
+					result["cutover_proof"]["in_window"] = _capture_cutover_proof("post_trial_stage_component")
 					result["status"] = "bridge_completed"
 					result["reason"] = "Resolver-authority gating and metadata trial bridge completed"
 		finally:
@@ -1927,7 +2761,7 @@ class MetadataStackWorkflow:
 			"blocking_reasons": [],
 		}
 
-		authority_satisfied = c._write_authority_mode == WRITE_AUTH_LEGACY or metadata_cutover_active
+		authority_satisfied = c._write_authority_mode == WRITE_AUTH_COMPONENT or metadata_cutover_active
 
 		if not window:
 			result.update(
@@ -1954,7 +2788,7 @@ class MetadataStackWorkflow:
 			result.update(
 				{
 					"status": "blocked_authority_not_satisfied",
-					"reason": "Metadata trial requires legacy authority or active component metadata cutover",
+					"reason": "Metadata trial requires component authority or active component metadata cutover",
 				}
 			)
 		elif not contract_valid:

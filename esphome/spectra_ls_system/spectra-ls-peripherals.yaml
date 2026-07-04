@@ -1,6 +1,6 @@
 # Description: Spectra LS OLED-only peripherals package (no LED rings) for Control Board v2.
-# Version: 2026.06.12.2
-# Last updated: 2026-06-12
+# Version: 2026.06.21.2
+# Last updated: 2026-06-21
 # Update version/date whenever you change this file.
 esphome:
   name: ${device_name}
@@ -76,6 +76,11 @@ interval:
             std::string low = s;
             for (auto &c : low) c = (char) ::tolower(c);
             return low == "playing";
+          };
+          auto state_is_paused = [](const std::string &s) {
+            std::string low = s;
+            for (auto &c : low) c = (char) ::tolower(c);
+            return low == "paused";
           };
           auto state_is_active = [](const std::string &s) {
             std::string low = s;
@@ -179,9 +184,17 @@ interval:
 
           int vol_live = -1;
           bool vol_from_pot_live = false;
-          const bool pot_has = id(pot_volume_pct_cached) >= 0;
-          if (pot_has) {
+          int max_vol = (int) ${audio_max_volume_pct};
+          if (max_vol <= 0 || max_vol > 100) max_vol = 100;
+
+          const uint32_t pot_cache_age_ms =
+              id(pot_volume_pct_last_ms) > 0 ? (now - id(pot_volume_pct_last_ms)) : 0xFFFFFFFFu;
+          const bool pot_cache_fresh = id(pot_volume_pct_cached) >= 0 && pot_cache_age_ms <= 4000;
+
+          if (pot_cache_fresh) {
             vol_live = id(pot_volume_pct_cached);
+            if (vol_live < 0) vol_live = 0;
+            if (vol_live > max_vol) vol_live = max_vol;
             vol_from_pot_live = true;
           }
           if (vol_live < 0) {
@@ -249,6 +262,17 @@ interval:
           auto lower_ascii = [&](const std::string &input) {
             return to_lower_ascii(input);
           };
+          auto normalize_source_label = [&](const std::string &value) {
+            if (value.empty()) return std::string("");
+            const std::string low = lower_ascii(value);
+            if (low == "opt" || low.find("optical") != std::string::npos) return std::string("Optical In");
+            if (low == "line" || low == "line-in" || low.find("line in") != std::string::npos || low.find("aux") != std::string::npos) return std::string("Line In");
+            if (low == "bt" || low.find("bluetooth") != std::string::npos) return std::string("Bluetooth");
+            if (low == "net" || low.find("network") != std::string::npos || low.find("wifi") != std::string::npos) return std::string("Wi-Fi");
+            if (low.find("coax") != std::string::npos) return std::string("Coaxial");
+            if (low.find("hdmi") != std::string::npos || low.find("arc") != std::string::npos) return std::string("HDMI/ARC");
+            return value;
+          };
           auto clean_meta = [&](const std::string &input) {
             if (input.empty()) return std::string("");
             std::string low = lower_ascii(input);
@@ -281,7 +305,6 @@ interval:
             ha_media_class = lower_ascii(id(ha_audio_media_class).state.c_str());
           }
           const bool ha_class_music = ha_media_class == "music";
-          const bool ha_class_non_music = ha_media_class == "non_music";
           const bool ha_display_allowed = id(ha_audio_display_allowed).has_state() && id(ha_audio_display_allowed).state;
           const bool play1 = state_playing1;
           const bool state_active1_now = state_active1;
@@ -299,18 +322,6 @@ interval:
           float duration1 = id(ha_audio_duration_value);
           float pos1 = id(ha_audio_pos_last_value);
           uint32_t pos1_ms = id(ha_audio_pos_last_ms);
-          if (play1 && duration1 > 0.5f && pos1_ms == 0) {
-            const uint32_t cached_ms = id(np_disp_pos_ms);
-            const float cached_dur = id(np_disp_duration);
-            const bool cached_recent = cached_ms > 0 && (now - cached_ms) < meta_stale_ms;
-            const bool same_track_window = cached_dur > 0.5f && fabsf(cached_dur - duration1) <= 2.0f;
-            if (cached_recent && same_track_window) {
-              pos1 = id(np_disp_position);
-              pos1_ms = cached_ms;
-            } else {
-              pos1_ms = now;
-            }
-          }
           if (play1 && pos1_ms > 0) {
             const float elapsed_s = (now - pos1_ms) / 1000.0f;
             if (elapsed_s > 0.0f) {
@@ -415,6 +426,8 @@ interval:
             const uint32_t ary_meta_ms = use_lr ? id(arylic_lr_last_meta_ms) : id(arylic_last_meta_ms);
             if (slot1_active && has_meta1 && ha_class_music) {
               meta_idx = 1;
+            } else if (has_meta1 && ha_display_allowed) {
+              meta_idx = 1;
             } else if (prefer_arylic_source && arylic_allowed) {
               meta_idx = 0;
             } else if (slot1_active && has_meta1 && (play1 || state_active1_now || meta1_ms > 0)) {
@@ -459,8 +472,6 @@ interval:
             }
           }
 
-          const bool enforce_non_music_blank = ha_class_non_music && !ha_display_allowed;
-
           const bool has_app = !app_label.empty();
           if (source_label.empty() && has_app) {
             source_label = app_label;
@@ -495,6 +506,11 @@ interval:
           if (is_generic_source_placeholder(app_label_ctx)) app_label_ctx.clear();
           std::string friendly_ctx = friendly1;
           if (is_generic_source_placeholder(friendly_ctx)) friendly_ctx.clear();
+          std::string active_target_friendly_ctx;
+          if (id(ma_active_friendly).has_state() && !id(ma_active_friendly).state.empty()) {
+            active_target_friendly_ctx = id(ma_active_friendly).state.c_str();
+            if (is_generic_source_placeholder(active_target_friendly_ctx)) active_target_friendly_ctx.clear();
+          }
           auto is_source_like_text = [&](const std::string &value) {
             if (value.empty()) return false;
             std::string low = lower_ascii(value);
@@ -518,7 +534,7 @@ interval:
                    low.find("hdmi") != std::string::npos ||
                    low.find("arc") != std::string::npos;
           };
-          const bool source_context = !source_label.empty() || !source_raw_ctx.empty() || !src_ctx.empty() || !app_label_ctx.empty() || !friendly_ctx.empty();
+          const bool source_context = !source_label.empty() || !source_raw_ctx.empty() || !src_ctx.empty() || !app_label_ctx.empty() || !friendly_ctx.empty() || !active_target_friendly_ctx.empty();
           const bool passthrough_context =
             is_passthrough_source(source_label) ||
             is_passthrough_source(source_raw_ctx) ||
@@ -526,19 +542,48 @@ interval:
             is_passthrough_source(app_label_ctx) ||
             is_passthrough_source(friendly_ctx) ||
             (id(ha_audio_source).has_state() && is_passthrough_source(id(ha_audio_source).state.c_str()));
-          if (source_label.empty() && !friendly_ctx.empty()) source_label = friendly_ctx;
+          const bool source_hint_window_active = id(source_popup_until_ms) > now;
+          const uint32_t idle_ms = now - id(last_input_ms);
+          uint32_t passthrough_idle_cutoff_ms = ((uint32_t) ${meta_pause_timeout_ms}) * 5U;
+          if (passthrough_idle_cutoff_ms < 300000U) passthrough_idle_cutoff_ms = 300000U;
+          const uint32_t source_popup_grace_ms = ((uint32_t) ${source_popup_ms}) + 2000U;
+          if (passthrough_idle_cutoff_ms < source_popup_grace_ms) passthrough_idle_cutoff_ms = source_popup_grace_ms;
+          const bool no_progress_payload =
+            id(ha_audio_pos_last_value) <= 0.05f &&
+            id(arylic_meta_position_state) <= 0 &&
+            id(arylic_meta_duration_state) <= 0;
+          const bool passthrough_source_only_no_payload =
+            passthrough_context &&
+            !has_text_meta &&
+            !source_hint_window_active &&
+            no_progress_payload;
+          const bool passthrough_idle_stale_cutoff =
+            passthrough_context &&
+            !has_text_meta &&
+            !source_hint_window_active &&
+            no_progress_payload &&
+            idle_ms > passthrough_idle_cutoff_ms;
+          const bool stale_passthrough_false_playing =
+            passthrough_context &&
+            !has_text_meta &&
+            !source_hint_window_active &&
+            no_progress_payload &&
+            ((id(ha_audio1_last_playing_ms) > 0 &&
+              (now - id(ha_audio1_last_playing_ms)) > ((uint32_t) ${meta_pause_timeout_ms})) ||
+             passthrough_idle_stale_cutoff);
+          if (!source_label.empty()) source_label = normalize_source_label(source_label);
           std::string source_pill = source_label;
           if (source_pill.size() > 6) source_pill = source_pill.substr(0, 6);
           std::string src_display = src_ctx;
           if (src_display.empty()) src_display = source_label;
+          if (!src_display.empty()) src_display = normalize_source_label(src_display);
           if (!display_hold) {
             source_pill.clear();
             src_display.clear();
           }
 
-          const bool source_hint_window_active = id(source_popup_until_ms) > now;
           bool passthrough_title_fallback_active = false;
-          if (playing_no_meta && !enforce_non_music_blank) {
+          if (playing_no_meta) {
             const float freshness_guard_s = ((float) meta_stale_ms / 1000.0f) + 2.0f;
             const bool freshness_gate_ok =
               now_playing_freshness_age_s < 0.0f || now_playing_freshness_age_s <= freshness_guard_s;
@@ -567,14 +612,14 @@ interval:
 
                 std::string live_passthrough_title_label = app_label_ctx;
                 if (is_source_like_text(live_passthrough_title_label)) live_passthrough_title_label.clear();
-                if (live_passthrough_title_label.empty()) live_passthrough_title_label = friendly_ctx;
                 if (is_generic_source_placeholder(live_passthrough_title_label)) live_passthrough_title_label.clear();
                 if (live_passthrough_title_label.empty()) live_passthrough_title_label = live_source_context_label;
 
+                live_source_context_label = normalize_source_label(live_source_context_label);
                 source_label = live_source_context_label;
                 source_pill = live_source_context_label;
                 src_display = live_source_context_label;
-                if (live_transport_playing && !live_passthrough_title_label.empty()) {
+                if (live_transport_playing && !no_progress_payload && !live_passthrough_title_label.empty()) {
                   title = live_passthrough_title_label;
                   passthrough_title_fallback_active = true;
                 }
@@ -595,7 +640,7 @@ interval:
             if (is_generic_source_placeholder(source_label)) source_label.clear();
             if (is_generic_source_placeholder(source_pill)) source_pill.clear();
             if (is_generic_source_placeholder(src_display)) src_display.clear();
-            if (title.empty()) {
+            if (title.empty() && !no_progress_payload) {
               if (live_transport_playing && source_hint_window_active && !source_label.empty()) {
                 title = source_label;
               } else if (live_transport_playing && source_hint_window_active) {
@@ -609,7 +654,7 @@ interval:
             title.clear();
           }
 
-          if (enforce_non_music_blank) {
+          if (stale_passthrough_false_playing || passthrough_source_only_no_payload) {
             title.clear();
             artist.clear();
             album.clear();
@@ -630,11 +675,57 @@ interval:
           // Compute-time labels can oscillate under transient resolver windows and
           // should not directly retrigger popup timers.
 
+          const bool paused_passthrough_keepalive =
+            passthrough_context &&
+            !has_text_meta &&
+            id(ha_audio_display_allowed).has_state() &&
+            id(ha_audio_display_allowed).state &&
+            id(ha_audio_state).has_state() &&
+            lower_ascii(id(ha_audio_state).state.c_str()) == "paused" &&
+            ha_recent_playing &&
+            ha_playback_activity_recent;
+
           if (!playing && !has_text_meta) {
+            if (paused_passthrough_keepalive) {
+              if (source_label.empty()) source_label = source_raw_ctx;
+              if (source_label.empty()) source_label = src_ctx;
+              if (is_generic_source_placeholder(source_label)) source_label.clear();
+              source_label = normalize_source_label(source_label);
+
+              source_pill = source_label;
+              src_display = source_label;
+
+              if (title.empty()) {
+                std::string keepalive_title = app_label_ctx;
+                if (is_source_like_text(keepalive_title)) keepalive_title.clear();
+                if (is_generic_source_placeholder(keepalive_title)) keepalive_title.clear();
+                if (keepalive_title.empty()) keepalive_title = source_label;
+                title = keepalive_title;
+              }
+            } else {
+              title.clear();
+              source_label.clear();
+              source_pill.clear();
+              src_display.clear();
+            }
+          }
+
+          const bool ha_state_paused_now =
+            id(ha_audio_state).has_state() &&
+            lower_ascii(id(ha_audio_state).state.c_str()) == "paused";
+          const bool stale_now_playing_contract =
+            now_playing_freshness_age_s >= 0.0f &&
+            now_playing_freshness_age_s > (((float) meta_stale_ms / 1000.0f) + 2.0f);
+          const bool stop_state_stale_meta =
+            !live_transport_playing &&
+            !ha_state_paused_now &&
+            !state_playing1 &&
+            stale_now_playing_contract &&
+            !paused_passthrough_keepalive;
+          if (stop_state_stale_meta) {
             title.clear();
-            source_label.clear();
-            source_pill.clear();
-            src_display.clear();
+            artist.clear();
+            album.clear();
           }
 
           std::string log_title = sanitize_ascii(title);
@@ -682,9 +773,11 @@ interval:
             }
           }
           if (source_label.empty() && source_context && live_transport_playing && !passthrough_context) source_label = "SRC";
+          if (!source_label.empty()) source_label = normalize_source_label(source_label);
           if (src_display.empty()) src_display = source_label;
+          if (!src_display.empty()) src_display = normalize_source_label(src_display);
 
-          if (!display_hold || (title.empty() && !playing_no_meta)) {
+          if (!display_hold || (title.empty() && !playing_no_meta && !paused_passthrough_keepalive)) {
             title.clear();
             artist.clear();
             album.clear();
@@ -736,8 +829,18 @@ interval:
           const bool ary_progress_ok = ary_time_ok && (arylic_allowed || ary_recent);
 
           int progress_idx = -1;
-          if (ha_progress_ok) progress_idx = 1;
-          else if (ary_progress_ok) progress_idx = 0;
+          const bool prefer_ha_progress = (meta_idx == 1);
+          const bool prefer_ary_progress = (meta_idx == 0);
+          if (prefer_ha_progress) {
+            if (ha_progress_ok) progress_idx = 1;
+            else if (ary_progress_ok) progress_idx = 0;
+          } else if (prefer_ary_progress) {
+            if (ary_progress_ok) progress_idx = 0;
+            else if (ha_progress_ok) progress_idx = 1;
+          } else {
+            if (ha_progress_ok) progress_idx = 1;
+            else if (ary_progress_ok) progress_idx = 0;
+          }
 
           float duration = 0.0f;
           float pos = 0.0f;
@@ -750,24 +853,6 @@ interval:
             duration = duration1;
             pos = pos1;
             pos_ms = pos1_ms;
-          }
-          if (progress_idx == 1 && play1 && duration > 0.5f) {
-            const uint32_t cached_ms = id(np_disp_pos_ms);
-            const float cached_dur = id(np_disp_duration);
-            const float cached_pos = id(np_disp_position);
-            const bool cached_recent = cached_ms > 0 && (now - cached_ms) < meta_stale_ms;
-            const bool same_track_window = cached_dur > 0.5f && fabsf(cached_dur - duration) <= 2.0f;
-            if (cached_recent && same_track_window) {
-              const bool stream_not_advancing = (pos_ms == 0) || (pos_ms <= cached_ms) || (pos <= (cached_pos + 0.25f));
-              if (stream_not_advancing) {
-                float projected = cached_pos;
-                if (now > cached_ms) projected += (now - cached_ms) / 1000.0f;
-                if (projected > pos) {
-                  pos = projected;
-                  pos_ms = now;
-                }
-              }
-            }
           }
 
           bool progress_valid = (duration > 0.5f && pos_ms > 0);
@@ -828,10 +913,6 @@ script:
           const bool wake_overlay_recent_input = audio_wake_active && idle_ms <= 2500;
           std::string ha_media_class = id(ha_audio_media_class).has_state() ? id(ha_audio_media_class).state.c_str() : "";
           for (auto &c : ha_media_class) c = (char) ::tolower(c);
-          const bool force_blank_non_music =
-            !ha_media_class.empty() &&
-            ha_media_class == "non_music" &&
-            (!id(ha_audio_display_allowed).has_state() || !id(ha_audio_display_allowed).state);
           const bool boot_menu_active = now < boot_menu_until_ms;
           const uint32_t meta_stale_ms = (uint32_t) ${meta_stale_ms};
           const uint32_t np_return_ms = (uint32_t) ${now_playing_return_ms};
@@ -843,7 +924,14 @@ script:
             for (auto &c : low) c = (char) ::tolower(c);
             return low == "playing";
           };
+          auto state_is_paused = [](const std::string &s) {
+            std::string low = s;
+            for (auto &c : low) c = (char) ::tolower(c);
+            return low == "paused";
+          };
           const bool ha_state_playing = id(ha_audio_state).has_state() && state_is_playing(id(ha_audio_state).state.c_str());
+          const bool ha_display_allowed_screen =
+            id(ha_audio_display_allowed).has_state() && id(ha_audio_display_allowed).state;
           const bool ha_playback_activity_recent_screen =
             (id(ha_audio1_last_meta_ms) > 0 && (now - id(ha_audio1_last_meta_ms)) < meta_stale_ms) ||
             (id(ha_audio_pos_last_ms) > 0 && (now - id(ha_audio_pos_last_ms)) < meta_stale_ms);
@@ -902,6 +990,43 @@ script:
             passthrough_context && !has_cached_meta && !transport_playing_flags && !pos_advancing_recent;
           const bool source_hint_window_active = id(source_popup_until_ms) > now;
           const bool ha_playing_recent = id(ha_audio1_last_playing_ms) > 0 && (now - id(ha_audio1_last_playing_ms)) < meta_stale_ms;
+          const bool paused_passthrough_keepalive_screen =
+            passthrough_context &&
+            !has_cached_meta &&
+            id(ha_audio_display_allowed).has_state() &&
+            id(ha_audio_display_allowed).state &&
+            id(ha_audio_state).has_state() &&
+            state_is_paused(id(ha_audio_state).state.c_str()) &&
+            ha_playback_activity_recent_screen &&
+            ha_playing_recent;
+          const bool no_progress_payload_screen =
+            id(ha_audio_pos_last_value) <= 0.05f &&
+            id(arylic_meta_position_state) <= 0 &&
+            id(arylic_meta_duration_state) <= 0;
+          const bool passthrough_source_only_no_payload_screen =
+            passthrough_context &&
+            !has_cached_meta &&
+            !source_hint_window_active &&
+            no_progress_payload_screen;
+          uint32_t passthrough_idle_cutoff_ms_screen = ((uint32_t) ${meta_pause_timeout_ms}) * 5U;
+          if (passthrough_idle_cutoff_ms_screen < 300000U) passthrough_idle_cutoff_ms_screen = 300000U;
+          const uint32_t source_popup_grace_ms_screen = ((uint32_t) ${source_popup_ms}) + 2000U;
+          if (passthrough_idle_cutoff_ms_screen < source_popup_grace_ms_screen) {
+            passthrough_idle_cutoff_ms_screen = source_popup_grace_ms_screen;
+          }
+          const bool passthrough_idle_stale_cutoff_screen =
+            passthrough_context &&
+            !has_cached_meta &&
+            !source_hint_window_active &&
+            no_progress_payload_screen &&
+            idle_ms > passthrough_idle_cutoff_ms_screen;
+          const bool stale_passthrough_false_playing_screen =
+            passthrough_context &&
+            !has_cached_meta &&
+            !source_hint_window_active &&
+            no_progress_payload_screen &&
+            id(ha_audio1_last_playing_ms) > 0 &&
+            (now - id(ha_audio1_last_playing_ms)) > ((uint32_t) ${meta_pause_timeout_ms});
           const bool passthrough_no_text_payload = passthrough_context && !has_cached_meta;
           const bool passthrough_silent_window = passthrough_no_text_payload && !source_hint_window_active;
           const bool passthrough_silent_window_no_play_evidence =
@@ -909,9 +1034,18 @@ script:
           const bool meta_recent_allowed = meta_recent_screen && (playing || ha_state_playing_effective_screen || active_recent_screen || wake_overlay_recent_input);
           const bool cached_recent = has_cached_meta && (playing || active_recent_screen);
           const bool playing_recent_hold = id(last_playing_true_ms) > 0 && (now - id(last_playing_true_ms)) < meta_stale_ms;
-          const bool passthrough_suppression = (passthrough_no_track_evidence || passthrough_silent_window_no_play_evidence) && !wake_overlay_recent_input;
-          const bool now_playing_active = (playing || ha_state_playing_effective_screen || active_recent_screen || playing_recent_hold || ha_playing_recent || wake_overlay_recent_input || meta_recent_allowed || cached_recent) && !passthrough_suppression;
-          const bool no_audio_activity = force_blank_non_music || passthrough_suppression || (!playing && !meta_recent_allowed && !active_recent_screen && !wake_overlay_recent_input);
+          const bool passthrough_suppression =
+            (passthrough_no_track_evidence || passthrough_silent_window_no_play_evidence || stale_passthrough_false_playing_screen || passthrough_idle_stale_cutoff_screen || passthrough_source_only_no_payload_screen) &&
+            !wake_overlay_recent_input &&
+            !paused_passthrough_keepalive_screen;
+          const bool now_playing_active =
+            ha_display_allowed_screen &&
+            (playing || ha_state_playing_effective_screen || active_recent_screen || playing_recent_hold || ha_playing_recent || wake_overlay_recent_input || meta_recent_allowed || cached_recent || paused_passthrough_keepalive_screen) &&
+            !passthrough_suppression;
+          const bool no_audio_activity =
+            passthrough_suppression ||
+            !ha_display_allowed_screen ||
+            (!playing && !meta_recent_allowed && !active_recent_screen && !wake_overlay_recent_input);
           const bool lighting_hold_active = id(lighting_return_to_audio_ms) > 0 && now < id(lighting_return_to_audio_ms);
           const bool lighting_active = lighting_mode &&
                                        (lighting_hold_active || now < id(brightness_active_until_ms) || now < id(hue_ring_active_until_ms) || now < id(audio_ring_active_until_ms));
@@ -1333,8 +1467,8 @@ display:
 
         auto truncate_label = [](const std::string &value, size_t max_len) {
           if (value.size() <= max_len) return value;
-          if (max_len <= 1) return value.substr(0, max_len);
-          return value.substr(0, max_len - 1) + std::string("…");
+          if (max_len <= 3) return value.substr(0, max_len);
+          return value.substr(0, max_len - 3) + std::string("...");
         };
 
         it.fill(COLOR_OFF);
@@ -1529,6 +1663,28 @@ display:
           for (auto &c : low) c = (char) ::tolower(c);
           return low == "playing";
         };
+        auto normalize_source_label = [&](const std::string &value) {
+          if (value.empty()) return std::string("");
+          std::string low = to_lower_ascii(value);
+          if (low == "opt" || low.find("optical") != std::string::npos) return std::string("Optical In");
+          if (low == "line" || low == "line-in" || low.find("line in") != std::string::npos || low.find("aux") != std::string::npos) return std::string("Line In");
+          if (low == "bt" || low.find("bluetooth") != std::string::npos) return std::string("Bluetooth");
+          if (low == "net" || low.find("network") != std::string::npos || low.find("wifi") != std::string::npos) return std::string("Wi-Fi");
+          if (low.find("coax") != std::string::npos) return std::string("Coaxial");
+          if (low.find("hdmi") != std::string::npos || low.find("arc") != std::string::npos) return std::string("HDMI/ARC");
+          return value;
+        };
+        auto is_source_like_text = [&](const std::string &value) {
+          if (value.empty()) return false;
+          std::string low = to_lower_ascii(value);
+          return low == "src" || low == "playing" ||
+                 low.find("optical") != std::string::npos ||
+                 low.find("line") != std::string::npos || low.find("aux") != std::string::npos ||
+                 low.find("coax") != std::string::npos ||
+                 low.find("hdmi") != std::string::npos || low.find("arc") != std::string::npos ||
+                 low == "bt" || low.find("bluetooth") != std::string::npos ||
+                 low == "net" || low.find("network") != std::string::npos;
+        };
         int vol = id(np_disp_vol);
         bool vol_from_pot = id(np_disp_vol_from_pot);
         int progress_filled = id(np_disp_progress_filled);
@@ -1584,6 +1740,7 @@ display:
           (id(ha_audio_pos_last_ms) > 0 && (now - id(ha_audio_pos_last_ms)) < meta_stale_ms);
         const bool live_transport_playing =
           ((id(arylic_playing).has_state() && id(arylic_playing).state) || id(arylic_playing_state) || id(arylic_lr_playing_state)) ||
+          ha_state_playing ||
           (ha_state_playing && ha_recent_activity);
         const bool passthrough_live_activity_signal =
           (id(arylic_playing).has_state() && id(arylic_playing).state) ||
@@ -1613,7 +1770,46 @@ display:
         const bool passthrough_no_text_silent = passthrough_context && !has_text_payload && !source_hint_window_active;
         const bool passthrough_no_text_silent_no_play = passthrough_no_text_silent && !passthrough_live_activity_signal && !live_transport_playing;
         const bool audio_wake_active = id(audio_wake_until_ms) > now;
-        const bool allow_wake_overlay = audio_wake_active && idle_ms <= 2500;
+        const bool ha_state_paused = id(ha_audio_state).has_state() && to_lower_ascii(id(ha_audio_state).state.c_str()) == "paused";
+        const bool ha_playing_recent = id(ha_audio1_last_playing_ms) > 0 && (now - id(ha_audio1_last_playing_ms)) < meta_stale_ms;
+        const bool passthrough_paused_keepalive =
+          passthrough_context &&
+          !has_text_payload &&
+          !source_hint_window_active &&
+          ha_state_paused &&
+          id(ha_audio_display_allowed).has_state() &&
+          id(ha_audio_display_allowed).state &&
+          ha_recent_activity &&
+          ha_playing_recent;
+        const bool no_progress_payload_render =
+          id(ha_audio_pos_last_value) <= 0.05f &&
+          id(arylic_meta_position_state) <= 0 &&
+          id(arylic_meta_duration_state) <= 0;
+        const bool passthrough_source_only_no_payload_render =
+          passthrough_context &&
+          !has_text_payload &&
+          !source_hint_window_active &&
+          no_progress_payload_render;
+        uint32_t passthrough_idle_cutoff_ms_render = ((uint32_t) ${meta_pause_timeout_ms}) * 5U;
+        if (passthrough_idle_cutoff_ms_render < 300000U) passthrough_idle_cutoff_ms_render = 300000U;
+        const uint32_t source_popup_grace_ms_render = ((uint32_t) ${source_popup_ms}) + 2000U;
+        if (passthrough_idle_cutoff_ms_render < source_popup_grace_ms_render) {
+          passthrough_idle_cutoff_ms_render = source_popup_grace_ms_render;
+        }
+        const bool passthrough_idle_stale_cutoff_render =
+          passthrough_context &&
+          !has_text_payload &&
+          !source_hint_window_active &&
+          no_progress_payload_render &&
+          idle_ms > passthrough_idle_cutoff_ms_render;
+        const bool stale_passthrough_false_playing_render =
+          passthrough_context &&
+          !has_text_payload &&
+          !source_hint_window_active &&
+          no_progress_payload_render &&
+          id(ha_audio1_last_playing_ms) > 0 &&
+          (now - id(ha_audio1_last_playing_ms)) > ((uint32_t) ${meta_pause_timeout_ms});
+        const bool allow_wake_overlay = (audio_wake_active && idle_ms <= 2500) || passthrough_paused_keepalive;
 
         const int bar_h = 4;
         const int bar_y = h - bar_h;
@@ -1635,7 +1831,7 @@ display:
         it.fill(COLOR_OFF);
         log_np_detail("full_clear", t_full, last_np_detail_log_ms);
 
-        if (((!has_text_payload && !live_transport_playing) || passthrough_no_text_silent_no_play) && !allow_wake_overlay) {
+        if (((!has_text_payload && !live_transport_playing) || passthrough_no_text_silent_no_play || stale_passthrough_false_playing_render || passthrough_idle_stale_cutoff_render || passthrough_source_only_no_payload_render) && !allow_wake_overlay) {
           title_scroll_offset = 0;
           title_scroll_last_ms = now;
           album_scroll_offset = 0;
@@ -1654,11 +1850,14 @@ display:
 
         const uint32_t t_title = millis();
         if (!has_text_payload && allow_wake_overlay) {
-          std::string wake_label = id(np_source_label_cached);
+          std::string wake_label = id(ha_audio_app).has_state() ? id(ha_audio_app).state.c_str() : "";
+          if (is_source_like_text(wake_label)) wake_label.clear();
+          if (wake_label.empty()) wake_label = id(np_source_label_cached);
           if (wake_label.empty()) wake_label = id(np_src_display_cached);
           if (wake_label.empty() && id(ha_audio_source).has_state()) wake_label = id(ha_audio_source).state.c_str();
+          wake_label = normalize_source_label(wake_label);
           if (wake_label.empty()) wake_label = "AUDIO";
-          if (wake_label.size() > 14) wake_label = wake_label.substr(0, 13) + std::string("…");
+          if (wake_label.size() > 14) wake_label = wake_label.substr(0, 11) + std::string("...");
           it.filled_rectangle(0, title_y, w, title_band_h, COLOR_ON);
           it.printf(w / 2, title_y, id(font_now), COLOR_OFF, TextAlign::TOP_CENTER, "%s", wake_label.c_str());
         }

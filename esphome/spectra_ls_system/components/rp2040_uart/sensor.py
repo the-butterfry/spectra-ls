@@ -1,3 +1,7 @@
+# Description: ESPHome analog/encoder sensor bindings for Spectra RP2040 UART hub.
+# Version: 2026.06.22.1
+# Last updated: 2026-06-22
+
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import sensor

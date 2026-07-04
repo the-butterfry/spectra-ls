@@ -1,6 +1,6 @@
 <!-- Description: Retroactive architecture and feature documentation for the MA control hub package split. -->
-<!-- Version: 2026.05.05.4 -->
-<!-- Last updated: 2026-05-05 -->
+<!-- Version: 2026.06.23.1 -->
+<!-- Last updated: 2026-06-23 -->
 
 # MA Control Hub Architecture (Retroactive Baseline)
 
@@ -110,18 +110,18 @@ Defined by `template.inc`:
 - component gate visibility: metadata-prep diagnostics include explicit gate scoring and blocking reasons for authority/freshness failures
 - active control path/capability/host derivation
 - ambiguity/staleness/confidence binary surfaces
-- HA-authoritative OLED media policy contract: `template.inc` now exports `sensor.now_playing_media_class` (`music`/`non_music`/`none`), `sensor.now_playing_preview_key`, and `binary_sensor.now_playing_display_allowed`; ESP consumes these contracts and does not run local app/source media-class heuristics or local preview timers
+- HA-authoritative OLED media policy contract: `template.inc` exports `sensor.now_playing_media_class` (`music`/`none`), `sensor.now_playing_preview_key`, and `binary_sensor.now_playing_display_allowed`; ESP consumes these contracts and does not run local app/source media-class heuristics or local preview timers
 - Now-playing app contract surface: `template.inc` exports `sensor.now_playing_app` from the selected `sensor.now_playing_entity` app context (`app_name`) to keep app provenance aligned with now-playing source/state/title surfaces.
-- Now-playing title source coherency contract: `sensor.now_playing_entity` `resolved_title` is entity-local and does not fall back to `sensor.ma_active_title`; fallback order is bounded to now-playing entity-resolved MA fields/stream metadata and current now-playing entity HA title only, preventing cross-source stale title carryover when policy class/display is non-display.
-- OLED display gate rollback policy: runtime display gating is now strictly music-only (`media_class=music` -> display allowed; `media_class=non_music|none` -> display hidden), retiring bounded non-music preview-window behavior for stability.
-- Non-music fallback classification remains active for diagnostics/provenance: when `sensor.now_playing_entity` is unavailable but playback context still indicates app/source video hints (for example YouTube/OTT/AppleTV/HDMI), `sensor.now_playing_media_class` may still classify as `non_music` while OLED display remains hidden by policy.
-- YouTube context refinement under rollback policy: runtime media classification now distinguishes music-like YouTube context (for example mix/remix/DJ/radio/live-set cues) from explicit video cues so audio-centric YouTube playback can classify as `music` and pass the music-only display gate.
-- Component parity diagnostics validate this same simplified HA media-contract surface (`media_class`, `display_allowed`, optional `preview_key` observability) so runtime/component drift is explicit in one diagnostics lane without changing source-of-truth ownership.
+- Now-playing title source coherency contract: `sensor.now_playing_entity` `resolved_title` is entity-local and does not fall back to `sensor.ma_active_title`; fallback order is bounded to now-playing entity-resolved MA fields/stream metadata and current now-playing entity HA title only, preventing cross-source stale title carryover during stale transport contexts.
+- OLED display gate policy: runtime display gating is active-playback based (`binary_sensor.now_playing_display_allowed` follows resolved now-playing entity readiness + `playing/paused` state), not TV/movie/media-class filtering.
+- Component parity diagnostics validate this same simplified HA media-contract surface (contract-surface readiness + display-allow state + preview-key observability) so runtime/component drift is explicit in one diagnostics lane without changing source-of-truth ownership.
+- Metadata-prep now publishes a canonical summary packet (`metadata_prep_validation.canonical_summary`) and mirrored value keys (`canonical_*`) for consumer-first diagnostics: canonical control/meta/now-playing entities, alignment state (`aligned|mismatch|intentional_divergence_component_owner`), OLED posture, payload-ready flag, and deterministic cause hint. Downstream templates should consume these source fields first and use legacy reconstruction only as bounded fallback.
 - Runtime now-playing selector and meta-resolver freshness guards use bounded recency fallback: when `media_position_updated_at` is missing, freshness age falls back to entity `last_updated` then `last_changed` (instead of treating missing clocks as implicitly fresh), preventing stale winner lock while preserving short recency windows after true state transitions.
 - Component now-playing freshness diagnostics retain this same bounded recency fallback parity with runtime stale guards.
 - friendly labels and helper projection sensors
 - ESP-facing handoff note: on active-target changes, ESP requests immediate HA recompute for control-target/host surfaces (`sensor.ma_control_targets`, `sensor.ma_control_hosts`, `sensor.ma_control_host`) to reduce host handoff latency, but forced recompute is reconnect-safe gated (HA API reconnect grace window + template-feed readiness checks) to avoid HA reboot startup assertion races.
 - ESP exported handoff telemetry: ESP now publishes HA-visible diagnostics sensors for handoff status, resolved control target, and OLED/UI status (`sensor.spectra_ls_system_esp_control_handoff_status`, `sensor.spectra_ls_system_esp_control_target`, `sensor.spectra_ls_system_esp_oled_status`) for deterministic operator validation.
+- Canonical ESP route telemetry aliases: runtime template contracts guarantee canonical host/port surfaces (`sensor.spectra_ls_system_esp_control_host`, `sensor.spectra_ls_system_esp_control_hosts`, `sensor.spectra_ls_system_esp_control_port`) even when HA entity-id prefixing yields install-specific upstream names (for example `sensor.living_room_spectra_ls_system_esp_control_*`).
 
 ## Parser contract (critical)
 
@@ -336,6 +336,11 @@ Current parity status:
 
 - legacy/runtime path is **compatibility-shimmed** for scheduler behavior (no legacy scheduler implementation in this slice),
 - component path is **implemented** for scheduler decision computation and diagnostics.
+
+Control-lane hotfix note (2026-06-21):
+
+- write-authority normalization now honors persisted `default_write_authority_mode` (`legacy` or `component`) instead of force-normalizing to `component`.
+- control-center mapped `volume` action now has an executable path (`media_player.volume_set` with bounded step semantics, plus dry-run/read-only guards) rather than unconditionally falling through to unimplemented-action status.
 
 ## Change discipline for future slices
 

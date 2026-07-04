@@ -1,6 +1,6 @@
 # Description: Lighting controls package for Spectra LS System.
-# Version: 2026.06.11.1
-# Last updated: 2026-06-11
+# Version: 2026.07.04.1
+# Last updated: 2026-07-04
 # Update version/date whenever you change this file.
 
 binary_sensor:
@@ -146,6 +146,9 @@ sensor:
                            id(menu_level) == ${menu_level_lighting_adjust} ||
                            id(menu_level) == ${menu_level_lighting_toggle});
           float clamped = (float) x;
+          if (clamped > 100.0f) {
+            clamped = (clamped / 65535.0f) * 100.0f;
+          }
           if (clamped < 0.0f) clamped = 0.0f;
           if (clamped > 100.0f) clamped = 100.0f;
           if (last_sent_pct > -900.0f && fabsf(clamped - last_sent_pct) < 0.01f) return;

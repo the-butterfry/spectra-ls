@@ -1,6 +1,6 @@
 # Description: MA control hub automations for startup sync, target selection, and override lifecycle.
-# Version: 2026.05.05.1
-# Last updated: 2026-05-05
+# Version: 2026.06.22.1
+# Last updated: 2026-06-22
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 # HUB MUST-READ: Contract parser methodology.
@@ -45,6 +45,7 @@
     - platform: time_pattern
       minutes: "/1"
   action:
+    - stop: "Legacy automation retired (component-only cutover active)."
     - condition: template
       value_template: "{{ states('sensor.ma_authority_mode') | lower != 'component' and is_state('input_boolean.ma_control_fallback_enabled','on') }}"
     - choose:
@@ -95,6 +96,7 @@
       entity_id: input_boolean.ma_override_active
       state: "off"
   action:
+    - stop: "Legacy automation retired (component-only cutover active)."
     - service: script.turn_on
       data:
         entity_id: script.ma_auto_select
@@ -112,6 +114,7 @@
         {% set t = states('input_select.ma_active_target') %}
         {{ t not in ['none','unknown','unavailable',''] and states[t] is not none }}
   action:
+    - stop: "Legacy automation retired (component-only cutover active)."
     - service: input_text.set_value
       data:
         entity_id: input_text.ma_last_valid_target
@@ -133,6 +136,7 @@
         {% set t = states('input_select.ma_active_target') %}
         {{ t not in ['none','unknown','unavailable',''] and states[t] is not none }}
   action:
+    - stop: "Legacy automation retired (component-only cutover active)."
     - service: input_boolean.turn_on
       data:
         entity_id: input_boolean.ma_override_active
@@ -151,6 +155,7 @@
       entity_id: input_boolean.ma_override_active
       state: "on"
   action:
+    - stop: "Legacy automation retired (component-only cutover active)."
     - service: input_boolean.turn_off
       data:
         entity_id: input_boolean.ma_override_active
@@ -168,6 +173,7 @@
     - platform: state
       entity_id: sensor.ma_control_targets
   action:
+    - stop: "Legacy automation retired (component-only cutover active)."
     - condition: template
       value_template: "{{ states('sensor.ma_authority_mode') | lower != 'component' and is_state('input_boolean.ma_control_fallback_enabled','on') }}"
     - choose:
@@ -200,6 +206,7 @@
       entity_id: binary_sensor.ma_no_control_capable_hosts
       to: "off"
   action:
+    - stop: "Legacy automation retired (component-only cutover active)."
     - condition: template
       value_template: "{{ states('sensor.ma_authority_mode') | lower != 'component' and is_state('input_boolean.ma_control_fallback_enabled','on') }}"
     - choose:

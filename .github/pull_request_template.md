@@ -1,6 +1,6 @@
 <!-- Description: Pull request checklist template for quality, parity, and verification evidence. -->
-<!-- Version: 2026.05.02.26 -->
-<!-- Last updated: 2026-05-02 -->
+<!-- Version: 2026.06.22.1 -->
+<!-- Last updated: 2026-06-22 -->
 
 # Pull Request
 
@@ -31,6 +31,7 @@
 - [ ] Test scope set (`full`, `targeted`, or `minimal`)
 - [ ] Contract delta set (`none`, `minor`, or `major`)
 - [ ] Communication note reference set (`N/A` if none)
+- [ ] Hardcode guard result recorded (`pass`, `fail`, or `N/A`)
 - [ ] Mode-specific packet complete:
   - `ci_enforced`: workflow/job, run URL, verdict (`pass|fail|not_run`), and failure reason when `fail`
   - `manual_enforced_now`: waiver owner, waiver expiry, waiver tracking reference, and target date to transition to `ci_enforced`
@@ -64,6 +65,10 @@ Test scope (`full`, `targeted`, or `minimal`):
 Contract delta (`none`, `minor`, or `major`):
 
 Communication note reference (`N/A` if none):
+
+Hardcode guard result (`pass`, `fail`, or `N/A`):
+
+Hardcode guard evidence reference (run URL/log path or `N/A`):
 
 Core packet owner:
 

@@ -1,6 +1,6 @@
 # Description: Event-recovery fabric workflow for Spectra LS state-change orchestration extracted from meta-fabric.
-# Version: 2026.05.03.4
-# Last updated: 2026-05-03
+# Version: 2026.06.22.1
+# Last updated: 2026-06-22
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -15,7 +15,6 @@ from uuid import uuid4
 from homeassistant.helpers.event import async_call_later
 
 from .const import (
-    LEGACY_ACTIVE_TARGET_HELPER,
     LEGACY_CONTROL_AMBIGUOUS,
     LEGACY_MA_PLAYERS,
     LEGACY_META_DETECTED_ENTITY,
@@ -26,7 +25,6 @@ from .const import (
     LEGACY_SURFACES,
     WRITE_AUTH_COMPONENT,
 )
-from .write_path_fabric import WritePathFabric
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -69,6 +67,20 @@ class EventRecoveryFabricWorkflow:
             removed += 1
             if removed >= to_remove:
                 break
+
+    def _resolved_component_active_target(self) -> str:
+        """Resolve active target from component snapshot route/parity surfaces."""
+        c = self._coordinator
+        snapshot = c._build_snapshot()
+        route_trace = snapshot.get("route_trace", {}) if isinstance(snapshot.get("route_trace", {}), dict) else {}
+        active_target = str(route_trace.get("active_target", "") or "").strip()
+        if c._is_resolved_state(active_target):
+            return active_target
+        parity = snapshot.get("parity", {}) if isinstance(snapshot.get("parity", {}), dict) else {}
+        parity_target = str(parity.get("active_target", "") or "").strip()
+        if c._is_resolved_state(parity_target):
+            return parity_target
+        return ""
 
     async def _async_run_global_state_auto_select(self, entity_id: str) -> None:
         """Run one coalesced global-state auto-select loop for a target and clear in-flight marker."""
@@ -147,8 +159,7 @@ class EventRecoveryFabricWorkflow:
         if not ambiguous_on:
             return
 
-        helper_state = c.hass.states.get(LEGACY_ACTIVE_TARGET_HELPER)
-        current_target = str(helper_state.state if helper_state is not None else "").strip()
+        current_target = self._resolved_component_active_target()
         if not c._is_resolved_state(current_target):
             return
         if c.hass.states.get(current_target) is None:
@@ -273,8 +284,7 @@ class EventRecoveryFabricWorkflow:
         if c._normalize_state(no_host_state.state if no_host_state is not None else "") != "on":
             return
 
-        active_target_state = c.hass.states.get(LEGACY_ACTIVE_TARGET_HELPER)
-        active_target = str(active_target_state.state if active_target_state is not None else "")
+        active_target = self._resolved_component_active_target()
 
         control_path_state = c.hass.states.get(LEGACY_SURFACES["active_control_path"])
         control_path = str(control_path_state.state if control_path_state is not None else "")
@@ -326,10 +336,12 @@ class EventRecoveryFabricWorkflow:
             if entity_id == "":
                 return
 
-            helper_state = c.hass.states.get(LEGACY_ACTIVE_TARGET_HELPER)
-            if helper_state is None:
-                return
-            helper_options = WritePathFabric.normalize_options(helper_state.attributes.get("options", []))
+            target_options_plan = c._compute_component_target_options_plan()
+            helper_options = (
+                target_options_plan.get("proposed_options", [])
+                if isinstance(target_options_plan.get("proposed_options", []), list)
+                else []
+            )
             watched_targets = {
                 str(item).strip()
                 for item in helper_options
@@ -396,7 +408,7 @@ class EventRecoveryFabricWorkflow:
                         c._no_control_feedback_post_heal_unsub = None
                     c.hass.async_create_task(self.async_dismiss_no_control_feedback_notification())
 
-            if entity_id == LEGACY_ACTIVE_TARGET_HELPER and c._write_authority_mode == WRITE_AUTH_COMPONENT:
+            if entity_id == LEGACY_SURFACES["active_target"] and c._write_authority_mode == WRITE_AUTH_COMPONENT:
                 c.hass.async_create_task(
                     c.async_track_last_valid_target(
                         dry_run=False,
@@ -413,7 +425,7 @@ class EventRecoveryFabricWorkflow:
                         source=f"state-change:{entity_id}",
                     )
                 )
-            elif entity_id == LEGACY_ACTIVE_TARGET_HELPER:
+            elif entity_id == LEGACY_SURFACES["active_target"]:
                 c.hass.async_create_task(
                     self.async_run_component_auto_select_loop(
                         source=f"state-change:{entity_id}",

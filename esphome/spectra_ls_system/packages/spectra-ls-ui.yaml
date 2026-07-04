@@ -1,6 +1,6 @@
 # Description: Spectra LS UI/menu input handling + UI fonts + now-playing helper sensors.
-# Version: 2026.06.06.1
-# Last updated: 2026-06-06
+# Version: 2026.06.23.1
+# Last updated: 2026-06-23
 # Update version/date whenever you change this file.
 #
 # Sections:
@@ -35,48 +35,14 @@ script:
     mode: restart
     then:
       - lambda: |-
-          auto parse_options_count = [](const std::string &raw) -> int {
-            int count = 0;
-            std::string token;
-            bool in_quote = false;
-            char quote_char = 0;
-            auto trim = [](std::string &v) {
-              size_t start = v.find_first_not_of(" \t\n\r");
-              size_t end = v.find_last_not_of(" \t\n\r");
-              if (start == std::string::npos || end == std::string::npos) {
-                v.clear();
-                return;
-              }
-              v = v.substr(start, end - start + 1);
-            };
-            for (char ch : raw) {
-              if (ch == '\\') continue;
-              if ((ch == '\'' || ch == '"')) {
-                if (!in_quote) { in_quote = true; quote_char = ch; continue; }
-                if (quote_char == ch) { in_quote = false; continue; }
-              }
-              if (!in_quote && (ch == '[' || ch == ']')) continue;
-              if (!in_quote && ch == ',') {
-                trim(token);
-                if (!token.empty()) count++;
-                token.clear();
-                continue;
-              }
-              token.push_back(ch);
-            }
-            trim(token);
-            if (!token.empty()) count++;
-            return count;
-          };
-
           int room_count = 4;
           int room_primary = 0;
           int room_catalog = 0;
           if (id(ha_room_options).has_state()) {
-            room_primary = parse_options_count(id(ha_room_options).state.c_str());
+            room_primary = sls_menu_nav::parse_options_count(id(ha_room_options).state.c_str());
           }
           if (id(ha_room_options_catalog).has_state()) {
-            room_catalog = parse_options_count(id(ha_room_options_catalog).state.c_str());
+            room_catalog = sls_menu_nav::parse_options_count(id(ha_room_options_catalog).state.c_str());
           }
           if (room_primary > 0) room_count = room_primary;
           else if (room_catalog > 0) room_count = room_catalog;
@@ -85,10 +51,10 @@ script:
           int target_primary = 0;
           int target_catalog = 0;
           if (id(ha_target_options).has_state()) {
-            target_primary = parse_options_count(id(ha_target_options).state.c_str());
+            target_primary = sls_menu_nav::parse_options_count(id(ha_target_options).state.c_str());
           }
           if (id(ha_target_options_catalog).has_state()) {
-            target_catalog = parse_options_count(id(ha_target_options_catalog).state.c_str());
+            target_catalog = sls_menu_nav::parse_options_count(id(ha_target_options_catalog).state.c_str());
           }
           if (target_primary > 0) target_count = target_primary;
           else if (target_catalog > 0) target_count = target_catalog;
@@ -96,7 +62,7 @@ script:
           int meta_count = 0;
           if (${meta_manual_picker_enabled}) {
             if (id(ha_meta_candidates_names).has_state()) {
-              const int parsed = parse_options_count(id(ha_meta_candidates_names).state.c_str());
+              const int parsed = sls_menu_nav::parse_options_count(id(ha_meta_candidates_names).state.c_str());
               if (parsed > 0) meta_count = parsed;
             }
           }
@@ -155,40 +121,6 @@ script:
           const int LV_LIGHT_TOGGLE = ${menu_level_lighting_toggle};
           const int LV_META = ${menu_level_meta_select};
           const int LV_CONTROL_TARGET = ${menu_level_control_target_select};
-          auto trim_ascii = [](std::string &value) {
-            size_t start = value.find_first_not_of(" \t\n\r");
-            size_t end = value.find_last_not_of(" \t\n\r");
-            if (start == std::string::npos || end == std::string::npos) {
-              value.clear();
-              return;
-            }
-            value = value.substr(start, end - start + 1);
-          };
-          auto parse_options = [&](const std::string &raw) -> std::vector<std::string> {
-            std::vector<std::string> out;
-            if (raw.empty()) return out;
-            std::string token;
-            bool in_quote = false;
-            char quote_char = 0;
-            for (char ch : raw) {
-              if (ch == '\\') continue;
-              if ((ch == '\'' || ch == '"')) {
-                if (!in_quote) { in_quote = true; quote_char = ch; continue; }
-                if (quote_char == ch) { in_quote = false; continue; }
-              }
-              if (!in_quote && (ch == '[' || ch == ']')) continue;
-              if (!in_quote && ch == ',') {
-                trim_ascii(token);
-                if (!token.empty()) out.push_back(token);
-                token.clear();
-                continue;
-              }
-              token.push_back(ch);
-            }
-            trim_ascii(token);
-            if (!token.empty()) out.push_back(token);
-            return out;
-          };
           const uint32_t now = millis();
           id(control_target_prompt_commit) = false;
           id(control_target_prompt_entity) = "";
@@ -248,7 +180,7 @@ script:
           const int menu_level9_count = (meta_manual_enabled ? meta_count : 0) + ${menu_count_meta_base};
           std::vector<std::string> control_target_labels;
           if (id(ha_control_target_labels).has_state()) {
-            control_target_labels = parse_options(id(ha_control_target_labels).state.c_str());
+            control_target_labels = sls_menu_nav::parse_options_list(id(ha_control_target_labels).state.c_str());
           }
           const int menu_level10_count = ((int) control_target_labels.size()) + 1;
 
@@ -333,7 +265,7 @@ script:
             }
             std::vector<std::string> control_target_entities;
             if (id(ha_control_target_entities).has_state()) {
-              control_target_entities = parse_options(id(ha_control_target_entities).state.c_str());
+              control_target_entities = sls_menu_nav::parse_options_list(id(ha_control_target_entities).state.c_str());
             }
             const int pick_idx = id(menu_index);
             if (pick_idx >= 0 && pick_idx < (int) control_target_entities.size()) {
@@ -412,50 +344,16 @@ script:
             return;
           }
           if (id(menu_level) == LV_META) {
-            auto trim_ascii = [](std::string &value) {
-              size_t start = value.find_first_not_of(" \t\n\r");
-              size_t end = value.find_last_not_of(" \t\n\r");
-              if (start == std::string::npos || end == std::string::npos) {
-                value.clear();
-                return;
-              }
-              value = value.substr(start, end - start + 1);
-            };
-            auto parse_options = [&](const std::string &raw) -> std::vector<std::string> {
-              std::vector<std::string> out;
-              if (raw.empty()) return out;
-              std::string token;
-              bool in_quote = false;
-              char quote_char = 0;
-              for (char ch : raw) {
-                if (ch == '\\') continue;
-                if ((ch == '\'' || ch == '"')) {
-                  if (!in_quote) { in_quote = true; quote_char = ch; continue; }
-                  if (quote_char == ch) { in_quote = false; continue; }
-                }
-                if (!in_quote && (ch == '[' || ch == ']')) continue;
-                if (!in_quote && ch == ',') {
-                  trim_ascii(token);
-                  if (!token.empty()) out.push_back(token);
-                  token.clear();
-                  continue;
-                }
-                token.push_back(ch);
-              }
-              trim_ascii(token);
-              if (!token.empty()) out.push_back(token);
-              return out;
-            };
             std::string entities_raw;
             if (id(ha_meta_candidates_entities).has_state()) {
               entities_raw = id(ha_meta_candidates_entities).state.c_str();
             }
-            std::vector<std::string> entities = parse_options(entities_raw);
+            std::vector<std::string> entities = sls_menu_nav::parse_options_list(entities_raw);
             std::string names_raw;
             if (id(ha_meta_candidates_names).has_state()) {
               names_raw = id(ha_meta_candidates_names).state.c_str();
             }
-            std::vector<std::string> names = parse_options(names_raw);
+            std::vector<std::string> names = sls_menu_nav::parse_options_list(names_raw);
             const int count = menu_level9_count;
             const int back_idx = count - 1;
             const bool meta_manual_enabled = ${meta_manual_picker_enabled};
@@ -638,40 +536,6 @@ sensor:
           const int LV_LIGHT_TOGGLE = ${menu_level_lighting_toggle};
           const int LV_META = ${menu_level_meta_select};
           const int LV_CONTROL_TARGET = ${menu_level_control_target_select};
-          auto trim_ascii = [](std::string &value) {
-            size_t start = value.find_first_not_of(" \t\n\r");
-            size_t end = value.find_last_not_of(" \t\n\r");
-            if (start == std::string::npos || end == std::string::npos) {
-              value.clear();
-              return;
-            }
-            value = value.substr(start, end - start + 1);
-          };
-          auto parse_options = [&](const std::string &raw) -> std::vector<std::string> {
-            std::vector<std::string> out;
-            if (raw.empty()) return out;
-            std::string token;
-            bool in_quote = false;
-            char quote_char = 0;
-            for (char ch : raw) {
-              if (ch == '\\') continue;
-              if ((ch == '\'' || ch == '"')) {
-                if (!in_quote) { in_quote = true; quote_char = ch; continue; }
-                if (quote_char == ch) { in_quote = false; continue; }
-              }
-              if (!in_quote && (ch == '[' || ch == ']')) continue;
-              if (!in_quote && ch == ',') {
-                trim_ascii(token);
-                if (!token.empty()) out.push_back(token);
-                token.clear();
-                continue;
-              }
-              token.push_back(ch);
-            }
-            trim_ascii(token);
-            if (!token.empty()) out.push_back(token);
-            return out;
-          };
           // Menu authoring contract: always map raw encoder deltas through shared
           // top-level direction policy (`sls_menu_nav` + `${menu_encoder_nav_sign}`).
           const int raw_delta = (int) x;
@@ -697,7 +561,7 @@ sensor:
           const int menu_level9_count = (meta_manual_enabled ? meta_count : 0) + ${menu_count_meta_base};
           std::vector<std::string> control_target_labels;
           if (id(ha_control_target_labels).has_state()) {
-            control_target_labels = parse_options(id(ha_control_target_labels).state.c_str());
+            control_target_labels = sls_menu_nav::parse_options_list(id(ha_control_target_labels).state.c_str());
           }
           const int menu_level10_count = ((int) control_target_labels.size()) + 1;
           if (!id(menu_active)) {

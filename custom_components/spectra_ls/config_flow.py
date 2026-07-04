@@ -1,6 +1,6 @@
 # Description: Config and options flow for Spectra LS shadow parity integration with simplified single-step remap settings UX.
-# Version: 2026.04.22.8
-# Last updated: 2026-04-22
+# Version: 2026.06.22.1
+# Last updated: 2026-06-22
 
 from __future__ import annotations
 
@@ -28,8 +28,15 @@ from .const import (
     OPT_ENCODER_TURN_ACTION,
     OPT_MAPPING_PRESET,
     OPT_READ_ONLY_MODE,
+    OPT_SETUP_POLICY_ENABLED,
+    OPT_SETUP_ROUTING_INCLUDE_ENTITIES,
+    OPT_SETUP_ROUTING_EXCLUDE_ENTITIES,
+    OPT_SETUP_METADATA_INCLUDE_ENTITIES,
+    OPT_SETUP_METADATA_EXCLUDE_ENTITIES,
+    SETUP_POLICY_DEFAULTS,
     SINGLETON_UNIQUE_ID,
     normalize_control_center_settings,
+    normalize_setup_entity_policy,
 )
 
 
@@ -123,18 +130,29 @@ class SpectraLsOptionsFlow(config_entries.OptionsFlow):
     async def async_step_init(self, user_input: dict[str, Any] | None = None):
         """Single-step settings form for remap and scene bindings."""
         if user_input is not None:
-            merged = normalize_control_center_settings({**self._config_entry.options, **user_input})
-            normalized = normalize_control_center_settings(self._apply_selected_preset(merged))
-            return self.async_create_entry(title="", data=normalized)
+            merged = {**self._config_entry.options, **user_input}
+            normalized_controls = normalize_control_center_settings(self._apply_selected_preset(merged))
+            normalized_setup = normalize_setup_entity_policy(merged)
+            return self.async_create_entry(title="", data={**normalized_controls, **normalized_setup})
 
         existing = normalize_control_center_settings(self._config_entry.options)
+        setup_existing = normalize_setup_entity_policy(self._config_entry.options)
         defaults = dict(CONTROL_CENTER_DEFAULTS)
+        setup_defaults = dict(SETUP_POLICY_DEFAULTS)
         defaults.update(existing)
+        setup_defaults.update(setup_existing)
 
         scene_selector = selector.EntitySelector(
             selector.EntitySelectorConfig(
                 domain=["scene"],
                 multiple=False,
+            )
+        )
+
+        media_player_multi_selector = selector.EntitySelector(
+            selector.EntitySelectorConfig(
+                domain=["media_player"],
+                multiple=True,
             )
         )
 
@@ -185,6 +203,26 @@ class SpectraLsOptionsFlow(config_entries.OptionsFlow):
                     vol.Optional(OPT_BUTTON_2_SCENE, default=defaults[OPT_BUTTON_2_SCENE]): scene_selector,
                     vol.Optional(OPT_BUTTON_3_SCENE, default=defaults[OPT_BUTTON_3_SCENE]): scene_selector,
                     vol.Optional(OPT_BUTTON_4_SCENE, default=defaults[OPT_BUTTON_4_SCENE]): scene_selector,
+                    vol.Optional(
+                        OPT_SETUP_POLICY_ENABLED,
+                        default=setup_defaults[OPT_SETUP_POLICY_ENABLED],
+                    ): selector.BooleanSelector(),
+                    vol.Optional(
+                        OPT_SETUP_ROUTING_INCLUDE_ENTITIES,
+                        default=setup_defaults[OPT_SETUP_ROUTING_INCLUDE_ENTITIES],
+                    ): media_player_multi_selector,
+                    vol.Optional(
+                        OPT_SETUP_ROUTING_EXCLUDE_ENTITIES,
+                        default=setup_defaults[OPT_SETUP_ROUTING_EXCLUDE_ENTITIES],
+                    ): media_player_multi_selector,
+                    vol.Optional(
+                        OPT_SETUP_METADATA_INCLUDE_ENTITIES,
+                        default=setup_defaults[OPT_SETUP_METADATA_INCLUDE_ENTITIES],
+                    ): media_player_multi_selector,
+                    vol.Optional(
+                        OPT_SETUP_METADATA_EXCLUDE_ENTITIES,
+                        default=setup_defaults[OPT_SETUP_METADATA_EXCLUDE_ENTITIES],
+                    ): media_player_multi_selector,
                 }
             ),
         )

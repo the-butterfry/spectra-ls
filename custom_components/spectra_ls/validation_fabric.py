@@ -1,6 +1,6 @@
 # Description: Validation/control fabric workflow for Spectra LS snapshot validation assembly extracted from meta-fabric.
-# Version: 2026.05.05.3
-# Last updated: 2026-05-05
+# Version: 2026.06.20.2
+# Last updated: 2026-06-20
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -316,7 +316,7 @@ class ValidationFabricWorkflow:
         if checks["ma_boot_ready"] and not checks["candidate_available"]:
             blocking_reasons.append("no_scheduler_candidate")
         if checks["ma_boot_ready"] and not checks["no_authority_expansion"]:
-            blocking_reasons.append("authority_mode_not_legacy")
+            blocking_reasons.append("authority_mode_not_component")
 
         return {
             "verdict": verdict,
@@ -408,27 +408,13 @@ class ValidationFabricWorkflow:
         active_target_resolved = active_target.lower() not in {"", "none", "unknown", "unavailable"}
         target_in_helper_options = active_target_resolved and active_target in helper_options
 
-        required_scripts = [
-            "script.ma_update_target_options",
-            "script.ma_auto_select",
-            "script.ma_cycle_target",
-        ]
-        missing_scripts = [entity_id for entity_id in required_scripts if c.hass.states.get(entity_id) is None]
-
-        required_automation_ids = [
-            "ma_update_target_options_start",
-            "ma_auto_select_loop",
-            "ma_track_last_valid_target",
-        ]
-        available_automation_ids = {
-            str(state.attributes.get("id", ""))
-            for state in c.hass.states.async_all("automation")
-            if isinstance(state.attributes.get("id", ""), str)
-        }
-        missing_automation_ids = [
-            automation_id
-            for automation_id in required_automation_ids
-            if automation_id not in available_automation_ids
+        component_services = [
+            "spectra_ls.apply_scheduler_choice",
+            "spectra_ls.run_auto_select_scaffold",
+            "spectra_ls.build_target_options_scaffold",
+            "spectra_ls.set_active_target",
+            "spectra_ls.track_last_valid_target",
+            "spectra_ls.restore_last_valid_target",
         ]
 
         route_decision = str(route_trace.get("decision", "") or "")
@@ -438,12 +424,7 @@ class ValidationFabricWorkflow:
         verdict = "PASS"
         if not helper_exists or not active_target_resolved or not route_ready or not contract_valid:
             verdict = "FAIL"
-        elif (
-            not helper_options
-            or not target_in_helper_options
-            or len(missing_scripts) > 0
-            or len(missing_automation_ids) > 0
-        ):
+        elif not helper_options or not target_in_helper_options:
             verdict = "WARN"
 
         return {
@@ -459,10 +440,9 @@ class ValidationFabricWorkflow:
                 "target_in_options": target_in_helper_options,
             },
             "compatibility": {
-                "required_scripts": required_scripts,
-                "missing_scripts": missing_scripts,
-                "required_automation_ids": required_automation_ids,
-                "missing_automation_ids": missing_automation_ids,
+                "runtime_scripts_required": False,
+                "runtime_automations_required": False,
+                "component_services_expected": component_services,
             },
         }
 

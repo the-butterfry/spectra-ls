@@ -1,6 +1,6 @@
 {# Description: Full-stack one-screen Spectra LS component validation template for HA Developer Tools. #}
-{# Version: 2026.05.05.1 #}
-{# Last updated: 2026-05-05 #}
+{# Version: 2026.06.22.2 #}
+{# Last updated: 2026-06-22 #}
 
 {% set invalid = ['','none','unknown','unavailable','null'] %}
 
@@ -42,7 +42,8 @@
 
 {% set helper_target = states('input_select.ma_active_target') %}
 {% set helper_options = state_attr('input_select.ma_active_target','options') or [] %}
-{% set helper_target_valid = helper_target not in invalid and helper_target in helper_options and states[helper_target] is not none %}
+{% set helper_target_state = states(helper_target) if helper_target is string and helper_target|trim not in invalid else 'unknown' %}
+{% set helper_target_valid = helper_target is string and helper_target|trim not in invalid and '.' in helper_target and helper_target in helper_options and helper_target_state not in invalid %}
 
 {% set now_playing_entity = states('sensor.now_playing_entity') %}
 {% set now_playing_state = states('sensor.now_playing_state') %}
@@ -99,7 +100,7 @@
 {% set metadata_blockers = metadata_prep.blocking_reasons if metadata_prep.blocking_reasons is defined and metadata_prep.blocking_reasons is sequence else [] %}
 {% set authority_reasons = authority_contract.authority_reasons if authority_contract.authority_reasons is defined and authority_contract.authority_reasons is sequence else [] %}
 
-{% set ns = namespace(score=0, max=12, blockers=[]) %}
+{% set ns = namespace(score=0, max=13, blockers=[]) %}
 
 {% if shadow_exists %}{% set ns.score = ns.score + 1 %}{% else %}{% set ns.blockers = ns.blockers + ['shadow_entity_missing'] %}{% endif %}
 {% if snapshot_fresh %}{% set ns.score = ns.score + 1 %}{% else %}{% set ns.blockers = ns.blockers + ['snapshot_not_fresh'] %}{% endif %}
@@ -110,12 +111,13 @@
 {% if scheduler_verdict == 'PASS' %}{% set ns.score = ns.score + 1 %}{% else %}{% set ns.blockers = ns.blockers + ['scheduler_not_pass'] %}{% endif %}
 {% if handoff_verdict == 'PASS' %}{% set ns.score = ns.score + 1 %}{% else %}{% set ns.blockers = ns.blockers + ['handoff_not_pass'] %}{% endif %}
 {% if metadata_verdict == 'PASS' and (metadata_prep.ready_for_metadata_handoff if metadata_prep.ready_for_metadata_handoff is defined else false) %}{% set ns.score = ns.score + 1 %}{% else %}{% set ns.blockers = ns.blockers + ['metadata_prep_not_ready'] %}{% endif %}
+{% if backend_api_contract_ready %}{% set ns.score = ns.score + 1 %}{% else %}{% set ns.blockers = ns.blockers + ['backend_api_not_ready'] %}{% endif %}
 {% if esp_runtime_ready %}{% set ns.score = ns.score + 1 %}{% else %}{% set ns.blockers = ns.blockers + ['esp_runtime_not_ready'] %}{% endif %}
 {% if host_cutover_ready and host_activation_ready %}{% set ns.score = ns.score + 1 %}{% else %}{% set ns.blockers = ns.blockers + ['host_cutover_not_ready'] %}{% endif %}
 {% if authority_contract_ready %}{% set ns.score = ns.score + 1 %}{% else %}{% set ns.blockers = ns.blockers + ['authority_contract_not_ready'] %}{% endif %}
 
 {% set verdict = 'PASS' %}
-{% if ns.score < 10 %}
+{% if ns.score < 11 %}
   {% set verdict = 'FAIL' %}
 {% elif ns.score < ns.max %}
   {% set verdict = 'WARN' %}

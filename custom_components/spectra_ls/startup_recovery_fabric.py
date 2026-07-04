@@ -1,6 +1,6 @@
 # Description: Startup-recovery fabric workflow for Spectra LS metadata boot-gate orchestration extracted from meta-fabric.
-# Version: 2026.05.03.2
-# Last updated: 2026-05-03
+# Version: 2026.06.22.2
+# Last updated: 2026-06-22
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -14,13 +14,10 @@ from uuid import uuid4
 from homeassistant.helpers.event import async_call_later
 
 from .const import (
-    LEGACY_ACTIVE_TARGET_HELPER,
     LEGACY_CONTROL_TARGETS,
     LEGACY_MA_PLAYERS,
     WRITE_AUTH_COMPONENT,
-    WRITE_AUTH_LEGACY,
 )
-from .write_path_fabric import WritePathFabric
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -148,27 +145,6 @@ class StartupRecoveryFabricWorkflow:
                 )
                 return
 
-            if c._write_authority_mode == WRITE_AUTH_LEGACY:
-                now_iso = datetime.now(UTC).isoformat()
-                c.metadata_stack.set_last_metadata_bridge_attempt({
-                    "status": "skipped_legacy_authority",
-                    "requested_at": now_iso,
-                    "completed_at": now_iso,
-                    "reason": (
-                        "Startup bridge recovery skipped because authority mode is legacy; "
-                        "runtime helper flow remains single-writer during boot"
-                    ),
-                    "resolver_status": "never_attempted",
-                    "trial_status": "never_attempted",
-                })
-                c.async_set_updated_data(c.build_snapshot())
-                _LOGGER.info(
-                    "Startup auto-recovery skipped component bridge on legacy authority (%s/%s)",
-                    attempt,
-                    c._startup_recovery_max_attempts,
-                )
-                return
-
             result = await c.metadata_stack.async_run_metadata_trial_bridge_scaffold(
                 window_id=f"startup-recovery-{attempt}",
                 reason="HA restart startup auto-recovery",
@@ -245,20 +221,18 @@ class StartupRecoveryFabricWorkflow:
         if not control_targets_ready:
             reasons.append("control_targets_not_ready")
 
-        helper_state = c.hass.states.get(LEGACY_ACTIVE_TARGET_HELPER)
-        helper_exists = helper_state is not None
-        if not helper_exists:
-            reasons.append("active_target_helper_missing")
-
-        helper_options_ready = False
-        if helper_state is not None:
-            normalized_options = WritePathFabric.normalize_options(helper_state.attributes.get("options", []))
-            non_none_options = [item for item in normalized_options if c._normalize_state(item) != "none"]
-            helper_options_ready = len(non_none_options) > 0
-        if not helper_options_ready:
+        target_options_plan = c._compute_component_target_options_plan()
+        proposed_options = (
+            target_options_plan.get("proposed_options", [])
+            if isinstance(target_options_plan.get("proposed_options", []), list)
+            else []
+        )
+        non_none_options = [item for item in proposed_options if c._normalize_state(str(item or "")) != "none"]
+        target_options_ready = len(non_none_options) > 0
+        if not target_options_ready:
             reasons.append("active_target_options_not_ready")
 
-        boot_ready = ma_players_ready and control_targets_ready and helper_exists and helper_options_ready
+        boot_ready = ma_players_ready and control_targets_ready and target_options_ready
         return boot_ready, reasons
 
     @staticmethod

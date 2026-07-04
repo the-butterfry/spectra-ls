@@ -1,6 +1,6 @@
 # Description: Service definitions for Spectra LS Phase 2/3 diagnostics, Phase 4 Slice-01/Slice-03 diagnostics scaffolding, Phase 5 metadata trial contract, and Phase 6/8 control-center settings, fast-remap presets, selection-ownership migration services, execution, and expanded authority-contract response echo.
-# Version: 2026.05.04.3
-# Last updated: 2026-05-04
+# Version: 2026.06.21.1
+# Last updated: 2026-06-21
 # PARITY DIRECTIVE: Behavior/contract edits must include same-slice two-track parity review and version-metadata review (runtime + component).
 
 get_authority_contract:
@@ -307,7 +307,7 @@ set_active_target:
   fields:
     target:
       name: Target entity ID
-      description: Required media-player target entity ID to select (for example `media_player.living_room`).
+      description: Required media-player target entity ID to select (for example `<media_player_target_entity_id>`).
       required: true
       selector:
         text:
@@ -348,7 +348,7 @@ set_metadata_override:
         boolean:
     entity_id:
       name: Metadata entity ID
-      description: Metadata entity ID to apply when override is enabled (for example `media_player.office`).
+      description: Metadata entity ID to apply when override is enabled (for example `<metadata_entity_id>`).
       required: false
       selector:
         text:
@@ -490,7 +490,7 @@ execute_control_center_input:
             - button_4
     dry_run:
       name: Dry run
-      description: Keep true to validate mapping execution without calling runtime write services.
+      description: Set true to validate mapping execution without calling runtime write services (default false executes mapped action).
       required: false
       selector:
         boolean:
@@ -572,7 +572,7 @@ set_control_center_settings:
             - no_op
     button_1_scene:
       name: Button 1 scene
-      description: Scene entity ID bound to button 1 (e.g., `scene.living_room_evening`).
+      description: Scene entity ID bound to button 1 (e.g., `<scene_entity_id>`).
       required: false
       selector:
         text:

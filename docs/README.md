@@ -1,6 +1,6 @@
 <!-- Description: Documentation index for Spectra L/S technical, onboarding, roadmap, and operations artifacts. -->
-<!-- Version: 2026.06.10.1 -->
-<!-- Last updated: 2026-06-10 -->
+<!-- Version: 2026.06.22.1 -->
+<!-- Last updated: 2026-06-22 -->
 
 # Spectra L/S Documentation Index
 
@@ -25,6 +25,7 @@ If you are new: read `README.md` first, then this file, then `docs/roadmap/v-nex
 - `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`
 - `docs/roadmap/v-next-NOTES.md`
 - `docs/program/PARALLEL-PROGRAM-PLAYBOOK.md`
+- `docs/program/SPECTRA-LS-REMOTE-SCOPE-PROGRESS.md`
 - `docs/program/CA-S01D-PROOF-PACKET-CHECKLIST.md`
 - `docs/program/CA-S02B-RESOLVER-REPLAY-CHECKLIST.md`
 - `docs/program/CA-S03-CONSUMER-PROJECTION-CUTOVER-CHECKLIST.md`
@@ -38,6 +39,8 @@ If you are new: read `README.md` first, then this file, then `docs/roadmap/v-nex
 
 - Runtime architecture: `docs/architecture/CODEBASE-RUNTIME-ARCHITECTURE.md`
 - Control hub architecture: `docs/architecture/CONTROL-HUB-ARCHITECTURE.md`
+- Canonical contract ownership ledger: `docs/architecture/CONTRACT-OWNERSHIP-LEDGER.md`
+- Universal entity resolution plan: `docs/architecture/UNIVERSAL-ENTITY-RESOLUTION-PLAN.md`
 
 ## Testing and diagnostics
 

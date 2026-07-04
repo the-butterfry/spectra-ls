@@ -1,6 +1,6 @@
 # Description: Snapshot-fabric workflow for Spectra LS coordinator snapshot and write-controls packet assembly extracted from coordinator.
-# Version: 2026.05.04.2
-# Last updated: 2026-05-04
+# Version: 2026.06.22.3
+# Last updated: 2026-06-22
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -10,15 +10,8 @@ from datetime import UTC, datetime
 from typing import Any
 
 from .const import (
-    LEGACY_ACTIVE_TARGET_HELPER,
     LEGACY_CONTROL_HOST,
     LEGACY_CONTROL_TARGETS,
-    LEGACY_META_PROVIDER_LAST_ITEM_URI,
-    LEGACY_META_PROVIDER_LAST_PROVIDERS,
-    LEGACY_META_PROVIDER_LAST_REASON,
-    LEGACY_META_PROVIDER_LAST_RESPONSE,
-    LEGACY_META_PROVIDER_LAST_STATUS,
-    LEGACY_META_PROVIDER_LAST_UPDATED_AT,
     LEGACY_ROOMS_JSON,
     LEGACY_ROOMS_RAW,
     LEGACY_SURFACES,
@@ -47,12 +40,6 @@ class SnapshotFabricWorkflow:
             return ""
         return value
 
-    def _read_helper_text(self, entity_id: str) -> str:
-        state_obj = self._coordinator.hass.states.get(entity_id)
-        if state_obj is None:
-            return ""
-        return self._normalize_helper_text(state_obj.state)
-
     def _build_metadata_provider_packet(self) -> dict[str, Any]:
         c = self._coordinator
         component_packet = (
@@ -69,15 +56,8 @@ class SnapshotFabricWorkflow:
         reason = _packet_text("reason")
         updated_at = _packet_text("updated_at")
         source = _packet_text("source")
-
         if status == "" and response == "" and providers == "" and item_uri == "" and reason == "" and updated_at == "":
-            status = self._read_helper_text(LEGACY_META_PROVIDER_LAST_STATUS)
-            response = self._read_helper_text(LEGACY_META_PROVIDER_LAST_RESPONSE)
-            providers = self._read_helper_text(LEGACY_META_PROVIDER_LAST_PROVIDERS)
-            item_uri = self._read_helper_text(LEGACY_META_PROVIDER_LAST_ITEM_URI)
-            reason = self._read_helper_text(LEGACY_META_PROVIDER_LAST_REASON)
-            updated_at = self._read_helper_text(LEGACY_META_PROVIDER_LAST_UPDATED_AT)
-            source = "runtime_helper_compatibility_sink"
+            source = "component_packet_missing"
 
         age_s = c._timestamp_age_seconds(updated_at) if updated_at else None
 
@@ -127,8 +107,9 @@ class SnapshotFabricWorkflow:
             "cycle_target_last_attempt": c._last_cycle_target_attempt,
             "restore_last_valid_last_attempt": c._last_restore_last_valid_attempt,
             "track_last_valid_last_attempt": c._last_track_last_valid_attempt,
-            "target_helper_entity": LEGACY_ACTIVE_TARGET_HELPER,
+            "target_entity_source": "route_trace.active_target",
             "control_center_settings": c._control_center_settings,
+            "setup_entity_policy": c.setup_entity_policy,
             "control_center_last_attempt": c._last_control_center_action_attempt,
             "meta_policy": meta_policy,
         }
@@ -180,7 +161,7 @@ class SnapshotFabricWorkflow:
             legacy_control_targets_entity=LEGACY_CONTROL_TARGETS,
             legacy_rooms_json_entity=LEGACY_ROOMS_JSON,
             legacy_rooms_raw_entity=LEGACY_ROOMS_RAW,
-            legacy_active_target_helper_entity=LEGACY_ACTIVE_TARGET_HELPER,
+            legacy_active_target_helper_entity=None,
             legacy_active_target_entity=LEGACY_SURFACES["active_target"],
         )
 
@@ -189,6 +170,64 @@ class SnapshotFabricWorkflow:
             active_control_path=str(parity.get("active_control_path", "") or ""),
             registry=registry,
         )
+
+        selected_target = (
+            route_trace.get("selected_target", {})
+            if isinstance(route_trace.get("selected_target", {}), dict)
+            else {}
+        )
+
+        def _clean_text(raw: Any) -> str:
+            value = str(raw or "").strip()
+            if value.lower() in {"", "none", "unknown", "unavailable", "null"}:
+                return ""
+            return value
+
+        def _clean_port(raw: Any) -> str:
+            value = _clean_text(raw)
+            if value == "":
+                return ""
+            try:
+                num = int(float(value))
+            except (TypeError, ValueError):
+                return ""
+            return str(num) if 0 < num <= 65534 else ""
+
+        route_host = _clean_text(
+            route_trace.get("control_host")
+            or route_trace.get("active_host")
+            or route_trace.get("host")
+        )
+        route_port = _clean_port(
+            route_trace.get("control_port")
+            or route_trace.get("active_port")
+            or route_trace.get("port")
+        )
+
+        selected_host = _clean_text(selected_target.get("host", ""))
+        component_host = _clean_text(c.hass.states.get("sensor.component_control_host").state if c.hass.states.get("sensor.component_control_host") is not None else "")
+        runtime_host = _clean_text(c.hass.states.get(LEGACY_CONTROL_HOST).state if c.hass.states.get(LEGACY_CONTROL_HOST) is not None else "")
+        parity_hosts = _clean_text(parity.get("control_hosts", ""))
+        if "," in parity_hosts:
+            parity_hosts = _clean_text(parity_hosts.split(",", 1)[0])
+
+        selected_port = _clean_port(selected_target.get("port", ""))
+        component_port = _clean_port(c.hass.states.get("sensor.component_control_port").state if c.hass.states.get("sensor.component_control_port") is not None else "")
+        runtime_port = _clean_port(c.hass.states.get("sensor.ma_control_port").state if c.hass.states.get("sensor.ma_control_port") is not None else "")
+
+        resolved_route_host = route_host or selected_host or component_host or runtime_host or parity_hosts
+        resolved_route_port = route_port or selected_port or component_port or runtime_port
+
+        route_trace = {
+            **route_trace,
+            "control_host": resolved_route_host,
+            "active_host": resolved_route_host,
+            "host": resolved_route_host,
+            "control_port": resolved_route_port,
+            "active_port": resolved_route_port,
+            "port": resolved_route_port,
+        }
+
         validation_packet = c._meta_fabric.build_snapshot_validation_packet(
             parity=parity,
             registry=registry,

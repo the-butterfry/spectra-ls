@@ -1,13 +1,13 @@
 {# Description: Focused one-screen scenario matrix for Step-3 metadata/media-contract parity validation. #}
-{# Version: 2026.05.02.1 #}
-{# Last updated: 2026-05-02 #}
+{# Version: 2026.06.20.1 #}
+{# Last updated: 2026-06-20 #}
 
 {#
   Meta Stack Focused Scenario Matrix (Runtime)
   Scope:
-    - music-only
-    - non-music hidden (rollback policy)
-    - no-audio/video expected-unknown context
+    - active playback contract
+    - idle none baseline
+    - no-audio expected-unknown context
 #}
 
 {% set invalid = ['', 'none', 'unknown', 'unavailable', 'None', none] %}
@@ -25,70 +25,29 @@
 {% set np_title = states('sensor.now_playing_title') %}
 {% set suppression_reason = state_attr('sensor.shadow_active_target','metadata_prep_validation').checks.now_playing_suppression_reason if state_attr('sensor.shadow_active_target','metadata_prep_validation') is mapping and state_attr('sensor.shadow_active_target','metadata_prep_validation').checks is defined and state_attr('sensor.shadow_active_target','metadata_prep_validation').checks is mapping and state_attr('sensor.shadow_active_target','metadata_prep_validation').checks.now_playing_suppression_reason is defined else 'n/a' %}
 
-{% set source_now = states('sensor.now_playing_source') | lower %}
-{% set source_ma = states('sensor.ma_active_source') | lower %}
-{% set app_ma = states('sensor.ma_active_app') | lower %}
-{% set source_ctx = source_now ~ ' ' ~ source_ma ~ ' ' ~ app_ma %}
-{% set video_hint =
-  ('plex' in source_ctx) or
-  ('apple tv' in source_ctx) or
-  ('appletv' in source_ctx) or
-  ('youtube' in source_ctx) or
-  ('netflix' in source_ctx) or
-  ('hulu' in source_ctx) or
-  ('prime video' in source_ctx) or
-  ('disney+' in source_ctx) or
-  ('max' in source_ctx) or
-  ('paramount+' in source_ctx) or
-  ('peacock' in source_ctx) or
-  ('hdmi' in source_ctx) or
-  ('tv' in source_ctx)
-%}
-
-{% set no_audio_video_expected =
-  video_hint and
+{% set no_audio_expected =
   (np_entity in invalid) and
   (np_title in invalid) and
   suppression_reason == 'entity_missing' and
   np_state in ['idle', 'unknown', 'unavailable', 'none']
 %}
 
-{% set hdmi_local_untracked =
-  video_hint and
-  media_class == 'none' and
-  (not display_allowed) and
-  (np_entity in invalid) and
-  (np_title in invalid)
-%}
-
 {% set rows = [
   {
-    'name': 'hdmi_local_untracked_playback',
-    'active': hdmi_local_untracked,
-    'expected': 'media_class=none and display_allowed=false (outside MA-tracked path)',
-    'ok': media_class == 'none' and not display_allowed
-  },
-  {
     'name': 'idle_none_baseline',
-    'active': media_class == 'none' and not hdmi_local_untracked,
+    'active': media_class == 'none' and np_state not in ['playing', 'paused'],
     'expected': 'display_allowed=false',
     'ok': not display_allowed
   },
   {
-    'name': 'music_only',
+    'name': 'active_playback',
     'active': media_class == 'music',
     'expected': 'display_allowed=true',
     'ok': display_allowed
   },
   {
-    'name': 'non_music_hidden',
-    'active': media_class == 'non_music',
-    'expected': 'display_allowed=false',
-    'ok': not display_allowed
-  },
-  {
-    'name': 'no_audio_video_context',
-    'active': no_audio_video_expected,
+    'name': 'no_audio_context',
+    'active': no_audio_expected,
     'expected': 'media_class unknown/none and display_allowed=false',
     'ok': (media_class in ['unknown', 'unavailable', 'none', ''] and not display_allowed)
   }
@@ -136,9 +95,7 @@
 - `display_allowed`: **{{ display_allowed }}**
 - `preview_key`: **{{ preview_key if preview_key_valid else 'n/a' }}**
 - `preview_key_age_s`: **{{ preview_age_s | round(1) if preview_age_s is not none else 'n/a' }}**
-- `no_audio_video_expected`: **{{ no_audio_video_expected }}**
-- `hdmi_local_untracked`: **{{ hdmi_local_untracked }}**
-- `source_context_hint`: **{{ source_ctx | trim if (source_ctx | trim) != '' else 'n/a' }}**
+- `no_audio_expected`: **{{ no_audio_expected }}**
 
 ### Scenario rows
 | Scenario | Active | Verdict | Expected | Observed |
@@ -149,7 +106,7 @@
 
 ### Guidance
 {% if ns.active == 0 %}
-- No focused scenario is currently active. Trigger one target state (music playback, non-music playback, or no-audio/video) and re-render.
+- No focused scenario is currently active. Trigger one target state (active playback or idle/no-audio) and re-render.
 {% elif ns.active_warn > 0 %}
 - Active scenario mismatch detected. Re-run `spectra_ls.validate_metadata_policy` then re-render and compare expected vs observed gates.
 {% else %}

@@ -1,3 +1,7 @@
+# Description: ESPHome text sensor bindings for Spectra Arylic UART metadata fields.
+# Version: 2026.06.22.1
+# Last updated: 2026-06-22
+
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import text_sensor

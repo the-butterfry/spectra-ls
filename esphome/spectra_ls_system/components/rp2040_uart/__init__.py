@@ -1,3 +1,7 @@
+# Description: ESPHome registration glue for Spectra RP2040 UART hub component.
+# Version: 2026.06.22.1
+# Last updated: 2026-06-22
+
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import uart

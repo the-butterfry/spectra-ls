@@ -1,8 +1,17 @@
 <!-- Description: Component-first canonical playback data-fabric architecture for robust multi-source metadata/progress ownership in Spectra LS. -->
-<!-- Version: 2026.06.12.2 -->
-<!-- Last updated: 2026-06-12 -->
+<!-- Version: 2026.06.21.1 -->
+<!-- Last updated: 2026-06-21 -->
 
 # Spectra LS Component Data Fabric Architecture (Canonical Playback Contract)
+
+## Latest implementation note (2026-06-21, passthrough cutover timing override)
+
+- Metadata cutover readiness now supports a bounded passthrough authority posture: when transport is active and title/progress evidence is present but duration remains `0` (common Optical In/line-in behavior), component metadata-prep no longer fail-closes cutover on `playing_with_missing_duration_contract` alone.
+- This override is intentionally scoped to passthrough detection with live metadata/progress evidence and does not relax non-passthrough timing gates.
+- Metadata bridge/trial authority staging is component-first for active cutover execution windows; legacy-authority dependency is removed from bridge-stage authority satisfaction.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (metadata authority/cutover gate hardening under passthrough posture).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; component cutover progression now avoids false legacy lock during passthrough timing-shape gaps.
 
 ## Latest implementation note (2026-06-12, passthrough promotion state continuity)
 

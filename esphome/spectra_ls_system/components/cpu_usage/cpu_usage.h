@@ -1,3 +1,7 @@
+// Description: CPU usage custom sensor component for Spectra ESPHome firmware.
+// Version: 2026.06.22.1
+// Last updated: 2026-06-22
+
 #pragma once
 
 #include <algorithm>

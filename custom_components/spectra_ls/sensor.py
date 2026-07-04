@@ -1,6 +1,6 @@
 # Description: Sensor entities for Spectra LS shadow parity routing surfaces with Phase 3 write-control, Phase 4 diagnostics attributes, and Phase 6/8 control-center settings/readiness/last-attempt visibility, including recorder-safe attribute payload sizing and shared MA authority-contract packet propagation.
-# Version: 2026.06.07.1
-# Last updated: 2026-06-07
+# Version: 2026.06.20.3
+# Last updated: 2026-06-20
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -228,6 +228,13 @@ def _component_ma_backend_profile(data: dict[str, Any]) -> dict[str, Any]:
 def _metadata_value_text(data: dict[str, Any], key: str) -> str:
     values = _metadata_values(data)
     return str(values.get(key, "") or "").strip()
+
+
+def _contract_text(value: Any) -> str:
+    text = str(value or "").strip()
+    if text.lower() in {"", "none", "unknown", "unavailable", "null"}:
+        return ""
+    return text
 
 
 def _component_now_playing_state(entity: CoordinatorEntity) -> Any | None:
@@ -563,7 +570,13 @@ class SpectraLsComponentNowPlayingEntitySensor(CoordinatorEntity, SensorEntity):
     @property
     def native_value(self):
         values = _metadata_values(self.coordinator.data)
-        return str(values.get("now_playing_entity", "") or "").strip()
+        entity = _contract_text(values.get("now_playing_entity", ""))
+        if entity:
+            return entity
+        state_obj = _component_now_playing_state(self)
+        if state_obj is not None:
+            return _contract_text(getattr(state_obj, "entity_id", ""))
+        return ""
 
 
 class SpectraLsComponentNowPlayingStateSensor(CoordinatorEntity, SensorEntity):
@@ -578,7 +591,13 @@ class SpectraLsComponentNowPlayingStateSensor(CoordinatorEntity, SensorEntity):
     @property
     def native_value(self):
         values = _metadata_values(self.coordinator.data)
-        return str(values.get("now_playing_state", "") or "").strip()
+        state_value = _contract_text(values.get("now_playing_state", ""))
+        if state_value:
+            return state_value
+        state_obj = _component_now_playing_state(self)
+        if state_obj is not None:
+            return _contract_text(getattr(state_obj, "state", ""))
+        return ""
 
 
 class SpectraLsComponentNowPlayingTitleSensor(CoordinatorEntity, SensorEntity):
@@ -593,7 +612,11 @@ class SpectraLsComponentNowPlayingTitleSensor(CoordinatorEntity, SensorEntity):
     @property
     def native_value(self):
         values = _metadata_values(self.coordinator.data)
-        return str(values.get("now_playing_title", "") or "").strip()
+        title = _contract_text(values.get("now_playing_title", ""))
+        if title:
+            return title
+        state_obj = _component_now_playing_state(self)
+        return _component_state_attr_text(state_obj, ("media_title", "title", "name"))
 
 
 class SpectraLsComponentNowPlayingFriendlySensor(CoordinatorEntity, SensorEntity):
@@ -703,11 +726,19 @@ class SpectraLsComponentNowPlayingPositionSensor(CoordinatorEntity, SensorEntity
     @property
     def native_value(self):
         values = _metadata_values(self.coordinator.data)
-        raw = values.get("now_playing_position", 0)
+        raw = values.get("now_playing_position")
         try:
             return float(raw)
         except (TypeError, ValueError):
-            return 0.0
+            state_obj = _component_now_playing_state(self)
+            if state_obj is not None:
+                attrs = state_obj.attributes if isinstance(getattr(state_obj, "attributes", {}), dict) else {}
+                fallback = attrs.get("media_position")
+                try:
+                    return float(fallback)
+                except (TypeError, ValueError):
+                    return None
+            return None
 
 
 class SpectraLsComponentNowPlayingDurationSensor(CoordinatorEntity, SensorEntity):
@@ -723,11 +754,34 @@ class SpectraLsComponentNowPlayingDurationSensor(CoordinatorEntity, SensorEntity
     @property
     def native_value(self):
         values = _metadata_values(self.coordinator.data)
-        raw = values.get("now_playing_duration", 0)
+        raw = values.get("now_playing_duration")
         try:
-            return float(raw)
+            parsed = float(raw)
+            if parsed > 0.0:
+                return parsed
         except (TypeError, ValueError):
-            return 0.0
+            pass
+
+        state_obj = _component_now_playing_state(self)
+        if state_obj is not None:
+            attrs = state_obj.attributes if isinstance(getattr(state_obj, "attributes", {}), dict) else {}
+            fallback_duration = attrs.get("media_duration")
+            try:
+                fallback_parsed = float(fallback_duration)
+                if fallback_parsed > 0.0:
+                    return fallback_parsed
+            except (TypeError, ValueError):
+                pass
+
+        helper_duration = values.get("ma_active_duration")
+        try:
+            helper_parsed = float(helper_duration)
+            if helper_parsed > 0.0:
+                return helper_parsed
+        except (TypeError, ValueError):
+            pass
+
+        return None
 
 
 class SpectraLsComponentNowPlayingVolumeSensor(CoordinatorEntity, SensorEntity):
@@ -902,7 +956,7 @@ class SpectraLsComponentMetadataProviderStatusSensor(CoordinatorEntity, SensorEn
             "updated_at": packet.get("updated_at", ""),
             "age_s": packet.get("age_s"),
             "visible": packet.get("visible", False),
-            "source": packet.get("source", "runtime_helper_compatibility_sink"),
+            "source": packet.get("source", "component_packet_missing"),
             "captured_at": data.get("captured_at"),
         }
 
@@ -1344,13 +1398,9 @@ class SpectraLsMetaPolicyStatusSensor(CoordinatorEntity, SensorEntity):
             "meta_policy": policy,
             "suppression_reason": checks.get("now_playing_suppression_reason", ""),
             "fresh_play_signal": checks.get("now_playing_fresh_play_signal"),
-            "now_playing_media_class": values.get("now_playing_media_class", ""),
             "now_playing_preview_key": values.get("now_playing_preview_key", ""),
             "now_playing_display_allowed": values.get("now_playing_display_allowed"),
-            "expected_display_allowed": values.get("expected_display_allowed"),
             "display_contract_consistent": checks.get("now_playing_display_contract_consistent"),
-            "music_guard_active": values.get("music_guard_active"),
-            "non_music_preview_s": values.get("non_music_preview_s"),
             "now_playing_preview_age_s": values.get("now_playing_preview_age_s"),
             "recent_play_progress": checks.get("now_playing_recent_play_progress", None),
             "recent_paused_progress": checks.get("now_playing_recent_paused_progress", None),

@@ -1,6 +1,6 @@
 <!-- Description: Practical setup/deploy/integration guide for Spectra on Home Assistant with clear operator outcomes and failure actions. -->
-<!-- Version: 2026.05.05.2 -->
-<!-- Last updated: 2026-05-05 -->
+<!-- Version: 2026.06.22.3 -->
+<!-- Last updated: 2026-06-22 -->
 
 # User Setup, Deploy, and HA Integration
 
@@ -19,6 +19,12 @@ Target outcome:
 - Parallel migration target: [`custom_components/spectra_ls`](https://github.com/the-butterfry/spectra-ls/tree/main/custom_components/spectra_ls) (in roadmap phases)
 - Discovery-first design remains default
 
+### Program phase snapshot (operator clarity)
+
+- Phase 0 governance baseline is complete.
+- Phase 1 shadow-parity work is complete/validated and kept as baseline reference.
+- Active development is in post-Phase-1 slices; use roadmap notes for the current active queue.
+
 ## What is automated vs manual today
 
 ### Automated (when healthy)
@@ -34,6 +40,12 @@ Target outcome:
 - Initial HA package/runtime placement and include wiring.
 - Token/secret setup for optional automation workflows.
 - Troubleshooting and rollback actions when environment drift occurs.
+
+### Guardrail note for contributors
+
+- Active product logic paths now run a hardcode guard in CI that blocks new install-specific entity IDs/private host literals.
+- If your change legitimately needs a bounded exception, document the rationale in `docs/CHANGELOG.md` in the same slice before review.
+- Keep setup values discovery-first and secret/local-only where environment-specific data is required.
 
 ## Prerequisites
 
@@ -84,6 +96,7 @@ You can now stage core control-center mappings from the Spectra integration itse
 
 - Integration options (Configure on `Spectra LS`) now include:
   - **Single-step form:** read-only mode + mapping preset + encoder turn/press/long-press actions + button 1–4 scene bindings.
+  - **Setup-policy foundation (new):** guided capture fields for routing/metadata entity include/exclude lists (`media_player.*`) so each install can explicitly curate entity participation without patching tracked code.
 - Recommended fast-remap workflow:
   1. choose a mapping preset,
   2. adjust any per-input actions/scenes you want,

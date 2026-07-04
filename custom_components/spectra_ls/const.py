@@ -1,6 +1,6 @@
 # Description: Constants for Spectra LS custom integration shadow parity, Phase 3 guarded routing write-path controls, Phase 4 diagnostics scaffolding (F4-S01/F4-S03), Phase 5 metadata trial contract service, and Phase 6/8 control-center settings and fast-remap preset contracts including startup MA-readiness gating constants and selection-ownership migration services.
-# Version: 2026.05.04.6
-# Last updated: 2026-05-04
+# Version: 2026.06.22.2
+# Last updated: 2026-06-22
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -56,10 +56,8 @@ PLATFORMS: tuple[Platform, ...] = (
 ENTRY_TITLE = "Spectra LS"
 SINGLETON_UNIQUE_ID = "spectra_ls_shadow"
 
-WRITE_AUTH_LEGACY = "legacy"
 WRITE_AUTH_COMPONENT = "component"
 WRITE_AUTH_ALLOWED: tuple[str, ...] = (
-    WRITE_AUTH_LEGACY,
     WRITE_AUTH_COMPONENT,
 )
 WRITE_DEBOUNCE_SECONDS = 2.0
@@ -220,6 +218,11 @@ OPT_BUTTON_3_SCENE = "button_3_scene"
 OPT_BUTTON_4_SCENE = "button_4_scene"
 OPT_MAPPING_PRESET = "mapping_preset"
 OPT_DEFAULT_WRITE_AUTHORITY_MODE = "default_write_authority_mode"
+OPT_SETUP_POLICY_ENABLED = "setup_policy_enabled"
+OPT_SETUP_ROUTING_INCLUDE_ENTITIES = "setup_routing_include_entities"
+OPT_SETUP_ROUTING_EXCLUDE_ENTITIES = "setup_routing_exclude_entities"
+OPT_SETUP_METADATA_INCLUDE_ENTITIES = "setup_metadata_include_entities"
+OPT_SETUP_METADATA_EXCLUDE_ENTITIES = "setup_metadata_exclude_entities"
 
 CONTROL_CENTER_ACTIONS: tuple[str, ...] = (
     "volume",
@@ -273,7 +276,7 @@ CONTROL_CENTER_PRESET_VALUES: dict[str, dict[str, Any]] = {
 }
 
 CONTROL_CENTER_DEFAULTS: dict[str, Any] = {
-    OPT_READ_ONLY_MODE: True,
+    OPT_READ_ONLY_MODE: False,
     OPT_MAPPING_PRESET: "custom",
     OPT_ENCODER_TURN_ACTION: "volume",
     OPT_ENCODER_PRESS_ACTION: "scene_quick_trigger",
@@ -282,6 +285,14 @@ CONTROL_CENTER_DEFAULTS: dict[str, Any] = {
     OPT_BUTTON_2_SCENE: "scene.none",
     OPT_BUTTON_3_SCENE: "scene.none",
     OPT_BUTTON_4_SCENE: "scene.none",
+}
+
+SETUP_POLICY_DEFAULTS: dict[str, Any] = {
+    OPT_SETUP_POLICY_ENABLED: True,
+    OPT_SETUP_ROUTING_INCLUDE_ENTITIES: [],
+    OPT_SETUP_ROUTING_EXCLUDE_ENTITIES: [],
+    OPT_SETUP_METADATA_INCLUDE_ENTITIES: [],
+    OPT_SETUP_METADATA_EXCLUDE_ENTITIES: [],
 }
 
 CONTROL_CENTER_INPUT_EVENTS: tuple[str, ...] = (
@@ -293,6 +304,51 @@ CONTROL_CENTER_INPUT_EVENTS: tuple[str, ...] = (
     "button_3",
     "button_4",
 )
+
+
+def _normalize_entity_list(raw_value: Any) -> list[str]:
+    """Normalize setup entity lists into deterministic deduped entity_id arrays."""
+    values: list[str] = []
+    if isinstance(raw_value, list):
+        values = [str(item or "").strip().lower() for item in raw_value]
+    elif isinstance(raw_value, tuple):
+        values = [str(item or "").strip().lower() for item in raw_value]
+    elif isinstance(raw_value, str):
+        values = [part.strip().lower() for part in raw_value.split(",")]
+
+    normalized: list[str] = []
+    for entity_id in values:
+        if not entity_id:
+            continue
+        if "." not in entity_id:
+            continue
+        domain, object_id = entity_id.split(".", 1)
+        if not domain or not object_id:
+            continue
+        if entity_id not in normalized:
+            normalized.append(entity_id)
+    return normalized
+
+
+def normalize_setup_entity_policy(raw_options: Mapping[str, Any] | None) -> dict[str, Any]:
+    """Return normalized setup-policy options for guided include/exclude capture."""
+    options = dict(SETUP_POLICY_DEFAULTS)
+    if raw_options is None:
+        return options
+
+    raw_enabled = raw_options.get(OPT_SETUP_POLICY_ENABLED)
+    if isinstance(raw_enabled, bool):
+        options[OPT_SETUP_POLICY_ENABLED] = raw_enabled
+
+    for key in (
+        OPT_SETUP_ROUTING_INCLUDE_ENTITIES,
+        OPT_SETUP_ROUTING_EXCLUDE_ENTITIES,
+        OPT_SETUP_METADATA_INCLUDE_ENTITIES,
+        OPT_SETUP_METADATA_EXCLUDE_ENTITIES,
+    ):
+        options[key] = _normalize_entity_list(raw_options.get(key, options[key]))
+
+    return options
 
 
 def normalize_control_center_settings(raw_options: Mapping[str, Any] | None) -> dict[str, Any]:

@@ -1,6 +1,6 @@
 <!-- Description: Engineering rigor baseline for custom-component migration decisions, contract inventory, and explicit tough-spot tracking. -->
-<!-- Version: 2026.05.03.3 -->
-<!-- Last updated: 2026-05-03 -->
+<!-- Version: 2026.06.22.2 -->
+<!-- Last updated: 2026-06-22 -->
 
 # NOTES — Engineering Rigor Baseline
 
@@ -11,6 +11,29 @@
 - No install-specific hardcodes in tracked product logic.
 - Discovery-first + capability-mapped behavior by default.
 - If evidence is incomplete, say exactly what is missing and block risky progression.
+
+## Phase-0 hardcode guard policy (active)
+
+- New install-specific hardcoded entity IDs/private IP literals are blocked in active product logic paths.
+- Guard scope: `custom_components/spectra_ls/**`, `packages/**`, `esphome/spectra_ls_system/**`.
+- Enforcement path: CI workflow `Hardcode Guard` with changed-files audit script `bin/audit_hardcoded_entities.py`.
+- Contract-safe prefixes are explicitly allowlisted in the audit script (for example `sensor.ma_*`, `sensor.component_*`, `sensor.spectra_ls_*`, `number.control_board_v2_*`).
+- Exceptions are not silent: if a bounded exception is required, it must be documented in `docs/CHANGELOG.md` with rationale in the same slice.
+
+## Residual exposure split + universal handler execution (required)
+
+Use this split before mutating any residual literal findings:
+
+- `acceptable historical/reference`: archive evidence snapshots, local-only historical debug payloads, and intentionally bounded local notes that are not active product defaults.
+- `sanitize now`: active runbooks/roadmaps/governance docs and portable default examples that could propagate install-specific values.
+
+Universal handlers (apply in every remaining phase):
+
+- Add changelog-first entry with two-track disposition before sanitization edits.
+- Replace install-specific host/IP literals with placeholders (`<ha_host>`, `<device_ip>`, `<wled_host_or_ip>`).
+- Replace install-specific entity examples/defaults with contract-safe placeholders (`light.<target_light>`, `media_player.<target_player>`).
+- Preserve behavior/contract meaning; mutate literals only.
+- Record P1/P2/P3 impact check (`ownership reassignment` vs `portability/governance hardening`).
 
 ## Evidence boundary (explicit)
 

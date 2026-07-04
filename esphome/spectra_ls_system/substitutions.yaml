@@ -1,5 +1,5 @@
 # Description: Spectra LS System substitutions for ESPHome main config and packages.
-# Version: 2026.06.22.2
+# Version: 2026.06.22.8
 # Last updated: 2026-06-22
 # Spectra LS substitutions scoped to spectra_ls_system.
 # Use absolute paths for assets so this file can move with spectra_ls_system.
@@ -49,7 +49,7 @@ eq_max: "10"
 # Purpose: transport-level pacing, duplicate suppression, and failure handling.
 # Gain: tune per-network stability without editing C++.
 # Risk: very low pacing can flood weak links; very high pacing can feel sluggish.
-arylic_tcp_timeout_ms: "320"
+arylic_tcp_timeout_ms: "1200"
 arylic_tcp_min_interval_ms: "45"
 arylic_tcp_dup_suppress_ms: "45"
 arylic_tcp_backoff_ms: "220"
@@ -89,7 +89,7 @@ arylic_http_backoff_first_ms: "8000"
 arylic_http_backoff_second_ms: "20000"
 arylic_http_backoff_third_ms: "45000"
 arylic_http_backoff_max_ms: "120000"
-arylic_http_enabled: "true"
+arylic_http_enabled: "false"
 arylic_http_diag_log_enabled: "false"
 arylic_http_diag_log_interval_ms: "5000"
 

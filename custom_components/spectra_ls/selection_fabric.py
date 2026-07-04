@@ -1,6 +1,6 @@
 # Description: Selection-fabric workflow for Spectra LS scheduler, target-options, and helper write orchestration extracted from meta-fabric.
-# Version: 2026.05.04.5
-# Last updated: 2026-05-04
+# Version: 2026.06.30.1
+# Last updated: 2026-06-30
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -18,7 +18,6 @@ from .const import (
     LEGACY_OVERRIDE_ACTIVE,
     LEGACY_ROOMS_JSON,
     WRITE_AUTH_COMPONENT,
-    WRITE_AUTH_LEGACY,
 )
 from .write_path_fabric import WritePathFabric
 
@@ -34,6 +33,48 @@ class SelectionFabricWorkflow:
         if value and value not in seen:
             seen.add(value)
             target_list.append(value)
+
+    def _new_write_result(
+        self,
+        *,
+        requested_at: str,
+        correlation_id: str,
+        dry_run: bool,
+        force: bool,
+        extra: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Build a standard pending write result payload for guarded write workflows."""
+        result: dict[str, Any] = {
+            "status": "pending",
+            "reason": "",
+            "requested_at": requested_at,
+            "completed_at": requested_at,
+            "correlation_id": correlation_id,
+            "authority_mode": self._coordinator._write_authority_mode,
+            "dry_run": bool(dry_run),
+            "force": bool(force),
+        }
+        if extra:
+            result.update(extra)
+        return result
+
+    def _apply_component_write_guards(
+        self,
+        *,
+        result: dict[str, Any],
+        force: bool,
+        dry_run: bool,
+        authority_block_reason: str,
+    ) -> None:
+        """Apply standard component-authority write guards to a pending result payload."""
+        WritePathFabric.apply_standard_write_guards(
+            self._coordinator,
+            result,
+            force=bool(force),
+            dry_run=bool(dry_run),
+            authority_required=WRITE_AUTH_COMPONENT,
+            authority_block_reason=authority_block_reason,
+        )
 
     def compute_component_target_options_plan(self) -> dict[str, Any]:
         """Compute deterministic component target-options plan from helpers/registry/runtime surfaces."""
@@ -342,85 +383,6 @@ class SelectionFabricWorkflow:
                     "Helper current target fallback rejected because target is not in helper options"
                 )
 
-        if c._write_authority_mode == WRITE_AUTH_LEGACY:
-            helper_state = c.hass.states.get(LEGACY_ACTIVE_TARGET_HELPER)
-            helper_current = str(helper_state.state if helper_state is not None else "").strip()
-            helper_options: list[str] = []
-            if helper_state is not None:
-                helper_options = WritePathFabric.normalize_options(helper_state.attributes.get("options", []))
-
-            helper_current_resolved = c._is_resolved_state(helper_current)
-            helper_current_in_options = helper_current_resolved and helper_current in helper_options
-            if helper_current_in_options:
-                helper_entry = entries.get(helper_current, {}) if isinstance(entries.get(helper_current, {}), dict) else {}
-                helper_host = str(helper_entry.get("host", "") or "").strip()
-                helper_host_type = str(helper_entry.get("host_type", "legacy_helper") or "legacy_helper")
-                helper_resolver_module = str(
-                    helper_entry.get("resolver_module", "legacy_helper_authority")
-                    or "legacy_helper_authority"
-                )
-                helper_control_capable = bool(helper_entry.get("control_capable", False))
-                helper_host_resolved = c._is_resolved_state(helper_host)
-                helper_feature_profile = (
-                    helper_entry.get("feature_profile", {})
-                    if isinstance(helper_entry.get("feature_profile", {}), dict)
-                    else {}
-                )
-                helper_availability_quality = str(
-                    helper_feature_profile.get("availability_quality", "legacy_helper_authority")
-                    or "legacy_helper_authority"
-                )
-                if helper_control_capable and helper_host_resolved:
-                    selected = {
-                        "target": helper_current,
-                        "score": 9999.0,
-                        "host": helper_host,
-                        "host_type": helper_host_type,
-                        "resolver_module": helper_resolver_module,
-                        "control_capable": helper_control_capable,
-                        "availability_quality": helper_availability_quality,
-                        "observed_capability_count": 0,
-                        "empirical_bonus": 0.0,
-                        "score_breakdown": {
-                            "legacy_authority_pin": 9999,
-                        },
-                        "scheduler_profile": {
-                            "selection_mode": "legacy_helper_authority",
-                        },
-                    }
-
-                    filtered_top = [
-                        item for item in top if str(item.get("target", "") or "") != helper_current
-                    ]
-                    top = [selected, *filtered_top][:max_results]
-                else:
-                    legacy_fallback = None
-                    for item in top:
-                        item_host = str(item.get("host", "") or "").strip()
-                        item_control_capable = bool(item.get("control_capable", False))
-                        if item_control_capable and c._is_resolved_state(item_host):
-                            legacy_fallback = item
-                            break
-
-                    if legacy_fallback is not None:
-                        selected = dict(legacy_fallback)
-                        selected["scheduler_profile"] = {
-                            "selection_mode": "legacy_helper_authority_fallback",
-                        }
-                        selected_target = str(selected.get("target", "") or "")
-                        filtered_top = [
-                            item for item in top if str(item.get("target", "") or "") != selected_target
-                        ]
-                        top = [selected, *filtered_top][:max_results]
-                    else:
-                        selected = None
-                        top = [
-                            item
-                            for item in top
-                            if bool(item.get("control_capable", False))
-                            and c._is_resolved_state(str(item.get("host", "") or ""))
-                        ][:max_results]
-
         status = "selected" if selected is not None else "no_candidate"
         selection_mode = str(
             selected.get("scheduler_profile", {}).get("selection_mode", "")
@@ -429,28 +391,12 @@ class SelectionFabricWorkflow:
         )
         if selected is None:
             reason = helper_fallback_reason or "No candidates satisfied scheduler policy"
-        elif selection_mode == "legacy_helper_authority":
-            reason = "Legacy authority mode pins scheduler selection to helper current target"
-        elif selection_mode == "legacy_helper_authority_fallback":
-            reason = (
-                "Legacy helper target is not control-capable or host-resolved; using highest-ranked control-host candidate"
-            )
         elif selection_mode == "helper_current_fallback":
             reason = "Using helper current target fallback because scheduler ranking produced no candidates"
         else:
             reason = "Highest scored candidate selected"
 
-        if c._write_authority_mode == WRITE_AUTH_LEGACY and selected is None:
-            candidate_count = len(
-                [
-                    item
-                    for item in ranked
-                    if bool(item.get("control_capable", False))
-                    and c._is_resolved_state(str(item.get("host", "") or ""))
-                ]
-            )
-        else:
-            candidate_count = len(ranked)
+        candidate_count = len(ranked)
         if selected is not None and candidate_count == 0:
             candidate_count = 1
 
@@ -549,38 +495,34 @@ class SelectionFabricWorkflow:
         selected_target = str(decision.get("selected_target", "") or "").strip()
         helper_state = c.hass.states.get(LEGACY_ACTIVE_TARGET_HELPER)
 
-        result: dict[str, Any] = {
-            "status": "pending",
-            "reason": "",
-            "requested_at": requested_at,
-            "completed_at": requested_at,
-            "correlation_id": corr,
-            "dry_run": bool(dry_run),
-            "force": bool(force),
-            "authority_mode": c._write_authority_mode,
-            "target_helper_entity": LEGACY_ACTIVE_TARGET_HELPER,
-            "host_cutover_gate_status": str(host_cutover_gate.get("status", "blocked") or "blocked"),
-            "host_cutover_gate_ready": bool(host_cutover_gate.get("ready_for_cutover", False)),
-            "host_cutover_gate_blockers": host_cutover_gate.get("gate_blockers", []),
-            **decision,
-        }
+        result: dict[str, Any] = self._new_write_result(
+            requested_at=requested_at,
+            correlation_id=corr,
+            dry_run=dry_run,
+            force=force,
+            extra={
+                "target_helper_entity": LEGACY_ACTIVE_TARGET_HELPER,
+                "host_cutover_gate_status": str(host_cutover_gate.get("status", "blocked") or "blocked"),
+                "host_cutover_gate_ready": bool(host_cutover_gate.get("ready_for_cutover", False)),
+                "host_cutover_gate_blockers": host_cutover_gate.get("gate_blockers", []),
+                **decision,
+            },
+        )
 
         if not selected_target:
             result["status"] = "blocked_no_candidate"
             result["reason"] = "Scheduler produced no selected target"
         elif c._write_authority_mode != WRITE_AUTH_COMPONENT:
             result["status"] = "blocked_authority"
-            result["reason"] = "Write authority is legacy; scheduler apply is intentionally blocked"
+            result["reason"] = "Component-only authority required; scheduler apply is blocked"
         elif not bool(host_cutover_gate.get("ready_for_cutover", False)):
             result["status"] = "blocked_host_cutover_gate"
             result["reason"] = "Host-control cutover gate is not ready; scheduler apply is intentionally blocked"
-        WritePathFabric.apply_standard_write_guards(
-            c,
-            result,
-            force=bool(force),
-            dry_run=bool(dry_run),
-            authority_required=WRITE_AUTH_COMPONENT,
-            authority_block_reason="Write authority is legacy; scheduler apply is intentionally blocked",
+        self._apply_component_write_guards(
+            result=result,
+            force=force,
+            dry_run=dry_run,
+            authority_block_reason="Component-only authority required; scheduler apply is blocked",
         )
 
         if result["status"] == "pending" and helper_state is None:
@@ -679,34 +621,30 @@ class SelectionFabricWorkflow:
         if len(proposed_options) == 0:
             proposed_options = ["none"]
 
-        result: dict[str, Any] = {
-            "status": "pending",
-            "reason": "",
-            "requested_at": requested_at,
-            "completed_at": requested_at,
-            "correlation_id": corr,
-            "authority_mode": c._write_authority_mode,
-            "helper_entity": helper_entity,
-            "helper_exists": helper_state is not None,
-            "dry_run": bool(dry_run),
-            "force": bool(force),
-            "include_none": bool(include_none),
-            "planned_options": proposed_options,
-            "default_option": str(plan.get("default_option", "none") or "none"),
-            "applied_options": [],
-            "candidate_count": len(candidates),
-        }
+        result: dict[str, Any] = self._new_write_result(
+            requested_at=requested_at,
+            correlation_id=corr,
+            dry_run=dry_run,
+            force=force,
+            extra={
+                "helper_entity": helper_entity,
+                "helper_exists": helper_state is not None,
+                "include_none": bool(include_none),
+                "planned_options": proposed_options,
+                "default_option": str(plan.get("default_option", "none") or "none"),
+                "applied_options": [],
+                "candidate_count": len(candidates),
+            },
+        )
 
         if helper_state is None:
             result["status"] = "blocked_missing_target_helper"
             result["reason"] = "Target helper entity is missing"
-        WritePathFabric.apply_standard_write_guards(
-            c,
-            result,
-            force=bool(force),
-            dry_run=bool(dry_run),
-            authority_required=WRITE_AUTH_COMPONENT,
-            authority_block_reason="Write authority is legacy; target-options apply is intentionally blocked",
+        self._apply_component_write_guards(
+            result=result,
+            force=force,
+            dry_run=dry_run,
+            authority_block_reason="Component-only authority required; target-options apply is blocked",
         )
 
         if result["status"] == "pending" and dry_run:
@@ -809,9 +747,31 @@ class SelectionFabricWorkflow:
 
         helper_current_resolved = c._is_resolved_state(helper_current)
         helper_current_in_options = helper_current_resolved and helper_current in helper_options
-        if helper_current_in_options and not force:
+        helper_current_state_norm = ""
+        selected_target_state_norm = ""
+        if helper_current_resolved:
+            helper_current_state = c.hass.states.get(helper_current)
+            if helper_current_state is not None:
+                helper_current_state_norm = c._normalize_state(str(helper_current_state.state or ""))
+        if c._is_resolved_state(selected_target):
+            selected_target_state = c.hass.states.get(selected_target)
+            if selected_target_state is not None:
+                selected_target_state_norm = c._normalize_state(str(selected_target_state.state or ""))
+
+        detected_active_override = (
+            helper_current_in_options
+            and not force
+            and selected_target != helper_current
+            and c._is_resolved_state(selected_target)
+            and selected_target_state_norm in {"playing", "paused"}
+            and helper_current_state_norm not in {"playing", "paused"}
+        )
+
+        if helper_current_in_options and not force and not detected_active_override:
             selected_target = helper_current
             selection_reason = "component_sticky_current_target"
+        elif detected_active_override:
+            selection_reason = "active_candidate_promoted_over_idle_current"
         if selected_target == "" and helper_current_in_options:
             selected_target = helper_current
             selection_reason = "helper_current_fallback"
@@ -827,24 +787,22 @@ class SelectionFabricWorkflow:
         if include_none and "none" not in planned_options:
             planned_options = ["none"] + planned_options
 
-        result: dict[str, Any] = {
-            "status": "pending",
-            "reason": "",
-            "requested_at": requested_at,
-            "completed_at": requested_at,
-            "correlation_id": corr,
-            "authority_mode": c._write_authority_mode,
-            "helper_entity": helper_entity,
-            "helper_exists": helper_state is not None,
-            "dry_run": bool(dry_run),
-            "force": bool(force),
-            "sync_options_if_missing": bool(sync_options_if_missing),
-            "include_none": bool(include_none),
-            "selected_target": selected_target,
-            "selection_reason": selection_reason,
-            "helper_current": helper_current,
-            "helper_options_count": len(helper_options),
-        }
+        result: dict[str, Any] = self._new_write_result(
+            requested_at=requested_at,
+            correlation_id=corr,
+            dry_run=dry_run,
+            force=force,
+            extra={
+                "helper_entity": helper_entity,
+                "helper_exists": helper_state is not None,
+                "sync_options_if_missing": bool(sync_options_if_missing),
+                "include_none": bool(include_none),
+                "selected_target": selected_target,
+                "selection_reason": selection_reason,
+                "helper_current": helper_current,
+                "helper_options_count": len(helper_options),
+            },
+        )
 
         if selected_target == "":
             result["status"] = "blocked_no_candidate"
@@ -852,13 +810,11 @@ class SelectionFabricWorkflow:
         elif helper_state is None:
             result["status"] = "blocked_missing_target_helper"
             result["reason"] = "Target helper entity is missing"
-        WritePathFabric.apply_standard_write_guards(
-            c,
-            result,
-            force=bool(force),
-            dry_run=bool(dry_run),
-            authority_required=WRITE_AUTH_COMPONENT,
-            authority_block_reason="Write authority is legacy; auto-select apply is intentionally blocked",
+        self._apply_component_write_guards(
+            result=result,
+            force=force,
+            dry_run=dry_run,
+            authority_block_reason="Component-only authority required; auto-select apply is blocked",
         )
 
         if result["status"] == "pending" and selected_target not in helper_options:
@@ -948,20 +904,18 @@ class SelectionFabricWorkflow:
         last_valid_state = c.hass.states.get(LEGACY_LAST_VALID_TARGET)
         helper_current = str(helper_state.state if helper_state is not None else "").strip()
 
-        result: dict[str, Any] = {
-            "status": "pending",
-            "reason": "",
-            "requested_at": requested_at,
-            "completed_at": requested_at,
-            "correlation_id": corr,
-            "source": source,
-            "authority_mode": c._write_authority_mode,
-            "dry_run": bool(dry_run),
-            "force": bool(force),
-            "helper_entity": LEGACY_ACTIVE_TARGET_HELPER,
-            "last_valid_entity": LEGACY_LAST_VALID_TARGET,
-            "tracked_target": helper_current,
-        }
+        result: dict[str, Any] = self._new_write_result(
+            requested_at=requested_at,
+            correlation_id=corr,
+            dry_run=dry_run,
+            force=force,
+            extra={
+                "source": source,
+                "helper_entity": LEGACY_ACTIVE_TARGET_HELPER,
+                "last_valid_entity": LEGACY_LAST_VALID_TARGET,
+                "tracked_target": helper_current,
+            },
+        )
 
         if helper_state is None:
             result["status"] = "blocked_missing_target_helper"
@@ -972,13 +926,11 @@ class SelectionFabricWorkflow:
         elif not c._is_resolved_state(helper_current):
             result["status"] = "blocked_unresolved_target"
             result["reason"] = "Current helper target is unresolved and cannot be tracked"
-        WritePathFabric.apply_standard_write_guards(
-            c,
-            result,
-            force=bool(force),
-            dry_run=bool(dry_run),
-            authority_required=WRITE_AUTH_COMPONENT,
-            authority_block_reason="Write authority is legacy; last-valid tracking write is intentionally blocked",
+        self._apply_component_write_guards(
+            result=result,
+            force=force,
+            dry_run=dry_run,
+            authority_block_reason="Component-only authority required; last-valid tracking write is blocked",
         )
 
         if result["status"] == "pending":
@@ -1053,22 +1005,20 @@ class SelectionFabricWorkflow:
             last_valid_target if c._is_resolved_state(last_valid_target) and last_valid_target in helper_options else ""
         )
 
-        result: dict[str, Any] = {
-            "status": "pending",
-            "reason": "",
-            "requested_at": requested_at,
-            "completed_at": requested_at,
-            "correlation_id": corr,
-            "authority_mode": c._write_authority_mode,
-            "dry_run": bool(dry_run),
-            "force": bool(force),
-            "helper_entity": LEGACY_ACTIVE_TARGET_HELPER,
-            "last_valid_entity": LEGACY_LAST_VALID_TARGET,
-            "helper_current": helper_current,
-            "last_valid_target": last_valid_target,
-            "restore_target": restore_candidate,
-            "helper_options_count": len(helper_options),
-        }
+        result: dict[str, Any] = self._new_write_result(
+            requested_at=requested_at,
+            correlation_id=corr,
+            dry_run=dry_run,
+            force=force,
+            extra={
+                "helper_entity": LEGACY_ACTIVE_TARGET_HELPER,
+                "last_valid_entity": LEGACY_LAST_VALID_TARGET,
+                "helper_current": helper_current,
+                "last_valid_target": last_valid_target,
+                "restore_target": restore_candidate,
+                "helper_options_count": len(helper_options),
+            },
+        )
 
         if helper_state is None:
             result["status"] = "blocked_missing_target_helper"
@@ -1082,13 +1032,11 @@ class SelectionFabricWorkflow:
         elif restore_candidate == "":
             result["status"] = "blocked_no_last_valid_candidate"
             result["reason"] = "No restorable last-valid target is present in current helper options"
-        WritePathFabric.apply_standard_write_guards(
-            c,
-            result,
-            force=bool(force),
-            dry_run=bool(dry_run),
-            authority_required=WRITE_AUTH_COMPONENT,
-            authority_block_reason="Write authority is legacy; restore-last-valid write is intentionally blocked",
+        self._apply_component_write_guards(
+            result=result,
+            force=force,
+            dry_run=dry_run,
+            authority_block_reason="Component-only authority required; restore-last-valid write is blocked",
         )
 
         if result["status"] == "pending" and helper_current == restore_candidate:
@@ -1174,23 +1122,21 @@ class SelectionFabricWorkflow:
             else:
                 next_target = cycle_options[0]
 
-        result: dict[str, Any] = {
-            "status": "pending",
-            "reason": "",
-            "requested_at": requested_at,
-            "completed_at": requested_at,
-            "correlation_id": corr,
-            "authority_mode": c._write_authority_mode,
-            "dry_run": bool(dry_run),
-            "force": bool(force),
-            "include_none": bool(include_none),
-            "helper_entity": LEGACY_ACTIVE_TARGET_HELPER,
-            "override_entity": LEGACY_OVERRIDE_ACTIVE,
-            "helper_current": helper_current,
-            "helper_options_count": len(helper_options),
-            "cycle_options_count": len(cycle_options),
-            "next_target": next_target,
-        }
+        result: dict[str, Any] = self._new_write_result(
+            requested_at=requested_at,
+            correlation_id=corr,
+            dry_run=dry_run,
+            force=force,
+            extra={
+                "include_none": bool(include_none),
+                "helper_entity": LEGACY_ACTIVE_TARGET_HELPER,
+                "override_entity": LEGACY_OVERRIDE_ACTIVE,
+                "helper_current": helper_current,
+                "helper_options_count": len(helper_options),
+                "cycle_options_count": len(cycle_options),
+                "next_target": next_target,
+            },
+        )
 
         if helper_state is None:
             result["status"] = "blocked_missing_target_helper"
@@ -1201,13 +1147,11 @@ class SelectionFabricWorkflow:
         elif next_target == "":
             result["status"] = "blocked_no_next_target"
             result["reason"] = "Unable to derive next cycle target"
-        WritePathFabric.apply_standard_write_guards(
-            c,
-            result,
-            force=bool(force),
-            dry_run=bool(dry_run),
-            authority_required=WRITE_AUTH_COMPONENT,
-            authority_block_reason="Write authority is legacy; cycle-target write is intentionally blocked",
+        self._apply_component_write_guards(
+            result=result,
+            force=force,
+            dry_run=dry_run,
+            authority_block_reason="Component-only authority required; cycle-target write is blocked",
         )
 
         if result["status"] == "pending" and len(cycle_options) == 1 and helper_current == next_target:
@@ -1295,23 +1239,21 @@ class SelectionFabricWorkflow:
         if helper_state is not None:
             helper_options = WritePathFabric.normalize_options(helper_state.attributes.get("options", []))
 
-        result: dict[str, Any] = {
-            "status": "pending",
-            "reason": "",
-            "requested_at": requested_at,
-            "completed_at": requested_at,
-            "correlation_id": corr,
-            "authority_mode": c._write_authority_mode,
-            "dry_run": bool(dry_run),
-            "force": bool(force),
-            "sync_options_if_missing": bool(sync_options_if_missing),
-            "helper_entity": LEGACY_ACTIVE_TARGET_HELPER,
-            "helper_exists": helper_state is not None,
-            "helper_current": helper_current,
-            "helper_options_count": len(helper_options),
-            "requested_target": requested_target,
-            "selected_target": requested_target,
-        }
+        result: dict[str, Any] = self._new_write_result(
+            requested_at=requested_at,
+            correlation_id=corr,
+            dry_run=dry_run,
+            force=force,
+            extra={
+                "sync_options_if_missing": bool(sync_options_if_missing),
+                "helper_entity": LEGACY_ACTIVE_TARGET_HELPER,
+                "helper_exists": helper_state is not None,
+                "helper_current": helper_current,
+                "helper_options_count": len(helper_options),
+                "requested_target": requested_target,
+                "selected_target": requested_target,
+            },
+        )
 
         if requested_target == "" or not c._is_resolved_state(requested_target):
             result["status"] = "blocked_invalid_target"
@@ -1323,13 +1265,11 @@ class SelectionFabricWorkflow:
             result["status"] = "blocked_missing_target_helper"
             result["reason"] = "Target helper entity is missing"
 
-        WritePathFabric.apply_standard_write_guards(
-            c,
-            result,
-            force=bool(force),
-            dry_run=bool(dry_run),
-            authority_required=WRITE_AUTH_COMPONENT,
-            authority_block_reason="Write authority is legacy; explicit target set is intentionally blocked",
+        self._apply_component_write_guards(
+            result=result,
+            force=force,
+            dry_run=dry_run,
+            authority_block_reason="Component-only authority required; explicit target set is blocked",
         )
 
         if result["status"] == "pending" and requested_target not in helper_options:

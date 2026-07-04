@@ -1,6 +1,6 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.06.05.1 -->
-<!-- Last updated: 2026-06-05 -->
+<!-- Version: 2026.06.22.4 -->
+<!-- Last updated: 2026-06-22 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
 
@@ -8,9 +8,84 @@
 > Audience: Implementation agent working across RP2040 CircuitPython + ESPHome packages + HA helpers.
 > Status: Draft plan. Update as decisions solidify.
 
+## Phase status snapshot (2026-06-22)
+
+- Phase 0 (governance + residual hardcode policy): **completed**.
+- Phase 1 (shadow parity, read-only): **historical and validated** (`P1-S01` implemented; no reopen required for current lane).
+- Current active execution lane: **post-P1 roadmap slices** (component/runtime parity hardening program; refer to latest run updates and active slice pointers).
+- Operator shorthand: this repo is **past Phase 1**; use Phase-1 notes as baseline context, not active queue.
+
 Operator local deployment note (non-contract, do not hardcode in product logic):
 
-- Current Spectra ESP node management IP: `192.168.10.40`.
+- Current Spectra ESP node management endpoint: `<spectra_esp_mgmt_host>` (store in local-only overlays/secrets, not tracked docs).
+
+Latest run update (2026-06-22, Phase-Setup-1 HA setup-flow foundation):
+
+- parity_stamp: 2026-06-22 / phase-setup-1-ha-setup-flow-foundation / mode=implementation
+- Added component setup-flow foundation for guided include/exclude capture in integration options (`routing` + `metadata` entity policy lists) with normalized persistence and snapshot visibility for downstream selection/metadata enforcement slices.
+- Runtime track disposition: compatibility-shimmed (runtime behavior/contracts unchanged; setup framework seeded in component lane).
+- Component track disposition: implemented (options-flow capture + normalized policy packet surfaced in component write-controls).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; onboarding framework foundation only.
+
+Latest run update (2026-06-22, legacy helper read-lane retirement + ESP fallback telemetry artifact removal):
+
+- parity_stamp: 2026-06-22 / legacy-helper-readlane-retirement-esp-fallback-artifact-removal / mode=implementation
+- Retired active component reads that depended on `input_select.ma_active_target` in control-center target resolution, event/recovery orchestration, and startup boot-readiness checks by switching to component route/scaffold-derived sources.
+- Retired stale ESP fallback telemetry artifact surfaces (`esp_control_fallback_*` globals/sensors) from active runtime package path.
+- Runtime track disposition: implemented (fallback telemetry artifact surfaces removed from active runtime path).
+- Component track disposition: implemented (legacy helper read coupling removed from active component flows touched in this slice).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; helper-coupling/artifact retirement only.
+
+## Universal residual exposure handlers (Phase-0 baseline; apply in all remaining phases)
+
+Use this deterministic handler set whenever residual install-specific literals are discovered during P1/P2/P3 slices.
+
+- **Classify first, then mutate**
+
+- `acceptable historical/reference`: historical evidence packets, archived snapshots, intentionally local operator examples.
+- `sanitize now`: active runbooks, active roadmap/governance docs, defaults/examples that can be portable placeholders.
+
+- **Sanitize-now mutation rules**
+
+- Replace private hosts/IPs with placeholders (`<ha_host>`, `<device_ip>`, `<wled_host_or_ip>`).
+- Replace install-specific entity defaults with contract-safe placeholders (`light.<target_light>`, `media_player.<target_player>`).
+- Keep behavior guidance and decision logic intact; only de-install-specific literals.
+
+- **Two-track parity disposition (required)**
+
+- Runtime track: `implemented`, `compatibility-shimmed`, or `deferred with rationale`.
+- Component track: `implemented`, `compatibility-shimmed`, or `deferred with rationale`.
+- Record both in `docs/CHANGELOG.md` in the same slice.
+
+- **Governance capture (required)**
+
+- Add changelog-first entry before edits.
+- Add/update this universal-handler section reference when policy evolves.
+- Include P1/P2/P3 impact check: ownership reassignment vs portability/governance hardening.
+
+- **No-go conditions**
+
+- No hardcoded install-specific literals introduced into active logic by default examples.
+- No silent exceptions; if a local literal must remain, document explicit rationale + bounded scope.
+
+Latest run update (2026-06-20, TV/movie filtering artifact retirement):
+
+Latest run update (2026-06-21, canonical contract ownership ledger publication):
+
+- parity_stamp: 2026-06-21 / canonical-contract-ownership-ledger / mode=governance
+- Published canonical ownership ledger `docs/architecture/CONTRACT-OWNERSHIP-LEDGER.md` with entity/surface owner-writer-reader-authority-fallback-retirement mapping.
+- Synchronized parity references in `README.md`, `docs/README.md`, `docs/roadmap/v-next-NOTES.md`, and `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`.
+- Runtime track disposition: compatibility-shimmed (docs-only; no runtime behavior mutation).
+- Component track disposition: compatibility-shimmed (docs-only; no component behavior mutation).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; governance visibility and contract-audit clarity hardening only.
+
+- parity_stamp: 2026-06-20 / now-playing-tv-movie-filter-artifact-retirement / mode=implementation
+- Retired active TV/movie filter semantics from runtime now-playing contract surfaces and component parity diagnostics.
+- Runtime now-playing media class is normalized to active-vs-none (`music`/`none`), display-allow contract is active-playback based, and preview-key no longer carries media-class/display-policy bits.
+- Component metadata-prep diagnostics removed music-only expected-display and music-guard artifact checks; diagnostics now focus on contract-surface readiness/freshness consistency.
+- Runtime track disposition: implemented.
+- Component track disposition: implemented.
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; policy artifact retirement and diagnostics simplification only.
 
 Latest run update (2026-05-05, CA-S02A resolver determinism scoring matrix + acceptance packet fields):
 
@@ -1702,9 +1777,9 @@ Latest run update (2026-04-29, docs parity sweep):
 
 Latest run update (2026-04-28, MA metadata-provider refresh dispatch):
 
-- Runtime now-playing display policy is refined to explicit Music-Lite semantics: non-music preview window increased to 30s, preview visibility re-arms on fresh preview-key changes, and non-music preview is gated behind an active-music guard (other music playing/paused blocks TV/non-music preview while music remains always display-eligible).
+- Runtime now-playing display policy was refined in this historical slice to a bounded preview posture before later retirement.
 - Runtime track disposition: implemented (active template display-policy contract updated).
-- Component track disposition: implemented (metadata-prep diagnostics now validate runtime media contract surfaces and surface drift on `media_class`/`preview_key`/`display_allowed`/`music_guard_active` semantics).
+- Component track disposition: implemented (metadata-prep diagnostics validated runtime media contract surfaces and surfaced drift on media/preview/display semantics for that slice).
 - P1/P2/P3 impact check: no source-of-truth ownership change; deterministic display-policy correctness hardening only.
 
 - Runtime track now includes explicit MA metadata-provider refresh dispatch via `script.ma_send_metadata_to_providers` (`metadata/update_metadata`) using resolved now-playing MA URI and existing MA API transport wrapper.

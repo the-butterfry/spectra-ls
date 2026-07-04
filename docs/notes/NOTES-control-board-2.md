@@ -1,3 +1,7 @@
+<!-- Description: Authoritative Control Board v2 design, setup, and operations notes. -->
+<!-- Version: 2026.06.20.1 -->
+<!-- Last updated: 2026-06-20 -->
+
 # Control Board v2 (control-board-2) Notes
 
 These notes are the **authoritative v2 design doc**. They supersede all prior v1/v2 notes in `previous/`.
@@ -27,6 +31,7 @@ Deploy the HA packages, reload, point Spectra L/S to HA, and go — with no YAML
       - `ma_server_url`
       - `ma_ll_token` (include the `Bearer` prefix)
     - Copy those values into **Home Assistant** `secrets.yaml`.
+    - For HA API diagnostics/tooling auth, use Home Assistant long-lived token key `ha_ll_token` from `secrets.yaml` (`/config/secrets.yaml` inside HAOS). Tooling may accept either raw JWT or `Bearer <token>` and normalize automatically.
 
 1. **Drop in HA packages** (copy into `/config/packages/`)
 

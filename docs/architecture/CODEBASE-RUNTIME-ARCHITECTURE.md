@@ -1,6 +1,6 @@
 <!-- Description: Retroactive architecture and feature documentation for the active Spectra LS ESPHome runtime codebase. -->
-<!-- Version: 2026.06.12.3 -->
-<!-- Last updated: 2026-06-12 -->
+<!-- Version: 2026.06.21.2 -->
+<!-- Last updated: 2026-06-21 -->
 
 # Spectra LS Runtime Architecture (Retroactive Baseline)
 
@@ -73,6 +73,11 @@ Owned in `packages/spectra-ls-system.yaml`:
 - Wake overlay path is gated by very recent user input (`idle <= 2.5s`) in both display-state and renderer paths, preventing persistent idle volume-only frames when nothing is actively playing
 - Component metadata-prep now-playing entity selection is metadata-bearing freshness-first (prefer fresh + payload metadata before freshness-only candidates) to avoid first-track stale pinning when a transport-live route entity does not publish per-track metadata
 - Component now-playing entity selection includes scored candidate ordering (fresh signal + payload metadata + recent progress + Music Assistant app/source hints, with stale end-of-track penalties) so active MA metadata carriers outrank stale route-side DLNA carriers during mixed-signal windows
+- Component now-playing candidate intake now includes resolver-selected/best/detected entities in both passthrough and non-passthrough sessions, and scoring now weights metadata richness (title/artist/album/app/source depth) plus stronger MA entity/app hints (including `*_ma` entity naming) to prevent low-fidelity mirror entities from outranking richer MA carriers during radio/app playback
+- Component selection also adds context-anchored MA-rich candidate discovery (token-matched to active target/meta context) and applies a low-fidelity transport-mirror penalty (`DLNA`/`UPnP`/similar sparse carriers without MA hints) to prevent restart-window regressions where mirror entities temporarily outrank richer MA metadata carriers
+- During restart churn, when anchor-token matching is transiently weak, component selection now allows a bounded global MA-rich fallback candidate lane (playing/paused + metadata-rich + MA-hinted) and applies an explicit sparse-transport-title-only penalty so `DLNA` mirror entities without artist/album cannot deterministically pin the winner over richer MA companion entities
+- Component now-playing entity selection is now policy-tier deterministic (passthrough meta-lock → MA-rich fresh/active → transport-fresh → fallback-meta → fallback-any), with explicit hard disqualification of sparse transport mirrors whenever an MA-rich active candidate exists; selector diagnostics now include candidate pool assignment and per-candidate disqualification reasons in metadata prep checks/values for restart-window triage
+- Component now-playing progress continuity now explicitly falls back position/duration to the active route target during passthrough metadata-carrier promotion when selected metadata entities do not expose transport clocks, preserving metadata-rich title/artist selection without dropping OLED/runtime progress contracts
 - OLED cache-rescue is now fail-closed for passthrough no-metadata windows: when source context is passthrough (Optical/Line-In/AUX/Coax/HDMI/ARC) and no current metadata payload exists, stale cached title/artist/album are not resurrected; source hint is only allowed in the active source-popup window
 - Passthrough no-metadata runtime render now keeps a deterministic live source label fallback (for example `Optical In`) during active playback so OLED does not oscillate between stale-title carryover and full blank at track/startup boundaries
 - Passthrough no-text suppression now requires missing playback evidence before forcing blank state; active passthrough windows (playing transport/source context present) remain render-eligible with source-label fallback, while true idle passthrough still fail-closes to blank
@@ -81,6 +86,7 @@ Owned in `packages/spectra-ls-system.yaml`:
 - Passthrough active no-metadata source fallback guard is corrected so live transport playback can promote source-context title fallback outside source-popup windows; unreachable hint-window condition no longer forces blank `audio|oled:-` during active AppleTV/YouTube optical playback
 - Passthrough active no-metadata title fallback now prefers richer non-source context labels (app/friendly) before raw source labels, while retaining source label as source/pill context; this avoids persistent source-only top-line text (`Optical In`) when better display context is available
 - Runtime metadata candidate scoring now de-prioritizes passthrough transport entities that have no title/artist/app payload and prioritizes metadata-bearing app-context entities, reducing active-meta pinning to source-only transport carriers during Optical/Line-In playback chains
+- Component passthrough selector intake now includes bounded upstream origin-candidate discovery (fresh metadata-rich playing/paused entities beyond route-target/resolver lanes), allowing origin carriers such as `media_player.the_oracle_2` to feed component now-playing contracts during Optical/Line-In passthrough sessions instead of source-only transport fallback winners
 - ESP `esp_oled_status` export now mirrors runtime source-context fallback when title metadata is absent but playback evidence and display policy allow rendering, preventing false `audio|oled:-` reports while OLED is showing passthrough source context
 - Runtime passthrough source-only fallback was refined to keep concise source context without injected room/target scrolling text in no-metadata windows
 - Runtime audio control send paths (volume/EQ/source) now rehydrate control hosts from live HA control-host sensors at send time when cache was cleared, preventing post-target-churn `no_hosts` dead windows when HA host value does not emit a fresh change event
@@ -137,7 +143,7 @@ Owned in `packages/spectra-ls-ui.yaml` + `spectra-ls-peripherals.yaml`:
 - dynamic options parsing for room/target/meta/control-target prompts
 - display renderer (splash, menu, now-playing, EQ, lighting, blank)
 - display-state decision script (`compute_display_state`)
-- now-playing progress pipeline keeps cache continuity during HA↔Arylic handoff gaps by holding/projection of last valid progress while playback is active, reducing transient progress-bar dropouts when metadata arrives before stable duration/position updates
+- now-playing progress pipeline uses deterministic metadata-lane-first authority (HA lane for HA-selected metadata, Arylic lane for Arylic-selected metadata) with bounded alternate-lane fallback only when the preferred lane has no valid progress evidence; cached hold/projection remains active for short playback continuity gaps
 
 ### 5) Audio control domain (TCP-only)
 

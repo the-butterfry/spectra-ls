@@ -1,6 +1,6 @@
 {# Description: Deep diagnostic template for meta/OLED/control-host flapping triage and root-cause isolation. #}
-{# Version: 2026.05.02.2 #}
-{# Last updated: 2026-05-02 #}
+{# Version: 2026.06.20.1 #}
+{# Last updated: 2026-06-20 #}
 
 {# =========================
   Meta + OLED + Control-Host Flapping Diagnostic
@@ -62,7 +62,6 @@
 {% set media_class = media_class_raw | lower %}
 {% set display_allowed = is_state('binary_sensor.now_playing_display_allowed', 'on') %}
 {% set preview_key = states('sensor.now_playing_preview_key') %}
-{% set music_guard_active = is_state_attr('binary_sensor.now_playing_display_allowed', 'music_guard_active', true) %}
 {% set preview_age_s = (as_timestamp(now()) - as_timestamp(states.sensor.now_playing_preview_key.last_changed)) | float(9999) if preview_key not in invalid else none %}
 
 {% set metadata_owner = metadata_prep.metadata_authority_owner if metadata_prep.metadata_authority_owner is defined else 'missing' %}
@@ -78,14 +77,8 @@
 {% set esp_has_title = esp_oled_title not in invalid and (esp_oled_title | string | trim) not in ['-', ''] %}
 
 {# ---------- policy coherence ---------- #}
-{% set media_class_valid = media_class in ['music', 'non_music', 'none'] %}
-{% set expected_display =
-  true if media_class == 'music'
-  else (
-    false if media_class in ['none', 'non_music']
-    else false
-  )
-%}
+{% set media_class_valid = media_class in ['music', 'none'] %}
+{% set expected_display = now_playing_entity not in invalid and now_playing_state in ['playing', 'paused'] %}
 {% set display_policy_mismatch = media_class_valid and (display_allowed != expected_display) %}
 {% set oled_policy_mismatch = (not display_allowed) and esp_has_title %}
 
@@ -192,7 +185,6 @@
 - `expected_display_allowed`: **{{ expected_display if media_class_valid else 'n/a' }}**
 - `preview_key`: **{{ preview_key if preview_key not in invalid else 'n/a' }}**
 - `preview_age_s`: **{{ preview_age_s | round(1) if preview_age_s is not none else 'n/a' }}**
-- `music_guard_active`: **{{ music_guard_active }}**
 
 ### ESP render snapshot
 - `esp_control_handoff_status`: **{{ esp_handoff if esp_handoff not in invalid else 'n/a' }}**

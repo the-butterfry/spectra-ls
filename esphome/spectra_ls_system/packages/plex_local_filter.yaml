@@ -1,3 +1,7 @@
+# Description: Plex local-only now-playing filter package with discovery-safe generic Plex source contracts.
+# Version: 2026.06.22.1
+# Last updated: 2026-06-22
+# PARITY DIRECTIVE: Behavior/contract edits here require same-slice parity review and mirrored updates in packages/plex_local_filter.yaml.
 # Plex local-only now-playing filter (package)
 # Copy into Home Assistant packages/ and include via configuration.yaml.
 
@@ -143,9 +147,9 @@ template:
   - sensor:
       - name: plex_sessions_raw_meta_count
         state: >
-          {% set meta = state_attr('sensor.cory_plex_sessions_raw', 'Metadata') %}
+          {% set meta = state_attr('sensor.plex_sessions_raw', 'Metadata') %}
           {% if meta is none %}
-            {% set meta = state_attr('sensor.cory_plex_sessions_raw', 'metadata') %}
+            {% set meta = state_attr('sensor.plex_sessions_raw', 'metadata') %}
           {% endif %}
           {% if meta is mapping and 'Metadata' in meta %}
             {% set meta_list = meta['Metadata'] %}
@@ -158,9 +162,9 @@ template:
 
       - name: plex_session_raw_first_ip
         state: >
-          {% set meta = state_attr('sensor.cory_plex_sessions_raw', 'Metadata') %}
+          {% set meta = state_attr('sensor.plex_sessions_raw', 'Metadata') %}
           {% if meta is none %}
-            {% set meta = state_attr('sensor.cory_plex_sessions_raw', 'metadata') %}
+            {% set meta = state_attr('sensor.plex_sessions_raw', 'metadata') %}
           {% endif %}
           {% if meta is iterable and meta is not string and meta | length > 0 %}
             {% set item = meta[0] %}
@@ -170,9 +174,9 @@ template:
 
       - name: plex_session_raw_first_local
         state: >
-          {% set meta = state_attr('sensor.cory_plex_sessions_raw', 'Metadata') %}
+          {% set meta = state_attr('sensor.plex_sessions_raw', 'Metadata') %}
           {% if meta is none %}
-            {% set meta = state_attr('sensor.cory_plex_sessions_raw', 'metadata') %}
+            {% set meta = state_attr('sensor.plex_sessions_raw', 'metadata') %}
           {% endif %}
           {% if meta is iterable and meta is not string and meta | length > 0 %}
             {% set item = meta[0] %}
@@ -182,9 +186,9 @@ template:
 
       - name: plex_session_raw_first_title
         state: >
-          {% set meta = state_attr('sensor.cory_plex_sessions_raw', 'Metadata') %}
+          {% set meta = state_attr('sensor.plex_sessions_raw', 'Metadata') %}
           {% if meta is none %}
-            {% set meta = state_attr('sensor.cory_plex_sessions_raw', 'metadata') %}
+            {% set meta = state_attr('sensor.plex_sessions_raw', 'metadata') %}
           {% endif %}
           {% if meta is iterable and meta is not string and meta | length > 0 %}
             {% set item = meta[0] %}
@@ -231,9 +235,9 @@ template:
 
       - name: plex_session_allowed_ip_raw
         state: >
-          {% set meta = state_attr('sensor.cory_plex_sessions_raw', 'Metadata') %}
+          {% set meta = state_attr('sensor.plex_sessions_raw', 'Metadata') %}
           {% if meta is none %}
-            {% set meta = state_attr('sensor.cory_plex_sessions_raw', 'metadata') %}
+            {% set meta = state_attr('sensor.plex_sessions_raw', 'metadata') %}
           {% endif %}
           {% if meta is mapping and 'Metadata' in meta %}
             {% set meta_list = meta['Metadata'] %}
@@ -285,9 +289,9 @@ template:
 
       - name: plex_session_allowed_title_raw
         state: >
-          {% set meta = state_attr('sensor.cory_plex_sessions_raw', 'Metadata') %}
+          {% set meta = state_attr('sensor.plex_sessions_raw', 'Metadata') %}
           {% if meta is none %}
-            {% set meta = state_attr('sensor.cory_plex_sessions_raw', 'metadata') %}
+            {% set meta = state_attr('sensor.plex_sessions_raw', 'metadata') %}
           {% endif %}
           {% if meta is mapping and 'Metadata' in meta %}
             {% set meta_list = meta['Metadata'] %}
@@ -368,24 +372,24 @@ template:
           allowed: "{{ is_state('binary_sensor.plex_session_allowed', 'on') }}"
         state: >
           {% if allowed %}
-            {{ states('sensor.cory_plex_now_playing_session') }}
+            {{ states('sensor.plex_now_playing_session') }}
           {% else %}
             idle
           {% endif %}
         attributes:
           media_title: >
-            {{ state_attr('sensor.cory_plex_now_playing_session','media_title') if allowed else '' }}
+            {{ state_attr('sensor.plex_now_playing_session','media_title') if allowed else '' }}
           media_artist: >
-            {{ state_attr('sensor.cory_plex_now_playing_session','media_artist') if allowed else '' }}
+            {{ state_attr('sensor.plex_now_playing_session','media_artist') if allowed else '' }}
           media_album_name: >
-            {{ state_attr('sensor.cory_plex_now_playing_session','media_album_name') if allowed else '' }}
+            {{ state_attr('sensor.plex_now_playing_session','media_album_name') if allowed else '' }}
           source: >
-            {{ state_attr('sensor.cory_plex_now_playing_session','source') if allowed else '' }}
+            {{ state_attr('sensor.plex_now_playing_session','source') if allowed else '' }}
           app_name: >
-            {{ state_attr('sensor.cory_plex_now_playing_session','app_name') if allowed else '' }}
+            {{ state_attr('sensor.plex_now_playing_session','app_name') if allowed else '' }}
           media_position: >
-            {{ state_attr('sensor.cory_plex_now_playing_session','media_position') if allowed else 0 }}
+            {{ state_attr('sensor.plex_now_playing_session','media_position') if allowed else 0 }}
           media_duration: >
-            {{ state_attr('sensor.cory_plex_now_playing_session','media_duration') if allowed else 0 }}
+            {{ state_attr('sensor.plex_now_playing_session','media_duration') if allowed else 0 }}
           volume_level: >
-            {{ state_attr('sensor.cory_plex_now_playing_session','volume_level') if allowed else 0 }}
+            {{ state_attr('sensor.plex_now_playing_session','volume_level') if allowed else 0 }}

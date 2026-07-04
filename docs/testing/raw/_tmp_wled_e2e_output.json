@@ -1,14 +1,14 @@
 {
   "status": "ok",
   "mode": "apply",
-  "ha_url": "http://192.168.10.10:8123",
-  "wled_url": "http://192.168.10.251",
+  "ha_url": "http://<ha_host>:8123",
+  "wled_url": "http://<wled_host_or_ip>",
   "room": "",
   "target_source": "explicit_entities",
   "target_lights": [
-    "light.play_gradient_tube",
-    "light.reading",
-    "light.star_light"
+    "light.<target_light_1>",
+    "light.<target_light_2>",
+    "light.<target_light_3>"
   ],
   "wled": {
     "on": true,
@@ -64,7 +64,7 @@
     "transition": 1.2,
     "results": [
       {
-        "entity_id": "light.play_gradient_tube",
+        "entity_id": "light.<target_light_1>",
         "applied": true,
         "rgb_color": [
           126,
@@ -74,7 +74,7 @@
         "service_result": []
       },
       {
-        "entity_id": "light.reading",
+        "entity_id": "light.<target_light_2>",
         "applied": true,
         "rgb_color": [
           61,
@@ -84,7 +84,7 @@
         "service_result": []
       },
       {
-        "entity_id": "light.star_light",
+        "entity_id": "light.<target_light_3>",
         "applied": true,
         "rgb_color": [
           223,

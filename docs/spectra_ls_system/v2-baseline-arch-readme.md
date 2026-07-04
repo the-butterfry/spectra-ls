@@ -1,3 +1,7 @@
+<!-- Description: Control-board v2 baseline architecture reference for Spectra LS system. -->
+<!-- Version: 2026.06.22.1 -->
+<!-- Last updated: 2026-06-22 -->
+
 # Control Board v2 Baseline Architecture (v2.0)
 
 **Scope:** Current production baseline on ESPHome 2026.03.21.x. This document freezes the *existing* architecture, behaviors, and known ownership conflicts for reference during the v3 refactor.

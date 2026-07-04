@@ -1,0 +1,55 @@
+# Description: Guard workflow that blocks new install-specific hardcoded entity IDs/private IP literals in active product logic paths.
+# Version: 2026.06.22.2
+# Last updated: 2026-06-22
+
+name: Hardcode Guard
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "custom_components/spectra_ls/**"
+      - "packages/**"
+      - "esphome/spectra_ls_system/**"
+      - "bin/audit_hardcoded_entities.py"
+      - "bin/check_spectra_headers.py"
+      - ".github/workflows/hardcode-guard.yml"
+  push:
+    branches: ["main"]
+    paths:
+      - "custom_components/spectra_ls/**"
+      - "packages/**"
+      - "esphome/spectra_ls_system/**"
+      - "bin/audit_hardcoded_entities.py"
+      - "bin/check_spectra_headers.py"
+      - ".github/workflows/hardcode-guard.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run install-specific hardcode audit
+        run: |
+          set -euo pipefail
+          python3 bin/audit_hardcoded_entities.py --base-ref origin/main
+
+      - name: Run Spectra metadata-header audit
+        run: |
+          set -euo pipefail
+          python3 bin/check_spectra_headers.py --base-ref origin/main

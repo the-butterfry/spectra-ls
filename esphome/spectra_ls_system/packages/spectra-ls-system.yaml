@@ -1,6 +1,6 @@
 # Description: Spectra LS core state + globals + system intervals + shared scripts.
-# Version: 2026.06.08.3
-# Last updated: 2026-06-08
+# Version: 2026.06.22.5
+# Last updated: 2026-06-22
 # Update version/date whenever you change this file.
 #
 # Sections:
@@ -1137,30 +1137,6 @@ globals:
     type: std::string
     restore_value: no
     initial_value: '""'
-  - id: control_fallback_apply_total_count
-    type: uint32_t
-    restore_value: no
-    initial_value: "0"
-  - id: control_hosts_fallback_apply_count
-    type: uint32_t
-    restore_value: no
-    initial_value: "0"
-  - id: control_host_fallback_apply_count
-    type: uint32_t
-    restore_value: no
-    initial_value: "0"
-  - id: control_port_fallback_apply_count
-    type: uint32_t
-    restore_value: no
-    initial_value: "0"
-  - id: control_fallback_last_applied_ms
-    type: uint32_t
-    restore_value: no
-    initial_value: "0"
-  - id: control_fallback_last_applied_type
-    type: std::string
-    restore_value: no
-    initial_value: '"none"'
 
 # === HTTP request (Arylic TCP status) ===
 http_request:
@@ -1176,6 +1152,25 @@ text_sensor:
     internal: false
     update_interval: 30s
     lambda: |-
+      auto normalize = [](std::string value) {
+        for (auto &c : value) c = (char) ::tolower(c);
+        return value;
+      };
+      auto is_resolved = [&](const std::string &value) {
+        const std::string low = normalize(value);
+        return !(low.empty() || low == "none" || low == "unknown" || low == "unavailable" || low == "null");
+      };
+      if (!${arylic_http_enabled}) return std::string("disabled");
+
+      const std::string hosts_state = id(ma_control_hosts).has_state() ? id(ma_control_hosts).state.c_str() : "";
+      const std::string host_state = id(ma_control_host).has_state() ? id(ma_control_host).state.c_str() : "";
+      const std::string esp_hosts_state = id(esp_control_hosts).has_state() ? id(esp_control_hosts).state.c_str() : "";
+      const std::string esp_host_state = id(esp_control_host).has_state() ? id(esp_control_host).state.c_str() : "";
+      const bool tcp_ready = (is_resolved(esp_host_state) || is_resolved(esp_hosts_state) ||
+              is_resolved(host_state) || is_resolved(hosts_state) ||
+              is_resolved(id(arylic_control_host)) || is_resolved(id(arylic_control_hosts)));
+      if (tcp_ready) return std::string("disabled");
+
       std::string scheme = id(arylic_http_scheme_active);
       std::string host = id(arylic_http_host_active);
       int port = id(arylic_http_port_active);
@@ -1196,6 +1191,25 @@ text_sensor:
     internal: false
     update_interval: 30s
     lambda: |-
+      auto normalize = [](std::string value) {
+        for (auto &c : value) c = (char) ::tolower(c);
+        return value;
+      };
+      auto is_resolved = [&](const std::string &value) {
+        const std::string low = normalize(value);
+        return !(low.empty() || low == "none" || low == "unknown" || low == "unavailable" || low == "null");
+      };
+      if (!${arylic_http_enabled}) return std::string("disabled");
+
+      const std::string hosts_state = id(ma_control_hosts).has_state() ? id(ma_control_hosts).state.c_str() : "";
+      const std::string host_state = id(ma_control_host).has_state() ? id(ma_control_host).state.c_str() : "";
+      const std::string esp_hosts_state = id(esp_control_hosts).has_state() ? id(esp_control_hosts).state.c_str() : "";
+      const std::string esp_host_state = id(esp_control_host).has_state() ? id(esp_control_host).state.c_str() : "";
+      const bool tcp_ready = (is_resolved(esp_host_state) || is_resolved(esp_hosts_state) ||
+              is_resolved(host_state) || is_resolved(hosts_state) ||
+              is_resolved(id(arylic_control_host)) || is_resolved(id(arylic_control_hosts)));
+      if (tcp_ready) return std::string("disabled");
+
       std::string scheme = id(arylic_http_scheme_active);
       std::string low = scheme;
       for (auto &c : low) c = (char) ::tolower(c);
@@ -1246,6 +1260,67 @@ text_sensor:
       if (!target.empty() && low != "unknown" && low != "unavailable" && low != "none") return target;
       if (!target.empty()) return target;
       return std::string("none");
+  - platform: template
+    name: "ESP Control Hosts"
+    id: esp_control_hosts
+    internal: false
+    update_interval: 15s
+    lambda: |-
+      auto normalize = [](std::string value) {
+        for (auto &c : value) c = (char) ::tolower(c);
+        return value;
+      };
+      auto is_resolved = [&](const std::string &value) {
+        const std::string low = normalize(value);
+        return !(low.empty() || low == "none" || low == "unknown" || low == "unavailable" || low == "null");
+      };
+      const std::string hosts_state = id(ma_control_hosts).has_state() ? id(ma_control_hosts).state.c_str() : "";
+      if (is_resolved(hosts_state)) return hosts_state;
+      const std::string host_state = id(ma_control_host).has_state() ? id(ma_control_host).state.c_str() : "";
+      if (is_resolved(host_state)) return host_state;
+      if (is_resolved(id(arylic_control_hosts))) return id(arylic_control_hosts);
+      if (is_resolved(id(arylic_control_host))) return id(arylic_control_host);
+      return std::string("unknown");
+  - platform: template
+    name: "ESP Control Host"
+    id: esp_control_host
+    internal: false
+    update_interval: 15s
+    lambda: |-
+      auto normalize = [](std::string value) {
+        for (auto &c : value) c = (char) ::tolower(c);
+        return value;
+      };
+      auto is_resolved = [&](const std::string &value) {
+        const std::string low = normalize(value);
+        return !(low.empty() || low == "none" || low == "unknown" || low == "unavailable" || low == "null");
+      };
+      auto first_csv = [&](const std::string &value) {
+        if (value.empty()) return std::string();
+        const size_t comma = value.find(',');
+        return (comma == std::string::npos) ? value : value.substr(0, comma);
+      };
+      const std::string host_state = id(ma_control_host).has_state() ? id(ma_control_host).state.c_str() : "";
+      if (is_resolved(host_state)) return host_state;
+      const std::string hosts_state = id(ma_control_hosts).has_state() ? id(ma_control_hosts).state.c_str() : "";
+      if (is_resolved(hosts_state)) return first_csv(hosts_state);
+      if (is_resolved(id(arylic_control_host))) return id(arylic_control_host);
+      if (is_resolved(id(arylic_control_hosts))) return first_csv(id(arylic_control_hosts));
+      return std::string("unknown");
+  - platform: template
+    name: "ESP Control Port"
+    id: esp_control_port
+    internal: false
+    update_interval: 15s
+    lambda: |-
+      int port = id(arylic_control_port);
+      if (port <= 0 || port > 65534) {
+        port = (int) ${arylic_tcp_port};
+      }
+      if (port <= 0 || port > 65534) {
+        port = 8899;
+      }
+      return std::to_string(port);
   - platform: template
     name: "ESP OLED Status"
     id: esp_oled_status
@@ -1300,6 +1375,18 @@ text_sensor:
         return (*end == '\0') ? parsed : fallback;
       };
 
+      auto normalize_source_label = [&](const std::string &value) {
+        if (value.empty()) return std::string("");
+        const std::string low = lower(value);
+        if (low == "opt" || low.find("optical") != std::string::npos) return std::string("Optical In");
+        if (low == "line" || low == "line-in" || low.find("line in") != std::string::npos || low.find("aux") != std::string::npos) return std::string("Line In");
+        if (low == "bt" || low.find("bluetooth") != std::string::npos) return std::string("Bluetooth");
+        if (low == "net" || low.find("network") != std::string::npos || low.find("wifi") != std::string::npos) return std::string("Wi-Fi");
+        if (low.find("coax") != std::string::npos) return std::string("Coaxial");
+        if (low.find("hdmi") != std::string::npos || low.find("arc") != std::string::npos) return std::string("HDMI/ARC");
+        return value;
+      };
+
       const std::string media_class = id(ha_audio_media_class).has_state() ? id(ha_audio_media_class).state.c_str() : "unknown";
       const std::string media_class_l = lower(media_class);
       const bool display_allowed = id(ha_audio_display_allowed).has_state() ? id(ha_audio_display_allowed).state : false;
@@ -1308,6 +1395,8 @@ text_sensor:
 
       const bool ha_declares_playing =
         id(ha_audio_state).has_state() && lower(id(ha_audio_state).state.c_str()) == "playing";
+      const bool ha_declares_paused =
+        id(ha_audio_state).has_state() && lower(id(ha_audio_state).state.c_str()) == "paused";
       const bool transport_declares_playing =
         (id(arylic_playing).has_state() && id(arylic_playing).state) ||
         id(arylic_playing_state) ||
@@ -1319,7 +1408,13 @@ text_sensor:
       }
       const float freshness_gate_s = ((float) ${meta_stale_ms} / 1000.0f) + 2.0f;
       const bool fresh_clock_evidence = np_freshness_age_s >= 0.0f && np_freshness_age_s <= freshness_gate_s;
-      const bool live_playback_evidence = ha_declares_playing || transport_declares_playing || fresh_clock_evidence;
+      const bool paused_recent_passthrough_keepalive = ha_declares_paused && fresh_clock_evidence;
+      const bool live_playback_evidence =
+        ha_declares_playing || transport_declares_playing || fresh_clock_evidence || paused_recent_passthrough_keepalive;
+      const bool no_progress_payload =
+        id(ha_audio_pos_last_value) <= 0.05f &&
+        id(arylic_meta_position_state) <= 0 &&
+        id(arylic_meta_duration_state) <= 0;
 
       std::string line =
         (display_allowed && !class_blocks_display && live_playback_evidence && id(ha_audio_title).has_state())
@@ -1338,19 +1433,32 @@ text_sensor:
         const std::string raw_src_display = id(np_raw_src_display);
         const std::string ha_source = id(ha_audio_source).has_state() ? id(ha_audio_source).state.c_str() : "";
         const std::string ary_source = id(arylic_source_state);
+        const std::string app_label = id(ha_audio_app).has_state() ? id(ha_audio_app).state.c_str() : "";
+        const std::string np_friendly = id(ha_now_playing_friendly).has_state() ? id(ha_now_playing_friendly).state.c_str() : "";
         const bool passthrough_context =
           is_passthrough_source(raw_source_label) ||
           is_passthrough_source(raw_src_display) ||
           is_passthrough_source(ha_source) ||
           is_passthrough_source(ary_source);
-        if (!passthrough_context) {
+        const bool passthrough_source_only_no_progress = passthrough_context && no_progress_payload;
+
+        if (passthrough_context && !passthrough_source_only_no_progress) {
+          if (has_displayable_text(app_label) && !is_passthrough_source(app_label)) line = app_label;
+          else if (has_displayable_text(np_friendly) && !is_passthrough_source(np_friendly)) line = np_friendly;
+        }
+
+        if (!passthrough_source_only_no_progress && !has_displayable_text(line)) {
           if (has_displayable_text(raw_source_label)) line = raw_source_label;
           else if (has_displayable_text(raw_src_display)) line = raw_src_display;
           else if (has_displayable_text(ha_source)) line = ha_source;
           else if (has_displayable_text(ary_source)) line = ary_source;
         }
       }
+      line = normalize_source_label(line);
       line = sanitize_ascii(line);
+      if (no_progress_payload && is_passthrough_source(line)) {
+        line.clear();
+      }
       if (line.empty()) {
         if (id(screen_mode) == 0) {
           line = "LIGHTING";
@@ -1360,64 +1468,7 @@ text_sensor:
       }
       if (line.size() > 32) line = line.substr(0, 32);
       return mode + "|oled:" + line;
-  - platform: template
-    name: "ESP Control Fallback Last Type"
-    id: esp_control_fallback_last_type
-    internal: false
-    update_interval: 5s
-    lambda: |-
-      return id(control_fallback_last_applied_type);
-
 sensor:
-  - platform: template
-    name: "ESP Control Fallback Apply Count"
-    id: esp_control_fallback_apply_count
-    internal: false
-    update_interval: 30s
-    state_class: total_increasing
-    accuracy_decimals: 0
-    lambda: |-
-      return (float) id(control_fallback_apply_total_count);
-  - platform: template
-    name: "ESP Control Hosts Fallback Count"
-    id: esp_control_hosts_fallback_apply_count
-    internal: false
-    update_interval: 30s
-    state_class: total_increasing
-    accuracy_decimals: 0
-    lambda: |-
-      return (float) id(control_hosts_fallback_apply_count);
-  - platform: template
-    name: "ESP Control Host Fallback Count"
-    id: esp_control_host_fallback_apply_count
-    internal: false
-    update_interval: 30s
-    state_class: total_increasing
-    accuracy_decimals: 0
-    lambda: |-
-      return (float) id(control_host_fallback_apply_count);
-  - platform: template
-    name: "ESP Control Port Fallback Count"
-    id: esp_control_port_fallback_apply_count
-    internal: false
-    update_interval: 30s
-    state_class: total_increasing
-    accuracy_decimals: 0
-    lambda: |-
-      return (float) id(control_port_fallback_apply_count);
-  - platform: template
-    name: "ESP Control Fallback Last Age"
-    id: esp_control_fallback_last_age_s
-    internal: false
-    unit_of_measurement: "s"
-    accuracy_decimals: 1
-    update_interval: 5s
-    lambda: |-
-      if (id(control_fallback_last_applied_ms) == 0) return -1.0f;
-      const uint32_t now = millis();
-      if (now < id(control_fallback_last_applied_ms)) return 0.0f;
-      return (float) ((now - id(control_fallback_last_applied_ms)) / 1000.0f);
-
 # === System intervals ===
 interval:
   - interval: ${arylic_http_poll_ms}ms
@@ -1511,6 +1562,19 @@ interval:
                     if (probe_host.empty()) {
                       probe_host = first_csv(id(arylic_control_hosts));
                     }
+
+                    const bool tcp_control_ready = !probe_host.empty();
+                    if (tcp_control_ready) {
+                      if (${arylic_http_diag_log_enabled} &&
+                          ((now - id(arylic_http_diag_last_log_ms)) >= ${arylic_http_diag_log_interval_ms})) {
+                        id(arylic_http_diag_last_log_ms) = now;
+                        ESP_LOGI("arylic_http_diag", "poll_skip reason=tcp_control_host_ready host=%s port=%d",
+                                 probe_host.c_str(),
+                                 id(arylic_control_port));
+                      }
+                      return false;
+                    }
+
                     if (probe_host.empty()) {
                       probe_host = clean("${arylic_http_host}");
                     }

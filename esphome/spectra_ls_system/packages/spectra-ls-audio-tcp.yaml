@@ -1,6 +1,6 @@
 # Description: Audio controls package for Spectra LS System (TCP-only) with host-resolved control routing.
-# Version: 2026.06.08.2
-# Last updated: 2026-06-08
+# Version: 2026.06.22.1
+# Last updated: 2026-06-22
 # PARITY DIRECTIVE: Behavior/contract edits require same-slice runtime+component parity review and version-metadata review.
 # Update version/date whenever you change this file.
 
@@ -102,10 +102,6 @@ binary_sensor:
             id(audio_wake_until_ms) = now + ${audio_wake_hold_ms};
           }
   - platform: homeassistant
-    id: ma_control_fallback_enabled
-    entity_id: ${ha_ma_control_fallback_enabled}
-    internal: true
-  - platform: homeassistant
     id: ha_audio_display_allowed
     entity_id: ${ha_ma_active_display_allowed}
     internal: true
@@ -160,7 +156,7 @@ sensor:
       - if:
           condition:
             lambda: |-
-              return !id(calibration_active);
+              return true;
           then:
             - lambda: |-
                 static uint32_t last_log = 0;
@@ -170,6 +166,11 @@ sensor:
                 }
                 if (pct < 0.0f) pct = 0.0f;
                 if (pct > 100.0f) pct = 100.0f;
+                if (pct <= 2.0f) pct = 0.0f;
+                if (pct >= 98.0f) pct = 100.0f;
+                if (${volume_pot_invert}) {
+                  pct = 100.0f - pct;
+                }
 
                 int max_vol = (int) ${audio_max_volume_pct};
                 if (max_vol <= 0 || max_vol > 100) max_vol = 100;
@@ -733,14 +734,109 @@ text_sensor:
             }
             return;
           }
-          if (hosts != id(arylic_control_hosts)) {
-            ESP_LOGI("ma", "control_hosts refreshed old='%s' new='%s'", id(arylic_control_hosts).c_str(), hosts.c_str());
+
+          auto trim_ascii = [](std::string value) {
+            size_t start = value.find_first_not_of(" \t\n\r");
+            size_t end = value.find_last_not_of(" \t\n\r");
+            if (start == std::string::npos || end == std::string::npos) return std::string();
+            return value.substr(start, end - start + 1);
+          };
+          auto split_csv = [&](const std::string &input) {
+            std::vector<std::string> out;
+            std::string token;
+            for (char ch : input) {
+              if (ch == ',') {
+                token = trim_ascii(token);
+                if (!token.empty()) out.push_back(token);
+                token.clear();
+                continue;
+              }
+              token.push_back(ch);
+            }
+            token = trim_ascii(token);
+            if (!token.empty()) out.push_back(token);
+            return out;
+          };
+          auto parse_endpoint = [&](const std::string &raw_value, std::string &host_only, int &port_candidate) {
+            host_only.clear();
+            port_candidate = 0;
+            std::string v = trim_ascii(raw_value);
+            if (v.empty()) return false;
+
+            std::string low_v = v;
+            for (auto &c : low_v) c = (char) ::tolower(c);
+            if (low_v == "unknown" || low_v == "unavailable" || low_v == "none" || low_v == "null") return false;
+
+            // IPv6 bracket form: [addr]:port
+            if (!v.empty() && v[0] == '[') {
+              const size_t close = v.find(']');
+              if (close != std::string::npos) {
+                host_only = v.substr(0, close + 1);
+                if (close + 1 < v.size() && v[close + 1] == ':') {
+                  std::string port_s = trim_ascii(v.substr(close + 2));
+                  if (!port_s.empty()) {
+                    char *end = nullptr;
+                    long parsed = strtol(port_s.c_str(), &end, 10);
+                    if (end != port_s.c_str() && parsed > 0 && parsed <= 65534) {
+                      port_candidate = (int) parsed;
+                    }
+                  }
+                }
+                return !host_only.empty();
+              }
+            }
+
+            // host:port (IPv4/hostname)
+            const size_t colon = v.rfind(':');
+            if (colon != std::string::npos && v.find(':') == colon) {
+              std::string host_part = trim_ascii(v.substr(0, colon));
+              std::string port_s = trim_ascii(v.substr(colon + 1));
+              if (!host_part.empty() && !port_s.empty()) {
+                char *end = nullptr;
+                long parsed = strtol(port_s.c_str(), &end, 10);
+                if (end != port_s.c_str() && parsed > 0 && parsed <= 65534) {
+                  host_only = host_part;
+                  port_candidate = (int) parsed;
+                  return true;
+                }
+              }
+            }
+
+            host_only = v;
+            return true;
+          };
+
+          int parsed_port = 0;
+          std::string normalized_hosts;
+          std::string first_host;
+          const std::vector<std::string> tokens = split_csv(hosts);
+          for (const auto &token : tokens) {
+            std::string host_only;
+            int token_port = 0;
+            if (!parse_endpoint(token, host_only, token_port)) continue;
+            if (host_only.empty()) continue;
+            if (normalized_hosts.empty()) normalized_hosts = host_only;
+            else normalized_hosts += "," + host_only;
+            if (first_host.empty()) first_host = host_only;
+            if (parsed_port == 0 && token_port > 0) parsed_port = token_port;
           }
-          id(arylic_control_hosts) = hosts;
-          id(arylic_control_host) = hosts;
+          if (normalized_hosts.empty()) {
+            normalized_hosts = hosts;
+            first_host = trim_ascii(first_host);
+          }
+
+          if (normalized_hosts != id(arylic_control_hosts)) {
+            ESP_LOGI("ma", "control_hosts refreshed old='%s' new='%s'", id(arylic_control_hosts).c_str(), normalized_hosts.c_str());
+          }
+          id(arylic_control_hosts) = normalized_hosts;
+          if (!first_host.empty()) id(arylic_control_host) = first_host;
           id(arylic_control_hosts_last_valid_ms) = now;
+          if (parsed_port > 0) {
+            id(arylic_control_port) = parsed_port;
+            id(arylic_control_port_last_valid_ms) = now;
+          }
           id(control_target_pending_until_ms) = 0;
-          ESP_LOGI("ma", "control_hosts=%s", hosts.c_str());
+          ESP_LOGI("ma", "control_hosts=%s", normalized_hosts.c_str());
   - platform: homeassistant
     id: ma_control_host
     entity_id: ${ha_ma_control_host}
@@ -789,16 +885,79 @@ text_sensor:
             }
             return;
           }
-          if (host != id(arylic_control_host)) {
-            ESP_LOGI("ma", "control_host refreshed old='%s' new='%s'", id(arylic_control_host).c_str(), host.c_str());
+
+          auto trim_ascii = [](std::string value) {
+            size_t start = value.find_first_not_of(" \t\n\r");
+            size_t end = value.find_last_not_of(" \t\n\r");
+            if (start == std::string::npos || end == std::string::npos) return std::string();
+            return value.substr(start, end - start + 1);
+          };
+          auto parse_endpoint = [&](const std::string &raw_value, std::string &host_only, int &port_candidate) {
+            host_only.clear();
+            port_candidate = 0;
+            std::string v = trim_ascii(raw_value);
+            if (v.empty()) return false;
+            std::string low_v = v;
+            for (auto &c : low_v) c = (char) ::tolower(c);
+            if (low_v == "unknown" || low_v == "unavailable" || low_v == "none" || low_v == "null") return false;
+
+            if (!v.empty() && v[0] == '[') {
+              const size_t close = v.find(']');
+              if (close != std::string::npos) {
+                host_only = v.substr(0, close + 1);
+                if (close + 1 < v.size() && v[close + 1] == ':') {
+                  std::string port_s = trim_ascii(v.substr(close + 2));
+                  if (!port_s.empty()) {
+                    char *end = nullptr;
+                    long parsed = strtol(port_s.c_str(), &end, 10);
+                    if (end != port_s.c_str() && parsed > 0 && parsed <= 65534) {
+                      port_candidate = (int) parsed;
+                    }
+                  }
+                }
+                return !host_only.empty();
+              }
+            }
+
+            const size_t colon = v.rfind(':');
+            if (colon != std::string::npos && v.find(':') == colon) {
+              std::string host_part = trim_ascii(v.substr(0, colon));
+              std::string port_s = trim_ascii(v.substr(colon + 1));
+              if (!host_part.empty() && !port_s.empty()) {
+                char *end = nullptr;
+                long parsed = strtol(port_s.c_str(), &end, 10);
+                if (end != port_s.c_str() && parsed > 0 && parsed <= 65534) {
+                  host_only = host_part;
+                  port_candidate = (int) parsed;
+                  return true;
+                }
+              }
+            }
+
+            host_only = v;
+            return true;
+          };
+
+          std::string normalized_host;
+          int parsed_port = 0;
+          if (!parse_endpoint(host, normalized_host, parsed_port) || normalized_host.empty()) {
+            normalized_host = host;
           }
-          id(arylic_control_host) = host;
+
+          if (normalized_host != id(arylic_control_host)) {
+            ESP_LOGI("ma", "control_host refreshed old='%s' new='%s'", id(arylic_control_host).c_str(), normalized_host.c_str());
+          }
+          id(arylic_control_host) = normalized_host;
           if (id(arylic_control_hosts).empty()) {
-            id(arylic_control_hosts) = host;
+            id(arylic_control_hosts) = normalized_host;
           }
           id(arylic_control_hosts_last_valid_ms) = now;
+          if (parsed_port > 0) {
+            id(arylic_control_port) = parsed_port;
+            id(arylic_control_port_last_valid_ms) = now;
+          }
           id(control_target_pending_until_ms) = 0;
-          ESP_LOGI("ma", "control_host=%s", host.c_str());
+          ESP_LOGI("ma", "control_host=%s", normalized_host.c_str());
   - platform: homeassistant
     id: ma_control_port
     entity_id: ${ha_ma_control_port}
@@ -872,120 +1031,6 @@ text_sensor:
           id(arylic_control_port) = port;
           id(arylic_control_port_last_valid_ms) = now;
           ESP_LOGI("ma", "control_port=%d", port);
-  - platform: homeassistant
-    id: ma_control_hosts_fallback
-    entity_id: ${ha_ma_control_hosts_fallback}
-    internal: true
-    on_value:
-      - lambda: |-
-          const bool fallback_enabled = id(ma_control_fallback_enabled).has_state() && id(ma_control_fallback_enabled).state;
-          if (!fallback_enabled) return;
-
-          const uint32_t now = millis();
-          std::string hosts = x.c_str();
-          std::string low = hosts;
-          for (auto &c : low) c = (char) ::tolower(c);
-          const bool valid = !(hosts.empty() || low == "unknown" || low == "unavailable" || low == "none" || low == "null");
-          if (!valid) return;
-
-          bool primary_valid = false;
-          if (id(ma_control_hosts).has_state()) {
-            std::string primary = id(ma_control_hosts).state.c_str();
-            std::string primary_low = primary;
-            for (auto &c : primary_low) c = (char) ::tolower(c);
-            primary_valid = !(primary.empty() || primary_low == "unknown" || primary_low == "unavailable" || primary_low == "none" || primary_low == "null");
-          }
-
-          if (primary_valid) return;
-          if (hosts != id(arylic_control_hosts)) {
-            ESP_LOGW("ma", "control_hosts fallback applied old='%s' new='%s'", id(arylic_control_hosts).c_str(), hosts.c_str());
-          }
-          id(arylic_control_hosts) = hosts;
-          id(arylic_control_host) = hosts;
-          id(arylic_control_hosts_last_valid_ms) = now;
-          id(control_target_pending_until_ms) = 0;
-          id(control_hosts_fallback_apply_count)++;
-          id(control_fallback_apply_total_count)++;
-          id(control_fallback_last_applied_ms) = now;
-          id(control_fallback_last_applied_type) = "hosts";
-  - platform: homeassistant
-    id: ma_control_host_fallback
-    entity_id: ${ha_ma_control_host_fallback}
-    internal: true
-    on_value:
-      - lambda: |-
-          const bool fallback_enabled = id(ma_control_fallback_enabled).has_state() && id(ma_control_fallback_enabled).state;
-          if (!fallback_enabled) return;
-
-          const uint32_t now = millis();
-          std::string host = x.c_str();
-          std::string low = host;
-          for (auto &c : low) c = (char) ::tolower(c);
-          const bool valid = !(host.empty() || low == "unknown" || low == "unavailable" || low == "none" || low == "null");
-          if (!valid) return;
-
-          bool primary_valid = false;
-          if (id(ma_control_host).has_state()) {
-            std::string primary = id(ma_control_host).state.c_str();
-            std::string primary_low = primary;
-            for (auto &c : primary_low) c = (char) ::tolower(c);
-            primary_valid = !(primary.empty() || primary_low == "unknown" || primary_low == "unavailable" || primary_low == "none" || primary_low == "null");
-          }
-
-          if (primary_valid) return;
-          if (host != id(arylic_control_host)) {
-            ESP_LOGW("ma", "control_host fallback applied old='%s' new='%s'", id(arylic_control_host).c_str(), host.c_str());
-          }
-          id(arylic_control_host) = host;
-          if (id(arylic_control_hosts).empty()) id(arylic_control_hosts) = host;
-          id(arylic_control_hosts_last_valid_ms) = now;
-          id(control_target_pending_until_ms) = 0;
-          id(control_host_fallback_apply_count)++;
-          id(control_fallback_apply_total_count)++;
-          id(control_fallback_last_applied_ms) = now;
-          id(control_fallback_last_applied_type) = "host";
-  - platform: homeassistant
-    id: ma_control_port_fallback
-    entity_id: ${ha_ma_control_port_fallback}
-    internal: true
-    on_value:
-      - lambda: |-
-          const bool fallback_enabled = id(ma_control_fallback_enabled).has_state() && id(ma_control_fallback_enabled).state;
-          if (!fallback_enabled) return;
-
-          const uint32_t now = millis();
-          std::string raw = x.c_str();
-          std::string low = raw;
-          for (auto &c : low) c = (char) ::tolower(c);
-          const bool valid = !(raw.empty() || low == "unknown" || low == "unavailable" || low == "none" || low == "null");
-          if (!valid) return;
-
-          bool primary_valid = false;
-          if (id(ma_control_port).has_state()) {
-            std::string primary = id(ma_control_port).state.c_str();
-            std::string primary_low = primary;
-            for (auto &c : primary_low) c = (char) ::tolower(c);
-            primary_valid = !(primary.empty() || primary_low == "unknown" || primary_low == "unavailable" || primary_low == "none" || primary_low == "null");
-          }
-          if (primary_valid) return;
-
-          char *end = nullptr;
-          long parsed = strtol(raw.c_str(), &end, 10);
-          if (end == raw.c_str()) return;
-          while (*end == ' ' || *end == '\t' || *end == '\n' || *end == '\r') end++;
-          if (*end != '\0') return;
-          if (parsed <= 0 || parsed > 65534) return;
-
-          const int port = (int) parsed;
-          if (port != id(arylic_control_port)) {
-            ESP_LOGW("ma", "control_port fallback applied old=%d new=%d", id(arylic_control_port), port);
-          }
-          id(arylic_control_port) = port;
-          id(arylic_control_port_last_valid_ms) = now;
-          id(control_port_fallback_apply_count)++;
-          id(control_fallback_apply_total_count)++;
-          id(control_fallback_last_applied_ms) = now;
-          id(control_fallback_last_applied_type) = "port";
   - platform: homeassistant
     id: ha_audio_position
     entity_id: ${ha_ma_active_position}
@@ -1188,10 +1233,6 @@ interval:
           ESP_LOGI("input", "Pot deferred send arylic VOL target=%d last_sent=%u now=%u", target,
                    (unsigned) id(arylic_last_vol_sent_ms), (unsigned) now);
           id(arylic_set_volume).execute(target);
-          id(arylic_last_vol_sent_ms) = now;
-          id(arylic_last_vol_sent_target) = target;
-          id(arylic_volume_cached) = target;
-          id(pot_volume_deferred) = false;
       - if:
           condition:
             lambda: |-
@@ -1529,7 +1570,7 @@ script:
             default:
               return;
           }
-          if (clamped == current) return;
+          if (channel != 3 && clamped == current) return;
 
           id(note_user_input).execute();
           id(focus_audio).execute();
@@ -1572,7 +1613,6 @@ script:
               settle_ready_ms = id(eq_high_last_change_ms) + settle_ms;
               break;
             case 3:
-              id(arylic_volume_cached) = clamped;
               id(pot_volume_target) = clamped;
               id(pot_volume_last_ms) = now;
               next_interval_ms = id(arylic_last_vol_sent_ms) + min_interval;
@@ -1643,7 +1683,6 @@ script:
               id(arylic_set_treble).execute(clamped);
               break;
             case 3:
-              id(arylic_last_vol_sent_ms) = now;
               id(pot_volume_deferred) = false;
               id(arylic_set_volume).execute(clamped);
               break;
@@ -1698,6 +1737,11 @@ script:
       - lambda: |-
           const uint32_t now = millis();
           const bool needs_prompt = false;
+          int max_vol = (int) ${audio_max_volume_pct};
+          if (max_vol <= 0 || max_vol > 100) max_vol = 100;
+          int clamped = target;
+          if (clamped < 0) clamped = 0;
+          if (clamped > max_vol) clamped = max_vol;
           auto pick_hosts = [&]() -> std::string {
             auto valid = [&](const std::string &value) {
               if (value.empty()) return false;
@@ -1744,20 +1788,60 @@ script:
           }
           if (hosts.empty()) {
             id(audio_wake_until_ms) = now + ${audio_wake_hold_ms};
+            id(pot_volume_target) = clamped;
+            id(pot_volume_deferred) = true;
+            id(pot_volume_deferred_until_ms) = now + 150;
+            id(arylic_set_volume_via_ha_target).execute(clamped);
             log_block("no_hosts");
             return;
           }
-          int max_vol = (int) ${audio_max_volume_pct};
-          if (max_vol <= 0 || max_vol > 100) max_vol = 100;
-          int clamped = target;
-          if (clamped < 0) clamped = 0;
-          if (clamped > max_vol) clamped = max_vol;
           const bool tcp_ok = esphome::arylic_tcp::send_volume_multi(hosts, (uint16_t) id(arylic_control_port), clamped);
           if (!tcp_ok) {
             ESP_LOGW("arylic_tcp", "VOL send failed target=%d", clamped);
+            id(pot_volume_target) = clamped;
+            id(pot_volume_deferred) = true;
+            id(pot_volume_deferred_until_ms) = now + 150;
+            id(arylic_set_volume_via_ha_target).execute(clamped);
+            return;
           }
+
+          id(arylic_volume_cached) = clamped;
           id(arylic_last_vol_sent_ms) = now;
           id(arylic_last_vol_sent_target) = clamped;
+          id(pot_volume_deferred) = false;
+
+  - id: arylic_set_volume_via_ha_target
+    mode: restart
+    parameters:
+      target: int
+    then:
+      - if:
+          condition:
+            lambda: |-
+              if (!id(ma_active_target).has_state()) return false;
+              std::string entity = id(ma_active_target).state.c_str();
+              std::string low = entity;
+              for (auto &c : low) c = (char) ::tolower(c);
+              if (low.empty() || low == "unknown" || low == "unavailable" || low == "none" || low == "null") return false;
+              return entity.find("media_player.") == 0;
+          then:
+            - homeassistant.service:
+                service: media_player.volume_set
+                data:
+                  entity_id: !lambda |-
+                    return id(ma_active_target).state.c_str();
+                  volume_level: !lambda |-
+                    float v = (float) target / 100.0f;
+                    if (v < 0.0f) v = 0.0f;
+                    if (v > 1.0f) v = 1.0f;
+                    return v;
+            - lambda: |-
+                const uint32_t now = millis();
+                id(arylic_volume_cached) = target;
+                id(arylic_last_vol_sent_ms) = now;
+                id(arylic_last_vol_sent_target) = target;
+                id(pot_volume_deferred) = false;
+                ESP_LOGW("audio_gate", "VOL fallback via HA target='%s' value=%d", id(ma_active_target).state.c_str(), target);
 
   - id: arylic_set_eq_channel
     mode: restart

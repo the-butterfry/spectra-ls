@@ -1,6 +1,6 @@
 # Description: Data coordinator for Spectra LS parity diagnostics, Phase 3 guarded routing write-path controls, Phase 4 diagnostics scaffolding (F4-S01/F4-S03), Phase 5 metadata trial contract auditing, and Phase 6/8 control-center settings, fast-remap, execution visibility, startup auto-recovery orchestration (latency-hardened cadence), and selection-lock lifecycle parity migration (ambiguity lock, stale unlock, auto-select loop).
-# Version: 2026.05.04.28
-# Last updated: 2026-05-04
+# Version: 2026.06.22.1
+# Last updated: 2026-06-22
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -65,9 +65,11 @@ from .const import (
     META_SUPPRESSION_PLAYING,
     META_SUPPRESSION_PLAYING_STALE,
     OPT_DEFAULT_WRITE_AUTHORITY_MODE,
+    WRITE_AUTH_ALLOWED,
     WRITE_AUTH_COMPONENT,
     WRITE_DEBOUNCE_SECONDS,
     normalize_control_center_settings,
+    normalize_setup_entity_policy,
 )
 from .lifecycle_fabric import LifecycleFabricWorkflow
 from .meta_fabric import MetaFabricWorkflow
@@ -101,9 +103,12 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._unsub_state_events = None
         self._unsub_global_state_events = None
         self._meta_stale_unlock_unsub = None
-        self._write_authority_mode = WRITE_AUTH_COMPONENT
+        self._write_authority_mode = self._normalize_write_authority(
+            str(entry.options.get(OPT_DEFAULT_WRITE_AUTHORITY_MODE, WRITE_AUTH_COMPONENT) or "")
+        )
         self._write_debounce_s = float(WRITE_DEBOUNCE_SECONDS)
         self._control_center_settings = normalize_control_center_settings(entry.options)
+        self._setup_entity_policy = normalize_setup_entity_policy(entry.options)
         self._last_control_center_action_attempt: dict[str, Any] = {
             "status": "never_attempted",
             "requested_at": None,
@@ -247,6 +252,10 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         return self._utility_fabric
 
     @property
+    def setup_entity_policy(self) -> dict[str, Any]:
+        return self._setup_entity_policy
+
+    @property
     def last_metadata_provider_packet(self) -> dict[str, Any]:
         return self._last_metadata_provider_packet
 
@@ -320,7 +329,9 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         )
 
     def _normalize_write_authority(self, mode: str) -> str:
-        _ = mode
+        normalized = str(mode or "").strip().lower()
+        if normalized in WRITE_AUTH_ALLOWED:
+            return normalized
         return WRITE_AUTH_COMPONENT
 
     def _build_write_controls(self) -> dict[str, Any]:
@@ -468,6 +479,11 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     async def async_apply_control_center_settings(self, raw_options: dict[str, Any] | None) -> dict[str, Any]:
         """Normalize and apply control-center settings from config-entry options."""
         return await self._control_execution_fabric.async_apply_control_center_settings(raw_options)
+
+    def apply_setup_entity_policy(self, raw_options: dict[str, Any] | None) -> dict[str, Any]:
+        """Normalize and apply setup include/exclude policy from config-entry options."""
+        self._setup_entity_policy = normalize_setup_entity_policy(raw_options)
+        return self._setup_entity_policy
 
     async def async_execute_control_center_input(
         self,

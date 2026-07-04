@@ -1,6 +1,6 @@
 # Description: Music Assistant control hub scripts (target options, auto-select, control helpers).
-# Version: 2026.05.05.2
-# Last updated: 2026-05-05
+# Version: 2026.06.22.1
+# Last updated: 2026-06-22
 # Update version/date whenever you change this file.
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
@@ -13,13 +13,7 @@
 ma_update_target_options:
   mode: restart
   sequence:
-    - choose:
-        - conditions: "{{ states('sensor.ma_authority_mode') | lower == 'component' }}"
-          sequence:
-            - stop: "Legacy target-options writer disabled (component authority mode active)."
-        - conditions: "{{ not is_state('input_boolean.ma_control_fallback_enabled','on') }}"
-          sequence:
-            - stop: "Legacy target-options writer dormant (fallback participation disabled)."
+    - stop: "Legacy target-options script retired (component-only cutover active)."
     - variables:
         rooms: >-
           {% set rooms_raw = state_attr('sensor.spectra_ls_rooms_json','rooms_json') | default([], true) %}
@@ -158,45 +152,16 @@ ma_update_target_options:
 ma_cycle_target:
   mode: restart
   sequence:
-    - choose:
-        - conditions: "{{ states('sensor.ma_authority_mode') | lower == 'component' }}"
-          sequence:
-            - service: spectra_ls.cycle_active_target
-              data:
-                dry_run: false
-                force: true
-                include_none: false
-        - conditions: "{{ states('sensor.ma_authority_mode') | lower != 'component' and is_state('input_boolean.ma_control_fallback_enabled','on') }}"
-          sequence:
-            - service: input_boolean.turn_on
-              data:
-                entity_id: input_boolean.ma_override_active
-            - variables:
-                options: "{{ state_attr('input_select.ma_active_target','options') or [] }}"
-                current: "{{ states('input_select.ma_active_target') }}"
-            - choose:
-                - conditions: "{{ options | length > 0 }}"
-                  sequence:
-                    - variables:
-                        idx: "{{ options.index(current) if current in options else -1 }}"
-                        next: "{{ options[(idx + 1) % (options | length)] }}"
-                    - service: input_select.select_option
-                      data:
-                        entity_id: input_select.ma_active_target
-                        option: "{{ next }}"
-      default:
-        - stop: "Legacy cycle-target branch dormant (fallback participation disabled)."
+    - service: spectra_ls.cycle_active_target
+      data:
+        dry_run: false
+        force: true
+        include_none: false
 
 ma_auto_select:
   mode: restart
   sequence:
-    - choose:
-        - conditions: "{{ states('sensor.ma_authority_mode') | lower == 'component' }}"
-          sequence:
-            - stop: "Legacy auto-select disabled (component authority mode active)."
-        - conditions: "{{ not is_state('input_boolean.ma_control_fallback_enabled','on') }}"
-          sequence:
-            - stop: "Legacy auto-select dormant (fallback participation disabled)."
+    - stop: "Legacy auto-select script retired (component-only cutover active)."
     - variables:
         override_on: "{{ is_state('input_boolean.ma_override_active','on') }}"
         options: "{{ state_attr('input_select.ma_active_target','options') or [] }}"

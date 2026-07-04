@@ -1,6 +1,6 @@
 # Description: MA control hub input_text helper defaults and target mappings.
-# Version: 2026.04.28.2
-# Last updated: 2026-04-28
+# Version: 2026.06.22.1
+# Last updated: 2026-06-22
 # HUB MUST-READ: Contract parser methodology.
 # - For complex attributes (`rooms`, `candidates_json`, etc.), prefer native sequence/mapping values first.
 # - Only parse string JSON when trimmed payload starts with `[` or `{` and is not unknown/unavailable/none/''.
@@ -9,7 +9,7 @@
 
 ma_ambiguous_entities:
   name: MA Ambiguous Entities (force prompt)
-  initial: "media_player.the_oracle_2"
+  initial: ""
   max: 255
   mode: text
 ma_server_url:
@@ -39,12 +39,12 @@ ma_last_valid_target:
   mode: text
 spectra_ls_target_primary_entity:
   name: Spectra LS Target (Primary) Entity ID
-  initial: "media_player.spectra_ls_2"
+  initial: ""
   max: 255
   mode: text
 spectra_ls_target_primary_meta_entity:
   name: Spectra LS Target (Primary) Meta Entity ID
-  initial: "media_player.spectra_ls"
+  initial: ""
   max: 255
   mode: text
 spectra_ls_target_primary_tcp_host:

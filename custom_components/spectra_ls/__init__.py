@@ -1,6 +1,6 @@
 # Description: Spectra LS custom integration setup for shadow parity, Phase 3 guarded routing write-path services, Phase 4 diagnostics scaffolding services (F4-S01/F4-S03), Phase 5 metadata trial contract service wiring, and Phase 6 control-center settings/execution services including bounded startup auto-recovery scheduling and selection-ownership migration services with hardened authority-contract response service support.
-# Version: 2026.05.04.13
-# Last updated: 2026-05-04
+# Version: 2026.06.22.1
+# Last updated: 2026-06-22
 # PARITY DIRECTIVE: Behavior/contract edits must include same-slice two-track parity review and version-metadata review (runtime + component).
 
 from __future__ import annotations
@@ -235,6 +235,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async def _handle_options_update(hass: HomeAssistant, updated_entry: ConfigEntry) -> None:
         coordinator_obj: SpectraLsShadowCoordinator | None = hass.data.get(DOMAIN, {}).get(updated_entry.entry_id)
         if coordinator_obj is not None:
+            coordinator_obj.apply_setup_entity_policy(updated_entry.options)
             await coordinator_obj.async_apply_control_center_settings(updated_entry.options)
 
     options_update_unsub = entry.add_update_listener(_handle_options_update)
@@ -725,7 +726,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         input_event = str(call.data.get("input_event", "") or "").strip()
         correlation_id = str(call.data.get("correlation_id", "") or "").strip() or None
         target_hint = str(call.data.get("target_hint", "") or "").strip() or None
-        dry_run = _coerce_bool(call.data.get("dry_run"), default=True)
+        dry_run = _coerce_bool(call.data.get("dry_run"), default=False)
         delta = call.data.get("delta")
         await coordinator.async_execute_control_center_input(
             input_event=input_event,

@@ -1,11 +1,11 @@
 # Description: Home Assistant config for Plex now-playing via direct Plex sessions.
-# Version: 2026.03.10.3
-# Last updated: 2026-03-10
+# Version: 2026.06.21.1
+# Last updated: 2026-06-21
 # Update version/date whenever you change this file.
 input_text:
   plex_base_url:
     name: Plex Base URL
-    initial: "http://192.168.11.244:32400"
+    initial: ""
   plex_allowed_users:
     name: Plex Allowed Users (comma-separated)
     initial: "landcameras, mutantc, spectra"
@@ -16,7 +16,7 @@ input_text:
 rest:
   - resource_template: >-
       {% set base = states('input_text.plex_base_url') %}
-      {% set url = base if base not in ['unknown','unavailable',''] else 'http://192.168.11.244:32400' %}
+      {% set url = base if base not in ['unknown','unavailable',''] else '' %}
       {{ url }}/status/sessions
     method: GET
     headers:

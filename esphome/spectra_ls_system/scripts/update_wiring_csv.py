@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# Description: Generate/update Spectra LS wiring CSV mappings from source definitions.
+# Version: 2026.06.21.1
+# Last updated: 2026-06-21
+
 from __future__ import annotations
 
 import argparse

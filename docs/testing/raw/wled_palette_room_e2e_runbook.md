@@ -1,6 +1,6 @@
 <!-- Description: Operator runbook for end-to-end WLED palette sampling, room-entity discovery, and apply-path validation for Spectra LS integration prep. -->
-<!-- Version: 2026.06.11.1 -->
-<!-- Last updated: 2026-06-11 -->
+<!-- Version: 2026.06.22.1 -->
+<!-- Last updated: 2026-06-22 -->
 
 # WLED Palette → Room Lights E2E Runbook
 
@@ -40,7 +40,7 @@ Use a specific HA WLED entity as source (HA-first path):
 
 Use direct WLED URL source (legacy/direct path):
 
-- `python3 /mnt/homeassistant/bin/spectra_wled_palette_e2e.py --wled-url "http://192.168.10.251" --apply`
+- `python3 /mnt/homeassistant/bin/spectra_wled_palette_e2e.py --wled-url "http://<wled_host_or_ip>" --apply`
 
 Target explicit entities:
 
@@ -52,7 +52,7 @@ Write output to a file:
 
 ## Key options
 
-- `--ha-url` (default: `http://192.168.10.10:8123`)
+- `--ha-url` (default: `http://<ha_host>:8123`)
 - `--wled-url` (optional; when omitted, HA-first WLED entity source is used)
 - `--wled-entity` (optional explicit HA `light.*` WLED source)
 - `--wled-helper-entity` (default: `input_select.control_board_wled_source`)

@@ -1,0 +1,241 @@
+{# Description: Raw copy/paste Developer Tools template to detect any active legacy codepath or runtime-fallback dependency across Spectra LS control + metadata + authority surfaces. #}
+{# Version: 2026.06.21.2 #}
+{# Last updated: 2026-06-21 #}
+
+{# =========================
+  Legacy Full-Stack Dependency Audit
+  Purpose:
+    - Detect whether legacy authority/pathing is still active.
+    - Detect whether component stack is silently depending on runtime fallback surfaces.
+    - Surface hard blockers (must-fix) vs soft dependencies (cleanup debt).
+  Usage:
+    1) Paste into Home Assistant -> Developer Tools -> Template.
+    2) Run during active control + metadata activity.
+    3) Capture output as evidence packet.
+  ========================= #}
+
+{% set invalid = ['', 'none', 'unknown', 'unavailable', 'null', none] %}
+
+{# --- shadow source resolution --- #}
+{% set s_target_primary = 'sensor.shadow_active_target' %}
+{% set s_target_fallback = 'sensor.spectra_ls_shadow_active_target' %}
+{% set primary_has_attrs = state_attr(s_target_primary, 'route_trace') is not none or state_attr(s_target_primary, 'captured_at') is not none %}
+{% set fallback_has_attrs = state_attr(s_target_fallback, 'route_trace') is not none or state_attr(s_target_fallback, 'captured_at') is not none %}
+{% set s_target = s_target_primary if primary_has_attrs else (s_target_fallback if fallback_has_attrs else s_target_primary) %}
+
+{% set route_trace = state_attr(s_target, 'route_trace') or {} %}
+{% set write_controls = state_attr(s_target, 'write_controls') or {} %}
+{% set metadata_prep = state_attr(s_target, 'metadata_prep_validation') or {} %}
+{% set metadata_bridge = state_attr(s_target, 'metadata_bridge_validation') or {} %}
+{% set authority_contract = state_attr(s_target, 'authority_contract') or {} %}
+{% set contract_validation = state_attr(s_target, 'contract_validation') or {} %}
+
+{% if route_trace is not mapping %}{% set route_trace = {} %}{% endif %}
+{% if write_controls is not mapping %}{% set write_controls = {} %}{% endif %}
+{% if metadata_prep is not mapping %}{% set metadata_prep = {} %}{% endif %}
+{% if metadata_bridge is not mapping %}{% set metadata_bridge = {} %}{% endif %}
+{% if authority_contract is not mapping %}{% set authority_contract = {} %}{% endif %}
+{% if contract_validation is not mapping %}{% set contract_validation = {} %}{% endif %}
+
+{# --- canonical authority signals --- #}
+{% set authority_mode_wc = write_controls.authority_mode if write_controls.authority_mode is defined else 'unknown' %}
+{% set authority_mode_prep = metadata_prep.authority_mode if metadata_prep.authority_mode is defined else 'unknown' %}
+{% set authority_mode_contract = authority_contract.authority_mode if authority_contract.authority_mode is defined else 'unknown' %}
+{% set authority_mode_effective = authority_mode_contract if authority_mode_contract not in invalid else (authority_mode_prep if authority_mode_prep not in invalid else authority_mode_wc) %}
+
+{% set metadata_owner_prep = metadata_prep.metadata_authority_owner if metadata_prep.metadata_authority_owner is defined else 'unknown' %}
+{% set metadata_owner_contract = authority_contract.metadata_authority_owner if authority_contract.metadata_authority_owner is defined else 'unknown' %}
+{% set metadata_owner_effective = metadata_owner_contract if metadata_owner_contract not in invalid else metadata_owner_prep %}
+
+{% set metadata_cutover_prep = metadata_prep.metadata_cutover_active if metadata_prep.metadata_cutover_active is defined else false %}
+{% set metadata_cutover_contract = authority_contract.metadata_cutover_active if authority_contract.metadata_cutover_active is defined else false %}
+{% set metadata_cutover_active = metadata_cutover_contract if authority_contract.metadata_cutover_active is defined else metadata_cutover_prep %}
+
+{% set authority_contract_ready = authority_contract.authority_contract_ready if authority_contract.authority_contract_ready is defined else false %}
+{% set authority_reasons = authority_contract.authority_reasons if authority_contract.authority_reasons is defined and authority_contract.authority_reasons is iterable else [] %}
+{% set cutover_blockers = authority_contract.cutover_prep_blocking_reasons if authority_contract.cutover_prep_blocking_reasons is defined and authority_contract.cutover_prep_blocking_reasons is iterable else [] %}
+{% set proof_presence = authority_contract.proof_checkpoint_presence if authority_contract.proof_checkpoint_presence is defined and authority_contract.proof_checkpoint_presence is mapping else {} %}
+
+{# --- control/route + host surfaces --- #}
+{% set route_decision = route_trace.decision if route_trace.decision is defined else 'unknown' %}
+{% set route_active_target = route_trace.active_target if route_trace.active_target is defined else 'unknown' %}
+
+{% set c_control_host = states('sensor.component_control_host') %}
+{% set c_control_port = states('sensor.component_control_port') %}
+{% set r_control_host = states('sensor.ma_control_host') %}
+{% set r_control_port = states('sensor.ma_control_port') %}
+
+{% set control_host_effective = c_control_host if c_control_host not in invalid else r_control_host %}
+{% set control_port_effective = c_control_port if c_control_port not in invalid else r_control_port %}
+{% set control_host_source = 'component' if c_control_host not in invalid else ('runtime_fallback' if r_control_host not in invalid else 'missing') %}
+{% set control_port_source = 'component' if c_control_port not in invalid else ('runtime_fallback' if r_control_port not in invalid else 'missing') %}
+
+{# --- now-playing/component-vs-runtime dependency signals --- #}
+{% set c_entity = states('sensor.component_now_playing_entity') %}
+{% set c_title = states('sensor.component_now_playing_title') %}
+{% set c_source = states('sensor.component_now_playing_source') %}
+
+{% set r_entity = states('sensor.now_playing_entity') %}
+{% set r_title = states('sensor.now_playing_title') %}
+{% set r_source = states('sensor.now_playing_source') %}
+
+{% set np_entity_source = 'component' if c_entity not in invalid else ('runtime_fallback' if r_entity not in invalid else 'missing') %}
+{% set np_title_source = 'component' if c_title not in invalid else ('runtime_fallback' if r_title not in invalid else 'missing') %}
+{% set np_source_source = 'component' if c_source not in invalid else ('runtime_fallback' if r_source not in invalid else 'missing') %}
+
+{% set c_backend_profile = states('sensor.component_backend_profile') %}
+{% set c_api_url = states('sensor.component_ma_api_url') %}
+{% set r_backend_profile = states('sensor.ma_server_profile_effective') %}
+{% set r_api_url = states('sensor.ma_api_url') %}
+
+{% set backend_profile_source = 'component' if c_backend_profile not in invalid else ('runtime_fallback' if r_backend_profile not in invalid else 'missing') %}
+{% set api_url_source = 'component' if c_api_url not in invalid else ('runtime_fallback' if r_api_url not in invalid else 'missing') %}
+
+{# --- bridge/trial signals --- #}
+{% set bridge_status = metadata_bridge.bridge_status if metadata_bridge.bridge_status is defined else 'unknown' %}
+{% set trial_status = metadata_bridge.trial_status if metadata_bridge.trial_status is defined else 'unknown' %}
+{% set bridge_blocking = metadata_bridge.blocking_reasons if metadata_bridge.blocking_reasons is defined and metadata_bridge.blocking_reasons is iterable else [] %}
+
+{# --- contract health --- #}
+{% set contract_valid = contract_validation.valid if contract_validation.valid is defined else false %}
+{% set missing_required = contract_validation.missing_required if contract_validation.missing_required is defined and contract_validation.missing_required is iterable else [] %}
+{% set unresolved_required = contract_validation.unresolved_required if contract_validation.unresolved_required is defined and contract_validation.unresolved_required is iterable else [] %}
+
+{# --- finding aggregation --- #}
+{% set ns = namespace(hard=[], soft=[], notes=[]) %}
+
+{# hard findings: legacy still active #}
+{% if authority_mode_effective in ['legacy', 'ma_degraded_fallback'] %}
+  {% set ns.hard = ns.hard + ['authority_mode_not_component_primary:' ~ authority_mode_effective] %}
+{% endif %}
+
+{% if authority_mode_wc in ['legacy', 'ma_degraded_fallback'] %}
+  {% set ns.hard = ns.hard + ['write_controls_authority_not_component:' ~ authority_mode_wc] %}
+{% endif %}
+
+{% if metadata_owner_effective in ['legacy', 'legacy_contract_surfaces'] %}
+  {% set ns.hard = ns.hard + ['metadata_owner_still_legacy:' ~ metadata_owner_effective] %}
+{% endif %}
+
+{% if not metadata_cutover_active %}
+  {% set ns.hard = ns.hard + ['metadata_cutover_inactive'] %}
+{% endif %}
+
+{% if bridge_status in ['blocked_trial_stage', 'blocked_resolver_stage', 'blocked_target_recovery_stage'] %}
+  {% set ns.hard = ns.hard + ['metadata_bridge_blocked:' ~ bridge_status] %}
+{% endif %}
+
+{% if trial_status in ['blocked_authority_not_satisfied', 'blocked_contract_invalid', 'blocked_missing_window_id'] %}
+  {% set ns.hard = ns.hard + ['metadata_trial_blocked:' ~ trial_status] %}
+{% endif %}
+
+{% if (missing_required | count) > 0 or (unresolved_required | count) > 0 %}
+  {% set ns.hard = ns.hard + ['contract_missing_or_unresolved_required_surfaces'] %}
+{% endif %}
+
+{# soft findings: runtime fallback dependency (cleanup debt) #}
+{% if control_host_source == 'runtime_fallback' or control_port_source == 'runtime_fallback' %}
+  {% set ns.soft = ns.soft + ['control_host_port_from_runtime_fallback'] %}
+{% endif %}
+
+{% if np_entity_source == 'runtime_fallback' or np_title_source == 'runtime_fallback' or np_source_source == 'runtime_fallback' %}
+  {% set ns.soft = ns.soft + ['now_playing_contract_uses_runtime_fallback'] %}
+{% endif %}
+
+{% if backend_profile_source == 'runtime_fallback' or api_url_source == 'runtime_fallback' %}
+  {% set ns.soft = ns.soft + ['backend_or_api_surface_uses_runtime_fallback'] %}
+{% endif %}
+
+{% if not authority_contract_ready %}
+  {% set ns.soft = ns.soft + ['authority_contract_not_ready'] %}
+{% endif %}
+
+{% if authority_contract_ready and (proof_presence.pre_window is not defined or proof_presence.in_window is not defined or proof_presence.post_window is not defined) %}
+  {% set ns.soft = ns.soft + ['authority_contract_ready_but_checkpoint_shape_partial'] %}
+{% endif %}
+
+{% if bridge_status == 'skipped_component_startup_no_mix' %}
+  {% set ns.notes = ns.notes + ['bridge skipped due to component-startup no-mix posture (not legacy by itself)'] %}
+{% endif %}
+
+{% if contract_valid == false %}
+  {% set ns.soft = ns.soft + ['contract_validation_not_valid'] %}
+{% endif %}
+
+{# --- verdict --- #}
+{% set verdict = 'PASS' %}
+{% if (ns.hard | count) > 0 %}
+  {% set verdict = 'FAIL' %}
+{% elif (ns.soft | count) > 0 %}
+  {% set verdict = 'WARN' %}
+{% endif %}
+
+### Legacy Full-Stack Dependency Audit (`spectra_ls`)
+- Result: **{{ verdict }}**
+- Timestamp: **{{ now() }}**
+- Shadow source: **{{ s_target }}**
+
+### Legacy authority status (must be component-owned)
+- authority mode (effective / contract / prep / write-controls): **{{ authority_mode_effective }} / {{ authority_mode_contract }} / {{ authority_mode_prep }} / {{ authority_mode_wc }}**
+- metadata owner (effective / contract / prep): **{{ metadata_owner_effective }} / {{ metadata_owner_contract }} / {{ metadata_owner_prep }}**
+- metadata cutover active: **{{ metadata_cutover_active }}**
+- authority contract ready: **{{ authority_contract_ready }}**
+- authority reasons: **{{ authority_reasons if (authority_reasons | count) > 0 else 'none' }}**
+- cutover blockers: **{{ cutover_blockers if (cutover_blockers | count) > 0 else 'none' }}**
+- proof checkpoints: **pre={{ proof_presence.pre_window if proof_presence.pre_window is defined else 'n/a' }}, in={{ proof_presence.in_window if proof_presence.in_window is defined else 'n/a' }}, post={{ proof_presence.post_window if proof_presence.post_window is defined else 'n/a' }}**
+
+### Bridge/trial execution posture
+- bridge status: **{{ bridge_status }}**
+- trial status: **{{ trial_status }}**
+- bridge blockers: **{{ bridge_blocking if (bridge_blocking | count) > 0 else 'none' }}**
+
+### Runtime-fallback dependency map (component should be primary)
+- control host source/value: **{{ control_host_source }} / {{ control_host_effective if control_host_effective not in invalid else 'missing' }}**
+- control port source/value: **{{ control_port_source }} / {{ control_port_effective if control_port_effective not in invalid else 'missing' }}**
+- now-playing entity source/value: **{{ np_entity_source }} / {{ c_entity if c_entity not in invalid else (r_entity if r_entity not in invalid else 'missing') }}**
+- now-playing title source/value: **{{ np_title_source }} / {{ c_title if c_title not in invalid else (r_title if r_title not in invalid else 'missing') }}**
+- now-playing source source/value: **{{ np_source_source }} / {{ c_source if c_source not in invalid else (r_source if r_source not in invalid else 'missing') }}**
+- backend profile source/value: **{{ backend_profile_source }} / {{ c_backend_profile if c_backend_profile not in invalid else (r_backend_profile if r_backend_profile not in invalid else 'missing') }}**
+- API URL source/value: **{{ api_url_source }} / {{ c_api_url if c_api_url not in invalid else (r_api_url if r_api_url not in invalid else 'missing') }}**
+
+### Core contract and route sanity
+- route decision / active target: **{{ route_decision }} / {{ route_active_target if route_active_target not in invalid else 'missing' }}**
+- contract valid: **{{ contract_valid }}**
+- missing_required count: **{{ missing_required | count }}**
+- unresolved_required count: **{{ unresolved_required | count }}**
+
+### Hard findings (legacy active)
+{% if (ns.hard | count) == 0 %}
+- none
+{% else %}
+{% for f in ns.hard %}
+- {{ f }}
+{% endfor %}
+{% endif %}
+
+### Soft findings (fallback dependency / cleanup debt)
+{% if (ns.soft | count) == 0 %}
+- none
+{% else %}
+{% for f in ns.soft %}
+- {{ f }}
+{% endfor %}
+{% endif %}
+
+### Notes
+{% if (ns.notes | count) == 0 %}
+- none
+{% else %}
+{% for n in ns.notes %}
+- {{ n }}
+{% endfor %}
+{% endif %}
+
+### Deterministic next action
+{% if verdict == 'FAIL' %}
+- Legacy path is still active. Do not trust green behavior until all hard findings are gone. First clear authority/owner/cutover blockers, then rerun this template.
+{% elif verdict == 'WARN' %}
+- Component authority is active, but runtime fallback dependencies still exist. Remove fallback dependencies listed above and rerun.
+{% else %}
+- No active legacy authority path detected, and no runtime fallback dependency was required in this snapshot.
+{% endif %}

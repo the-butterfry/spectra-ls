@@ -1,6 +1,6 @@
 # Description: Spectra LS setup (top-level user config).
-# Version: 2026.04.26.2
-# Last updated: 2026-04-26
+# Version: 2026.06.22.1
+# Last updated: 2026-06-22
 # Update version/date whenever you change this file.
 #
 # This package provides user-facing helpers for Spectra LS room mapping.
@@ -19,12 +19,12 @@ input_text:
     mode: text
   spectra_ls_room_1_entity:
     name: Spectra LS Room 1 Entity ID
-    initial: "media_player.spectra_ls_2"
+    initial: ""
     max: 255
     mode: text
   spectra_ls_room_1_meta:
     name: Spectra LS Room 1 Meta Entity ID
-    initial: "media_player.spectra_ls"
+    initial: ""
     max: 255
     mode: text
   spectra_ls_room_1_tcp_host:
@@ -40,12 +40,12 @@ input_text:
     mode: text
   spectra_ls_room_2_entity:
     name: Spectra LS Room 2 Entity ID
-    initial: "media_player.kitchen_speakers"
+    initial: ""
     max: 255
     mode: text
   spectra_ls_room_2_meta:
     name: Spectra LS Room 2 Meta Entity ID
-    initial: "media_player.kitchen_speakers"
+    initial: ""
     max: 255
     mode: text
   spectra_ls_room_2_tcp_host:

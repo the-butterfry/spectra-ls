@@ -1,6 +1,6 @@
 <!-- Description: End-user overview for the Spectra L/S Home Assistant + ESPHome system. -->
-<!-- Version: 2026.06.10.1 -->
-<!-- Last updated: 2026-06-10 -->
+<!-- Version: 2026.06.22.2 -->
+<!-- Last updated: 2026-06-22 -->
 
 # Spectra L/S
 
@@ -18,6 +18,7 @@ Current operating posture:
 
 - The legacy runtime path (`packages/` + `esphome/`) is now treated as a **sealed rollback-safe baseline**.
 - The custom integration (`custom_components/spectra_ls`) is the **primary path for net-new control-plane and feature growth**.
+- New install-specific hardcoded entity IDs/private host literals are now CI-blocked in active product logic paths via the Phase-0 hardcode guard workflow.
 - Active target/host authority now runs in **component-primary non-hybrid mode** during normal operation (legacy writer lanes are authority-gated and only remain as rollback-safe fallback semantics).
 - Authority mode is now **component-pinned** in active operation (legacy authority-mode selection is disabled), and component auto-select keeps current valid target by default unless explicitly forced.
 - The legacy `control-py` path is **archived exploration history** on `main` and is no longer a development or run target.
@@ -73,9 +74,11 @@ Inspired by modern physical-control craftsmanship from [Condesa Electronics — 
 
 - We are actively building the Home Assistant sidebar **Spectra Control Center** in `custom_components/spectra_ls` as the primary product surface.
 - Current execution focus: setup/onboarding, mapped-environment visibility, tuning/defaults/overrides, and bounded input-to-action execution under evidence-first gates.
+- HA setup-flow foundation now includes guided entity-policy capture for routing/metadata include-exclude lists (component options flow), establishing the first end-user onboarding framework for per-install entity curation.
 - Control Center settings + execution contracts are already live and operator-verifiable via `spectra_ls.set_control_center_settings` and `spectra_ls.execute_control_center_input`.
 - Host-control cutover readiness is service-addressable via `spectra_ls.get_host_cutover_gate` (with fail-closed options for readiness/activation gating in automation workflows).
 - Canonical playback/progress robustness is now formalized as a component-first architecture program (`custom_components/spectra_ls`) with multi-source field-level resolution, provenance, and deterministic healing (`docs/architecture/COMPONENT-DATA-FABRIC-ARCHITECTURE.md`).
+- Canonical ownership/read/write authority across runtime + component surfaces is now centralized in a single ledger: `docs/architecture/CONTRACT-OWNERSHIP-LEDGER.md`.
 - Canonical execution is now codified as `CA-S01..CA-S08` (CORE/PROJ/COMPAT/OPS lanes), with `CA-S01` active as the current contract-freeze + authority-boundary baseline (`docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`).
 - Architecture governance is explicit and normative with token-locked MA authority semantics: `health.authority_mode` is `ma_primary | ma_degraded_fallback`, and degraded authority reasons include `ma_degraded_fallback_active`, `ma_payload_stale`, `ma_payload_shape_invalid`, and `ma_api_unreachable`.
 - Ecosystem expansion remains capability-mapped and discovery-first; Sendspin-class and adjacent endpoint families are treated as roadmap integrations under the same safety/rollback gate discipline.
@@ -85,6 +88,40 @@ Inspired by modern physical-control craftsmanship from [Condesa Electronics — 
 - ESPHome runtime deploy guidance is aligned to 2026.4.x OTA schema: `ota` platform entries (`esphome` + `web_server`) are the supported path, and legacy `web_server.ota: true` usage should be treated as incompatible in modern builds.
 - Operator-grade validation artifacts remain the execution truth surface: `docs/testing/raw/*` checklists/monitors and synchronized roadmap ledgers.
 - Startup authority handling is hardened to avoid mixed boot semantics across migration windows, and deterministic diagnostics now include source/provenance + playback-modality context for faster operator triage.
+
+## Compatibility baseline (verified vs expected)
+
+This section reflects an evidence-first compatibility audit against current upstream release notes plus local code-surface checks. It is intentionally conservative:
+
+- **Verified up to (audit baseline):**
+  - Home Assistant Core: **2026.6.4**
+  - Home Assistant OS: **18.0**
+  - ESPHome: **2026.6.2**
+  - ESPHome add-on: **2026.6.2**
+  - ESPHome Device Builder backend: **1.0.12**
+  - ESPHome Device Builder frontend: **0.1.174**
+
+- **What “verified” means in this context:**
+  - Upstream changelog/release deltas were reviewed and compared to current Spectra runtime + component contract surfaces.
+  - No blocking incompatibilities were identified in the current static code/config surface.
+
+- **Expected (pending live soak confirmation):**
+  - Build/deploy/runtime behavior remains expected-compatible on the versions above, but should still be confirmed with live compile + runtime validation evidence for each environment.
+
+- **Known watch items:**
+  - BLE scanning default changes in HA/ESPHome may affect operational behavior on `bluetooth_proxy` nodes; treat as an operational tuning watchpoint.
+  - Compatibility statements here are contract-surface/audit based, not a blanket guarantee for every custom deployment topology.
+
+## Spectra LS Remote (new additive lane)
+
+- A new standalone ESPHome node (`spectra-ls-remote`) is being introduced as a **movable coffee-table control box**.
+- Current input model is encoder-first: rotary volume step control + encoder center-press play/pause + dedicated momentary next-track button.
+- Power direction is battery-aware by design (final target board: ESP32-S3-DEVKIT-LIPO with charging + deep-sleep + battery telemetry).
+- Communication direction is BLE-bridge-primary for low wake overhead, with Wi-Fi retained as fallback/OTA/service lane.
+- Scope/progress source of truth: `docs/program/SPECTRA-LS-REMOTE-SCOPE-PROGRESS.md`.
+- Separate local operations helpers:
+  - build: `bin/esphome_spectra_remote_build_local.sh`
+  - upload: `bin/esphome_spectra_remote_upload_local.sh`
 
 ## Documentation
 

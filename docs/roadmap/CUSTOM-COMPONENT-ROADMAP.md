@@ -1,6 +1,6 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.06.05.1 -->
-<!-- Last updated: 2026-06-05 -->
+<!-- Version: 2026.06.22.4 -->
+<!-- Last updated: 2026-06-22 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
 
@@ -19,7 +19,55 @@ Execution playbook reference: `docs/program/PARALLEL-PROGRAM-PLAYBOOK.md`.
 - Backward-compatible migration before replacement.
 - Audio and lighting are first-class depth domains, while input primitives remain mappable for broader Home Assistant control domains.
 
+## Universal residual exposure handlers (phase continuity requirement)
+
+Apply this handler set in every remaining phase slice where literals/hardcodes are reviewed.
+
+- **Classification contract**
+
+- `acceptable historical/reference`: archived evidence artifacts and explicitly local operator notes that are not active product logic.
+- `sanitize now`: active roadmap/runbook/governance docs and portable examples/defaults.
+
+- **Sanitization contract**
+
+- Replace install-specific hosts/IPs with placeholders (`<ha_host>`, `<device_ip>`, `<wled_host_or_ip>`).
+- Replace install-specific entity examples/defaults with contract-safe placeholders (`light.<target_light>`, `media_player.<target_player>`).
+- Preserve behavior and contract semantics; sanitize literals only.
+
+- **Two-track disposition + version parity review (mandatory)**
+
+- Record runtime track disposition and component track disposition in `docs/CHANGELOG.md` in the same slice.
+- Include explicit version-parity review status (`updated` or `not-applicable with rationale`) for both tracks when behavior/contract surfaces are touched.
+
+- **No-go contract**
+
+- No new install-specific literals in active product logic or active operator defaults.
+- No silent exception lanes; bounded exceptions must be documented with rationale in the same change set.
+
 Latest run update (2026-05-17, Slice-CW control-host active-target guard slip fix):
+
+Latest run update (2026-06-22, Phase-Setup-1 HA setup-flow foundation):
+
+Latest run update (2026-06-22, legacy helper read-lane retirement + ESP fallback telemetry artifact removal):
+
+- Retired active component reads that depended on `input_select.ma_active_target` by switching touched flows to component-native route/scaffold surfaces (control-center volume target resolution, event/recovery active-target handling, startup boot-readiness checks).
+- Retired stale active-path ESP fallback telemetry artifact exports/backing globals (`esp_control_fallback_*`) from `esphome/spectra_ls_system/packages/spectra-ls-system.yaml`.
+- Runtime track disposition: implemented (fallback telemetry artifact surfaces removed from active runtime path).
+- Component track disposition: implemented (legacy helper read-coupling removed from touched component flows).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; helper-coupling/artifact retirement hardening only.
+
+- Added guided setup-policy capture fields to integration options flow for entity include/exclude curation (`routing` + `metadata` lists), with normalized component persistence and write-controls visibility for later behavior-lane wiring.
+- Runtime track disposition: compatibility-shimmed (runtime behavior/contracts unchanged; component-lane framework seed only).
+- Component track disposition: implemented (setup-flow capture + normalized policy packet exposure).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; onboarding framework foundation only.
+
+Latest run update (2026-06-21, canonical contract ownership ledger publication):
+
+- Published canonical ownership ledger `docs/architecture/CONTRACT-OWNERSHIP-LEDGER.md` capturing active runtime/component contract surfaces with explicit owner, writer, readers, authority mode, fallback posture, and retirement disposition.
+- Synchronized parity references in roadmap/v-next/README/docs index so the ledger is discoverable as the single table-of-record for contract ownership.
+- Runtime track disposition: compatibility-shimmed (docs-only; runtime behavior unchanged).
+- Component track disposition: compatibility-shimmed (docs-only; component behavior unchanged).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; governance clarity and migration-audit ergonomics hardening only.
 
 Latest run update (2026-06-05, passthrough-source metadata fallback preference):
 
@@ -507,10 +555,17 @@ Latest run update (2026-05-04, Slice-BZ scheduler deterministic guidance consist
 
 ## Phased implementation roadmap
 
+### Phase status snapshot (2026-06-22)
+
+- Phase 0 (governance + charter + hardcode guard baseline): **implemented/closed**.
+- Phase 1 (`P1-S01` shadow parity): **implemented/validated** and retained as historical baseline.
+- Current execution queue is in later slices (post-P1), with Phase-1 artifacts kept for regression/reference.
+
 ## Program status ledger
 
 | Slice | Phase | Runtime Track | Component Track | Parity | Risk | Status |
 | --- | --- | --- | --- | --- | --- | --- |
+| P0-S01 | 0 | Implemented (governance/runtime baseline retained) | Implemented (program charter + parity policy) | Implemented | Low | Implemented |
 | P1-S01 | 1 | Implemented (legacy source-of-truth retained) | Implemented (read-only shadow parity) | Implemented | Low | Implemented |
 | P2-S01 | 2 | Implemented (legacy route contracts retained) | Implemented (registry/router scaffold; read-only) | Implemented | Low | Implemented |
 | P2-S02 | 2 | Implemented (legacy route contracts retained) | Implemented (deterministic validation hardening + P2 diagnostics closure) | Implemented | Low | Implemented |

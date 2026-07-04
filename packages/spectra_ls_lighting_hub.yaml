@@ -1,6 +1,6 @@
 # Description: Spectra LS lighting hub (rooms/targets from HA Areas).
-# Version: 2026.06.11.13
-# Last updated: 2026-06-11
+# Version: 2026.06.22.1
+# Last updated: 2026-06-22
 # Update version/date whenever you change this file.
 #
 # Notes:
@@ -38,7 +38,7 @@ input_button:
 shell_command:
   control_board_sync_wled_palette_room: >-
     /usr/local/bin/python3 /config/bin/spectra_wled_palette_e2e.py
-    --ha-url "http://192.168.10.10:8123"
+    --ha-url "http://127.0.0.1:8123"
     --secrets-file "/config/secrets.yaml"
     --room "{{ states('input_select.control_board_room') | trim | replace('"', '') if states('input_select.control_board_room') not in ['No Rooms', 'unknown', 'unavailable', 'none', ''] else '' }}"
     --wled-entity "{{ states('input_select.control_board_wled_source') if states('input_select.control_board_wled_source') not in ['Auto', 'None', 'unknown', 'unavailable', 'none', ''] else '' }}"
@@ -52,6 +52,76 @@ script:
     mode: restart
     sequence:
       - service: shell_command.control_board_sync_wled_palette_room
+
+  control_board_room_lights_on:
+    alias: Spectra LS - Room Lights On (Resolved)
+    mode: restart
+    sequence:
+      - variables:
+          selected_room: "{{ states('input_select.control_board_room') }}"
+          raw: "{{ state_attr('sensor.control_board_eligible_light_catalog', 'items_json') or '[]' }}"
+          parsed: >
+            {% if raw is string %}
+              {{ raw | trim | from_json(default=[]) }}
+            {% elif raw is iterable and raw is not string %}
+              {{ raw }}
+            {% else %}
+              {{ [] }}
+            {% endif %}
+          targets: >
+            {% set ns = namespace(items=[]) %}
+            {% for item in parsed if item is mapping %}
+              {% set entity = item.entity_id if item.entity_id is defined else '' %}
+              {% set room = item.area_name if item.area_name is defined else '' %}
+              {% if entity not in ['', none] and (selected_room in ['', 'unknown', 'unavailable', 'No Rooms'] or room == selected_room) %}
+                {% set ns.items = ns.items + [entity] %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.items | unique | list }}
+      - choose:
+          - conditions: "{{ targets | count > 0 }}"
+            sequence:
+              - repeat:
+                  for_each: "{{ targets }}"
+                  sequence:
+                    - service: light.turn_on
+                      data:
+                        entity_id: "{{ repeat.item }}"
+
+  control_board_room_lights_off:
+    alias: Spectra LS - Room Lights Off (Resolved)
+    mode: restart
+    sequence:
+      - variables:
+          selected_room: "{{ states('input_select.control_board_room') }}"
+          raw: "{{ state_attr('sensor.control_board_eligible_light_catalog', 'items_json') or '[]' }}"
+          parsed: >
+            {% if raw is string %}
+              {{ raw | trim | from_json(default=[]) }}
+            {% elif raw is iterable and raw is not string %}
+              {{ raw }}
+            {% else %}
+              {{ [] }}
+            {% endif %}
+          targets: >
+            {% set ns = namespace(items=[]) %}
+            {% for item in parsed if item is mapping %}
+              {% set entity = item.entity_id if item.entity_id is defined else '' %}
+              {% set room = item.area_name if item.area_name is defined else '' %}
+              {% if entity not in ['', none] and (selected_room in ['', 'unknown', 'unavailable', 'No Rooms'] or room == selected_room) %}
+                {% set ns.items = ns.items + [entity] %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.items | unique | list }}
+      - choose:
+          - conditions: "{{ targets | count > 0 }}"
+            sequence:
+              - repeat:
+                  for_each: "{{ targets }}"
+                  sequence:
+                    - service: light.turn_off
+                      data:
+                        entity_id: "{{ repeat.item }}"
 
 template:
   - sensor:

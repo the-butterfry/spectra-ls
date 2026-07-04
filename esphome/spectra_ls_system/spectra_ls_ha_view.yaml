@@ -1,3 +1,7 @@
+# Description: Local Lovelace view fixture used for Spectra LS HA layout testing.
+# Version: 2026.06.21.1
+# Last updated: 2026-06-21
+
 views:
   - path: default_view
     title: Home

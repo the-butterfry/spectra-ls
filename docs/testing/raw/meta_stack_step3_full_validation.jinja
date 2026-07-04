@@ -1,6 +1,6 @@
 {# Description: Full copy/paste Developer Tools template for Step-3 metadata-stack runtime validation (scheduler + metadata policy + stale root-cause + ESP UX gate). #}
-{# Version: 2026.05.05.3 #}
-{# Last updated: 2026-05-05 #}
+{# Version: 2026.06.20.1 #}
+{# Last updated: 2026-06-20 #}
 
 {# =========================
   Meta Stack Step-3 Full Validation (Runtime)
@@ -125,34 +125,15 @@
   )
 %}
 
-{% set source_now = states('sensor.now_playing_source') | lower %}
-{% set source_ma = states('sensor.ma_active_source') | lower %}
-{% set app_ma = states('sensor.ma_active_app') | lower %}
-{% set source_ctx = source_now ~ ' ' ~ source_ma ~ ' ' ~ app_ma %}
-{% set video_hint =
-  ('plex' in source_ctx) or
-  ('apple tv' in source_ctx) or
-  ('appletv' in source_ctx) or
-  ('hdmi' in source_ctx) or
-  ('tv' in source_ctx)
-%}
-
 {% set media_class_raw = states('sensor.now_playing_media_class') %}
 {% set media_class = media_class_raw | lower %}
-{% set media_class_valid = media_class in ['music', 'non_music', 'none'] %}
+{% set media_class_valid = media_class in ['music', 'none'] %}
 {% set display_allowed = is_state('binary_sensor.now_playing_display_allowed', 'on') %}
 {% set preview_key = states('sensor.now_playing_preview_key') %}
 {% set preview_key_valid = preview_key not in invalid %}
 {% set preview_age_s = (as_timestamp(now()) - as_timestamp(states.sensor.now_playing_preview_key.last_changed)) | float(9999) if preview_key_valid else none %}
-{% set media_contract_expected_display =
-  true if media_class == 'music'
-  else (
-    false if media_class in ['none', 'non_music']
-    else false
-  )
-%}
-{% set no_audio_video_context_expected =
-  video_hint and
+{% set media_contract_expected_display = (not np_entity_missing) and (np_state in ['playing', 'paused']) %}
+{% set no_audio_context_expected =
   np_entity_missing and
   np_title_missing and
   suppression_reason == 'entity_missing' and
@@ -160,8 +141,8 @@
 %}
 {% set media_contract_timing_ready = true %}
 {% set media_contract_display_match = display_allowed == media_contract_expected_display if media_class_valid else false %}
-{% set media_contract_surface_ready = media_class_valid and states('binary_sensor.now_playing_display_allowed') not in invalid %}
-{% set media_contract_unknown_expected_ok = no_audio_video_context_expected and media_class in ['unknown', 'unavailable', 'none', ''] and not display_allowed %}
+{% set media_contract_surface_ready = states('binary_sensor.now_playing_display_allowed') not in invalid %}
+{% set media_contract_unknown_expected_ok = no_audio_context_expected and media_class in ['unknown', 'unavailable', 'none', ''] and not display_allowed %}
 {% set media_contract_gate_ok = (media_contract_surface_ready and media_contract_timing_ready and media_contract_display_match) or media_contract_unknown_expected_ok %}
 {% set media_contract_reason =
   'expected_unknown_no_audio_video_context' if media_contract_unknown_expected_ok
@@ -177,10 +158,8 @@
   )
 %}
 
-{% set metadata_fail_is_expected_no_audio = metadata_verdict == 'FAIL' and no_audio_video_context_expected and suppression_reason == 'entity_missing' %}
+{% set metadata_fail_is_expected_no_audio = metadata_verdict == 'FAIL' and no_audio_context_expected and suppression_reason == 'entity_missing' %}
 {% set metadata_effective_fail = metadata_verdict == 'FAIL' and not metadata_fail_is_expected_no_audio %}
-
-{% set esp_blank_expected = media_class == 'non_music' and not display_allowed %}
 
 {% set esp_handoff = states('sensor.spectra_ls_system_esp_control_handoff_status') %}
 {% set esp_target = states('sensor.spectra_ls_system_esp_control_target') %}
@@ -272,7 +251,7 @@
 - `effective_api_url`: **{{ effective_api_url if effective_api_url not in invalid else 'n/a' }}** (source=`{{ effective_api_url_source }}`)
 - `effective_api_url_valid`: **{{ effective_api_url_valid }}**
 
-### HA media-class contract (authoritative policy)
+### HA now-playing contract (authoritative policy)
 - `now_playing_media_class`: **{{ media_class if media_class_valid else ('invalid:' ~ media_class_raw) }}**
 - `display_allowed`: **{{ display_allowed }}**
 - `preview_key`: **{{ preview_key if preview_key_valid else 'n/a' }}**
@@ -297,15 +276,13 @@
 - `now_playing_position_age_s`: **{{ np_age_s }}**
 - Thresholds: **playing<= {{ meta_stale_s }}s, paused<= {{ paused_hide_s }}s**
 - Stale root-cause classification: **{{ stale_reason }}**
-- Video/no-audio context expected: **{{ no_audio_video_context_expected }}**
-- Source context hint: **{{ source_ctx | trim if (source_ctx | trim) != '' else 'n/a' }}**
+- No-audio context expected: **{{ no_audio_context_expected }}**
 
 ### ESP + UX gate
 - `esp_control_handoff_status`: **{{ esp_handoff if esp_handoff not in invalid else 'n/a' }}**
 - `esp_control_target`: **{{ esp_target if esp_target not in invalid else 'n/a' }}**
 - `esp_oled_status`: **{{ esp_oled if esp_oled not in invalid else 'n/a' }}**
 - ESP telemetry available: **{{ (esp_handoff not in invalid) or (esp_target not in invalid) or (esp_oled not in invalid) }}**
-- Non-music blank expected now: **{{ esp_blank_expected }}**
 - Auto-only fallback helpers currently clear: **{{ esp_auto_only_gate }}**
 
 ### Snapshot freshness

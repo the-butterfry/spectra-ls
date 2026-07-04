@@ -1,6 +1,6 @@
 <!-- Description: Operator runbook for installing Spectra on a user-owned Home Assistant instance with explicit pass/fail checkpoints. -->
-<!-- Version: 2026.05.01.1 -->
-<!-- Last updated: 2026-05-01 -->
+<!-- Version: 2026.06.22.1 -->
+<!-- Last updated: 2026-06-22 -->
 
 # Install on Your Own Home Assistant
 
@@ -87,6 +87,7 @@ Current required discovery note (applies now):
 
 - [ ] After adding/updating files under `custom_components/spectra_ls/`, perform a full Home Assistant restart **before** using **Add Integration**.
 - [ ] After restart, go to **Settings → Devices & Services → Add Integration** and search for `Spectra LS`.
+- [ ] In **Settings → Devices & Services → Spectra LS → Configure**, set setup-policy include/exclude entity lists for routing + metadata (`media_player` selectors) to curate which entities participate in setup behavior per install.
 
 Planned additions to this page:
 

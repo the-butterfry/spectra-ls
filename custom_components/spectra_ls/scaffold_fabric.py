@@ -1,6 +1,6 @@
 # Description: Scaffold-fabric workflow for Spectra LS scaffold/inventory/backend assembly extracted from meta-fabric.
-# Version: 2026.06.05.2
-# Last updated: 2026-06-05
+# Version: 2026.06.22.1
+# Last updated: 2026-06-22
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -9,7 +9,6 @@ from __future__ import annotations
 from typing import Any
 
 from .const import (
-    LEGACY_ACTIVE_TARGET_HELPER,
     LEGACY_CONTROL_HOST,
     LEGACY_CONTROL_TARGETS,
     LEGACY_MA_API_URL,
@@ -54,7 +53,7 @@ class ScaffoldFabricWorkflow:
                 legacy_control_targets_entity=LEGACY_CONTROL_TARGETS,
                 legacy_rooms_json_entity=LEGACY_ROOMS_JSON,
                 legacy_rooms_raw_entity=LEGACY_ROOMS_RAW,
-                legacy_active_target_helper_entity=LEGACY_ACTIVE_TARGET_HELPER,
+                legacy_active_target_helper_entity=None,
                 legacy_active_target_entity=LEGACY_SURFACES["active_target"],
             )
 

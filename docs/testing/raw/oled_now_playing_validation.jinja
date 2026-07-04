@@ -1,15 +1,17 @@
 {# Description: Raw copy/paste Developer Tools template to validate OLED, control target, and meta target alignment (including SRC fallback causes). #}
-{# Version: 2026.06.12.2 #}
-{# Last updated: 2026-06-12 #}
+{# Version: 2026.06.23.2 #}
+{# Last updated: 2026-06-23 #}
 
 {# =========================
   OLED + Control Target + Meta Target Validation
   Purpose:
     - Validate current OLED now-playing payload vs component/runtime contracts.
-    - Validate control-target chain alignment (route/helper/ESP).
+    - Validate control-target chain alignment (component/route/ESP, helper as advisory).
     - Validate meta-target chain alignment (metadata-prep owner/active-meta/now-playing entity).
     - Detect when OLED is in SRC fallback posture.
+    - Inspect component selector winner policy (pool/reason/disqualifiers).
     - Classify likely root cause without guessing.
+    - Treat issue posture as live-state dependent (not restart-dependent).
   Usage:
     1) Paste into Home Assistant -> Developer Tools -> Template.
     2) Run while the OLED is showing the issue.
@@ -33,8 +35,17 @@
 {% set route_decision = route_trace.decision if route_trace.decision is defined else 'unknown' %}
 {% set route_active_target = route_trace.active_target if route_trace.active_target is defined else 'unknown' %}
 {% set metadata_owner = metadata_prep.metadata_authority_owner if metadata_prep.metadata_authority_owner is defined else 'unknown' %}
+{% set metadata_checks = metadata_prep.checks if metadata_prep.checks is defined and metadata_prep.checks is mapping else {} %}
 {% set metadata_values = metadata_prep.values if metadata_prep.values is defined and metadata_prep.values is mapping else {} %}
+{% set metadata_canonical = metadata_prep.canonical_summary if metadata_prep.canonical_summary is defined and metadata_prep.canonical_summary is mapping else {} %}
 {% set packet_meta_target = metadata_values.active_meta_entity if metadata_values.active_meta_entity is defined else 'unknown' %}
+{% set packet_canonical_control_target = metadata_values.canonical_control_target if metadata_values.canonical_control_target is defined else (metadata_canonical.control_target if metadata_canonical.control_target is defined else 'unknown') %}
+{% set packet_canonical_meta_target = metadata_values.canonical_meta_target if metadata_values.canonical_meta_target is defined else (metadata_canonical.meta_target if metadata_canonical.meta_target is defined else 'unknown') %}
+{% set packet_canonical_now_playing_entity = metadata_values.canonical_now_playing_entity if metadata_values.canonical_now_playing_entity is defined else (metadata_canonical.now_playing_entity if metadata_canonical.now_playing_entity is defined else 'unknown') %}
+{% set packet_canonical_alignment_state = metadata_values.canonical_alignment_state if metadata_values.canonical_alignment_state is defined else (metadata_canonical.alignment_state if metadata_canonical.alignment_state is defined else 'unknown') %}
+{% set packet_canonical_oled_posture = metadata_values.canonical_oled_posture if metadata_values.canonical_oled_posture is defined else (metadata_canonical.oled_posture if metadata_canonical.oled_posture is defined else 'unknown') %}
+{% set packet_canonical_oled_payload_ready = metadata_values.canonical_oled_payload_ready if metadata_values.canonical_oled_payload_ready is defined else (metadata_canonical.oled_payload_ready if metadata_canonical.oled_payload_ready is defined else 'unknown') %}
+{% set packet_canonical_cause = metadata_values.canonical_cause_hint if metadata_values.canonical_cause_hint is defined else (metadata_canonical.cause_hint if metadata_canonical.cause_hint is defined else 'unknown') %}
 {% set packet_now_playing_app = metadata_values.now_playing_app if metadata_values.now_playing_app is defined else 'unknown' %}
 {% set packet_now_playing_source = metadata_values.now_playing_source if metadata_values.now_playing_source is defined else 'unknown' %}
 {% set packet_resolver_selected_meta_entity = metadata_values.resolver_selected_meta_entity if metadata_values.resolver_selected_meta_entity is defined else 'unknown' %}
@@ -42,6 +53,25 @@
 {% set packet_passthrough_album_suppressed = metadata_values.passthrough_album_suppressed if metadata_values.passthrough_album_suppressed is defined else 'unknown' %}
 {% set packet_passthrough_cache_reused = metadata_values.passthrough_metadata_cache_reused if metadata_values.passthrough_metadata_cache_reused is defined else 'unknown' %}
 {% set packet_passthrough_cache_age_s = metadata_values.passthrough_metadata_cache_age_s if metadata_values.passthrough_metadata_cache_age_s is defined else 'unknown' %}
+{% set packet_selector_raw = metadata_values.component_now_playing_selection if metadata_values.component_now_playing_selection is defined else {} %}
+{% set packet_selector = packet_selector_raw if packet_selector_raw is mapping else ((packet_selector_raw | from_json) if (packet_selector_raw is string and (packet_selector_raw | trim).startswith('{')) else {}) %}
+{% set packet_selector_winner_entity_raw = metadata_checks.component_now_playing_selection_winner_entity if metadata_checks.component_now_playing_selection_winner_entity is defined else (metadata_values.component_now_playing_selection_winner_entity if metadata_values.component_now_playing_selection_winner_entity is defined else (packet_selector.winner_entity if packet_selector.winner_entity is defined else 'unknown')) %}
+{% set packet_selector_winner_source_raw = metadata_checks.component_now_playing_selection_winner_source if metadata_checks.component_now_playing_selection_winner_source is defined else (metadata_values.component_now_playing_selection_winner_source if metadata_values.component_now_playing_selection_winner_source is defined else (packet_selector.winner_source if packet_selector.winner_source is defined else 'unknown')) %}
+{% set packet_selector_winner_pool = metadata_checks.component_now_playing_selection_winner_pool if metadata_checks.component_now_playing_selection_winner_pool is defined else (packet_selector.winner_pool if packet_selector.winner_pool is defined else 'unknown') %}
+{% set packet_selector_winner_reason = metadata_checks.component_now_playing_selection_winner_reason if metadata_checks.component_now_playing_selection_winner_reason is defined else (packet_selector.winner_reason if packet_selector.winner_reason is defined else 'unknown') %}
+{% set packet_selector_ma_rich_active_exists = metadata_checks.component_now_playing_selection_ma_rich_active_exists if metadata_checks.component_now_playing_selection_ma_rich_active_exists is defined else (packet_selector.ma_rich_active_exists if packet_selector.ma_rich_active_exists is defined else 'unknown') %}
+{% set packet_selector_candidate_count = metadata_checks.component_now_playing_selection_candidate_count if metadata_checks.component_now_playing_selection_candidate_count is defined else (packet_selector.candidate_count if packet_selector.candidate_count is defined else 'unknown') %}
+{% set packet_selector_eligible_count = metadata_checks.component_now_playing_selection_eligible_count if metadata_checks.component_now_playing_selection_eligible_count is defined else (packet_selector.eligible_count if packet_selector.eligible_count is defined else 'unknown') %}
+{% set packet_selector_candidates = packet_selector.candidates if packet_selector.candidates is defined and packet_selector.candidates is iterable else [] %}
+
+{% set sparse_blocked = namespace(count=0, entities=[]) %}
+{% for row in packet_selector_candidates if row is mapping %}
+  {% set row_reasons = row.reasons if row.reasons is defined and row.reasons is iterable else [] %}
+  {% if 'sparse_transport_blocked_by_ma_rich' in row_reasons %}
+    {% set sparse_blocked.count = sparse_blocked.count + 1 %}
+    {% set sparse_blocked.entities = sparse_blocked.entities + [row.entity if row.entity is defined else 'unknown'] %}
+  {% endif %}
+{% endfor %}
 
 {# --- component-first now-playing contracts --- #}
 {% set c_entity = states('sensor.component_now_playing_entity') %}
@@ -77,9 +107,13 @@
 {% set effective_app = c_app if c_app not in invalid else r_app %}
 {% set effective_display_allowed = c_display_allowed if c_display_allowed not in invalid else r_display_allowed %}
 {% set effective_freshness = c_freshness if c_freshness is not none else r_freshness %}
+{% set packet_selector_winner_entity = packet_selector_winner_entity_raw if packet_selector_winner_entity_raw not in invalid else (effective_entity if packet_selector_winner_pool not in ['unknown', 'none', ''] and metadata_owner in ['component', 'component_primary', 'component_contract_surfaces'] else packet_selector_winner_entity_raw) %}
+{% set packet_selector_winner_source = packet_selector_winner_source_raw if packet_selector_winner_source_raw not in invalid else (packet_component_entity_source if packet_component_entity_source not in invalid else packet_selector_winner_source_raw) %}
+{% set selector_partial_telemetry = packet_selector_winner_entity_raw in invalid and packet_selector_winner_pool not in ['unknown', 'none', ''] %}
 
 {# --- control + meta target surfaces --- #}
 {% set helper_control_target = states('input_select.ma_active_target') %}
+{% set component_active_target = states('sensor.component_active_target') %}
 {% set runtime_control_target = states('sensor.ma_active_target') %}
 {% set runtime_meta_target = states('sensor.ma_active_meta_entity') %}
 {% set component_control_host = states('sensor.component_control_host') %}
@@ -91,7 +125,7 @@
 {% set route_control_host = route_trace.control_host if route_trace.control_host is defined else (route_trace.active_host if route_trace.active_host is defined else (route_trace.host if route_trace.host is defined else 'unknown')) %}
 {% set route_control_port = route_trace.control_port if route_trace.control_port is defined else (route_trace.active_port if route_trace.active_port is defined else (route_trace.port if route_trace.port is defined else 'unknown')) %}
 
-{% set effective_control_target = helper_control_target if helper_control_target not in invalid else (runtime_control_target if runtime_control_target not in invalid else route_active_target) %}
+{% set effective_control_target = component_active_target if component_active_target not in invalid else (route_active_target if route_active_target not in invalid else (helper_control_target if helper_control_target not in invalid else runtime_control_target)) %}
 {% set effective_meta_target = packet_meta_target if packet_meta_target not in invalid else (runtime_meta_target if runtime_meta_target not in invalid else effective_entity) %}
 {% set effective_control_host = component_control_host if component_control_host not in invalid else (runtime_control_host if runtime_control_host not in invalid else route_control_host) %}
 {% set effective_control_port = component_control_port if component_control_port not in invalid else (runtime_control_port if runtime_control_port not in invalid else route_control_port) %}
@@ -99,6 +133,28 @@
 {# --- ESP/OLED telemetry --- #}
 {% set esp_handoff = states('sensor.spectra_ls_system_esp_control_handoff_status') %}
 {% set esp_target = states('sensor.spectra_ls_system_esp_control_target') %}
+{% set esp_control_host_direct = states('sensor.spectra_ls_system_esp_control_host') %}
+{% set esp_control_host_prefixed = states('sensor.living_room_spectra_ls_system_esp_control_host') %}
+{% set esp_control_hosts_direct = states('sensor.spectra_ls_system_esp_control_hosts') %}
+{% set esp_control_hosts_prefixed = states('sensor.living_room_spectra_ls_system_esp_control_hosts') %}
+{% set esp_control_port_direct = states('sensor.spectra_ls_system_esp_control_port') %}
+{% set esp_control_port_prefixed = states('sensor.living_room_spectra_ls_system_esp_control_port') %}
+{% set esp_dynamic = namespace(host='', hosts='', port='') %}
+{% for s in states.sensor %}
+  {% set eid = s.entity_id if s.entity_id is defined else '' %}
+  {% set st = s.state if s.state is defined else '' %}
+  {% if esp_dynamic.host == '' and eid.endswith('_spectra_ls_system_esp_control_host') and st not in invalid %}
+    {% set esp_dynamic.host = st %}
+  {% endif %}
+  {% if esp_dynamic.hosts == '' and eid.endswith('_spectra_ls_system_esp_control_hosts') and st not in invalid %}
+    {% set esp_dynamic.hosts = st %}
+  {% endif %}
+  {% if esp_dynamic.port == '' and eid.endswith('_spectra_ls_system_esp_control_port') and st not in invalid %}
+    {% set esp_dynamic.port = st %}
+  {% endif %}
+{% endfor %}
+{% set esp_control_host = esp_control_host_direct if esp_control_host_direct not in invalid else (esp_control_host_prefixed if esp_control_host_prefixed not in invalid else (esp_dynamic.host if esp_dynamic.host not in invalid else (esp_control_hosts_direct if esp_control_hosts_direct not in invalid else (esp_control_hosts_prefixed if esp_control_hosts_prefixed not in invalid else esp_dynamic.hosts)))) %}
+{% set esp_control_port = esp_control_port_direct if esp_control_port_direct not in invalid else (esp_control_port_prefixed if esp_control_port_prefixed not in invalid else esp_dynamic.port) %}
 {% set esp_oled = states('sensor.spectra_ls_system_esp_oled_status') %}
 {% set esp_mode = esp_oled.split('|', 1)[0] if esp_oled not in invalid and '|' in esp_oled else 'unknown' %}
 {% set esp_oled_payload = esp_oled.split('oled:', 1)[1] if esp_oled not in invalid and 'oled:' in esp_oled else '' %}
@@ -130,9 +186,13 @@
 
 {# --- alignment checks --- #}
 {% set control_target_route_mismatch = helper_control_target not in invalid and route_active_target not in invalid and helper_control_target != route_active_target %}
-{% set control_target_now_playing_entity_mismatch = effective_control_target not in invalid and effective_entity not in invalid and effective_control_target != effective_entity %}
+{% set packet_control_target_mismatch = metadata_values.control_target_vs_now_playing_mismatch if metadata_values.control_target_vs_now_playing_mismatch is defined else none %}
+{% set packet_meta_target_mismatch = metadata_values.meta_target_vs_now_playing_mismatch if metadata_values.meta_target_vs_now_playing_mismatch is defined else none %}
+{% set packet_intentional_divergence = metadata_values.intentional_control_metadata_divergence if metadata_values.intentional_control_metadata_divergence is defined else none %}
+{% set control_target_now_playing_entity_mismatch = (packet_control_target_mismatch if packet_control_target_mismatch is not none else (effective_control_target not in invalid and effective_entity not in invalid and effective_control_target != effective_entity)) %}
 {% set passthrough_split_brain_risk = false %}
 {% set control_target_esp_mismatch = false %}
+{% set control_host_esp_mismatch = false %}
 {% if esp_target not in invalid and effective_control_target not in invalid %}
   {% if esp_target == effective_control_target %}
     {% set control_target_esp_mismatch = false %}
@@ -142,7 +202,10 @@
     {% set control_target_esp_mismatch = true %}
   {% endif %}
 {% endif %}
-{% set meta_target_entity_mismatch = effective_meta_target not in invalid and effective_entity not in invalid and effective_meta_target != effective_entity %}
+{% if esp_control_host not in invalid and effective_control_host not in invalid and esp_control_host != effective_control_host %}
+  {% set control_host_esp_mismatch = true %}
+{% endif %}
+{% set meta_target_entity_mismatch = (packet_meta_target_mismatch if packet_meta_target_mismatch is not none else (effective_meta_target not in invalid and effective_entity not in invalid and effective_meta_target != effective_entity)) %}
 {% set metadata_owner_component = metadata_owner in ['component', 'component_primary', 'component_contract_surfaces'] %}
 {% set metadata_owner_legacy = metadata_owner in ['legacy', 'legacy_contract_surfaces'] %}
 
@@ -191,58 +254,76 @@
 {% endfor %}
 {% set passthrough_source_detected = passthrough.detected %}
 {% set passthrough_split_brain_risk = passthrough_source_detected and control_target_now_playing_entity_mismatch and effective_state in ['playing', 'paused'] %}
-{% set intentional_control_metadata_divergence = control_target_now_playing_entity_mismatch
+{% set selector_winner_is_effective_entity = packet_selector_winner_entity not in invalid and effective_entity not in invalid and packet_selector_winner_entity == effective_entity %}
+{% set selector_low_confidence_pool = packet_selector_winner_pool in ['fallback_any', 'fallback_meta', 'unknown'] %}
+{% set intentional_control_metadata_divergence = (packet_intentional_divergence if packet_intentional_divergence is not none else (control_target_now_playing_entity_mismatch
   and metadata_owner_component
   and not meta_target_entity_mismatch
   and not control_target_route_mismatch
   and not control_target_esp_mismatch
   and not passthrough_split_brain_risk
   and effective_state in ['playing', 'paused']
-  and effective_display_allowed in ['on', 'true', '1'] %}
+  and effective_display_allowed in ['on', 'true', '1'])) %}
 
 {# --- root-cause classification --- #}
-{% set cause = 'healthy_or_non_src_case' %}
-{% if control_target_esp_mismatch %}
+{% set cause = packet_canonical_cause if packet_canonical_cause not in invalid else 'healthy_or_non_src_case' %}
+{% if packet_canonical_cause in invalid and control_host_esp_mismatch %}
+  {% set cause = 'control_host_mismatch_esp_vs_effective_control_host' %}
+{% elif packet_canonical_cause in invalid and control_target_esp_mismatch %}
   {% set cause = 'control_target_mismatch_esp_vs_effective_control_target' %}
-{% elif control_target_route_mismatch %}
-  {% set cause = 'control_target_mismatch_helper_vs_route_active_target' %}
-{% elif passthrough_split_brain_risk %}
+{% elif packet_canonical_cause in invalid and control_target_route_mismatch %}
+  {% set cause = 'legacy_helper_mismatch_non_authoritative' %}
+{% elif packet_canonical_cause in invalid and passthrough_split_brain_risk %}
   {% set cause = 'passthrough_split_brain_control_target_vs_now_playing_entity' %}
-{% elif intentional_control_metadata_divergence %}
+{% elif packet_canonical_cause in invalid and intentional_control_metadata_divergence %}
   {% set cause = 'intentional_control_target_metadata_divergence_component_owner' %}
-{% elif control_target_now_playing_entity_mismatch %}
+{% elif packet_canonical_cause in invalid and control_target_now_playing_entity_mismatch %}
   {% set cause = 'control_target_vs_now_playing_entity_mismatch' %}
-{% elif meta_target_entity_mismatch and metadata_owner_component %}
+{% elif packet_canonical_cause in invalid and meta_target_entity_mismatch and metadata_owner_component %}
   {% set cause = 'meta_target_mismatch_component_owner_active_meta_vs_now_playing_entity' %}
-{% elif oled_src_fallback and title_missing and not source_missing %}
-  {% set cause = 'title_missing_source_present_fallback_to_src' %}
-{% elif oled_src_fallback and display_not_allowed %}
-  {% set cause = 'display_policy_suppressed_non_music_or_guarded' %}
-{% elif oled_src_fallback and control_handoff_not_ready %}
+{% elif packet_canonical_cause in invalid and control_handoff_not_ready and effective_state in ['playing', 'paused'] and effective_display_allowed in ['on', 'true', '1'] %}
   {% set cause = 'esp_control_handoff_not_ready' %}
-{% elif oled_src_fallback and not_audio_mode %}
+{% elif packet_canonical_cause in invalid and selector_partial_telemetry %}
+  {% set cause = 'component_selector_telemetry_partial' %}
+{% elif packet_canonical_cause in invalid and metadata_owner_component and selector_low_confidence_pool and effective_state in ['playing', 'paused'] and effective_display_allowed in ['on', 'true', '1'] %}
+  {% set cause = 'component_selector_low_confidence_winner_pool' %}
+{% elif packet_canonical_cause in invalid and oled_src_fallback and display_not_allowed %}
+  {% set cause = 'display_policy_suppressed' %}
+{% elif packet_canonical_cause in invalid and not_audio_mode %}
   {% set cause = 'oled_not_in_audio_mode' %}
-{% elif oled_src_fallback and stale_freshness %}
+{% elif packet_canonical_cause in invalid and oled_src_fallback and stale_freshness %}
   {% set cause = 'metadata_freshness_stale' %}
-{% elif oled_blank_audio_payload and title_missing and not source_missing and effective_display_allowed in ['on', 'true', '1'] %}
+{% elif packet_canonical_cause in invalid and oled_src_fallback and title_missing and not source_missing %}
+  {% set cause = 'title_missing_source_present_fallback_to_src' %}
+{% elif packet_canonical_cause in invalid and oled_blank_audio_payload and title_missing and not source_missing and effective_display_allowed in ['on', 'true', '1'] %}
   {% if passthrough_source_detected %}
     {% set cause = 'audio_payload_blank_expected_passthrough_no_track_metadata' %}
   {% else %}
     {% set cause = 'audio_payload_blank_source_only_no_title' %}
   {% endif %}
-{% elif oled_src_fallback and title_missing and source_missing %}
+{% elif packet_canonical_cause in invalid and oled_src_fallback and title_missing and source_missing %}
   {% set cause = 'no_viable_now_playing_contract_fields' %}
-{% elif oled_src_fallback %}
+{% elif packet_canonical_cause in invalid and oled_src_fallback %}
   {% set cause = 'src_fallback_unclassified_capture_more_context' %}
 {% endif %}
 
 {# --- verdict --- #}
 {% set verdict = 'PASS' %}
-{% if control_target_esp_mismatch or control_target_route_mismatch or (control_target_now_playing_entity_mismatch and not intentional_control_metadata_divergence) or (meta_target_entity_mismatch and metadata_owner_component) or oled_src_fallback %}
+{% if control_host_esp_mismatch
+  or control_target_esp_mismatch
+  or (control_target_now_playing_entity_mismatch and not intentional_control_metadata_divergence)
+  or (meta_target_entity_mismatch and metadata_owner_component)
+  or cause in ['title_missing_source_present_fallback_to_src', 'no_viable_now_playing_contract_fields', 'src_fallback_unclassified_capture_more_context'] %}
   {% set verdict = 'FAIL' %}
+{% elif cause in ['legacy_helper_mismatch_non_authoritative'] %}
+  {% set verdict = 'WARN' %}
+{% elif cause in ['component_selector_low_confidence_winner_pool', 'component_selector_telemetry_partial'] %}
+  {% set verdict = 'WARN' %}
+{% elif cause in ['display_policy_suppressed', 'metadata_freshness_stale'] %}
+  {% set verdict = 'WARN' %}
 {% elif cause in ['audio_payload_blank_source_only_no_title', 'audio_payload_blank_expected_passthrough_no_track_metadata'] %}
   {% set verdict = 'WARN' %}
-{% elif esp_oled in invalid or control_handoff_not_ready %}
+{% elif esp_oled in invalid or (control_handoff_not_ready and esp_mode == 'audio') %}
   {% set verdict = 'WARN' %}
 {% endif %}
 
@@ -255,10 +336,17 @@
 - `SRC` fallback detected: **{{ oled_src_fallback }}**
 - Classified cause: **{{ cause }}**
 
+### Canonical packet summary (component source)
+- control/meta/now-playing: **{{ packet_canonical_control_target if packet_canonical_control_target not in invalid else 'n/a' }} / {{ packet_canonical_meta_target if packet_canonical_meta_target not in invalid else 'n/a' }} / {{ packet_canonical_now_playing_entity if packet_canonical_now_playing_entity not in invalid else 'n/a' }}**
+- alignment state: **{{ packet_canonical_alignment_state if packet_canonical_alignment_state not in invalid else 'n/a' }}**
+- oled posture/payload-ready: **{{ packet_canonical_oled_posture if packet_canonical_oled_posture not in invalid else 'n/a' }} / {{ packet_canonical_oled_payload_ready if packet_canonical_oled_payload_ready not in invalid else 'n/a' }}**
+- canonical cause hint: **{{ packet_canonical_cause if packet_canonical_cause not in invalid else 'n/a' }}**
+
 ### Control-target alignment
 - route decision: **{{ route_decision }}**
 - route active target: **{{ route_active_target if route_active_target not in invalid else 'n/a' }}**
 - route control host/port: **{{ route_control_host if route_control_host not in invalid else 'n/a' }} / {{ route_control_port if route_control_port not in invalid else 'n/a' }}**
+- component active target: **{{ component_active_target if component_active_target not in invalid else 'n/a' }}**
 - helper control target: **{{ helper_control_target if helper_control_target not in invalid else 'n/a' }}**
 - runtime control target: **{{ runtime_control_target if runtime_control_target not in invalid else 'n/a' }}**
 - effective control target: **{{ effective_control_target if effective_control_target not in invalid else 'n/a' }}**
@@ -266,10 +354,12 @@
 - esp control target: **{{ esp_target if esp_target not in invalid else 'n/a' }}**
 - component control host/port: **{{ component_control_host if component_control_host not in invalid else 'n/a' }} / {{ component_control_port if component_control_port not in invalid else 'n/a' }}**
 - runtime control host/port: **{{ runtime_control_host if runtime_control_host not in invalid else 'n/a' }} / {{ runtime_control_port if runtime_control_port not in invalid else 'n/a' }}**
+- esp control host/port: **{{ esp_control_host if esp_control_host not in invalid else 'n/a' }} / {{ esp_control_port if esp_control_port not in invalid else 'n/a' }}**
 - effective control host/port: **{{ effective_control_host if effective_control_host not in invalid else 'n/a' }} / {{ effective_control_port if effective_control_port not in invalid else 'n/a' }}**
 - normalized compare basis: **{{ (effective_control_name_norm if effective_control_name_norm != '' else effective_control_entity_norm) if effective_control_target not in invalid else 'n/a' }} vs {{ esp_target_norm if esp_target_norm != '' else 'n/a' }}**
 - helper vs route mismatch: **{{ control_target_route_mismatch }}**
 - effective vs esp mismatch: **{{ control_target_esp_mismatch }}**
+- effective host vs esp host mismatch: **{{ control_host_esp_mismatch }}**
 - control target vs now-playing mismatch: **{{ control_target_now_playing_entity_mismatch }}**
 - passthrough split-brain risk: **{{ passthrough_split_brain_risk }}**
 - intentional transport-vs-metadata divergence accepted: **{{ intentional_control_metadata_divergence }}**
@@ -281,6 +371,16 @@
 - effective meta target: **{{ effective_meta_target if effective_meta_target not in invalid else 'n/a' }}**
 - effective now-playing entity: **{{ effective_entity if effective_entity not in invalid else 'n/a' }}**
 - meta-target vs now-playing mismatch: **{{ meta_target_entity_mismatch }}**
+
+### Component selector telemetry (holistic)
+- selector winner entity/source: **{{ packet_selector_winner_entity if packet_selector_winner_entity not in invalid else 'n/a' }} / {{ packet_selector_winner_source if packet_selector_winner_source not in invalid else 'n/a' }}**
+- selector winner pool/reason: **{{ packet_selector_winner_pool if packet_selector_winner_pool not in invalid else 'n/a' }} / {{ packet_selector_winner_reason if packet_selector_winner_reason not in invalid else 'n/a' }}**
+- selector telemetry partial payload detected: **{{ selector_partial_telemetry }}**
+- winner equals effective entity: **{{ selector_winner_is_effective_entity }}**
+- MA-rich active candidate present: **{{ packet_selector_ma_rich_active_exists }}**
+- selector candidate/eligible counts: **{{ packet_selector_candidate_count if packet_selector_candidate_count not in invalid else 'n/a' }} / {{ packet_selector_eligible_count if packet_selector_eligible_count not in invalid else 'n/a' }}**
+- sparse transport candidates blocked by MA-rich rule: **{{ sparse_blocked.count }}{% if sparse_blocked.count > 0 %} ({{ sparse_blocked.entities | join(', ') }}){% endif %}**
+- selector low-confidence winner pool: **{{ selector_low_confidence_pool }}**
 
 ### Effective now-playing contract (component-first)
 - entity/state: **{{ effective_entity if effective_entity not in invalid else 'n/a' }} / {{ effective_state if effective_state not in invalid else 'n/a' }}**
@@ -313,8 +413,10 @@
 ### Deterministic next action
 {% if cause == 'control_target_mismatch_esp_vs_effective_control_target' %}
 - Control target is split between contract and ESP. Stabilize active target/host chain first (route/helper/ESP), then rerun this template before touching OLED formatting.
-{% elif cause == 'control_target_mismatch_helper_vs_route_active_target' %}
-- Helper target diverges from route-active target. Resolve target-selection alignment before evaluating now-playing render behavior.
+{% elif cause == 'control_host_mismatch_esp_vs_effective_control_host' %}
+- ESP host feed and effective control host diverge. Stabilize host handoff first (component/runtime host surfaces plus prefixed ESP export entities), then rerun this template before touching metadata/OLED policy.
+{% elif cause == 'legacy_helper_mismatch_non_authoritative' %}
+- Legacy helper target diverges from route-active target. In component-only mode this is advisory unless it cascades into effective-target mismatch.
 {% elif cause == 'passthrough_split_brain_control_target_vs_now_playing_entity' %}
 - Passthrough source is active, but control target and now-playing entity diverge. Force `spectra_ls.set_active_target` to `{{ effective_entity if effective_entity not in invalid else 'component_now_playing_entity' }}` and recheck host/target alignment after touching a pot.
 {% elif cause == 'intentional_control_target_metadata_divergence_component_owner' %}
@@ -323,9 +425,13 @@
 - Control target and now-playing entity diverge. Validate selection authority and active-target updates before investigating OLED formatting.
 {% elif cause == 'meta_target_mismatch_component_owner_active_meta_vs_now_playing_entity' %}
 - Component owns metadata, but active meta target diverges from now-playing entity. Fix metadata winner/selection alignment first; OLED symptom is downstream.
+{% elif cause == 'component_selector_telemetry_partial' %}
+- Selector pool/reason is present but winner entity/source payload is partial. Treat effective entity as provisional winner for this capture and inspect `metadata_prep_validation.values.component_now_playing_selection` emission completeness.
+{% elif cause == 'component_selector_low_confidence_winner_pool' %}
+- Selector winner is from a fallback pool while playback is active. Compare selector candidate rows/disqualification reasons in this packet; fix candidate quality/availability before touching OLED render policy.
 {% elif cause == 'title_missing_source_present_fallback_to_src' %}
 - Title is missing while source exists, so OLED is falling back to `SRC`. Validate upstream media-title on `{{ effective_entity if effective_entity not in invalid else 'active entity' }}` and compare component vs runtime title fields in this packet.
-{% elif cause == 'display_policy_suppressed_non_music_or_guarded' %}
+{% elif cause == 'display_policy_suppressed' %}
 - Display policy is suppressing now-playing output. Verify media-class/display-allowed contracts and policy guards before changing OLED rendering logic.
 {% elif cause == 'esp_control_handoff_not_ready' %}
 - ESP handoff path is not ready. Stabilize target/host handoff first, then rerun this template.

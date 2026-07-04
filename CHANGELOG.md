@@ -1,8 +1,79 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.04.27.1 -->
-<!-- Last updated: 2026-04-27 -->
+<!-- Version: 2026.06.21.2 -->
+<!-- Last updated: 2026-06-21 -->
 
 # Changelog
+
+## 2026-06-20
+
+### Component now-playing progress continuity root-cause fix (metadata/transport clock split)
+
+**Problem addressed:** Under passthrough transport posture (for example `Optical In`), component metadata selection could source title/artist from a metadata-rich entity while still exporting position/duration from a transport entity with sparse clock fields (`media_duration` missing/zero). This caused OLED progress loss/desync despite authority/cutover PASS.
+
+**Runtime track (compatibility-shimmed):** `packages/`
+
+- No runtime ownership expansion in this slice.
+- Runtime surfaces remain compatibility lanes; progress continuity fix is implemented in component metadata export logic.
+
+**Component track (implemented):** `custom_components/spectra_ls/`
+
+- `metadata_stack.py`
+  - Hardened passthrough progress continuity path to derive position/duration from metadata-capable fallback candidates when selected transport entity lacks valid clock fields.
+  - Added deterministic fallback priority across resolver/active-meta/legacy entities and required positive-duration gating to prevent zero-duration progress contracts.
+  - Added progress clock continuity cache (entity-scoped, TTL-bounded) to survive transient `media_duration` gaps while position remains live.
+  - Extended progress cache reuse for passthrough continuity when now-playing ownership flips between metadata carrier and transport owner, with title/position safety gates.
+  - Refined cross-entity reuse gate to title/source continuity (instead of monotonic position), covering transport offset resets while preserving stream identity checks.
+  - Rejected non-positive (`<= 0`) duration values from selected/route entities so sparse transport states cannot clobber valid duration contracts.
+  - Scoped missing-duration contract failures to title-ready now-playing packets, reducing transient startup/handoff false positives before metadata identity stabilizes.
+  - Canonicalized invalid duration export so unresolved duration no longer leaks as numeric `0.0` in component now-playing payloads/sensors.
+  - Hardened component now-playing position/duration sensors to avoid synthetic `0.0` defaults and to use entity-attribute/helper fallback values when metadata packet fields are transiently unresolved.
+  - Hardened component now-playing entity/state/title sensors to fail over to selected entity attributes/state when packet values are transiently `unknown`/empty, reducing OLED continuity drops during route churn.
+  - Added selector-lock hardening scaffold (duration/title-gated lock intent + transport override release semantics) for deterministic winner continuity under route churn.
+  - Tightened fresh-play detection to require actual position advancement (not only timestamp churn), preventing stale overnight source-only OLED retention when transport position remains flat.
+  - Fixed stale-classification gating so flat-position `playing` states are explicitly classified as `playing_without_fresh_signal`; this allows long-idle/source-only OLED fail-close logic to trigger deterministically.
+  - Corrected passthrough source handling to preserve physical input labels (for example `Optical In`) instead of overriding source with route-target friendly device labels (`Kitchen Speakers`) when passthrough source tokens are present.
+  - Added explicit display fail-close for `idle/off/stopped` + no title/artist metadata so component display-allowed contract turns off and source/app payload clears when nothing is truly playing.
+  - Added ESP display-state gate honoring `binary_sensor.component_now_playing_display_allowed` so OLED now-playing view is suppressed/blanked when component contract explicitly disallows display in idle/no-track posture.
+  - Removed passthrough timing override bypass that previously masked active playback with missing duration contracts.
+  - Preserved component authority semantics while ensuring exported `component_now_playing_position`/`component_now_playing_duration` stay coherent for OLED progress computation.
+
+**Two-track disposition:** runtime: compatibility-shimmed; component: implemented.
+
+**P1/P2/P3 impact check:** authority/cutover ownership unchanged; this slice fixes export coherence in component metadata contract payloads to eliminate false progress loss during passthrough transport routing.
+
+### Component-only authority hardening (legacy scheduler-path retirement + stricter audit semantics)
+
+**Problem addressed:** Component-authority policy was active, but residual component code paths still carried legacy scheduler authority branches and legacy-oriented gate wording. This left avoidable regression risk and made operator audits noisier.
+
+**Runtime track (compatibility-shimmed):** `packages/`
+
+- No runtime writer ownership expansion was introduced.
+- Existing runtime compatibility/fallback surfaces remain bounded rollback lanes in this slice.
+
+**Component track (implemented):** `custom_components/spectra_ls/`
+
+- `selection_fabric.py`
+  - Removed legacy-authority scheduler branch behavior in `compute_scheduler_decision` that previously pinned candidate selection to helper-driven legacy mode.
+  - Scheduler decision output is now component-policy driven with helper fallback only as a bounded candidate fallback, not authority override logic.
+- `metadata_stack.py`
+  - Tightened metadata prep gate semantics to component-only authority expectations.
+  - Updated blocking reason token from legacy-oriented wording to component-oriented wording (`authority_mode_not_component`) for deterministic operator interpretation.
+- `validation_fabric.py`
+  - Updated scheduler validation authority blocker token to component-oriented wording (`authority_mode_not_component`) for parity with active authority contract semantics.
+  - Removed selection-handoff readiness dependence on legacy runtime scripts/automation IDs; handoff validation now reports component service expectations instead of runtime-orchestrator requirements.
+- `snapshot_fabric.py`
+  - Removed metadata provider packet fallback reads from runtime helper sinks; snapshot metadata-provider payload is now component-packet sourced only (explicit `component_packet_missing` when absent).
+- `metadata_stack.py`
+  - Removed legacy-authority bridge-check surface (`trial_authority_legacy`) from bridge validation diagnostics; trial authority posture now reports component/cutover satisfaction only.
+- `sensor.py`
+  - Updated component metadata-provider diagnostic sensor source fallback token to `component_packet_missing`, matching component-only packet sourcing semantics.
+- `docs/testing/raw/legacy_full_stack_dependency_audit.jinja`
+  - Added explicit hard finding for non-component authority tokens from write-controls path.
+  - Updated metadata/header versioning to reflect current audit contract revision.
+
+**Two-track disposition:** runtime: compatibility-shimmed; component: implemented.
+
+**P1/P2/P3 impact check:** No source-of-truth ownership reassignment in runtime. Component execution lane hardened to reduce legacy-branch regression risk and improve audit determinism.
 
 ## 2026-04-27
 
@@ -44,26 +115,6 @@
 
 **Two-track disposition:** runtime: implemented; component: implemented.
 
-## 2026-04-22
-
-- HA/AC Manual Mode Basics (`packages/dst_tuya_ac.yaml`): add stable fan-only and dry/dehumidify mode controls (`switch.ac_fan`, `switch.ac_dryer`, `fan.ac_fan`) with direct Tuya mode scripts that first park DST to `off` to avoid controller tug-of-war/flapping; add `input_boolean.ac_fan_override` for simple frontend/manual mode visibility.
-
-## 2026-04-21
-
-- HA/AC Manual Override Hold Rollback (`packages/dst_tuya_ac.yaml`): revert the newly added hold helpers/guards/auto-clear flow after regression feedback (DST flapping / non-functional behavior observed in runtime). Control path restored to last known stable cool-only baseline pending root-cause redesign.
-
-- HA/AC Manual Override Hold (`packages/dst_tuya_ac.yaml`): add an explicit 24-hour manual override hold (`input_boolean.ac_manual_override_hold` + `input_datetime.ac_manual_override_until`) with auto-clear automation and guarded DST write paths/scripts so user-driven Tuya mode changes can be preserved temporarily without racey controller tug-of-war.
-
-- HA/AC Observability-Only Slice (`packages/dst_tuya_ac.yaml`): add read-only DST/Tuya diagnostics (`sensor.ac_dst_status`, `sensor.ac_tuya_status`, `sensor.ac_tuya_setpoint`, `sensor.ac_dst_target`, `sensor.ac_room_temp_delta` and binary mirrors for DST/Tuya active cooling) to improve soak-phase visibility with no control or automation behavior changes.
-
-## 2026-04-20
-
-- HA/AC Tuya OFF Command Hardening (`packages/dst_tuya_ac.yaml`): fix HVAC mode service payload typing by sending explicit string values (`"off"`, `"cool"`) and harden OFF path with a direct OFF retry call to `climate.snail_conditioner_tuya`; addresses cases where DST reached target but Tuya compressor state did not stop.
-
-- HA/AC DST-Off Enforcement Fix (`packages/dst_tuya_ac.yaml`): when DST requests OFF/idle, AC shutdown flow now first drives the Tuya climate target to a high neutral setpoint (clamped to Tuya bounds from room/DST context) before issuing `hvac_mode: off`, preventing cases where Tuya remained cooling after DST had already satisfied target and gone off.
-
-- HA/AC Phase-0 Soak Baseline (`packages/dst_tuya_ac.yaml`): restore explicit DST cycle lockout (`min_cycle_duration: 3 minutes`) while keeping `keep_alive: 0` to preserve compressor protection without periodic keep-alive command chatter; baseline is now ready for a 24-hour stability soak.
-
 ## 2026-04-19
 
 - Docs/Developer Instructions (`DEVELOPER-INSTRUCTIONS.md`, `README.md`): move contributor/developer hygiene guidance off frontpage README into a dedicated developer instruction document, and add a formal preflight checklist plus implementation workflow for instrumentation, documentation parity, and code-change verification.
@@ -84,25 +135,13 @@
 
 ## 2026-04-18
 
-- HA/AC Porch-Pattern Cool-Only Baseline (`packages/dst_tuya_ac.yaml`): rebuild window AC control to emulate the working Sun Porch DST integration model (template actuator switch + DST-owned cycle decisions + DST→Tuya setpoint sync automation), explicitly scoped to cool-only operation for stability-first behavior.
-
 - Workflow/Quality Gate Hardening (`.github/copilot-instructions.md`): add mandatory verification gates for ESPHome changes — compile/build must succeed **before** commit/push, OTA upload must complete before closing deployment tasks, and responses must include explicit evidence (`build result`, `OTA successful`, `HEAD==origin`) rather than assumptions.
 
 - ESPHome/Lighting Compile Hotfix (`esphome/spectra_ls_system/packages/spectra-ls-lighting.yaml`): fix slider lambda scope error by recomputing `lighting_menu_active` within the value-processing lambda (where deferred-vs-immediate brightness apply is decided), restoring successful firmware compilation for the room-menu brightness UX refactor.
 
 - ESPHome/Lighting Menu UX Refactor (`esphome/spectra_ls_system/packages/spectra-ls-lighting.yaml`, `esphome/spectra_ls_system/spectra-ls-peripherals.yaml`): make lighting slider apply **room brightness directly** while browsing Lighting Rooms/Targets lists (no need to enter `All -> Lighting Values` first), and replace legacy `Lighting Values` labeling with reusable friendly labels (`Brightness <friendly name>`, `Hue <friendly name>`, `Sat <friendly name>`) across lighting-adjust menu rendering paths.
 
-- Repo Scope Separation (`.gitignore`, `packages/dst_tuya_ac.yaml`): de-track `packages/dst_tuya_ac.yaml` from the Spectra repository and add an explicit ignore rule so this local AC-specific package is kept outside Spectra versioned scope while preserving the file locally.
-
-- Repo Ignore Precedence Fix (`.gitignore`): enforce `packages/dst_tuya_ac.yaml` ignore after broad package re-include rules so the file remains untracked persistently.
-
-- HA/AC Control-Path Simplification (`packages/dst_tuya_ac.yaml`): remove external policy reconciler intervention (`automation.dst_mode_reconciler`) and stop fan helper scripts from writing thermostat mode directly (`climate.room_dst`). DST is now the sole mode decision authority while helper scripts only execute direct Tuya device actions, reducing off/on thrash and command-beep chatter caused by layered controller feedback loops.
-
-- HA/AC DST Ownership + Anti-Thrash Rollback (`packages/dst_tuya_ac.yaml`): reduce command-chatter/beep behavior by disabling DST keep-alive (`keep_alive: 0`), removing periodic 1-minute mode reconciler forcing, and deleting aggressive fan fallback off→on retry path that could cause brief compressor dropouts. Control flow now favors DST-native cycle logic over external re-assertion loops.
-
 - Workflow/Git Push Cadence Policy (`.github/copilot-instructions.md`): add mandatory active-session checkpoint push cadence (at least every 10 minutes or on each completed logical slice, whichever comes first) so rollback points remain recent during iterative work.
-
-- HA/AC Numeric Template State Guard (`packages/dst_tuya_ac.yaml`): enforce numeric output for `sensor.dst_room_temp_change_1h` and `sensor.dst_room_temp_rate_1h` even when the raw statistics source is temporarily unavailable, preventing Template integration validator errors that reject non-numeric `unknown` states.
 
 - Repo Ignore-Scope Lockdown (`.gitignore`): stop re-including `blueprints/` and `custom_components/` and explicitly ignore both paths so environment-specific/HA-HACS artifacts are not tracked or uploaded to GitHub from this project repository.
 
@@ -134,35 +173,7 @@
 
 - ESPHome/Audio Transport Anti-Replay Guard (`esphome/spectra_ls_system/components/arylic_tcp.h`): add queue-age protection for volume passthrough commands (`VOL`) so stale queued volume payloads are dropped instead of being transmitted late, and add explicit per-volume enqueue logging to make delayed-source attribution deterministic during ghost-volume investigations. **Shared-contract note:** applied to `spectra_ls_system` (`main`) now for live issue containment; `menu-only` (`esphome/control-py`) parity update is intentionally deferred and tracked as branch divergence until validated migration.
 
-- HA/AC Tuya Authority Enforcement (`packages/dst_tuya_ac.yaml`): make DST controller authoritative over Tuya internal thermostat behavior by setting Tuya cool setpoint farther below DST target (`DST target - 4°F`, clamped to Tuya min/max) and extending `dst_mode_reconciler` to re-assert Tuya mode/setpoint whenever Tuya drifts (`off`/`cool`/`fan_only`/`dry`), preventing app-side Tuya logic from silently overriding policy-selected HVAC intent.
-
 - ESPHome/Audio Tuning Rollback Test (`esphome/spectra_ls_system/substitutions.yaml`): re-apply recommended **Profile B+** control/tcp audio tunings (pot cadence + TCP pacing/coalescing/backoff) after user-local edits introduced lag/replay behavior, restoring known-good baseline values for A/B validation.
-
-- HA/AC Fan Flap Fix (`packages/dst_tuya_ac.yaml`): prevent forced off→fan retry loops when Tuya reports `hvac_action: unknown` by only retrying fan re-apply when mode is not `fan_only` or action is explicitly `idle/off`; this removes false recovery cycles that could briefly stop/restart fan output.
-
-- HA/AC Controller Architecture Refactor (`packages/dst_tuya_ac.yaml`): replace overlapping fan/cool/off automations with a policy-first control model (`sensor.ac_target_mode` + `binary_sensor.ac_schedule_cool_request`) and a single reconciler automation (`automation.dst_mode_reconciler`) that applies mode transitions deterministically (`off`/`cool`/`fan_only`/`dry`) to eliminate race-driven state flapping.
-
-- HA/AC Fan Reliability Hardening (`packages/dst_tuya_ac.yaml`): strengthen `dst_apply_fan_only_low` with an explicit Tuya fan-only apply + verification + fallback off→fan_only retry path when `hvac_action` remains idle, and add `sensor.ac_tuya_hvac_action` for direct visibility into real device runtime action vs optimistic mode state.
-
-- HA/AC Trend Diagnostics UX (`packages/dst_tuya_ac.yaml`): enrich rising-trend visibility by preserving numeric 1-hour delta state handling (`sensor.dst_room_temp_change_1h` with unknown-aware output) and adding explicit trend-rate/summary sensors (`sensor.dst_room_temp_rate_1h`, `sensor.dst_room_temp_trend_1h_summary`) so operators can see meaningful metrics instead of binary-only `on/off` trend status.
-
-- HA/AC Policy Tuning (`packages/dst_tuya_ac.yaml`): lower warm+rising fan-policy activation temperature threshold from `>70°F` to `>68°F` while retaining the existing 1-hour rising requirement.
-
-- HA/AC Trend Signal Stabilization (`packages/dst_tuya_ac.yaml`): replace `binary_sensor.dst_room_temp_rising_1h` trend-platform dependency with a statistics-based 1-hour temperature-change sensor (`sensor.dst_room_temp_change_1h`) and template rising binary logic, eliminating frequent `unknown` state behavior and making fan-policy threshold evaluation deterministic.
-
-- HA/AC Sensor Source Cleanup (`packages/dst_tuya_ac.yaml`): remove `sensor.ac_internal_temperature` and `sensor.ac_internal_humidity` template sensors sourced from broken Tuya attributes (including invalid `-40` readings), standardizing frontend/environment monitoring on the external room sensor path.
-
-- HA/AC Diagnostics (`packages/dst_tuya_ac.yaml`): add `sensor.ac_control_reason` to expose active AC control-path reasoning (`away_lock`, `paused`, `manual_override`, `fan_override_manual`, `fan_policy_warm_rising`, `schedule_cool`, `fan_only_active`, `dry_active`, `off`, `idle`) for frontend visibility and troubleshooting.
-
-- HA/AC Architecture Refactor (`packages/dst_tuya_ac.yaml`): consolidate manual/schedule policy into centralized template binary sensors (`ac_pause_active`, `ac_manual_override_active`, `ac_warm_rising_policy_active`, `ac_fan_policy_active`), add reusable control scripts (`dst_set_manual_override_24h`, `dst_clear_manual_override`, `dst_apply_fan_only_low`), and replace fragmented/race-prone fan/manual automations with a unified manual-first flow (thermostat fan bridges + explicit manual hold gates + simplified cool/off schedule conditions).
-
-- HA/AC DST Fan Command Reliability (`packages/dst_tuya_ac.yaml`): add event-level bridge on `climate.set_fan_mode` calls targeting `climate.room_dst` to force direct Tuya fan-only activation and low preset, ensuring thermostat-card fan actions execute even when DST state remains `idle`.
-
-- HA/AC Thermostat Fan-Control Bridge (`packages/dst_tuya_ac.yaml`): add explicit automation that converts fan requests made from `climate.room_dst` fan controls into persistent `fan_only` HVAC mode + low fan preset and sets manual override hold, so thermostat-card fan actions behave like manual mode overrides instead of being ignored.
-
-- HA/AC Manual Mode Persistence (`packages/dst_tuya_ac.yaml`): manual mode interventions (`cool`/`fan_only`/`dry`) now assert a manual override hold so schedule automations do not immediately revert user-selected modes; auto-off now only applies while DST is actively cooling (not fan-only/dry), and manual `off` clears the hold.
-
-- HA/AC Scheduling Enhancement (`packages/dst_tuya_ac.yaml`): add an all-day fan-only control path that activates when room temperature is above 70°F and rising over the past hour (compressor off, fan low), plus a frontend `Fan Override` toggle to force fan-only behavior and block compressor auto-cool while active.
 
 - ESPHome/Menu Navigation Direction Contract: Add shared top-level menu navigation helper (`components/sls_menu_nav.h`) and route menu-encoder delta handling through a global direction mapping (`menu_encoder_nav_sign`) in `spectra-ls-ui.yaml`, so clockwise/counterclockwise behavior is configured once and applied consistently across all menu levels/prompt lists.
 
@@ -533,14 +544,10 @@
 - ESPHome: Temporarily pin `wifi.use_address` to 192.168.30.246 for Control Board v2 (OTA/API target only).
 - ESPHome: Switch Control Board v2 Wi-Fi secrets to non-IoT keys and remove temporary use_address pin.
 - Repo: Restore tracking of `esphome/circuitpy/` (authoritative RP2040 firmware mirror), while ignoring `control-py/previous/circuitpy/`.
-- Repo: Track HA packages `packages/dst_tuya_ac.yaml` and `packages/ma_control_hub.yaml`.
+-- Repo: Track HA package `packages/ma_control_hub.yaml`.
 
 ## 2026-04-12
 
-- HA: DST manual override now sticks until the room reaches the target temperature, and Tuya cool setpoint defaults 2°F below the DST target when turning on AC.
-- HA: DST auto-off now respects manual override window to prevent premature shutdown.
-- HA: DST now uses bedroom enviro temperature/humidity sensors with faster updates.
-- HA: DST now reasserts Tuya cool mode while DST is cooling, without forcing preset changes during manual override.
 - HA: Fix tuya_unsupported_sensors config flow await error and set DST automation/script modes to avoid “Already running” warnings.
 - ESPHome: Stop forced HA update_entity calls for MA control host sensors to avoid template AssertionError spam.
 - HA: Prefer active target for now-playing entity when target is playing with metadata to avoid stale AirPlay meta on OLED.
@@ -636,11 +643,6 @@
 - ESPHome: Use menu encoder center press as Select input.
 - RP2040/Docs: Remove bass/treble encoder references (EQ is pot-only).
 - ESPHome: Auto-dismiss control-target prompt once control hosts are valid and ambiguity clears; track manual prompts to avoid auto-close.
-- HA: DST auto-cool raises setpoint to 74°F after 11pm for late-night comfort.
-- HA: DST auto-cool fan scaling now uses low/high/strong only (no auto).
-- HA: DST now uses bedroom temp/humidity sensors as primary controllers.
-- HA: DST presets simplified to Home/Away; Away disables automations and turns HVAC off.
-- HA: Add manual override window + 10-hour pause controls for DST automations.
 
 ## 2026-04-06
 

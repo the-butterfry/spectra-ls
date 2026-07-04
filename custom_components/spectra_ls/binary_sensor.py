@@ -1,6 +1,6 @@
 # Description: Binary sensor entities for Spectra LS shadow parity routing surfaces with Phase 3 write-control, Phase 4 diagnostics attributes, and Phase 6 control-center settings visibility, including host-cutover readiness and shared MA authority-contract packet propagation.
-# Version: 2026.05.05.5
-# Last updated: 2026-05-05
+# Version: 2026.06.20.1
+# Last updated: 2026-06-20
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -117,7 +117,7 @@ class SpectraLsHostCutoverGateReadyBinarySensor(CoordinatorEntity, BinarySensorE
 
 
 class SpectraLsComponentNowPlayingDisplayAllowedBinarySensor(CoordinatorEntity, BinarySensorEntity):
-    """Component-native now-playing display-policy contract surface."""
+    """Component-native now-playing display-allow contract surface."""
 
     _attr_has_entity_name = True
     _attr_entity_category = EntityCategory.DIAGNOSTIC
@@ -138,10 +138,9 @@ class SpectraLsComponentNowPlayingDisplayAllowedBinarySensor(CoordinatorEntity, 
         values = metadata_prep.get("values", {}) if isinstance(metadata_prep.get("values", {}), dict) else {}
         checks = metadata_prep.get("checks", {}) if isinstance(metadata_prep.get("checks", {}), dict) else {}
         return {
-            "now_playing_media_class": values.get("now_playing_media_class", ""),
-            "expected_display_allowed": values.get("expected_display_allowed"),
             "display_contract_consistent": checks.get("now_playing_display_contract_consistent"),
-            "music_guard_active": values.get("music_guard_active"),
+            "now_playing_entity": values.get("now_playing_entity", ""),
+            "now_playing_state": values.get("now_playing_state", ""),
             "captured_at": data.get("captured_at"),
         }
 

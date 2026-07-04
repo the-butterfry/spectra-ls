@@ -1,3 +1,7 @@
+// Description: Arylic UART command/status component for Spectra ESPHome integration.
+// Version: 2026.06.22.1
+// Last updated: 2026-06-22
+
 #pragma once
 
 #include <cstdlib>

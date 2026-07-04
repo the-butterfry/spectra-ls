@@ -1,28 +1,28 @@
 {
   "status": "ok",
   "mode": "apply",
-  "ha_url": "http://192.168.10.10:8123",
-  "wled_url": "http://192.168.10.251",
-  "wled_source_entity": "light.your_vulva",
+  "ha_url": "http://<ha_host>:8123",
+  "wled_url": "http://<wled_host_or_ip>",
+  "wled_source_entity": "light.<wled_source_entity>",
   "wled_source_kind": "ha_entity_wled_json",
-  "room": "Living Room",
+  "room": "<room_name>",
   "target_source": "room_area",
   "target_lights": [
-    "light.play_gradient_tube",
-    "light.reading",
-    "light.star_light"
+    "light.<target_light_1>",
+    "light.<target_light_2>",
+    "light.<target_light_3>"
   ],
   "room_wled_entities": [
-    "light.your_vulva"
+    "light.<room_wled_entity>"
   ],
   "wled": {
     "on": true,
-    "bri": 119,
-    "playlist_id": -1,
-    "detected_run_mode": "palette_or_effect",
+    "bri": 145,
+    "playlist_id": 8,
+    "detected_run_mode": "playlist",
     "effect_active": true,
     "palette_active": true,
-    "playlist_active": false,
+    "playlist_active": true,
     "solid_detected": false,
     "color_strategy": "wled_sampled",
     "source_sample_rgb": [
@@ -30,8 +30,8 @@
       0,
       213
     ],
-    "segment0_effect": 194,
-    "segment0_palette": 20,
+    "segment0_effect": 154,
+    "segment0_palette": 59,
     "sampled_colors": [
       [
         155,
@@ -119,18 +119,18 @@
     "effect_name": null
   },
   "apply": {
-    "brightness": 119,
+    "brightness": 145,
     "transition": 1.2,
     "target_count": 3,
     "excluded_wled_targets": [
       {
-        "entity_id": "light.your_vulva",
+        "entity_id": "light.<wled_source_entity>",
         "reason": "source_wled"
       }
     ],
     "skipped_targets": [
       {
-        "entity_id": "light.your_vulva_main",
+        "entity_id": "light.<wled_source_entity_main>",
         "reason": "unavailable"
       }
     ],
@@ -138,7 +138,7 @@
     "failed_count": 0,
     "results": [
       {
-        "entity_id": "light.play_gradient_tube",
+        "entity_id": "light.<target_light_1>",
         "applied": true,
         "rgb_color": [
           155,
@@ -157,7 +157,7 @@
                 "xy"
               ],
               "color_mode": "xy",
-              "brightness": 25,
+              "brightness": 136,
               "color_temp_kelvin": null,
               "hs_color": [
                 282.026,
@@ -176,11 +176,11 @@
               "friendly_name": "Hue Tube",
               "supported_features": 0
             },
-            "last_changed": "2026-06-11T13:08:16.237834+00:00",
-            "last_reported": "2026-06-11T13:17:42.628920+00:00",
-            "last_updated": "2026-06-11T13:17:42.628920+00:00",
+            "last_changed": "2026-06-12T22:24:56.068782+00:00",
+            "last_reported": "2026-06-12T23:20:37.338534+00:00",
+            "last_updated": "2026-06-12T23:20:37.338534+00:00",
             "context": {
-              "id": "01KTVD9NPJ59G33H6KKCJGTKBA",
+              "id": "01KTZ26BB06G7F01CJ3PPBMQCM",
               "parent_id": null,
               "user_id": "f6488086ed0643d4b425bef089441fcb"
             }
@@ -415,22 +415,22 @@
                 "rgb",
                 "xy"
               ],
-              "effect": "PS Attractor",
+              "effect": "Metaballs",
               "color_mode": "xy",
-              "brightness": 54,
+              "brightness": 133,
               "color_temp_kelvin": null,
               "hs_color": [
-                294.133,
-                88.235
+                287.536,
+                81.176
               ],
               "rgb_color": [
-                233,
-                30,
+                212,
+                48,
                 255
               ],
               "xy_color": [
-                0.356481,
-                0.144401
+                0.326815,
+                0.136068
               ],
               "entity_id": [
                 "light.play_gradient_tube",
@@ -442,11 +442,11 @@
               "friendly_name": "Living Room Lights",
               "supported_features": 36
             },
-            "last_changed": "2026-06-11T13:08:10.666778+00:00",
-            "last_reported": "2026-06-11T13:17:42.629645+00:00",
-            "last_updated": "2026-06-11T13:17:42.629645+00:00",
+            "last_changed": "2026-06-12T22:24:47.004248+00:00",
+            "last_reported": "2026-06-12T23:20:37.338861+00:00",
+            "last_updated": "2026-06-12T23:20:37.338861+00:00",
             "context": {
-              "id": "01KTVD9NPJ59G33H6KKCJGTKBA",
+              "id": "01KTZ26BB06G7F01CJ3PPBMQCM",
               "parent_id": null,
               "user_id": "f6488086ed0643d4b425bef089441fcb"
             }
@@ -462,7 +462,7 @@
                 "xy"
               ],
               "color_mode": "xy",
-              "brightness": 119,
+              "brightness": 145,
               "color_temp_kelvin": null,
               "hs_color": [
                 282.026,
@@ -481,11 +481,11 @@
               "friendly_name": "Hue Tube",
               "supported_features": 0
             },
-            "last_changed": "2026-06-11T13:08:16.237834+00:00",
-            "last_reported": "2026-06-11T13:17:43.029231+00:00",
-            "last_updated": "2026-06-11T13:17:43.029231+00:00",
+            "last_changed": "2026-06-12T22:24:56.068782+00:00",
+            "last_reported": "2026-06-12T23:20:37.752168+00:00",
+            "last_updated": "2026-06-12T23:20:37.752168+00:00",
             "context": {
-              "id": "01KTVD9NPJ59G33H6KKCJGTKBA",
+              "id": "01KTZ26BB06G7F01CJ3PPBMQCM",
               "parent_id": null,
               "user_id": "f6488086ed0643d4b425bef089441fcb"
             }
@@ -720,22 +720,22 @@
                 "rgb",
                 "xy"
               ],
-              "effect": "PS Attractor",
+              "effect": "Metaballs",
               "color_mode": "xy",
-              "brightness": 85,
+              "brightness": 136,
               "color_temp_kelvin": null,
               "hs_color": [
-                294.133,
-                88.235
+                287.536,
+                81.176
               ],
               "rgb_color": [
-                233,
-                30,
+                212,
+                48,
                 255
               ],
               "xy_color": [
-                0.356481,
-                0.144401
+                0.326815,
+                0.136068
               ],
               "entity_id": [
                 "light.play_gradient_tube",
@@ -747,11 +747,11 @@
               "friendly_name": "Living Room Lights",
               "supported_features": 36
             },
-            "last_changed": "2026-06-11T13:08:10.666778+00:00",
-            "last_reported": "2026-06-11T13:17:43.029825+00:00",
-            "last_updated": "2026-06-11T13:17:43.029825+00:00",
+            "last_changed": "2026-06-12T22:24:47.004248+00:00",
+            "last_reported": "2026-06-12T23:20:37.752608+00:00",
+            "last_updated": "2026-06-12T23:20:37.752608+00:00",
             "context": {
-              "id": "01KTVD9NPJ59G33H6KKCJGTKBA",
+              "id": "01KTZ26BB06G7F01CJ3PPBMQCM",
               "parent_id": null,
               "user_id": "f6488086ed0643d4b425bef089441fcb"
             }
@@ -778,7 +778,7 @@
                 "xy"
               ],
               "color_mode": "xy",
-              "brightness": 114,
+              "brightness": 129,
               "color_temp_kelvin": null,
               "hs_color": [
                 301.963,
@@ -797,11 +797,11 @@
               "friendly_name": "Reading",
               "supported_features": 0
             },
-            "last_changed": "2026-06-11T13:08:29.136914+00:00",
-            "last_reported": "2026-06-11T13:17:45.282727+00:00",
-            "last_updated": "2026-06-11T13:17:45.282727+00:00",
+            "last_changed": "2026-06-12T22:24:29.579208+00:00",
+            "last_reported": "2026-06-12T23:20:38.970742+00:00",
+            "last_updated": "2026-06-12T23:20:38.970742+00:00",
             "context": {
-              "id": "01KTVD9QY2MTGM9SHCVBN7ZXZ4",
+              "id": "01KTZ26CZYKW652WS8YKKFP6VZ",
               "parent_id": null,
               "user_id": "f6488086ed0643d4b425bef089441fcb"
             }
@@ -1036,22 +1036,22 @@
                 "rgb",
                 "xy"
               ],
-              "effect": "PS Attractor",
+              "effect": "Metaballs",
               "color_mode": "xy",
-              "brightness": 117,
+              "brightness": 139,
               "color_temp_kelvin": null,
               "hs_color": [
-                294.133,
-                88.235
+                287.536,
+                81.176
               ],
               "rgb_color": [
-                233,
-                30,
+                212,
+                48,
                 255
               ],
               "xy_color": [
-                0.356481,
-                0.144401
+                0.326815,
+                0.136068
               ],
               "entity_id": [
                 "light.play_gradient_tube",
@@ -1063,11 +1063,11 @@
               "friendly_name": "Living Room Lights",
               "supported_features": 36
             },
-            "last_changed": "2026-06-11T13:08:10.666778+00:00",
-            "last_reported": "2026-06-11T13:17:45.283413+00:00",
-            "last_updated": "2026-06-11T13:17:45.283413+00:00",
+            "last_changed": "2026-06-12T22:24:47.004248+00:00",
+            "last_reported": "2026-06-12T23:20:38.971294+00:00",
+            "last_updated": "2026-06-12T23:20:38.971294+00:00",
             "context": {
-              "id": "01KTVD9QY2MTGM9SHCVBN7ZXZ4",
+              "id": "01KTZ26CZYKW652WS8YKKFP6VZ",
               "parent_id": null,
               "user_id": "f6488086ed0643d4b425bef089441fcb"
             }
@@ -1083,7 +1083,7 @@
                 "xy"
               ],
               "color_mode": "xy",
-              "brightness": 119,
+              "brightness": 145,
               "color_temp_kelvin": null,
               "hs_color": [
                 301.963,
@@ -1102,11 +1102,11 @@
               "friendly_name": "Reading",
               "supported_features": 0
             },
-            "last_changed": "2026-06-11T13:08:29.136914+00:00",
-            "last_reported": "2026-06-11T13:17:45.598402+00:00",
-            "last_updated": "2026-06-11T13:17:45.598402+00:00",
+            "last_changed": "2026-06-12T22:24:29.579208+00:00",
+            "last_reported": "2026-06-12T23:20:39.473503+00:00",
+            "last_updated": "2026-06-12T23:20:39.473503+00:00",
             "context": {
-              "id": "01KTVD9QY2MTGM9SHCVBN7ZXZ4",
+              "id": "01KTZ26CZYKW652WS8YKKFP6VZ",
               "parent_id": null,
               "user_id": "f6488086ed0643d4b425bef089441fcb"
             }
@@ -1341,22 +1341,22 @@
                 "rgb",
                 "xy"
               ],
-              "effect": "PS Attractor",
+              "effect": "Metaballs",
               "color_mode": "xy",
-              "brightness": 119,
+              "brightness": 145,
               "color_temp_kelvin": null,
               "hs_color": [
-                294.133,
-                88.235
+                287.536,
+                81.176
               ],
               "rgb_color": [
-                233,
-                30,
+                212,
+                48,
                 255
               ],
               "xy_color": [
-                0.356481,
-                0.144401
+                0.326815,
+                0.136068
               ],
               "entity_id": [
                 "light.play_gradient_tube",
@@ -1368,11 +1368,11 @@
               "friendly_name": "Living Room Lights",
               "supported_features": 36
             },
-            "last_changed": "2026-06-11T13:08:10.666778+00:00",
-            "last_reported": "2026-06-11T13:17:45.598781+00:00",
-            "last_updated": "2026-06-11T13:17:45.598781+00:00",
+            "last_changed": "2026-06-12T22:24:47.004248+00:00",
+            "last_reported": "2026-06-12T23:20:39.474113+00:00",
+            "last_updated": "2026-06-12T23:20:39.474113+00:00",
             "context": {
-              "id": "01KTVD9QY2MTGM9SHCVBN7ZXZ4",
+              "id": "01KTZ26CZYKW652WS8YKKFP6VZ",
               "parent_id": null,
               "user_id": "f6488086ed0643d4b425bef089441fcb"
             }
@@ -1399,7 +1399,7 @@
                 "hs"
               ],
               "color_mode": "hs",
-              "brightness": 120,
+              "brightness": 145,
               "color_temp_kelvin": null,
               "hs_color": [
                 319,
@@ -1417,11 +1417,11 @@
               "friendly_name": "Star Light",
               "supported_features": 0
             },
-            "last_changed": "2026-06-11T13:07:47.418292+00:00",
-            "last_reported": "2026-06-11T13:17:48.600358+00:00",
-            "last_updated": "2026-06-11T13:17:48.600358+00:00",
+            "last_changed": "2026-06-12T22:24:22.134768+00:00",
+            "last_reported": "2026-06-12T23:20:42.083755+00:00",
+            "last_updated": "2026-06-12T23:20:42.083755+00:00",
             "context": {
-              "id": "01KTVD9T4RESQNVX7Z9NPJZE51",
+              "id": "01KTZ26FA014NYV3FAQXJ0GK2A",
               "parent_id": null,
               "user_id": "f6488086ed0643d4b425bef089441fcb"
             }

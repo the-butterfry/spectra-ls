@@ -1,3 +1,7 @@
+# Description: ESPHome Python schema bindings for Spectra CPU usage sensor component.
+# Version: 2026.06.22.1
+# Last updated: 2026-06-22
+
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import sensor

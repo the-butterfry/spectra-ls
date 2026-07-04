@@ -1,3 +1,7 @@
+// Description: RP2040 UART packet hub component for Spectra button/analog/encoder feeds.
+// Version: 2026.06.22.1
+// Last updated: 2026-06-22
+
 #pragma once
 
 #include <map>

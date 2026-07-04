@@ -1,5 +1,5 @@
 // Description: Shared Arylic TCP transport helpers for Spectra LS System (queueing, coalescing, and send path).
-// Version: 2026.06.23.1
+// Version: 2026.06.23.4
 // Last updated: 2026-06-23
 
 #pragma once
@@ -16,6 +16,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 #include <freertos/task.h>
+#include <algorithm>
 
 namespace esphome {
 namespace arylic_tcp {
@@ -126,6 +127,113 @@ static ArylicTcpRecent arylic_tcp_recent[4] = {};
 static uint32_t arylic_tcp_backoff_until_ms = 0;
 static uint8_t arylic_tcp_consecutive_failures = 0;
 static uint32_t arylic_tcp_last_transient_errno_log_ms = 0;
+static int arylic_tcp_persistent_sock = -1;
+static char arylic_tcp_persistent_host[ARYLIC_TCP_HOST_LEN] = {};
+static uint16_t arylic_tcp_persistent_port = 0;
+static uint32_t arylic_tcp_persistent_last_used_ms = 0;
+
+inline void log_socket_failure_errno(const char *stage, const char *host, uint16_t port, int err, uint8_t attempt);
+inline bool wait_writable(int sock, uint32_t timeout_ms);
+inline uint32_t remaining_ms(uint32_t deadline_ms);
+
+inline uint32_t compute_timeout_budget_ms(uint32_t base_timeout_ms) {
+	// Keep healthy-path latency unchanged, but widen connect/send deadline while
+	// consecutive transport failures are active to tolerate transient accept jitter.
+	const uint8_t failures = arylic_tcp_consecutive_failures;
+	if (failures == 0) return base_timeout_ms;
+	const uint32_t extra_ms = std::min<uint32_t>(static_cast<uint32_t>(failures) * 70U, 220U);
+	return base_timeout_ms + extra_ms;
+}
+
+inline void close_persistent_socket() {
+	if (arylic_tcp_persistent_sock >= 0) {
+		::shutdown(arylic_tcp_persistent_sock, SHUT_RDWR);
+		::close(arylic_tcp_persistent_sock);
+	}
+	arylic_tcp_persistent_sock = -1;
+	arylic_tcp_persistent_host[0] = '\0';
+	arylic_tcp_persistent_port = 0;
+	arylic_tcp_persistent_last_used_ms = 0;
+}
+
+inline bool persistent_socket_matches(const char *host, uint16_t port) {
+	if (host == nullptr || host[0] == '\0') return false;
+	if (arylic_tcp_persistent_sock < 0) return false;
+	if (arylic_tcp_persistent_port != port) return false;
+	return strncmp(arylic_tcp_persistent_host, host, ARYLIC_TCP_HOST_LEN) == 0;
+}
+
+inline int connect_socket_with_deadline(const char *host, uint16_t port, uint32_t deadline_ms, uint8_t attempt) {
+	int sock = ::socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
+	if (sock < 0) {
+		log_socket_failure_errno("socket()", host, port, errno, attempt);
+		return -1;
+	}
+
+	sockaddr_in dest{};
+	dest.sin_family = AF_INET;
+	dest.sin_port = htons(port);
+	dest.sin_addr.s_addr = inet_addr(host);
+	if (dest.sin_addr.s_addr == INADDR_NONE) {
+		ESP_LOGW("arylic_tcp", "invalid host=%s port=%u", host, (unsigned) port);
+		::close(sock);
+		return -1;
+	}
+
+	int flags = ::fcntl(sock, F_GETFL, 0);
+	if (flags >= 0) {
+		::fcntl(sock, F_SETFL, flags | O_NONBLOCK);
+	}
+
+	int conn_res = ::connect(sock, reinterpret_cast<sockaddr *>(&dest), sizeof(dest));
+	if (conn_res != 0) {
+		if (errno != EINPROGRESS) {
+			log_socket_failure_errno("connect()", host, port, errno, attempt);
+			::close(sock);
+			return -1;
+		}
+		const uint32_t wait_ms = remaining_ms(deadline_ms);
+		if (!wait_writable(sock, wait_ms)) {
+			ESP_LOGW("arylic_tcp", "connect() timeout host=%s port=%u attempt=%u", host, (unsigned) port, (unsigned) attempt);
+			::close(sock);
+			return -1;
+		}
+		int err = 0;
+		socklen_t err_len = sizeof(err);
+		if (::getsockopt(sock, SOL_SOCKET, SO_ERROR, &err, &err_len) != 0 || err != 0) {
+			log_socket_failure_errno("connect()", host, port, err, attempt);
+			::close(sock);
+			return -1;
+		}
+	}
+
+	return sock;
+}
+
+inline int ensure_persistent_socket(const char *host, uint16_t port, uint32_t deadline_ms, uint8_t attempt) {
+	const uint32_t now = millis();
+	if (arylic_tcp_persistent_sock >= 0) {
+		const bool expired = (arylic_tcp_persistent_last_used_ms > 0) && (now - arylic_tcp_persistent_last_used_ms > 2500U);
+		if (!persistent_socket_matches(host, port) || expired) {
+			close_persistent_socket();
+		}
+	}
+
+	if (persistent_socket_matches(host, port)) {
+		arylic_tcp_persistent_last_used_ms = now;
+		return arylic_tcp_persistent_sock;
+	}
+
+	int sock = connect_socket_with_deadline(host, port, deadline_ms, attempt);
+	if (sock < 0) return -1;
+
+	arylic_tcp_persistent_sock = sock;
+	strncpy(arylic_tcp_persistent_host, host, ARYLIC_TCP_HOST_LEN - 1);
+	arylic_tcp_persistent_host[ARYLIC_TCP_HOST_LEN - 1] = '\0';
+	arylic_tcp_persistent_port = port;
+	arylic_tcp_persistent_last_used_ms = now;
+	return arylic_tcp_persistent_sock;
+}
 
 inline bool is_transient_socket_errno(int err) {
 	switch (err) {
@@ -429,61 +537,17 @@ inline bool send_payload(const char *host, uint16_t port, const std::string &pay
 
 	log_tx_throttled(host, port, payload);
 
-	const uint8_t max_attempts = 2;
+	const bool payload_is_vol = payload.find(":VOL:") != std::string::npos;
+	const uint8_t max_attempts = payload_is_vol ? 1 : 2;
 	bool sent_ok = false;
 	for (uint8_t attempt = 1; attempt <= max_attempts; attempt++) {
-		int sock = ::socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
+		const uint32_t timeout_budget_ms = compute_timeout_budget_ms(timeout_ms);
+		const uint32_t deadline_ms = millis() + timeout_budget_ms;
+		int sock = ensure_persistent_socket(host, port, deadline_ms, attempt);
 		if (sock < 0) {
-			log_socket_failure_errno("socket()", host, port, errno, attempt);
-			note_send_failure(host, port, "socket");
+			note_send_failure(host, port, "connect_fail");
 			if (attempt < max_attempts) vTaskDelay(pdMS_TO_TICKS(20));
 			continue;
-		}
-
-		const uint32_t deadline_ms = millis() + timeout_ms;
-
-		sockaddr_in dest{};
-		dest.sin_family = AF_INET;
-		dest.sin_port = htons(port);
-		dest.sin_addr.s_addr = inet_addr(host);
-		if (dest.sin_addr.s_addr == INADDR_NONE) {
-			ESP_LOGW("arylic_tcp", "invalid host=%s port=%u", host, (unsigned) port);
-			::close(sock);
-			note_send_failure(host, port, "invalid_host");
-			return false;
-		}
-
-		int flags = ::fcntl(sock, F_GETFL, 0);
-		if (flags >= 0) {
-			::fcntl(sock, F_SETFL, flags | O_NONBLOCK);
-		}
-
-		int conn_res = ::connect(sock, reinterpret_cast<sockaddr *>(&dest), sizeof(dest));
-		if (conn_res != 0) {
-			if (errno != EINPROGRESS) {
-				log_socket_failure_errno("connect()", host, port, errno, attempt);
-				::close(sock);
-				note_send_failure(host, port, "connect_fail");
-				if (attempt < max_attempts) vTaskDelay(pdMS_TO_TICKS(20));
-				continue;
-			}
-			const uint32_t wait_ms = remaining_ms(deadline_ms);
-			if (!wait_writable(sock, wait_ms)) {
-				ESP_LOGW("arylic_tcp", "connect() timeout host=%s port=%u attempt=%u", host, (unsigned) port, (unsigned) attempt);
-				::close(sock);
-				note_send_failure(host, port, "connect_timeout");
-				if (attempt < max_attempts) vTaskDelay(pdMS_TO_TICKS(20));
-				continue;
-			}
-			int err = 0;
-			socklen_t err_len = sizeof(err);
-			if (::getsockopt(sock, SOL_SOCKET, SO_ERROR, &err, &err_len) != 0 || err != 0) {
-				log_socket_failure_errno("connect()", host, port, err, attempt);
-				::close(sock);
-				note_send_failure(host, port, "connect_error");
-				if (attempt < max_attempts) vTaskDelay(pdMS_TO_TICKS(20));
-				continue;
-			}
 		}
 
 		size_t total_sent = 0;
@@ -515,13 +579,12 @@ inline bool send_payload(const char *host, uint16_t port, const std::string &pay
 			break;
 		}
 
-		::shutdown(sock, SHUT_RDWR);
-		::close(sock);
-
 		if (attempt_ok) {
 			sent_ok = true;
+			arylic_tcp_persistent_last_used_ms = millis();
 			break;
 		}
+		close_persistent_socket();
 		note_send_failure(host, port, "send_fail");
 		if (attempt < max_attempts) vTaskDelay(pdMS_TO_TICKS(20));
 	}

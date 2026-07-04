@@ -1,10 +1,10 @@
 <!-- Description: End-user overview for the Spectra L/S Home Assistant + ESPHome system. -->
-<!-- Version: 2026.06.22.2 -->
-<!-- Last updated: 2026-06-22 -->
+<!-- Version: 2026.07.04.1 -->
+<!-- Last updated: 2026-07-04 -->
 
 # Spectra L/S
 
-**⚠️ State of project (published 2026-04-16): Active heavy development on `main`. Not currently recommended for fresh production installations unless you are comfortable with frequent updates and occasional migration adjustments.**
+**⚠️ State of project (reviewed 2026-07-04): Active heavy development on `main`. Not currently recommended for fresh production installations unless you are comfortable with frequent updates and migration churn.**
 
 Spectra Level / Source (Spectra L/S) is the tactile control surface for Home Assistant: instant, physical control over the moments that matter in your home.
 
@@ -12,14 +12,14 @@ Instead of digging through apps and dashboards, you can touch real controls for 
 
 Audio and lighting are the deepest focus areas today, but the model is broader: if Home Assistant can run it, Spectra L/S is designed to make it feel physical.
 
-## Program Status — Legacy Sealed, Component Primary
+## Program Status — Component-Primary, Runtime Compatibility Baseline
 
 Current operating posture:
 
-- The legacy runtime path (`packages/` + `esphome/`) is now treated as a **sealed rollback-safe baseline**.
+- The legacy runtime path (`packages/` + `esphome/`) is treated as a **rollback-safe compatibility baseline**.
 - The custom integration (`custom_components/spectra_ls`) is the **primary path for net-new control-plane and feature growth**.
 - New install-specific hardcoded entity IDs/private host literals are now CI-blocked in active product logic paths via the Phase-0 hardcode guard workflow.
-- Active target/host authority now runs in **component-primary non-hybrid mode** during normal operation (legacy writer lanes are authority-gated and only remain as rollback-safe fallback semantics).
+- Active target/host authority runs in **component-primary non-hybrid mode** during normal operation (legacy writer lanes are authority-gated and remain rollback-safe fallback semantics).
 - Authority mode is now **component-pinned** in active operation (legacy authority-mode selection is disabled), and component auto-select keeps current valid target by default unless explicitly forced.
 - The legacy `control-py` path is **archived exploration history** on `main` and is no longer a development or run target.
 - Legacy path changes are still allowed for compatibility, safety, and rollback integrity — but not for unbounded new ownership behavior.
@@ -79,7 +79,7 @@ Inspired by modern physical-control craftsmanship from [Condesa Electronics — 
 - Host-control cutover readiness is service-addressable via `spectra_ls.get_host_cutover_gate` (with fail-closed options for readiness/activation gating in automation workflows).
 - Canonical playback/progress robustness is now formalized as a component-first architecture program (`custom_components/spectra_ls`) with multi-source field-level resolution, provenance, and deterministic healing (`docs/architecture/COMPONENT-DATA-FABRIC-ARCHITECTURE.md`).
 - Canonical ownership/read/write authority across runtime + component surfaces is now centralized in a single ledger: `docs/architecture/CONTRACT-OWNERSHIP-LEDGER.md`.
-- Canonical execution is now codified as `CA-S01..CA-S08` (CORE/PROJ/COMPAT/OPS lanes), with `CA-S01` active as the current contract-freeze + authority-boundary baseline (`docs/roadmap/v-next-NOTES.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`).
+- Canonical execution is codified as `CA-S01..CA-S08` (CORE/PROJ/COMPAT/OPS lanes), and those baseline CA slices are now validated; active work continues in post-CA parity/hardening lanes (see `docs/roadmap/v-next-NOTES.md`).
 - Architecture governance is explicit and normative with token-locked MA authority semantics: `health.authority_mode` is `ma_primary | ma_degraded_fallback`, and degraded authority reasons include `ma_degraded_fallback_active`, `ma_payload_stale`, `ma_payload_shape_invalid`, and `ma_api_unreachable`.
 - Ecosystem expansion remains capability-mapped and discovery-first; Sendspin-class and adjacent endpoint families are treated as roadmap integrations under the same safety/rollback gate discipline.
 - Runtime control-target host resolution is discovery-only and fail-closed by contract: no install-specific hardcoded target IP bootstrap defaults in tracked product logic.

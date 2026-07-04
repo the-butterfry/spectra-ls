@@ -1,6 +1,6 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.06.22.4 -->
-<!-- Last updated: 2026-06-22 -->
+<!-- Version: 2026.07.04.1 -->
+<!-- Last updated: 2026-07-04 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
 
@@ -934,18 +934,18 @@ Latest run update (2026-05-03, Slice-AD coordinator utility-helper final one-sho
 - Component track disposition: compatibility-shimmed (docs-first activation step completed; implementation/rewire verification follows in the same macro cycle).
 - P1/P2/P3 impact check: no source-of-truth ownership change; architecture-hardening execution progression only.
 
-Latest run update (2026-05-03, Slice-AC coordinator refresh-validation super-chunk extraction implementation):
+Latest run update (2026-05-03, Slice-AutoCoordinator coordinator refresh-validation super-chunk extraction implementation):
 
-- parity_stamp: 2026-05-03 / Slice-AC-coordinator-refresh-validation-super-chunk / mode=implementation
+- parity_stamp: 2026-05-03 / Slice-AutoCoordinator-coordinator-refresh-validation-super-chunk / mode=implementation
 - Added dedicated workflow boundary module `refresh_validation_fabric.py` and moved coordinator refresh/validation service lane ownership out of `coordinator.py` (`_refresh_snapshot`, deferred refresh callback handling, `async_rebuild_registry`, `async_validate_contracts`, `async_dump_route_trace`, `async_validate_selection_handoff`, `async_validate_capability_profile`, `async_validate_action_catalog`, `async_validate_crossfade_balance`, and `async_validate_scheduler`).
 - Rewired coordinator methods to thin delegations through `RefreshValidationFabricWorkflow`, preserving service and callback contracts.
 - Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
 - Component track disposition: implemented (refresh/validation super-chunk lane now boundary-owned by dedicated workflow module).
 - P1/P2/P3 impact check: no source-of-truth ownership change; internal architecture hardening only.
 
-Latest run update (2026-05-03, Slice-AC coordinator refresh-validation super-chunk extraction activation):
+Latest run update (2026-05-03, Slice-AutoCoordinator coordinator refresh-validation super-chunk extraction activation):
 
-- parity_stamp: 2026-05-03 / Slice-AC-coordinator-refresh-validation-super-chunk / mode=docs-first
+- parity_stamp: 2026-05-03 / Slice-AutoCoordinator-coordinator-refresh-validation-super-chunk / mode=docs-first
 - Activated the next super-macro extraction cycle to move coordinator refresh/validation service seams (`_refresh_snapshot`, deferred refresh callback handling, `async_rebuild_registry`, `async_validate_contracts`, `async_dump_route_trace`, `async_validate_selection_handoff`, `async_validate_capability_profile`, `async_validate_action_catalog`, `async_validate_crossfade_balance`, and `async_validate_scheduler`) from `coordinator.py` into a dedicated workflow boundary module, then rewire coordinator methods to thin delegation wrappers.
 - Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
 - Component track disposition: compatibility-shimmed (docs-first activation step completed; implementation/rewire verification follows in the same macro cycle).

@@ -1,6 +1,6 @@
 <!-- Description: Control Board v2 notes mirror for control-py context and setup operations. -->
-<!-- Version: 2026.06.20.1 -->
-<!-- Last updated: 2026-06-20 -->
+<!-- Version: 2026.07.04.1 -->
+<!-- Last updated: 2026-07-04 -->
 
 # Control Board v2 (control-board-2) Notes
 
@@ -339,14 +339,6 @@ Copy these into `CIRCUITPY/lib` on the Feather RP2040:
 > The repo has these under `control-py/lib/`. If `CIRCUITPY` isn’t mounted, stage them later.
 
 ## Change log
-
-### 2026-04-12
-
-- HA: DST manual override now sticks until the room reaches target temperature; Tuya cool setpoint defaults 2°F below DST target on manual start.
-- HA: DST auto-off now respects manual override window to prevent premature shutdown.
-- HA: DST now uses bedroom enviro temperature/humidity sensors with faster updates.
-- HA: DST now reasserts Tuya cool mode while DST is cooling, without forcing preset changes during manual override.
-- HA: Fix tuya_unsupported_sensors config flow await error and set DST automation/script modes to avoid “Already running” warnings.
 
 ### 2026-04-06
 

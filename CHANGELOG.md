@@ -1,6 +1,6 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.06.21.2 -->
-<!-- Last updated: 2026-06-21 -->
+<!-- Version: 2026.07.04.1 -->
+<!-- Last updated: 2026-07-04 -->
 
 # Changelog
 
@@ -548,7 +548,6 @@
 
 ## 2026-04-12
 
-- HA: Fix tuya_unsupported_sensors config flow await error and set DST automation/script modes to avoid “Already running” warnings.
 - ESPHome: Stop forced HA update_entity calls for MA control host sensors to avoid template AssertionError spam.
 - HA: Prefer active target for now-playing entity when target is playing with metadata to avoid stale AirPlay meta on OLED.
 - ESPHome: Add control-target prompt grace window around playback/ambiguity transitions to prevent popups during track switches.

@@ -1,6 +1,6 @@
 <!-- Description: Documentation index for Spectra L/S technical, onboarding, roadmap, and operations artifacts. -->
-<!-- Version: 2026.06.22.1 -->
-<!-- Last updated: 2026-06-22 -->
+<!-- Version: 2026.07.04.1 -->
+<!-- Last updated: 2026-07-04 -->
 
 # Spectra L/S Documentation Index
 
@@ -80,7 +80,6 @@ If you are new: read `README.md` first, then this file, then `docs/roadmap/v-nex
 ## Setup and feature references
 
 - Setup placeholders: `docs/setup/SPECTRA-HA-CONFIG-PLACEHOLDERS.md`
-- Feature notes: `docs/features/dst_tuya_ac.FEATURES.md`
 - Deferred H1 report/log/heal scaffold: `docs/features/H1-report-log-heal-scaffold.md`
 
 ## Repository governance

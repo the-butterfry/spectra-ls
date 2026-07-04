@@ -1,6 +1,6 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.06.22.4 -->
-<!-- Last updated: 2026-06-22 -->
+<!-- Version: 2026.07.04.1 -->
+<!-- Last updated: 2026-07-04 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
 
@@ -982,7 +982,7 @@ Latest run update (2026-05-03, Slice-AD coordinator utility-helper final one-sho
 - Component track disposition: compatibility-shimmed (docs-first activation completed; implementation follows in the same macro cycle).
 - P1/P2/P3 impact check: no source-of-truth ownership change; architecture-hardening execution progression only.
 
-Latest run update (2026-05-03, Slice-AC coordinator refresh-validation super-chunk extraction implementation):
+Latest run update (2026-05-03, Slice-AutoCoordinator coordinator refresh-validation super-chunk extraction implementation):
 
 - Added `refresh_validation_fabric.py` and moved coordinator refresh/validation service seams out of `coordinator.py` into dedicated `RefreshValidationFabricWorkflow` ownership (`_refresh_snapshot`, deferred refresh callback handling, `async_rebuild_registry`, `async_validate_contracts`, `async_dump_route_trace`, `async_validate_selection_handoff`, `async_validate_capability_profile`, `async_validate_action_catalog`, `async_validate_crossfade_balance`, and `async_validate_scheduler`).
 - Coordinator methods now delegate this lane through thin wrapper calls to the extracted refresh/validation workflow boundary.
@@ -990,7 +990,7 @@ Latest run update (2026-05-03, Slice-AC coordinator refresh-validation super-chu
 - Component track disposition: implemented (refresh/validation super-chunk lane moved from inline coordinator monolith to dedicated workflow module).
 - P1/P2/P3 impact check: no source-of-truth ownership change; internal architecture hardening only.
 
-Latest run update (2026-05-03, Slice-AC coordinator refresh-validation super-chunk extraction activation):
+Latest run update (2026-05-03, Slice-AutoCoordinator coordinator refresh-validation super-chunk extraction activation):
 
 - Added docs-first activation for extracting coordinator refresh/validation service seams (`_refresh_snapshot`, deferred refresh callback handling, `async_rebuild_registry`, `async_validate_contracts`, `async_dump_route_trace`, `async_validate_selection_handoff`, `async_validate_capability_profile`, `async_validate_action_catalog`, `async_validate_crossfade_balance`, and `async_validate_scheduler`) from `coordinator.py` into a dedicated workflow boundary module, followed by same-slice delegation rewiring.
 - Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).

@@ -1,6 +1,6 @@
 <!-- Description: Wiki home page for Spectra L/S operations, architecture, contribution flow, and runbooks. -->
-<!-- Version: 2026.05.02.2 -->
-<!-- Last updated: 2026-05-02 -->
+<!-- Version: 2026.07.04.1 -->
+<!-- Last updated: 2026-07-04 -->
 
 # Spectra L/S Wiki
 
@@ -63,6 +63,8 @@ Writing quality standard:
 
 - Canonical docs index: [`docs/README.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/README.md)
 - Canonical changelog: [`docs/CHANGELOG.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/CHANGELOG.md)
+- ESP-specific changelog: [`esphome/CHANGELOG.md`](https://github.com/the-butterfry/spectra-ls/blob/main/esphome/CHANGELOG.md)
+- Parallel combined config guide: [`docs/spectra_ls_system/SPECTRA-LS-AMPED-COMBINED-CONFIG.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/spectra_ls_system/SPECTRA-LS-AMPED-COMBINED-CONFIG.md)
 - Runtime roadmap notes: [`docs/roadmap/v-next-NOTES.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/roadmap/v-next-NOTES.md)
 - Component roadmap notes: [`docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md)
 

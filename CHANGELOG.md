@@ -1,8 +1,56 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.07.04.1 -->
+<!-- Version: 2026.07.04.3 -->
 <!-- Last updated: 2026-07-04 -->
 
 # Changelog
+
+## 2026-07-04
+
+### Amped + HiFi ESP32 Plus S3 dual-board pin-map publication
+
+**Problem addressed:** Combined-lane Amped documentation existed, but there was no explicit canonical pin map artifact for Amped + HiFi ESP32 Plus S3 operator wiring validation.
+
+**Runtime track (implemented):** `docs/`, `esphome/` docs surfaces
+
+- Added canonical hardware map:
+  - `docs/hardware/AMPED-HIFI-ESP32-PLUS-S3-PIN-MAP.md`
+- Linked map from protocol and architecture-facing docs:
+  - `docs/hardware/WIRING-LAYOUT-PROTOCOL.md`
+  - `docs/spectra_ls_system/SPECTRA-LS-AMPED-COMBINED-CONFIG.md`
+  - `docs/README.md`
+  - `docs/wiki/System-Architecture.md`
+
+**Component track (checked/not-applicable):** `custom_components/spectra_ls/`
+
+- No component behavior or contract mutation in this slice.
+
+**Two-track disposition:** runtime: implemented; component: checked/not-applicable.
+
+**P1/P2/P3 impact check:** no source-of-truth ownership reassignment; hardware mapping clarity and operator documentation hardening only.
+
+### Parallel combined config documentation + ESP changelog rollout
+
+**Problem addressed:** The new parallel combined ESPHome config (`spectra_ls_system_amped_combined.yaml`) existed with only minimal discoverability and no dedicated ESP-lane changelog trace, making onboarding and operational auditability weaker than the project baseline.
+
+**Runtime track (implemented):** `docs/`, `esphome/`, root docs
+
+- Published an extensive long-form guide for the combined entrypoint and bridge profile behavior:
+  - `docs/spectra_ls_system/SPECTRA-LS-AMPED-COMBINED-CONFIG.md`
+- Added dedicated ESP-specific changelog artifact:
+  - `esphome/CHANGELOG.md`
+- Wired navigation/discoverability updates across docs/wiki install flows:
+  - `docs/README.md`
+  - `docs/wiki/Home.md`
+  - `docs/wiki/User-Setup-Deploy-and-HA-Integration.md`
+  - `docs/wiki/Install-on-Your-Own-HA.md`
+
+**Component track (checked/not-applicable):** `custom_components/spectra_ls/`
+
+- No component behavior or contract mutation in this slice.
+
+**Two-track disposition:** runtime: implemented; component: checked/not-applicable.
+
+**P1/P2/P3 impact check:** no source-of-truth ownership reassignment; documentation depth + changelog governance hardening only.
 
 ## 2026-06-20
 

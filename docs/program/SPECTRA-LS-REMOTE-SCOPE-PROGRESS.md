@@ -1,6 +1,6 @@
 <!-- Description: Scope, progress tracking, and execution baseline for the Spectra LS Remote standalone ESPHome project. -->
-<!-- Version: 2026.06.13.6 -->
-<!-- Last updated: 2026-06-13 -->
+<!-- Version: 2026.07.04.3 -->
+<!-- Last updated: 2026-07-04 -->
 
 # Spectra LS Remote — Scope and Progress
 
@@ -64,6 +64,8 @@ Product posture: a compact, elegant **movable coffee-table control box** (not a 
 
 - Read encoder detent direction and convert to bounded volume step actions
 - Support optional acceleration curve (larger step at higher turn rate)
+- Acceleration policy (active): slow detents use low step gain, fast detents use higher step gain
+- HA helper control (active): acceleration enable/disable can be toggled live via `input_boolean.spectra_ls_remote_volume_acceleration` without reflashing
 - Apply send-rate guard to avoid command storming
 
 ### Encoder center-press path
@@ -103,6 +105,18 @@ Product posture: a compact, elegant **movable coffee-table control box** (not a 
 - Phase 1 (bring-up): wake-locked for rapid tuning and signal verification
 - Phase 2 (battery tuning): add idle timeout + wake behavior validation
 - Phase 3 (release candidate): optimize sleep intervals and wake latency trade-off
+
+### Playback-aware awake guard (active)
+
+- Remote deep-sleep entry is now suppressed while HA now-playing state is `playing`.
+- Existing idle timeout and quiet-hours/daytime sleep policies remain in place.
+- This preserves remote responsiveness during active listening sessions while still allowing aggressive battery savings when playback is idle/stopped.
+
+### Expanded sleep profile (active)
+
+- Post-playback linger hold: after playback leaves `playing`, remote stays awake for a bounded linger window before idle-sleep eligibility.
+- Passthrough wake-lock: passthrough source postures (`optical`, `line-in`, `aux`, `coax`, `hdmi`, `arc`) suppress deep sleep while active.
+- Night/day idle policy: quiet-hours uses a shorter idle threshold (more aggressive sleep), daytime uses a longer idle threshold (more forgiving wake behavior).
 
 ### Placeholder devboard no-battery mode (current)
 
@@ -190,6 +204,14 @@ Product posture: a compact, elegant **movable coffee-table control box** (not a 
 - Added unresolved-target handling improvements for remote controls: helper-target fallback to now-playing entity plus warning-rate throttling for high-frequency encoder movement.
 - Added temporary forced-target override for remote action routing to `media_player.spectra_ls_2` (real Spectra control host lane).
 - Corrected encoder direction by swapping default A/B pin mapping for current test hardware.
+
+### 2026-07-04
+
+- Added playback-aware sleep suppression: remote no longer enters deep sleep while HA now-playing contract reports `playing`.
+- Sleep policy remains idle-timeout-driven outside active playback windows.
+- Added adaptive detent-speed volume gain (slow/fast step policy) with live HA helper toggle (`input_boolean.spectra_ls_remote_volume_acceleration`).
+- Expanded sleep behavior with playback-stop linger hold, passthrough-source wake-lock, and quiet-hours/daytime idle-threshold split.
+- Live telemetry-guided responsiveness retune: increased slow/fast step gains and widened fast-turn detection window; modestly tightened encoder gate timings so practical real-world turns map to stronger volume movement.
 
 ## Decisions log
 

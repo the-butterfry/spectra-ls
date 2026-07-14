@@ -1,0 +1,46 @@
+# Description: HiFi profile package for new standalone combined config set.
+# Version: 2026.07.04.1
+# Last updated: 2026-07-04
+#
+# Evidence basis:
+# - Upstream Sonocotta HiFi lane uses external DAC enable + I2C DAC control posture.
+
+substitutions:
+  combined2_dac_enable_pin: GPIO46
+  combined2_dac_sda_pin: GPIO8
+  combined2_dac_scl_pin: GPIO18
+
+i2c:
+  - id: combined2_dac_i2c
+    sda: ${combined2_dac_sda_pin}
+    scl: ${combined2_dac_scl_pin}
+    scan: false
+
+output:
+  - platform: gpio
+    id: combined2_dac_enable_out
+    pin:
+      number: ${combined2_dac_enable_pin}
+
+switch:
+  - platform: output
+    id: combined2_dac_enable_switch
+    name: "Combined2 DAC Enable"
+    internal: true
+    output: combined2_dac_enable_out
+    restore_mode: RESTORE_DEFAULT_ON
+
+script:
+  - id: combined2_apply_hifi_profile
+    mode: restart
+    then:
+      - switch.turn_on: combined2_dac_enable_switch
+      - logger.log:
+          level: INFO
+          format: "[combined2] HiFi profile active (external DAC lane enabled)"
+
+esphome:
+  on_boot:
+    priority: -10
+    then:
+      - script.execute: combined2_apply_hifi_profile

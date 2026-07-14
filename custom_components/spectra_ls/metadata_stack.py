@@ -1,6 +1,6 @@
 # Description: Extracted metadata stack workflows for Spectra LS (metadata prep/bridge/cutover validation and metadata trial services).
-# Version: 2026.06.23.3
-# Last updated: 2026-06-23
+# Version: 2026.07.05.1
+# Last updated: 2026-07-05
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -1050,6 +1050,7 @@ class MetadataStackWorkflow:
 					state_norm == "paused"
 					and bool(title)
 					and has_app_hint
+					and recent_signal
 				)
 				stale_origin_passthrough_ok = (
 					state_norm == "playing"

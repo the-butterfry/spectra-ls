@@ -1,6 +1,6 @@
 # Description: Spectra LS setup (top-level user config).
-# Version: 2026.06.22.1
-# Last updated: 2026-06-22
+# Version: 2026.07.04.1
+# Last updated: 2026-07-04
 # Update version/date whenever you change this file.
 #
 # This package provides user-facing helpers for Spectra LS room mapping.
@@ -75,6 +75,12 @@ input_text:
     initial: ""
     max: 255
     mode: text
+
+input_boolean:
+  spectra_ls_remote_volume_acceleration:
+    name: Spectra LS Remote Volume Acceleration
+    icon: mdi:speedometer
+    initial: on
 
 template:
   - sensor:

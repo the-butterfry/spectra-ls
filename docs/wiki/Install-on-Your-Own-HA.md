@@ -1,6 +1,6 @@
 <!-- Description: Operator runbook for installing Spectra on a user-owned Home Assistant instance with explicit pass/fail checkpoints. -->
-<!-- Version: 2026.06.22.1 -->
-<!-- Last updated: 2026-06-22 -->
+<!-- Version: 2026.07.04.1 -->
+<!-- Last updated: 2026-07-04 -->
 
 # Install on Your Own Home Assistant
 
@@ -18,6 +18,12 @@ You are done with this page when all are true:
 - one audio action and one lighting action both pass.
 
 ## Track A (current path): Runtime-first install
+
+Parallel optional lane (advanced/testing only):
+
+- Combined ESP entrypoint: [`esphome/spectra_ls_system_amped_combined.yaml`](https://github.com/the-butterfry/spectra-ls/blob/main/esphome/spectra_ls_system_amped_combined.yaml)
+- Combined lane guide: [`docs/spectra_ls_system/SPECTRA-LS-AMPED-COMBINED-CONFIG.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/spectra_ls_system/SPECTRA-LS-AMPED-COMBINED-CONFIG.md)
+- ESP-specific changelog: [`esphome/CHANGELOG.md`](https://github.com/the-butterfry/spectra-ls/blob/main/esphome/CHANGELOG.md)
 
 ### 0) Before you start
 

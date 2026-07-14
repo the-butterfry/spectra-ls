@@ -133,6 +133,7 @@ Common entry points:
 
 - Setup placeholders: [`docs/setup/SPECTRA-HA-CONFIG-PLACEHOLDERS.md`](docs/setup/SPECTRA-HA-CONFIG-PLACEHOLDERS.md)
 - Latest project changes: [`docs/CHANGELOG.md`](docs/CHANGELOG.md)
+- Parallel Amped integration entrypoint (additive, current runtime preserved): [`esphome/spectra_ls_system_amped_combined.yaml`](esphome/spectra_ls_system_amped_combined.yaml)
 - Developer onboarding/runbook: [`docs/developer/DEVELOPER-INSTRUCTIONS.md`](docs/developer/DEVELOPER-INSTRUCTIONS.md)
 - WLED palette room E2E test runbook: [`docs/testing/raw/wled_palette_room_e2e_runbook.md`](docs/testing/raw/wled_palette_room_e2e_runbook.md)
 

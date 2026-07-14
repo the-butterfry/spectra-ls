@@ -1,6 +1,6 @@
 <!-- Description: Detailed wiring, layout, bus, and event-contract protocol for Spectra LS hardware and RP/ESP integration. -->
-<!-- Version: 2026.06.09.1 -->
-<!-- Last updated: 2026-06-09 -->
+<!-- Version: 2026.07.04.1 -->
+<!-- Last updated: 2026-07-04 -->
 
 # Spectra L/S Wiring + Layout Protocol (Detailed)
 
@@ -11,6 +11,7 @@ This is the detailed protocol reference for wiring/layout decisions, event mappi
 Use this document to keep hardware wiring, logical channel mapping, and runtime protocol behavior synchronized.
 
 - Summary/legend view: [`docs/circuitpy/RP-LEGEND.md`](../circuitpy/RP-LEGEND.md)
+- Amped + HiFi ESP32 Plus S3 map: [`docs/hardware/AMPED-HIFI-ESP32-PLUS-S3-PIN-MAP.md`](./AMPED-HIFI-ESP32-PLUS-S3-PIN-MAP.md)
 - Runtime architecture map: [`docs/architecture/CODEBASE-RUNTIME-ARCHITECTURE.md`](../architecture/CODEBASE-RUNTIME-ARCHITECTURE.md)
 - v-next behavior contracts: [`docs/roadmap/v-next-NOTES.md`](../roadmap/v-next-NOTES.md)
 
@@ -124,6 +125,7 @@ These are active documentation/contract watch-items for upcoming analog expansio
 - Runtime architecture baseline: [`docs/architecture/CODEBASE-RUNTIME-ARCHITECTURE.md`](../architecture/CODEBASE-RUNTIME-ARCHITECTURE.md)
 - Control-hub architecture baseline: [`docs/architecture/CONTROL-HUB-ARCHITECTURE.md`](../architecture/CONTROL-HUB-ARCHITECTURE.md)
 - v-next roadmap contracts: [`docs/roadmap/v-next-NOTES.md`](../roadmap/v-next-NOTES.md)
+- Amped + HiFi ESP32 Plus S3 pin map: [`docs/hardware/AMPED-HIFI-ESP32-PLUS-S3-PIN-MAP.md`](./AMPED-HIFI-ESP32-PLUS-S3-PIN-MAP.md)
 
 ### Firmware + runtime files
 

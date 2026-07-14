@@ -1,6 +1,6 @@
 {# Description: Full-stack one-screen Spectra LS component validation template for HA Developer Tools. #}
-{# Version: 2026.06.22.2 #}
-{# Last updated: 2026-06-22 #}
+{# Version: 2026.07.07.1 #}
+{# Last updated: 2026-07-07 #}
 
 {% set invalid = ['','none','unknown','unavailable','null'] %}
 
@@ -51,7 +51,71 @@
 {% set now_playing_preview_key = states('sensor.now_playing_preview_key') %}
 {% set now_playing_freshness_age_s_raw = states('sensor.now_playing_freshness_age_s') %}
 {% set now_playing_freshness_age_s = now_playing_freshness_age_s_raw | float(none) if now_playing_freshness_age_s_raw not in invalid else none %}
+{% set now_playing_source = states('sensor.now_playing_source') %}
+{% set now_playing_app = states('sensor.now_playing_app') %}
+{% set now_playing_display_allowed = states('binary_sensor.now_playing_display_allowed') %}
 {% set active_meta_entity = states('sensor.ma_active_meta_entity') %}
+
+{% set component_now_playing_entity = states('sensor.component_now_playing_entity') %}
+{% set component_now_playing_state = states('sensor.component_now_playing_state') %}
+{% set component_now_playing_title = states('sensor.component_now_playing_title') %}
+{% set component_now_playing_source = states('sensor.component_now_playing_source') %}
+{% set component_now_playing_app = states('sensor.component_now_playing_app') %}
+{% set component_now_playing_display_allowed = states('binary_sensor.component_now_playing_display_allowed') %}
+{% set component_now_playing_freshness_age_raw = states('sensor.component_now_playing_freshness_age') %}
+{% set component_now_playing_freshness_age = component_now_playing_freshness_age_raw | float(none) if component_now_playing_freshness_age_raw not in invalid else none %}
+
+{% set effective_now_playing_entity = component_now_playing_entity if component_now_playing_entity not in invalid else now_playing_entity %}
+{% set effective_now_playing_state = component_now_playing_state if component_now_playing_state not in invalid else now_playing_state %}
+{% set effective_now_playing_title = component_now_playing_title if component_now_playing_title not in invalid else now_playing_title %}
+{% set effective_now_playing_source = component_now_playing_source if component_now_playing_source not in invalid else now_playing_source %}
+{% set effective_now_playing_app = component_now_playing_app if component_now_playing_app not in invalid else now_playing_app %}
+{% set effective_now_playing_display_allowed = component_now_playing_display_allowed if component_now_playing_display_allowed not in invalid else now_playing_display_allowed %}
+{% set effective_now_playing_freshness_age = component_now_playing_freshness_age if component_now_playing_freshness_age is not none else now_playing_freshness_age_s %}
+
+{% set metadata_checks = metadata_prep.checks if metadata_prep.checks is defined and metadata_prep.checks is mapping else {} %}
+{% set metadata_values = metadata_prep.values if metadata_prep.values is defined and metadata_prep.values is mapping else {} %}
+{% set selector_raw = metadata_values.component_now_playing_selection if metadata_values.component_now_playing_selection is defined else {} %}
+{% set selector = selector_raw if selector_raw is mapping else ((selector_raw | from_json) if (selector_raw is string and (selector_raw | trim).startswith('{')) else {}) %}
+{% set selector_winner_entity = metadata_checks.component_now_playing_selection_winner_entity if metadata_checks.component_now_playing_selection_winner_entity is defined else (metadata_values.component_now_playing_selection_winner_entity if metadata_values.component_now_playing_selection_winner_entity is defined else (selector.winner_entity if selector.winner_entity is defined else 'unknown')) %}
+{% set selector_winner_source = metadata_checks.component_now_playing_selection_winner_source if metadata_checks.component_now_playing_selection_winner_source is defined else (metadata_values.component_now_playing_selection_winner_source if metadata_values.component_now_playing_selection_winner_source is defined else (selector.winner_source if selector.winner_source is defined else 'unknown')) %}
+{% set selector_winner_pool = metadata_checks.component_now_playing_selection_winner_pool if metadata_checks.component_now_playing_selection_winner_pool is defined else (selector.winner_pool if selector.winner_pool is defined else 'unknown') %}
+{% set selector_winner_reason = metadata_checks.component_now_playing_selection_winner_reason if metadata_checks.component_now_playing_selection_winner_reason is defined else (selector.winner_reason if selector.winner_reason is defined else 'unknown') %}
+{% set selector_candidate_count = metadata_checks.component_now_playing_selection_candidate_count if metadata_checks.component_now_playing_selection_candidate_count is defined else (selector.candidate_count if selector.candidate_count is defined else 'unknown') %}
+{% set selector_eligible_count = metadata_checks.component_now_playing_selection_eligible_count if metadata_checks.component_now_playing_selection_eligible_count is defined else (selector.eligible_count if selector.eligible_count is defined else 'unknown') %}
+
+{% set control_meta_entity_mismatch = active_target not in invalid and effective_now_playing_entity not in invalid and active_target != effective_now_playing_entity %}
+{% set source_hint = effective_now_playing_source | lower if effective_now_playing_source not in invalid else '' %}
+{% set app_hint = effective_now_playing_app | lower if effective_now_playing_app not in invalid else '' %}
+{% set appletv_youtube_context = ('apple' in source_hint) or ('youtube' in source_hint) or ('apple' in app_hint) or ('youtube' in app_hint) %}
+{% set passthrough_source_detected = ('optical' in source_hint) or ('line in' in source_hint) or ('line-in' in source_hint) or ('aux' in source_hint) or ('hdmi' in source_hint) or ('arc' in source_hint) %}
+{% set stale_now_playing = effective_now_playing_freshness_age is not none and effective_now_playing_freshness_age > 45 %}
+{% set display_not_allowed = effective_now_playing_display_allowed in ['off', 'false', '0'] %}
+{% set oled_audio_blank = esp_mode_prefix == 'audio' and (esp_oled_payload | trim) in ['', '-'] %}
+{% set selector_partial_telemetry = selector_winner_entity in invalid and selector_winner_pool not in ['unknown', 'none', ''] %}
+
+{% set oled_cause = 'healthy_or_non_blank_case' %}
+{% if esp_oled_state in invalid %}
+  {% set oled_cause = 'esp_oled_status_missing' %}
+{% elif esp_mode_prefix not in ['audio', 'lighting'] %}
+  {% set oled_cause = 'oled_not_in_audio_or_lighting_mode' %}
+{% elif esp_lighting_blank_ok %}
+  {% set oled_cause = 'lighting_blank_expected' %}
+{% elif oled_audio_blank and display_not_allowed %}
+  {% set oled_cause = 'display_policy_suppressed' %}
+{% elif oled_audio_blank and stale_now_playing %}
+  {% set oled_cause = 'now_playing_freshness_stale' %}
+{% elif oled_audio_blank and passthrough_source_detected and effective_now_playing_title in invalid %}
+  {% set oled_cause = 'passthrough_no_track_metadata' %}
+{% elif oled_audio_blank and selector_partial_telemetry %}
+  {% set oled_cause = 'selector_telemetry_partial' %}
+{% elif oled_audio_blank and control_meta_entity_mismatch and effective_now_playing_state in ['playing', 'paused'] %}
+  {% set oled_cause = 'control_metadata_entity_divergence' %}
+{% elif oled_audio_blank and effective_now_playing_title in invalid and effective_now_playing_source not in invalid %}
+  {% set oled_cause = 'title_missing_source_present' %}
+{% elif oled_audio_blank %}
+  {% set oled_cause = 'audio_blank_unclassified' %}
+{% endif %}
 
 {% set esp_handoff_entity = 'sensor.spectra_ls_system_esp_control_handoff_status' if states['sensor.spectra_ls_system_esp_control_handoff_status'] is not none else '' %}
 {% set esp_oled_entity = 'sensor.spectra_ls_system_esp_oled_status' if states['sensor.spectra_ls_system_esp_oled_status'] is not none else '' %}
@@ -137,11 +201,27 @@
 - Backend/API (effective): **{{ effective_backend_profile }} / {{ effective_api_url }}**
 - Backend/API source: **{{ backend_source }} / {{ api_source }}**
 - Meta entity: **{{ active_meta_entity }}**
-- Now playing: **{{ now_playing_entity }} | {{ now_playing_state }} | {{ now_playing_title }}**
+- Component now playing: **{{ component_now_playing_entity }} | {{ component_now_playing_state }} | {{ component_now_playing_title }}**
+- Runtime now playing: **{{ now_playing_entity }} | {{ now_playing_state }} | {{ now_playing_title }}**
+- Effective now playing: **{{ effective_now_playing_entity }} | {{ effective_now_playing_state }} | {{ effective_now_playing_title }}**
 - Preview key: **{{ now_playing_preview_key if now_playing_preview_key not in invalid else 'missing' }}**
-- Freshness age (s): **{{ (now_playing_freshness_age_s | round(1)) if now_playing_freshness_age_s is not none else 'missing' }}**
+- Freshness age (component/runtime/effective s): **{{ (component_now_playing_freshness_age | round(1)) if component_now_playing_freshness_age is not none else 'missing' }} / {{ (now_playing_freshness_age_s | round(1)) if now_playing_freshness_age_s is not none else 'missing' }} / {{ (effective_now_playing_freshness_age | round(1)) if effective_now_playing_freshness_age is not none else 'missing' }}**
 - ESP handoff/oled: **{{ esp_handoff_state }} / {{ esp_oled_state }}**
 - ESP oled mode-semantic: **{{ 'lighting_blank_expected' if esp_lighting_blank_ok else 'normal' }}**
+
+### OLED blank diagnosis
+- Classified cause: **{{ oled_cause }}**
+- OLED audio blank: **{{ oled_audio_blank }}**
+- Display allowed (effective): **{{ effective_now_playing_display_allowed if effective_now_playing_display_allowed not in invalid else 'missing' }}**
+- Source/app (effective): **{{ effective_now_playing_source if effective_now_playing_source not in invalid else 'missing' }} / {{ effective_now_playing_app if effective_now_playing_app not in invalid else 'missing' }}**
+- Passthrough source detected: **{{ passthrough_source_detected }}**
+- AppleTV/YouTube context detected: **{{ appletv_youtube_context }}**
+- Title missing while source present: **{{ effective_now_playing_title in invalid and effective_now_playing_source not in invalid }}**
+- Control target vs effective now-playing mismatch: **{{ control_meta_entity_mismatch }}**
+- Selector winner (entity/source): **{{ selector_winner_entity if selector_winner_entity not in invalid else 'missing' }} / {{ selector_winner_source if selector_winner_source not in invalid else 'missing' }}**
+- Selector winner (pool/reason): **{{ selector_winner_pool if selector_winner_pool not in invalid else 'missing' }} / {{ selector_winner_reason if selector_winner_reason not in invalid else 'missing' }}**
+- Selector candidate/eligible counts: **{{ selector_candidate_count if selector_candidate_count not in invalid else 'missing' }} / {{ selector_eligible_count if selector_eligible_count not in invalid else 'missing' }}**
+- Selector partial telemetry: **{{ selector_partial_telemetry }}**
 
 ### Contract + parity
 - contract ready/valid: **{{ contract_ready }} / {{ contract_valid }}**
@@ -188,6 +268,14 @@
 - Fix required contract surfaces (`missing_required`/`unresolved_required`) before trusting any trial verdict.
 {% elif metadata_verdict != 'PASS' %}
 - Run `spectra_ls.run_p3_s03_sequence` and resolve metadata blockers before advancing.
+{% elif oled_cause == 'now_playing_freshness_stale' %}
+- Metadata is stale while OLED audio payload is blank. Capture two packets ~10-20s apart during active playback; if selector winner stays paused/stale, inspect `metadata_prep_validation.values.component_now_playing_selection` + recency gates.
+{% elif oled_cause == 'control_metadata_entity_divergence' %}
+- OLED is blank with active playback but control target and effective now-playing entity diverge. Validate selector winner + intentional divergence posture before forcing target realignment.
+{% elif oled_cause == 'passthrough_no_track_metadata' %}
+- Passthrough source is active and title is missing; verify upstream metadata availability and compare component vs runtime now-playing surfaces in this packet.
+{% elif oled_cause == 'selector_telemetry_partial' %}
+- Selector winner pool is present but winner entity telemetry is partial. Capture a fresh packet after `spectra_ls.dump_route_trace` and inspect `component_now_playing_selection_*` checks/values.
 {% elif not backend_api_contract_ready %}
 - LC6-L05 backend/API read lane is degraded. Refresh `sensor.component_backend_profile` + `sensor.component_ma_api_url`, then verify fallback surfaces `sensor.ma_server_profile_effective` + `sensor.ma_api_url` are not unresolved, and rerun.
 {% elif not esp_runtime_ready %}

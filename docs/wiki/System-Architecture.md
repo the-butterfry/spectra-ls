@@ -1,6 +1,6 @@
 <!-- Description: High-level architecture map for Spectra L/S runtime, control plane, and migration tracks. -->
-<!-- Version: 2026.04.22.2 -->
-<!-- Last updated: 2026-04-22 -->
+<!-- Version: 2026.07.04.1 -->
+<!-- Last updated: 2026-07-04 -->
 
 # System Architecture
 
@@ -49,6 +49,7 @@ Every feature slice must map both tracks as implemented, compatibility-shimmed, 
 
 - Runtime architecture: [`docs/architecture/CODEBASE-RUNTIME-ARCHITECTURE.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/architecture/CODEBASE-RUNTIME-ARCHITECTURE.md)
 - Control hub architecture: [`docs/architecture/CONTROL-HUB-ARCHITECTURE.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/architecture/CONTROL-HUB-ARCHITECTURE.md)
+- Amped + HiFi ESP32 Plus S3 pin map: [`docs/hardware/AMPED-HIFI-ESP32-PLUS-S3-PIN-MAP.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/hardware/AMPED-HIFI-ESP32-PLUS-S3-PIN-MAP.md)
 - Parallel program playbook: [`docs/program/PARALLEL-PROGRAM-PLAYBOOK.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/program/PARALLEL-PROGRAM-PLAYBOOK.md)
 - Custom-component roadmap: [`docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md)
 - v-next notes: [`docs/roadmap/v-next-NOTES.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/roadmap/v-next-NOTES.md)

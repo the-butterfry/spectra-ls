@@ -1,0 +1,38 @@
+# Description: Shared telemetry/contract package for new Amped+HiFi combined config set.
+# Version: 2026.07.04.1
+# Last updated: 2026-07-04
+#
+# PARITY DIRECTIVE:
+# This file is part of a new standalone config set; keep runtime/component parity review explicit per slice.
+
+text_sensor:
+  - platform: template
+    id: combined2_profile_id
+    name: "Combined2 Active Profile"
+    internal: true
+    update_interval: 5s
+    lambda: |-
+      return std::string("${combined_set_profile}");
+
+  - platform: template
+    id: combined2_set_id
+    name: "Combined2 Set Id"
+    internal: true
+    update_interval: 30s
+    lambda: |-
+      return std::string("${combined_set_name}");
+
+binary_sensor:
+  - platform: template
+    id: combined2_is_amped
+    name: "Combined2 Is Amped"
+    internal: true
+    lambda: |-
+      return std::string("${combined_set_profile}") == "amped";
+
+  - platform: template
+    id: combined2_is_hifi
+    name: "Combined2 Is HiFi"
+    internal: true
+    lambda: |-
+      return std::string("${combined_set_profile}") == "hifi";

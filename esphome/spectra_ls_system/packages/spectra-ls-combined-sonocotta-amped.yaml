@@ -1,0 +1,38 @@
+# Description: Amped profile package for new standalone combined config set.
+# Version: 2026.07.04.1
+# Last updated: 2026-07-04
+#
+# Evidence basis:
+# - Upstream Sonocotta Amped lane uses amp enable/unmute semantics.
+
+substitutions:
+  combined2_amp_enable_pin: GPIO46
+
+output:
+  - platform: gpio
+    id: combined2_amp_enable_out
+    pin:
+      number: ${combined2_amp_enable_pin}
+
+switch:
+  - platform: output
+    id: combined2_amp_enable_switch
+    name: "Combined2 Amp Enable"
+    internal: true
+    output: combined2_amp_enable_out
+    restore_mode: RESTORE_DEFAULT_ON
+
+script:
+  - id: combined2_apply_amped_profile
+    mode: restart
+    then:
+      - switch.turn_on: combined2_amp_enable_switch
+      - logger.log:
+          level: INFO
+          format: "[combined2] Amped profile active (amp enable pin asserted)"
+
+esphome:
+  on_boot:
+    priority: -10
+    then:
+      - script.execute: combined2_apply_amped_profile

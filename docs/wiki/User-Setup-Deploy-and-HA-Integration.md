@@ -1,6 +1,6 @@
 <!-- Description: Practical setup/deploy/integration guide for Spectra on Home Assistant with clear operator outcomes and failure actions. -->
-<!-- Version: 2026.06.22.3 -->
-<!-- Last updated: 2026-06-22 -->
+<!-- Version: 2026.07.04.1 -->
+<!-- Last updated: 2026-07-04 -->
 
 # User Setup, Deploy, and HA Integration
 
@@ -18,6 +18,9 @@ Target outcome:
 - Runtime control path: ESPHome + Home Assistant packages
 - Parallel migration target: [`custom_components/spectra_ls`](https://github.com/the-butterfry/spectra-ls/tree/main/custom_components/spectra_ls) (in roadmap phases)
 - Discovery-first design remains default
+- Parallel combined ESP lane (optional validation track): [`esphome/spectra_ls_system_amped_combined.yaml`](https://github.com/the-butterfry/spectra-ls/blob/main/esphome/spectra_ls_system_amped_combined.yaml)
+- Combined lane guide: [`docs/spectra_ls_system/SPECTRA-LS-AMPED-COMBINED-CONFIG.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/spectra_ls_system/SPECTRA-LS-AMPED-COMBINED-CONFIG.md)
+- ESP-specific changelog: [`esphome/CHANGELOG.md`](https://github.com/the-butterfry/spectra-ls/blob/main/esphome/CHANGELOG.md)
 
 ### Program phase snapshot (operator clarity)
 

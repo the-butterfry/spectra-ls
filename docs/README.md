@@ -1,5 +1,5 @@
 <!-- Description: Documentation index for Spectra L/S technical, onboarding, roadmap, and operations artifacts. -->
-<!-- Version: 2026.07.04.1 -->
+<!-- Version: 2026.07.04.3 -->
 <!-- Last updated: 2026-07-04 -->
 
 # Spectra L/S Documentation Index
@@ -10,8 +10,10 @@ Use this folder as the source of truth for project documentation and notes.
 
 - Developer onboarding: `docs/developer/DEVELOPER-INSTRUCTIONS.md`
 - Changelog: `docs/CHANGELOG.md`
+- ESP-specific changelog: `esphome/CHANGELOG.md`
 - GitHub governance blueprint: `docs/governance/GITHUB-MASTERWORK-BLUEPRINT.md`
 - Active ESPHome runtime path on `main`: `esphome/spectra_ls_system/**` (entrypoint `esphome/spectra_ls_system.yaml`).
+- Parallel combined ESP lane: `esphome/spectra_ls_system_amped_combined.yaml` (guide: `docs/spectra_ls_system/SPECTRA-LS-AMPED-COMBINED-CONFIG.md`).
 
 Legacy-seal status (current):
 
@@ -60,10 +62,12 @@ If you are new: read `README.md` first, then this file, then `docs/roadmap/v-nex
 
 - Spectra system notes: `docs/notes/NOTES-control-board-2.md`, `docs/notes/NOTES-wiim-api.md`
 - RP2040 notes: `docs/circuitpy/RP-LEGEND.md`
+- Combined-lane documentation: `docs/spectra_ls_system/SPECTRA-LS-AMPED-COMBINED-CONFIG.md`
 
 ## Hardware wiring and layout protocols
 
 - Wiring/layout protocol (detailed): `docs/hardware/WIRING-LAYOUT-PROTOCOL.md`
+- Amped + HiFi ESP32 Plus S3 pin map: `docs/hardware/AMPED-HIFI-ESP32-PLUS-S3-PIN-MAP.md`
 - RP2040 legend (summary + component links): `docs/circuitpy/RP-LEGEND.md`
 
 ## Wiki-ready pages (optional automation)

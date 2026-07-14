@@ -1,0 +1,57 @@
+# Description: Bridge overlay package for parallel Spectra + Amped combined runtime lane.
+# Version: 2026.07.04.1
+# Last updated: 2026-07-04
+# Update version/date whenever you change this file.
+#
+# PARITY DIRECTIVE:
+# Behavior/contract edits here require same-slice two-track parity review and version-metadata review.
+#
+# This package is intentionally additive and non-breaking:
+# - Does not replace current Spectra audio path by default.
+# - Provides profile toggles + bridge hooks for phased Amped integration.
+
+globals:
+  - id: combined_amped_mode
+    type: bool
+    restore_value: true
+    initial_value: 'false'
+
+select:
+  - platform: template
+    id: combined_audio_backend_profile
+    name: "Combined Audio Backend Profile"
+    internal: true
+    optimistic: true
+    restore_value: true
+    options:
+      - "spectra_arylic"
+      - "amped_dock"
+    initial_option: "spectra_arylic"
+    set_action:
+      - lambda: |-
+          const bool use_amped = (x == "amped_dock");
+          id(combined_amped_mode) = use_amped;
+          ESP_LOGI("combined_bridge", "audio backend profile -> %s", x.c_str());
+      - script.execute: combined_apply_backend_profile
+
+script:
+  - id: combined_apply_backend_profile
+    mode: restart
+    then:
+      - lambda: |-
+          if (id(combined_amped_mode)) {
+            ESP_LOGI("combined_bridge", "Amped bridge profile active (phased mode)");
+          } else {
+            ESP_LOGI("combined_bridge", "Spectra Arylic profile active (baseline mode)");
+          }
+
+text_sensor:
+  - platform: template
+    id: combined_profile_status
+    name: "Combined Profile Status"
+    internal: true
+    update_interval: 5s
+    lambda: |-
+      return id(combined_amped_mode)
+               ? std::string("amped_dock")
+               : std::string("spectra_arylic");

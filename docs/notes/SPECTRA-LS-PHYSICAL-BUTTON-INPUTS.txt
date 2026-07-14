@@ -1,0 +1,199 @@
+Description: Physical interactable mappings for Spectra LS (main system + remote)
+Version: 2026.07.11.2
+Last updated: 2026-07-11
+
+Scope:
+- Active mappings from current ESPHome configs.
+- Includes all user-operable physical interactables:
+  - button presses
+  - rotary encoder turns + encoder presses
+  - analog knobs/sliders
+  - physical selector inputs
+
+Primary sources:
+- esphome/spectra_ls_system/packages/spectra-ls-audio-tcp.yaml
+- esphome/spectra_ls_system/packages/spectra-ls-lighting.yaml
+- esphome/spectra_ls_system/packages/spectra-ls-ui.yaml
+- esphome/spectra_ls_system/packages/spectra-ls-hardware.yaml
+- esphome/spectra_ls_system/substitutions.yaml
+- esphome/spectra_ls_remote.yaml
+
+============================================================
+SPECTRA LS SYSTEM (RP2040 UART)
+============================================================
+
+------------------------------------------------------------
+1) Physical press buttons (button_id)
+------------------------------------------------------------
+
+Audio control buttons
+- button_id 22 | RP Volume Enc Press
+  -> script.execute: arylic_toggle_mute
+
+- button_id 32 | RP Play Pause
+  -> script.execute: note_user_input
+  -> script.execute: focus_audio
+  -> script.execute: arylic_play_pause
+
+- button_id 33 | RP Next
+  -> script.execute: note_user_input
+  -> script.execute: focus_audio
+  -> script.execute: arylic_next
+
+- button_id 34 | RP Prev
+  -> script.execute: note_user_input
+  -> script.execute: focus_audio
+  -> script.execute: arylic_prev
+
+- button_id 35 | RP Source Toggle
+  -> script.execute: note_user_input
+  -> script.execute: focus_audio
+  -> script.execute: show_source_context_popup
+  -> homeassistant.service: script.ma_cycle_target
+
+- button_id 40 | RP Meta Select
+  (from substitutions: meta_select_button_id)
+  -> script.execute: note_user_input
+  -> script.execute: focus_audio
+  -> script.execute: meta_override_cycle
+
+Lighting control buttons
+- button_id 20 | RP Lighting Enc Press
+  -> script.execute: note_user_input
+  -> script.execute: focus_lighting
+  -> toggles hue/sat mode (or exits brightness-adjust mode)
+
+- button_id 30 | RP Lighting Preset
+  -> script.execute: note_user_input
+  -> script.execute: focus_lighting
+  -> script.execute: cycle_lighting_target
+
+- button_id 31 | RP Room Select
+  -> script.execute: note_user_input
+  -> script.execute: focus_lighting
+  -> script.execute: cycle_room
+
+- button_id 41 | RP WLED Palette Sync
+  (from substitutions: wled_palette_sync_button_id)
+  -> script.execute: note_user_input
+  -> script.execute: focus_lighting
+  -> script.execute: trigger_wled_palette_sync
+
+UI/menu buttons
+- button_id 21 | RP Menu Enc Press
+  -> script.execute: note_menu_input
+  -> script.execute: menu_select_action
+
+- button_id 36 | RP Back
+  -> script.execute: note_menu_input
+  -> menu-level back navigation / close behavior
+
+- button_id 37 | RP Select
+  -> script.execute: note_menu_input
+  -> script.execute: menu_select_action
+
+Hardware mode navigation buttons
+- button_id 122 | RP Mode Next Item
+  -> script.execute: sls_mode_nav_next_item
+
+- button_id 123 | RP Mode Prev Item
+  -> script.execute: sls_mode_nav_prev_item
+
+- button_id 124 | RP Mode Confirm
+  -> script.execute: sls_mode_nav_confirm
+
+------------------------------------------------------------
+2) Rotary encoders (turn interactions)
+------------------------------------------------------------
+
+- sensor_id 1 | RP Lighting Enc Delta (type: encoder)
+  -> script.execute: note_user_input
+  -> script.execute: focus_lighting
+  -> adjusts lighting hue/saturation/brightness by mode
+  -> script.execute: apply_lighting_color OR apply_lighting_brightness
+
+- sensor_id 2 | RP Menu Enc Delta (type: encoder)
+  -> script.execute: note_menu_input
+  -> script.execute: refresh_menu_counts
+  -> navigates menu index via sls_menu_nav::normalize_encoder_delta + step_index
+
+- sensor_id 3 | RP Volume Enc Delta (type: encoder)
+  -> script.execute: arylic_volume_delta (delta parameter)
+
+------------------------------------------------------------
+3) Analog knobs/sliders (continuous inputs)
+------------------------------------------------------------
+
+Audio analog controls
+- sensor_id 102 | RP Volume Pot Raw (type: analog)
+  -> computes clamped volume target
+  -> script.execute: arylic_pot_apply_target(channel=3, target=...)
+
+- sensor_id 104 | RP EQ Bass Pot Raw (type: analog)
+  -> maps raw percentage to EQ range
+  -> script.execute: arylic_pot_apply_target(channel=0, target=...)
+
+- sensor_id 105 | RP EQ Mid Pot Raw (type: analog)
+  -> maps raw percentage to EQ range
+  -> script.execute: arylic_pot_apply_target(channel=1, target=...)
+
+- sensor_id 106 | RP EQ Treble Pot Raw (type: analog)
+  -> maps raw percentage to EQ range
+  -> script.execute: arylic_pot_apply_target(channel=2, target=...)
+
+Lighting analog controls
+- sensor_id 101 | RP Lighting Slider Raw (type: analog)
+  -> script.execute: note_user_input / note_menu_input (contextual)
+  -> script.execute: refresh_menu_counts
+  -> updates lighting brightness + menu-linked room/target selection
+  -> script.execute: apply_lighting_brightness (immediate or deferred)
+
+------------------------------------------------------------
+4) Physical selector inputs
+------------------------------------------------------------
+
+- sensor_id 120 | RP Mode Selector Index (type: analog)
+  -> script.execute: sls_apply_mode_selector_index(next_mode=(int)x)
+  -> selects hardware mode (lighting rooms / lighting targets / system-meta / audio)
+
+- sensor_id 121 | RP Control Class Index (type: analog)
+  -> script.execute: sls_apply_control_class_index(next_class=(int)x)
+
+
+============================================================
+SPECTRA LS REMOTE (ESP32-C6)
+============================================================
+
+------------------------------------------------------------
+1) Physical press buttons (GPIO)
+------------------------------------------------------------
+
+- GPIO1 | Remote Encoder Press Button
+  (substitution: encoder_press_pin)
+  -> on_press: script.execute: remote_emit_encoder_press
+  -> maps to: script.execute: remote_mute_guarded
+
+- GPIO7 | Remote Next Track Button
+  (substitution: next_button_pin)
+  -> on_press: script.execute: remote_next_track_guarded
+  -> guarded media_player.media_next_track call to resolved target
+
+------------------------------------------------------------
+2) Rotary encoder (turn interactions)
+------------------------------------------------------------
+
+- GPIO2/GPIO3 | Remote rotary encoder A/B
+  (substitutions: encoder_pin_a / encoder_pin_b)
+  -> platform: rotary_encoder
+  -> on_value: remote_emit_encoder_turn(delta)
+  -> delta routes to:
+     - script.execute: remote_volume_up_guarded (if delta > 0)
+     - script.execute: remote_volume_down_guarded (if delta < 0)
+
+
+============================================================
+Notes
+============================================================
+
+- This file now includes all user-facing physical interactables in the active Spectra LS system + remote paths.
+- Telemetry-only physical sensors (for example remote battery ADC) are not user interaction controls and are intentionally excluded from the interactables list.

@@ -1,0 +1,258 @@
+# Description: Spectra interactables bridge scaffold (BLE/Wi-Fi hybrid ingest to control-center execution).
+# Version: 2026.07.17.1
+# Last updated: 2026-07-17
+# Update version/date whenever you change this file.
+
+input_boolean:
+  spectra_interactable_bridge_enabled:
+    name: Spectra Interactable Bridge Enabled
+    icon: mdi:bluetooth-connect
+    initial: false
+
+  spectra_interactable_shadow_mode:
+    name: Spectra Interactable Shadow Mode
+    icon: mdi:beaker-outline
+    initial: true
+
+  spectra_interactable_dedupe_enabled:
+    name: Spectra Interactable Dedupe Enabled
+    icon: mdi:filter-variant
+    initial: true
+
+  spectra_remote_wifi_maintenance_enabled:
+    name: Spectra Remote Wi-Fi Maintenance Enabled
+    icon: mdi:wifi-cog
+    initial: false
+
+input_text:
+  spectra_interactable_last_event_json:
+    name: Spectra Interactable Last Event JSON
+    initial: ""
+    max: 255
+    mode: text
+
+  spectra_interactable_last_error:
+    name: Spectra Interactable Last Error
+    initial: ""
+    max: 255
+    mode: text
+
+  spectra_interactable_last_correlation_id:
+    name: Spectra Interactable Last Correlation ID
+    initial: ""
+    max: 255
+    mode: text
+
+counter:
+  spectra_interactable_events_total:
+    name: Spectra Interactable Events Total
+    initial: 0
+    step: 1
+
+  spectra_interactable_events_dispatched:
+    name: Spectra Interactable Events Dispatched
+    initial: 0
+    step: 1
+
+  spectra_interactable_events_invalid:
+    name: Spectra Interactable Events Invalid
+    initial: 0
+    step: 1
+
+  spectra_interactable_events_dropped:
+    name: Spectra Interactable Events Dropped
+    initial: 0
+    step: 1
+
+timer:
+  spectra_remote_wifi_maintenance_window:
+    name: Spectra Remote Wi-Fi Maintenance Window
+    duration: "00:10:00"
+
+script:
+  spectra_interactable_process_event:
+    alias: Spectra Interactable - Process Event
+    mode: queued
+    max: 50
+    fields:
+      interactable_id:
+        description: Stable interactable source ID
+        example: "spectra_remote_primary"
+      input_event:
+        description: Canonical control-center input event key
+        example: "encoder_turn"
+      delta:
+        description: Optional signed delta for turn events
+        example: "1"
+      target_hint:
+        description: Optional target hint for diagnostics
+        example: "media_player.kitchen_wiim"
+      correlation_id:
+        description: Optional event correlation ID
+        example: "evt-1721301123"
+      transport:
+        description: Event transport lane (ble/wifi_api)
+        example: "ble"
+      dry_run:
+        description: Optional explicit dry-run override
+        example: "false"
+    sequence:
+      - service: counter.increment
+        target:
+          entity_id: counter.spectra_interactable_events_total
+
+      - variables:
+          interactable_id_norm: "{{ interactable_id | default('unknown', true) | string | lower | trim }}"
+          input_event_norm: "{{ input_event | default('', true) | string | lower | trim }}"
+          target_hint_norm: "{{ target_hint | default('', true) | string | trim }}"
+          correlation_id_norm: "{{ correlation_id | default('', true) | string | trim }}"
+          transport_norm: "{{ transport | default('unknown', true) | string | lower | trim }}"
+          valid_event: >-
+            {{ input_event_norm in ['encoder_turn','encoder_press','encoder_long_press','button_1','button_2','button_3','button_4'] }}
+          valid_transport: >-
+            {{ transport_norm in ['ble','wifi_api','unknown',''] }}
+          has_delta: >-
+            {{ delta is defined and (delta | string | trim) not in ['','none','null','None'] }}
+          delta_value: >-
+            {% if delta is defined and (delta | string | trim) not in ['','none','null','None'] %}
+              {{ delta | int(0) }}
+            {% else %}
+              0
+            {% endif %}
+          bridge_enabled: "{{ is_state('input_boolean.spectra_interactable_bridge_enabled', 'on') }}"
+          shadow_mode: "{{ is_state('input_boolean.spectra_interactable_shadow_mode', 'on') }}"
+          dedupe_enabled: "{{ is_state('input_boolean.spectra_interactable_dedupe_enabled', 'on') }}"
+          last_corr: "{{ states('input_text.spectra_interactable_last_correlation_id') | trim }}"
+          duplicate_corr: >-
+            {{ dedupe_enabled and correlation_id_norm != '' and correlation_id_norm == last_corr }}
+          dry_run_effective: >-
+            {{ shadow_mode or (dry_run | default(false)) }}
+          event_json: >-
+            {{ {
+              'interactable_id': interactable_id_norm,
+              'input_event': input_event_norm,
+              'delta': (delta_value if has_delta else none),
+              'target_hint': target_hint_norm,
+              'correlation_id': correlation_id_norm,
+              'transport': transport_norm,
+              'bridge_enabled': bridge_enabled,
+              'shadow_mode': shadow_mode,
+              'dry_run_effective': dry_run_effective
+            } | tojson }}
+
+      - service: input_text.set_value
+        data:
+          entity_id: input_text.spectra_interactable_last_event_json
+          value: "{{ event_json[:255] }}"
+
+      - choose:
+          - conditions: "{{ not valid_event or not valid_transport }}"
+            sequence:
+              - service: counter.increment
+                target:
+                  entity_id: counter.spectra_interactable_events_invalid
+              - service: input_text.set_value
+                data:
+                  entity_id: input_text.spectra_interactable_last_error
+                  value: >-
+                    invalid_event_or_transport event={{ input_event_norm }} transport={{ transport_norm }}
+              - stop: "Invalid interactable event payload."
+
+          - conditions: "{{ duplicate_corr }}"
+            sequence:
+              - service: counter.increment
+                target:
+                  entity_id: counter.spectra_interactable_events_dropped
+              - service: input_text.set_value
+                data:
+                  entity_id: input_text.spectra_interactable_last_error
+                  value: "dropped_duplicate correlation_id={{ correlation_id_norm }}"
+              - stop: "Duplicate interactable event dropped by correlation-id dedupe."
+
+          - conditions: "{{ not bridge_enabled }}"
+            sequence:
+              - service: counter.increment
+                target:
+                  entity_id: counter.spectra_interactable_events_dropped
+              - service: input_text.set_value
+                data:
+                  entity_id: input_text.spectra_interactable_last_error
+                  value: "bridge_disabled"
+              - stop: "Interactable bridge disabled."
+
+      - choose:
+          - conditions: "{{ has_delta }}"
+            sequence:
+              - service: spectra_ls.execute_control_center_input
+                data:
+                  input_event: "{{ input_event_norm }}"
+                  dry_run: "{{ dry_run_effective }}"
+                  target_hint: "{{ target_hint_norm }}"
+                  delta: "{{ delta_value }}"
+                  correlation_id: "{{ correlation_id_norm }}"
+        default:
+          - service: spectra_ls.execute_control_center_input
+            data:
+              input_event: "{{ input_event_norm }}"
+              dry_run: "{{ dry_run_effective }}"
+              target_hint: "{{ target_hint_norm }}"
+              correlation_id: "{{ correlation_id_norm }}"
+
+      - choose:
+          - conditions: "{{ input_event_norm == 'encoder_long_press' and interactable_id_norm.startswith('spectra_remote') }}"
+            sequence:
+              - service: input_boolean.turn_on
+                target:
+                  entity_id: input_boolean.spectra_remote_wifi_maintenance_enabled
+              - service: timer.start
+                target:
+                  entity_id: timer.spectra_remote_wifi_maintenance_window
+
+      - choose:
+          - conditions: "{{ correlation_id_norm != '' }}"
+            sequence:
+              - service: input_text.set_value
+                data:
+                  entity_id: input_text.spectra_interactable_last_correlation_id
+                  value: "{{ correlation_id_norm[:255] }}"
+
+      - service: input_text.set_value
+        data:
+          entity_id: input_text.spectra_interactable_last_error
+          value: ""
+
+      - service: counter.increment
+        target:
+          entity_id: counter.spectra_interactable_events_dispatched
+
+automation:
+  - id: spectra_interactable_event_bridge_ingest
+    alias: "Spectra: Interactable Event Bridge Ingest"
+    mode: queued
+    max: 50
+    trigger:
+      - platform: event
+        event_type: spectra_ls_interactable_event
+    action:
+      - service: script.spectra_interactable_process_event
+        data:
+          interactable_id: "{{ trigger.event.data.interactable_id | default('unknown', true) }}"
+          input_event: "{{ trigger.event.data.input_event | default('', true) }}"
+          delta: "{{ trigger.event.data.delta | default('', true) }}"
+          target_hint: "{{ trigger.event.data.target_hint | default('', true) }}"
+          correlation_id: "{{ trigger.event.data.correlation_id | default('', true) }}"
+          transport: "{{ trigger.event.data.transport | default('unknown', true) }}"
+          dry_run: "{{ trigger.event.data.dry_run | default(false) }}"
+
+  - id: spectra_remote_wifi_maintenance_window_expire
+    alias: "Spectra: Remote Wi-Fi Maintenance Window Expire"
+    mode: single
+    trigger:
+      - platform: event
+        event_type: timer.finished
+        event_data:
+          entity_id: timer.spectra_remote_wifi_maintenance_window
+    action:
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.spectra_remote_wifi_maintenance_enabled

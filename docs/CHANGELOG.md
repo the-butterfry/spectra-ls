@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.07.17.2 -->
+<!-- Version: 2026.07.17.3 -->
 <!-- Last updated: 2026-07-17 -->
 
 # Changelog
 
 ## 2026-07-17
+
+- Runtime+Component/Interactables Roadmap Slice M0-M1 Scaffold Activation (`packages/spectra_ls_interactables.yaml`, `docs/CHANGELOG.md`): start coding against the new Spectra Remote + Interactables roadmap by adding a disabled-by-default Home Assistant bridge scaffold for canonical interactable events (`spectra_ls_interactable_event`) into `spectra_ls.execute_control_center_input`, including enable/shadow helpers, event counters, maintenance-window timer, and bounded validation/dedupe/drop accounting for future BLE-first ingest lanes. Runtime track disposition: implemented (HA runtime scaffold activation for interactable ingest and observability). Component track disposition: compatibility-shimmed (existing `custom_components/spectra_ls` execution contract reused; no behavior mutation to component service semantics in this slice). P1/P2/P3 impact: no source-of-truth ownership reassignment; additive bridge scaffolding and observability hardening only. README/wiki parity: no material operator workflow change.
 
 - Docs/Roadmap Spectra Remote + Interactables Planning Baseline (`docs/roadmap/SPECTRA-REMOTE-INTERACTABLES-ROADMAP.md`, `docs/CHANGELOG.md`): publish the planning source-of-truth roadmap for BLE-first remote evolution with long-press Wi-Fi maintenance posture, HA ingest/mapping workstream, phased validation gates, and an extensible canonical interactable event contract so future Spectra interactables can onboard without one-off control logic. Runtime track disposition: compatibility-shimmed (planning/docs-only slice; no runtime behavior mutation). Component track disposition: compatibility-shimmed (planning/docs-only slice; no `custom_components/spectra_ls` behavior mutation). P1/P2/P3 impact: no source-of-truth ownership reassignment; roadmap/governance clarity hardening only. README/wiki parity: no material operator workflow change.
 

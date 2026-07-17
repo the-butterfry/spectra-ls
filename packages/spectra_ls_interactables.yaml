@@ -1,5 +1,5 @@
 # Description: Spectra interactables bridge scaffold (BLE/Wi-Fi hybrid ingest to control-center execution).
-# Version: 2026.07.17.3
+# Version: 2026.07.17.4
 # Last updated: 2026-07-17
 # Update version/date whenever you change this file.
 
@@ -49,6 +49,24 @@ input_text:
 
   spectra_interactable_last_correlation_id:
     name: Spectra Interactable Last Correlation ID
+    initial: ""
+    max: 255
+    mode: text
+
+  spectra_interactable_last_interactable_id:
+    name: Spectra Interactable Last Interactable ID
+    initial: ""
+    max: 255
+    mode: text
+
+  spectra_interactable_last_input_event:
+    name: Spectra Interactable Last Input Event
+    initial: ""
+    max: 255
+    mode: text
+
+  spectra_interactable_last_transport:
+    name: Spectra Interactable Last Transport
     initial: ""
     max: 255
     mode: text
@@ -238,6 +256,21 @@ script:
           entity_id: input_text.spectra_interactable_last_event_json
           value: "{{ event_json[:255] }}"
 
+      - service: input_text.set_value
+        data:
+          entity_id: input_text.spectra_interactable_last_interactable_id
+          value: "{{ interactable_id_norm[:255] }}"
+
+      - service: input_text.set_value
+        data:
+          entity_id: input_text.spectra_interactable_last_input_event
+          value: "{{ input_event_norm[:255] }}"
+
+      - service: input_text.set_value
+        data:
+          entity_id: input_text.spectra_interactable_last_transport
+          value: "{{ transport_norm[:255] }}"
+
       - choose:
           - conditions: "{{ not valid_event or not valid_transport }}"
             sequence:
@@ -387,3 +420,64 @@ automation:
           transport: "ble"
           correlation_id: >-
             ble-arriving-{{ trigger.to_state.last_changed.timestamp() | int }}
+
+template:
+  - sensor:
+      - name: Spectra Interactable Dispatch Success Pct
+        unit_of_measurement: "%"
+        icon: mdi:check-decagram
+        state: >-
+          {% set total = states('counter.spectra_interactable_events_total') | int(0) %}
+          {% set dispatched = states('counter.spectra_interactable_events_dispatched') | int(0) %}
+          {% if total <= 0 %}
+            0
+          {% else %}
+            {{ ((dispatched / total) * 100) | round(1) }}
+          {% endif %}
+
+      - name: Spectra Interactable Dropped Pct
+        unit_of_measurement: "%"
+        icon: mdi:arrow-down-bold-circle
+        state: >-
+          {% set total = states('counter.spectra_interactable_events_total') | int(0) %}
+          {% set dropped = states('counter.spectra_interactable_events_dropped') | int(0) %}
+          {% if total <= 0 %}
+            0
+          {% else %}
+            {{ ((dropped / total) * 100) | round(1) }}
+          {% endif %}
+
+      - name: Spectra Interactable Invalid Pct
+        unit_of_measurement: "%"
+        icon: mdi:alert-circle
+        state: >-
+          {% set total = states('counter.spectra_interactable_events_total') | int(0) %}
+          {% set invalid = states('counter.spectra_interactable_events_invalid') | int(0) %}
+          {% if total <= 0 %}
+            0
+          {% else %}
+            {{ ((invalid / total) * 100) | round(1) }}
+          {% endif %}
+
+      - name: Spectra Interactable Last Event Summary
+        icon: mdi:timeline-text-outline
+        state: >-
+          {% set src = states('input_text.spectra_interactable_last_interactable_id') | trim %}
+          {% set evt = states('input_text.spectra_interactable_last_input_event') | trim %}
+          {% set trn = states('input_text.spectra_interactable_last_transport') | trim %}
+          {% if src in ['', 'unknown', 'unavailable'] and evt in ['', 'unknown', 'unavailable'] %}
+            none
+          {% else %}
+            {{ src if src not in ['', 'unknown', 'unavailable'] else 'unknown_source' }}|{{ evt if evt not in ['', 'unknown', 'unavailable'] else 'unknown_event' }}|{{ trn if trn not in ['', 'unknown', 'unavailable'] else 'unknown_transport' }}
+          {% endif %}
+
+  - binary_sensor:
+      - name: Spectra Interactable Bridge Active
+        icon: mdi:bridge
+        state: >-
+          {{ is_state('input_boolean.spectra_interactable_bridge_enabled', 'on') and not is_state('input_boolean.spectra_interactable_shadow_mode', 'on') }}
+
+      - name: Spectra Interactable Source Intake Enabled
+        icon: mdi:connection
+        state: >-
+          {{ is_state('input_boolean.spectra_interactable_ble_button_single_source_enabled', 'on') or is_state('input_boolean.spectra_interactable_ble_arriving_source_enabled', 'on') }}

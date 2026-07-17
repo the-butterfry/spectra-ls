@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.07.17.5 -->
+<!-- Version: 2026.07.17.6 -->
 <!-- Last updated: 2026-07-17 -->
 
 # Changelog
 
 ## 2026-07-17
+
+- Runtime+Component/Interactables Roadmap Slice M1 Observability + Readiness Surfaces (`packages/spectra_ls_interactables.yaml`, `docs/CHANGELOG.md`): add operator-facing bridge readiness and quality telemetry for staged BLE rollout, including normalized last-event fields, aggregate dispatch/drop/invalid percentage sensors derived from bridge counters, and binary readiness states for bridge-active posture and source-intake enablement. This keeps rollout safety measurable without changing underlying component control-center execution semantics. Runtime track disposition: implemented (additive observability/readiness surfaces in HA interactables package). Component track disposition: compatibility-shimmed (execution sink remains `spectra_ls.execute_control_center_input`; no `custom_components/spectra_ls` semantic mutation). P1/P2/P3 impact: no source-of-truth ownership reassignment; additive diagnostics and rollout-governance hardening only. README/wiki parity: no material operator workflow change.
 
 - Runtime+Component/Interactables Roadmap Slice M1 Source-Mapping Generalization + Second BLE Hook (`packages/spectra_ls_interactables.yaml`, `docs/CHANGELOG.md`): generalize BLE source onboarding by adding a JSON-driven source-map helper and a reusable source-signal processing script that resolves source keys to canonical interactable payloads before dispatching to `spectra_ls.execute_control_center_input`. In the same slice, add a second opt-in live BLE source hook (`binary_sensor.ble_presence_door_cory_ble_arriving`) alongside the existing button-single source so future interactables can be added through mapping entries rather than one-off action payload hardcoding. Runtime track disposition: implemented (generic source-map bridge lane + second guarded BLE source). Component track disposition: compatibility-shimmed (component execution contract reused unchanged; no `custom_components/spectra_ls` service semantic mutation). P1/P2/P3 impact: no source-of-truth ownership reassignment; additive source onboarding scalability and staged BLE ingest expansion only. README/wiki parity: no material operator workflow change.
 

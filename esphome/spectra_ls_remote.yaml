@@ -1,5 +1,5 @@
 # Description: Standalone ESPHome config for Spectra LS Remote tabletop control box (encoder + transport buttons + battery telemetry).
-# Version: 2026.07.17.12
+# Version: 2026.07.17.13
 # Last updated: 2026-07-17
 # Notes:
 # - Primary bring-up path is Wi-Fi/API for fast iteration.
@@ -52,16 +52,16 @@ substitutions:
   remote_volume_step_slow_pct: "3"
   remote_volume_step_fast_pct: "7"
   remote_volume_step_fast_window_ms: "320"
-  remote_encoder_emit_gate_ms: "45"
-  remote_encoder_same_dir_lock_ms: "120"
+  remote_encoder_emit_gate_ms: "12"
+  remote_encoder_same_dir_lock_ms: "35"
   remote_encoder_max_detents_per_emit: "4"
   remote_encoder_direction_multiplier: "-1"
   remote_unresolved_log_interval_ms: "1500"
   remote_control_center_emit_enabled: "true"
   remote_control_center_emit_dry_run: "false"
   remote_direct_transport_enabled: "false"
-  remote_control_center_settle_ms: "5000"
-  remote_wifi_requires_long_press: "true"
+  remote_control_center_settle_ms: "800"
+  remote_wifi_requires_long_press: "false"
   remote_emit_disconnected_log_interval_ms: "1200"
   remote_wifi_reconnect_interval_ms: "2500"
   remote_wifi_maintenance_session_window_ms: "900000"
@@ -73,7 +73,7 @@ substitutions:
   battery_full_v: "4.20"
 
   # Sleep model (disabled by default during bring-up)
-  remote_deep_sleep_enabled: "true"
+  remote_deep_sleep_enabled: "false"
   remote_idle_sleep_ms: "30000"
 
 esphome:
@@ -450,10 +450,8 @@ sensor:
 
             int detents = abs(delta);
             if (detents < 1) detents = 1;
-
-            // Smooth/reproducible policy: one physical callback emits one logical step.
-            // This prevents bursty quadrature deltas (e.g. 2-3) from causing large jumps.
-            if (detents > 1) detents = 1;
+            const int max_detents = (int) ${remote_encoder_max_detents_per_emit};
+            if (detents > max_detents) detents = max_detents;
 
             if ((now - id(remote_last_encoder_emit_ms)) < (uint32_t) ${remote_encoder_emit_gate_ms}) {
               return;
@@ -554,12 +552,12 @@ binary_sensor:
       - delayed_off: 20ms
     on_multi_click:
       - timing:
-          - ON for at least 700ms
+          - ON for at least 750ms
           - OFF for at least 20ms
         then:
           - script.execute: remote_emit_encoder_long_press
       - timing:
-          - ON for at most 450ms
+          - ON for at most 749ms
           - OFF for at least 20ms
         then:
           - script.execute: remote_emit_encoder_press

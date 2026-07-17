@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.07.17.12 -->
+<!-- Version: 2026.07.17.13 -->
 <!-- Last updated: 2026-07-17 -->
 
 # Changelog
 
 ## 2026-07-17
+
+- Runtime+Component/Interactables Roadmap Slice M2.4 Promotion Assist + Optional Auto-Promote (`packages/spectra_ls_interactables.yaml`, `docs/CHANGELOG.md`): add promotion-assist controls that surface active-preflight readiness in pilot mode and optional auto-promote behavior after sustained hold windows, enabling larger operational push-through with bounded safety gates. Runtime track disposition: implemented (additive rollout automation/operability hardening in HA package lane). Component track disposition: compatibility-shimmed (execution sink remains `spectra_ls.execute_control_center_input`; no `custom_components/spectra_ls` semantic mutation). P1/P2/P3 impact: no source-of-truth ownership reassignment; additive operability hardening only. README/wiki parity: no material operator workflow change.
 
 - Runtime+Component/Interactables Roadmap Slice M2.3 Soak-Gated Promotion + Throttled Auto-Remediation (`packages/spectra_ls_interactables.yaml`, `docs/CHANGELOG.md`): add sustained-readiness soak gating for active cutover promotion, plus bounded auto-remediation controls (cooldown and per-hour cap) to prevent rollback/remediation thrash during noisy quality windows. Runtime track disposition: implemented (additive rollout-governance/safety hardening in HA package lane). Component track disposition: compatibility-shimmed (execution sink remains `spectra_ls.execute_control_center_input`; no `custom_components/spectra_ls` semantic mutation). P1/P2/P3 impact: no source-of-truth ownership reassignment; additive safety/operability hardening only. README/wiki parity: no material operator workflow change.
 

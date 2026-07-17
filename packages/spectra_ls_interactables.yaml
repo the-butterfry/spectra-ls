@@ -1,5 +1,5 @@
 # Description: Spectra interactables bridge scaffold (BLE/Wi-Fi hybrid ingest to control-center execution).
-# Version: 2026.07.17.10
+# Version: 2026.07.17.11
 # Last updated: 2026-07-17
 # Update version/date whenever you change this file.
 
@@ -38,6 +38,11 @@ input_boolean:
     name: Spectra Interactable Rollback Notifications Enabled
     icon: mdi:bell-alert
     initial: true
+
+  spectra_interactable_auto_promote_active_enabled:
+    name: Spectra Interactable Auto Promote Active Enabled
+    icon: mdi:auto-fix
+    initial: false
 
 input_text:
   spectra_interactable_last_event_json:
@@ -211,6 +216,13 @@ input_number:
     max: 60
     step: 1
     initial: 10
+
+  spectra_interactable_auto_promote_hold_minutes:
+    name: Spectra Interactable Auto Promote Hold Minutes
+    min: 1
+    max: 60
+    step: 1
+    initial: 5
 
   spectra_interactable_cutover_ready_since_ts_ms:
     name: Spectra Interactable Cutover Ready Since TS ms
@@ -1079,6 +1091,90 @@ automation:
         data:
           notification_id: spectra_interactable_auto_remediate_suppressed
 
+  - id: spectra_interactable_active_promotion_recommendation
+    alias: "Spectra: Interactable Active Promotion Recommendation"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.spectra_interactable_active_preflight_ready
+        to: "on"
+        for:
+          minutes: 1
+    condition:
+      - condition: state
+        entity_id: input_select.spectra_interactable_cutover_profile
+        state: "pilot"
+      - condition: state
+        entity_id: input_boolean.spectra_interactable_rollback_notifications_enabled
+        state: "on"
+    action:
+      - service: persistent_notification.create
+        data:
+          notification_id: spectra_interactable_active_promotion_recommended
+          title: "Spectra Interactables Active Promotion Ready"
+          message: >-
+            Pilot is meeting active preflight gates.
+            You can run 'Activate Active (Safe)' now, or enable auto-promote.
+            soak_age_s={{ states('sensor.spectra_interactable_cutover_ready_soak_age_s') }}
+            success={{ states('sensor.spectra_interactable_dispatch_success_pct') }}%
+            dropped={{ states('sensor.spectra_interactable_dropped_pct') }}%
+            invalid={{ states('sensor.spectra_interactable_invalid_pct') }}%.
+
+  - id: spectra_interactable_auto_promote_active
+    alias: "Spectra: Interactable Auto Promote Active"
+    mode: single
+    trigger:
+      - platform: time_pattern
+        minutes: "/1"
+    condition:
+      - condition: state
+        entity_id: input_boolean.spectra_interactable_auto_promote_active_enabled
+        state: "on"
+      - condition: state
+        entity_id: input_select.spectra_interactable_cutover_profile
+        state: "pilot"
+      - condition: state
+        entity_id: binary_sensor.spectra_interactable_active_preflight_ready
+        state: "on"
+      - condition: template
+        value_template: >-
+          {% set soak = states('input_number.spectra_interactable_cutover_soak_minutes') | float(10) %}
+          {% set hold = states('input_number.spectra_interactable_auto_promote_hold_minutes') | float(5) %}
+          {% set age_s = states('sensor.spectra_interactable_cutover_ready_soak_age_s') | float(0) %}
+          {{ age_s >= ((soak + hold) * 60) }}
+    action:
+      - service: script.spectra_interactable_activate_active_safe
+      - choose:
+          - conditions: "{{ is_state('input_boolean.spectra_interactable_rollback_notifications_enabled', 'on') }}"
+            sequence:
+              - service: persistent_notification.create
+                data:
+                  notification_id: spectra_interactable_auto_promoted_active
+                  title: "Spectra Interactables Auto-Promoted to Active"
+                  message: >-
+                    Auto-promote moved profile from pilot to active after sustained preflight hold.
+                    soak_age_s={{ states('sensor.spectra_interactable_cutover_ready_soak_age_s') }}.
+
+  - id: spectra_interactable_profile_change_notification_cleanup
+    alias: "Spectra: Interactable Profile Change Notification Cleanup"
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: input_select.spectra_interactable_cutover_profile
+    action:
+      - choose:
+          - conditions: "{{ trigger.to_state.state != 'pilot' }}"
+            sequence:
+              - service: persistent_notification.dismiss
+                data:
+                  notification_id: spectra_interactable_active_promotion_recommended
+      - choose:
+          - conditions: "{{ trigger.to_state.state != 'active' }}"
+            sequence:
+              - service: persistent_notification.dismiss
+                data:
+                  notification_id: spectra_interactable_auto_promoted_active
+
 template:
   - sensor:
       - name: Spectra Interactable Cutover Ready Soak Age S
@@ -1231,3 +1327,21 @@ template:
         state: >-
           {{ is_state('binary_sensor.spectra_interactable_cutover_ready', 'on') and
              is_state('binary_sensor.spectra_interactable_cutover_ready_soaked', 'on') }}
+
+      - name: Spectra Interactable Promotion Assist Status
+        icon: mdi:progress-check
+        state: >-
+          {% set profile = states('input_select.spectra_interactable_cutover_profile') | lower %}
+          {% set preflight = is_state('binary_sensor.spectra_interactable_active_preflight_ready', 'on') %}
+          {% set auto = is_state('input_boolean.spectra_interactable_auto_promote_active_enabled', 'on') %}
+          {% if profile == 'active' %}
+            active
+          {% elif profile == 'pilot' and preflight and auto %}
+            pilot_auto_promote_armed
+          {% elif profile == 'pilot' and preflight %}
+            pilot_ready_for_active
+          {% elif profile == 'pilot' %}
+            pilot_waiting_preflight
+          {% else %}
+            not_in_pilot
+          {% endif %}

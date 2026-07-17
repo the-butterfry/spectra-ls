@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.07.17.3 -->
+<!-- Version: 2026.07.17.4 -->
 <!-- Last updated: 2026-07-17 -->
 
 # Changelog
 
 ## 2026-07-17
+
+- Runtime+Component/Interactables Roadmap Slice M1 Real BLE Source Hook (opt-in) (`packages/spectra_ls_interactables.yaml`, `docs/CHANGELOG.md`): wire the first live BLE-origin source into the interactables bridge by adding an opt-in automation trigger on existing BLE button-single sensor pulses (`binary_sensor.ble_presence_door_cory_ble_button_single`) that dispatches canonical bridge events to `spectra_ls.execute_control_center_input` via the processing script. Hook is disabled by default through a dedicated source-enable helper to preserve current behavior until explicitly enabled for staged rollout. Runtime track disposition: implemented (first real BLE source ingest path added behind guard). Component track disposition: compatibility-shimmed (component execution service contract reused; no semantic mutation of `custom_components/spectra_ls` control-center execution behavior). P1/P2/P3 impact: no source-of-truth ownership reassignment; additive real-source wiring for staged BLE bridge validation only. README/wiki parity: no material operator workflow change.
 
 - Runtime+Component/Interactables Roadmap Slice M0-M1 Scaffold Activation (`packages/spectra_ls_interactables.yaml`, `docs/CHANGELOG.md`): start coding against the new Spectra Remote + Interactables roadmap by adding a disabled-by-default Home Assistant bridge scaffold for canonical interactable events (`spectra_ls_interactable_event`) into `spectra_ls.execute_control_center_input`, including enable/shadow helpers, event counters, maintenance-window timer, and bounded validation/dedupe/drop accounting for future BLE-first ingest lanes. Runtime track disposition: implemented (HA runtime scaffold activation for interactable ingest and observability). Component track disposition: compatibility-shimmed (existing `custom_components/spectra_ls` execution contract reused; no behavior mutation to component service semantics in this slice). P1/P2/P3 impact: no source-of-truth ownership reassignment; additive bridge scaffolding and observability hardening only. README/wiki parity: no material operator workflow change.
 

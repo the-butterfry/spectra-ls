@@ -1,5 +1,5 @@
 # Description: Spectra interactables bridge scaffold (BLE/Wi-Fi hybrid ingest to control-center execution).
-# Version: 2026.07.17.1
+# Version: 2026.07.17.2
 # Last updated: 2026-07-17
 # Update version/date whenever you change this file.
 
@@ -22,6 +22,11 @@ input_boolean:
   spectra_remote_wifi_maintenance_enabled:
     name: Spectra Remote Wi-Fi Maintenance Enabled
     icon: mdi:wifi-cog
+    initial: false
+
+  spectra_interactable_ble_button_single_source_enabled:
+    name: Spectra Interactable BLE Button Single Source Enabled
+    icon: mdi:gesture-tap-button
     initial: false
 
 input_text:
@@ -256,3 +261,24 @@ automation:
       - service: input_boolean.turn_off
         target:
           entity_id: input_boolean.spectra_remote_wifi_maintenance_enabled
+
+  - id: spectra_interactable_ble_button_single_source_bridge
+    alias: "Spectra: BLE Button-Single Source to Interactable Bridge"
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.ble_presence_door_cory_ble_button_single
+        to: "on"
+    condition:
+      - condition: state
+        entity_id: input_boolean.spectra_interactable_ble_button_single_source_enabled
+        state: "on"
+    action:
+      - service: script.spectra_interactable_process_event
+        data:
+          interactable_id: "spectra_remote_ble_button_single_source"
+          input_event: "button_1"
+          transport: "ble"
+          correlation_id: >-
+            ble-btn-single-{{ trigger.to_state.last_changed.timestamp() | int }}
+          dry_run: false

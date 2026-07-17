@@ -82,7 +82,7 @@ esphome:
   friendly_name: ${friendly_name}
   includes:
     - arylic_tcp_remote.h
-    - spectra_remote_ble_event.h
+    - spectra_ls_system/components/spectra_remote_ble_event.h
   on_boot:
     priority: 250
     then:

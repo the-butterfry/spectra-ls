@@ -1,5 +1,5 @@
 # Description: Spectra interactables bridge scaffold (BLE/Wi-Fi hybrid ingest to control-center execution).
-# Version: 2026.07.17.14
+# Version: 2026.07.17.15
 # Last updated: 2026-07-17
 # Update version/date whenever you change this file.
 
@@ -96,7 +96,7 @@ input_text:
   spectra_interactable_source_map_json:
     name: Spectra Interactable Source Map JSON
     initial: >-
-      {"ble_button_single":{"interactable_id":"spectra_remote_ble_button_single_source","input_event":"button_1","target_hint":"","delta":null,"dry_run":false},"ble_arriving":{"interactable_id":"spectra_remote_ble_arriving_source","input_event":"button_2","target_hint":"","delta":null,"dry_run":false}}
+      {"ble_button_single":{"interactable_id":"spectra_remote_ble_button_single_source","input_event":"button_1"},"ble_arriving":{"interactable_id":"spectra_remote_ble_arriving_source","input_event":"button_2"}}
     max: 255
     mode: text
 
@@ -154,6 +154,12 @@ input_text:
     max: 255
     mode: text
 
+  spectra_interactable_last_m3_activation_summary:
+    name: Spectra Interactable Last M3 Activation Summary
+    initial: ""
+    max: 255
+    mode: text
+
 input_button:
   spectra_interactable_run_test_source_signal:
     name: Spectra Interactable Run Test Source Signal
@@ -194,6 +200,10 @@ input_button:
   spectra_interactable_run_m3_matrix_validation:
     name: Spectra Interactable Run M3 Matrix Validation
     icon: mdi:table-check
+
+  spectra_interactable_activate_m3_generalization_safe:
+    name: Spectra Interactable Activate M3 Generalization (Safe)
+    icon: mdi:rocket-launch-outline
 
 input_select:
   spectra_interactable_cutover_profile:
@@ -562,6 +572,68 @@ script:
                     {{ matrix_summary }}
                     verdict={{ states('sensor.spectra_interactable_m3_matrix_verdict') }}
                     blockers={{ states('sensor.spectra_interactable_m3_matrix_blockers') }}
+
+  spectra_interactable_activate_m3_generalization_safe:
+    alias: Spectra Interactable - Activate M3 Generalization (Safe)
+    mode: restart
+    sequence:
+      - variables:
+          gate_ready: "{{ is_state('binary_sensor.spectra_interactable_m3_activation_gate_ready', 'on') }}"
+          blockers: "{{ states('sensor.spectra_interactable_m3_activation_gate_blockers') | trim }}"
+          matrix_age_s: "{{ states('sensor.spectra_interactable_m3_matrix_last_age_s') | float(0) }}"
+          profile_before: "{{ states('input_select.spectra_interactable_cutover_profile') | lower | trim }}"
+      - choose:
+          - conditions: "{{ not gate_ready }}"
+            sequence:
+              - service: input_text.set_value
+                data:
+                  entity_id: input_text.spectra_interactable_last_error
+                  value: >-
+                    m3_activation_blocked_preflight blockers={{ blockers }} matrix_age_s={{ matrix_age_s }}
+              - choose:
+                  - conditions: "{{ is_state('input_boolean.spectra_interactable_rollback_notifications_enabled', 'on') }}"
+                    sequence:
+                      - service: persistent_notification.create
+                        data:
+                          notification_id: spectra_interactable_m3_activation_blocked
+                          title: "Spectra Interactables M3 Activation Blocked"
+                          message: >-
+                            M3 activation gate is not ready.
+                            blockers={{ blockers if blockers not in ['', 'unknown', 'unavailable'] else 'none' }}
+                            matrix_age_s={{ matrix_age_s }}
+                            profile={{ profile_before }}
+                            matrix_verdict={{ states('sensor.spectra_interactable_m3_matrix_verdict') }}
+              - stop: "M3 activation blocked by preflight gate."
+      - choose:
+          - conditions: "{{ profile_before in ['disabled', 'shadow'] }}"
+            sequence:
+              - service: script.spectra_interactable_activate_pilot_safe
+      - variables:
+          profile_after: "{{ states('input_select.spectra_interactable_cutover_profile') | lower | trim }}"
+          activation_summary: >-
+            m3_activation_ready profile={{ profile_after }} matrix_age_s={{ matrix_age_s | round(1) }}
+            verdict={{ states('sensor.spectra_interactable_m3_activation_gate_verdict') }}
+      - service: input_text.set_value
+        data:
+          entity_id: input_text.spectra_interactable_last_m3_activation_summary
+          value: "{{ activation_summary[:255] }}"
+      - service: input_text.set_value
+        data:
+          entity_id: input_text.spectra_interactable_last_error
+          value: ""
+      - choose:
+          - conditions: "{{ is_state('input_boolean.spectra_interactable_rollback_notifications_enabled', 'on') }}"
+            sequence:
+              - service: persistent_notification.dismiss
+                data:
+                  notification_id: spectra_interactable_m3_activation_blocked
+              - service: persistent_notification.create
+                data:
+                  notification_id: spectra_interactable_m3_activation_packet
+                  title: "Spectra Interactables M3 Activation Packet"
+                  message: >-
+                    {{ activation_summary }}
+                    blockers={{ states('sensor.spectra_interactable_m3_activation_gate_blockers') }}
 
   spectra_interactable_activate_pilot_safe:
     alias: Spectra Interactable - Activate Pilot (Safe)
@@ -1167,6 +1239,15 @@ automation:
     action:
       - service: script.spectra_interactable_run_m3_matrix_validation
 
+  - id: spectra_interactable_activate_m3_generalization_safe_button
+    alias: "Spectra: Interactable Activate M3 Generalization Safe Button"
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: input_button.spectra_interactable_activate_m3_generalization_safe
+    action:
+      - service: script.spectra_interactable_activate_m3_generalization_safe
+
   - id: spectra_interactable_cutover_safety_rollback
     alias: "Spectra: Interactable Cutover Safety Rollback"
     mode: single
@@ -1456,6 +1537,12 @@ automation:
               - service: persistent_notification.dismiss
                 data:
                   notification_id: spectra_interactable_m3_matrix_packet
+              - service: persistent_notification.dismiss
+                data:
+                  notification_id: spectra_interactable_m3_activation_packet
+              - service: persistent_notification.dismiss
+                data:
+                  notification_id: spectra_interactable_m3_activation_blocked
 
 template:
   - sensor:
@@ -1534,6 +1621,47 @@ template:
           {% else %}
             {{ ((as_timestamp(now()) * 1000 - ts) / 1000) | round(1) }}
           {% endif %}
+
+      - name: Spectra Interactable M3 Activation Gate Blockers
+        icon: mdi:alert-octagon-outline
+        state: >-
+          {% set ns = namespace(items=[]) %}
+          {% if not is_state('binary_sensor.spectra_interactable_m3_candidate_valid', 'on') %}
+            {% set ns.items = ns.items + ['candidate_invalid'] %}
+          {% endif %}
+          {% if not is_state('binary_sensor.spectra_interactable_m3_matrix_source_keys_valid', 'on') %}
+            {% set ns.items = ns.items + ['source_keys_invalid'] %}
+          {% endif %}
+          {% if states('sensor.spectra_interactable_m3_matrix_verdict') != 'go_m3_validation_ready' %}
+            {% set ns.items = ns.items + ['matrix_not_ready'] %}
+          {% endif %}
+          {% set age = states('sensor.spectra_interactable_m3_matrix_last_age_s') | float(0) %}
+          {% if age <= 0 or age > 900 %}
+            {% set ns.items = ns.items + ['matrix_stale'] %}
+          {% endif %}
+          {% if not is_state('binary_sensor.spectra_interactable_cutover_ready', 'on') %}
+            {% set ns.items = ns.items + ['cutover_not_ready'] %}
+          {% endif %}
+          {% if ns.items | count == 0 %}
+            none
+          {% else %}
+            {{ ns.items | join('|') }}
+          {% endif %}
+
+      - name: Spectra Interactable M3 Activation Gate Verdict
+        icon: mdi:shield-check-outline
+        state: >-
+          {% if states('sensor.spectra_interactable_m3_activation_gate_blockers') == 'none' %}
+            go_m3_activation_ready
+          {% else %}
+            no_go
+          {% endif %}
+
+      - name: Spectra Interactable M3 Activation Last Summary
+        icon: mdi:clipboard-text-outline
+        state: >-
+          {% set summary = states('input_text.spectra_interactable_last_m3_activation_summary') | trim %}
+          {{ summary if summary not in ['', 'unknown', 'unavailable'] else 'no_runs_yet' }}
 
               - name: Spectra Interactable Cutover Evidence Blockers
                 icon: mdi:alert-box-outline
@@ -1726,6 +1854,11 @@ template:
           {% set ab_present = a in source_map and b in source_map %}
           {% set c_ok = (c in ['', 'unknown', 'unavailable']) or (c in source_map) %}
           {{ map_valid and ab_valid and ab_present and c_ok }}
+
+      - name: Spectra Interactable M3 Activation Gate Ready
+        icon: mdi:shield-check
+        state: >-
+          {{ states('sensor.spectra_interactable_m3_activation_gate_verdict') == 'go_m3_activation_ready' }}
 
       - name: Spectra Interactable Bridge Active
         icon: mdi:bridge

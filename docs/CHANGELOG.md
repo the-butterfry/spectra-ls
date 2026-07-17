@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.07.17.16 -->
+<!-- Version: 2026.07.17.17 -->
 <!-- Last updated: 2026-07-17 -->
 
 # Changelog
 
 ## 2026-07-17
+
+- Runtime+Component/Interactables Roadmap Slice M2.8 M3 Activation Gate + Fresh Validation Packet (`packages/spectra_ls_interactables.yaml`, `docs/CHANGELOG.md`): add a guarded one-button M3 activation flow that enforces candidate/source-key validity, recent matrix evidence freshness, and cutover readiness before declaring multi-interactable activation readiness, with deterministic blocked/ready packet notifications and compact activation-summary capture for operator proof. In the same slice, fix the recurring HA warning on `input_text.spectra_interactable_source_map_json` by shrinking default source-map JSON payload shape to a max-length-safe baseline while preserving mapping semantics. Runtime track disposition: implemented (additive activation-governance and operability hardening in HA package lane). Component track disposition: compatibility-shimmed (execution sink remains `spectra_ls.execute_control_center_input`; no `custom_components/spectra_ls` semantic mutation). P1/P2/P3 impact: no source-of-truth ownership reassignment; additive M3 activation safety and warning-free baseline hardening only. README/wiki parity: no material operator workflow change.
 
 - Runtime+Component/Interactables Roadmap Slice M2.7 M3-Prep Bulk Matrix Validation + Results Packet (`packages/spectra_ls_interactables.yaml`, `docs/CHANGELOG.md`): add a one-button bulk matrix validator that exercises mapped source-key lanes plus non-remote candidate injection across configurable iterations, then emits compact pass/fail summary and blockers packet surfaces for accelerated multi-interactable onboarding readiness checks. Runtime track disposition: implemented (additive validation/operability hardening in HA package lane). Component track disposition: compatibility-shimmed (execution sink remains `spectra_ls.execute_control_center_input`; no `custom_components/spectra_ls` semantic mutation). P1/P2/P3 impact: no source-of-truth ownership reassignment; additive M3 onboarding readiness hardening only. README/wiki parity: no material operator workflow change.
 

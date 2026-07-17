@@ -1,5 +1,5 @@
 # Description: Standalone ESPHome config for Spectra LS Remote tabletop control box (encoder + transport buttons + battery telemetry).
-# Version: 2026.07.17.17
+# Version: 2026.07.17.18
 # Last updated: 2026-07-17
 # Notes:
 # - Primary bring-up path is Wi-Fi/API for fast iteration.
@@ -288,6 +288,24 @@ text_sensor:
         return {"maintenance_connect_pending"};
       }
       return {"wifi_api_disconnected"};
+
+  - platform: template
+    name: "Remote Transport Mode"
+    id: remote_transport_mode
+    icon: mdi:lan-connect
+    update_interval: 1s
+    lambda: |-
+      if (id(remote_ha_api).is_connected()) {
+        return {"wifi_api_live"};
+      }
+      const bool has_cached_route = !id(remote_route_hosts_last_valid).empty() || !id(remote_route_host_last_valid).empty();
+      if (${remote_control_center_offline_direct_fallback} && has_cached_route) {
+        return {"wifi_offline_direct_fallback"};
+      }
+      if (${remote_control_center_offline_direct_fallback} && !has_cached_route) {
+        return {"wifi_offline_no_route_cached"};
+      }
+      return {"wifi_buffered_waiting_api"};
 
   - platform: homeassistant
     id: remote_active_target
@@ -1292,6 +1310,36 @@ script:
               return id(remote_resolved_target);
 
 interval:
+  - interval: 1s
+    then:
+      - lambda: |-
+          if (!id(remote_ha_api).is_connected()) {
+            return;
+          }
+          auto to_lower = [](std::string value) {
+            for (auto &c : value) c = (char) ::tolower(c);
+            return value;
+          };
+          auto is_unresolved = [&](const std::string &value) {
+            const std::string low = to_lower(value);
+            return (low.empty() || low == "unknown" || low == "unavailable" || low == "none" || low == "null");
+          };
+
+          std::string host = id(remote_control_host).has_state() ? id(remote_control_host).state.c_str() : "";
+          if (is_unresolved(host)) host = id(remote_control_host_prefixed).has_state() ? id(remote_control_host_prefixed).state.c_str() : "";
+          if (is_unresolved(host)) host = id(remote_control_host_fallback).has_state() ? id(remote_control_host_fallback).state.c_str() : "";
+          if (!is_unresolved(host)) id(remote_route_host_last_valid) = host;
+
+          std::string hosts = id(remote_control_hosts).has_state() ? id(remote_control_hosts).state.c_str() : "";
+          if (is_unresolved(hosts)) hosts = id(remote_control_hosts_prefixed).has_state() ? id(remote_control_hosts_prefixed).state.c_str() : "";
+          if (is_unresolved(hosts)) hosts = id(remote_control_hosts_fallback).has_state() ? id(remote_control_hosts_fallback).state.c_str() : "";
+          if (!is_unresolved(hosts)) id(remote_route_hosts_last_valid) = hosts;
+
+          std::string port = id(remote_control_port).has_state() ? id(remote_control_port).state.c_str() : "";
+          if (is_unresolved(port)) port = id(remote_control_port_prefixed).has_state() ? id(remote_control_port_prefixed).state.c_str() : "";
+          if (is_unresolved(port)) port = id(remote_control_port_fallback).has_state() ? id(remote_control_port_fallback).state.c_str() : "";
+          if (!is_unresolved(port)) id(remote_route_port_last_valid) = port;
+
   - interval: 1s
     then:
       - if:

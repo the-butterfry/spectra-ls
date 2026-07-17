@@ -1,5 +1,5 @@
 <!-- Description: Roadmap for Spectra remote BLE-first evolution with extensible interactables architecture. -->
-<!-- Version: 2026.07.17.8 -->
+<!-- Version: 2026.07.17.9 -->
 <!-- Last updated: 2026-07-17 -->
 
 # Spectra Remote + Interactables Roadmap
@@ -184,13 +184,20 @@ Future interactables should integrate by implementing the same canonical event c
 - Lock in docs/runbooks/dashboard parity.
 - Exit criteria: stable BLE-first operations with explicit fallback posture.
 
+### M5 — Exit Handoff and Stewardship Scaffold
+
+- Add deterministic handoff-governance packet lane for post-M4 certification continuity.
+- Keep handoff proof surfaces explicit (blockers/verdict/age/score) and reversible.
+- Exit criteria: sustained-ready M4 exit posture with bounded stale-evidence and score guards.
+
 ## Milestone Status Snapshot (2026-07-17)
 
 - `M0`: implemented (observability and bridge instrumentation in place)
 - `M1`: implemented (shadow validation and parity harness in place)
 - `M2`: implemented (cutover profiles + readiness/rollback safety + activation gating)
 - `M3`: active (closeout certification + sustained packet cadence executing)
-- `M4`: active (stabilization starter + closeout/retirement/finalization evidence lanes executing)
+- `M4`: active (stabilization starter + closeout/retirement/finalization/exit evidence lanes executing)
+- `M5`: active (handoff-governance scaffold and packet cadence executing)
 
 Latest run update (2026-07-17, M3 closeout packet + reusable-contract evidence gate):
 
@@ -242,6 +249,14 @@ Latest run update (2026-07-17, M4 exit certification super-slice):
 - Runtime track disposition: implemented (additive M4 exit certification lane in package path).
 - Component track disposition: compatibility-shimmed (execution sink remains `spectra_ls.execute_control_center_input`; no component semantic mutation).
 - M4 impact check: no source-of-truth ownership reassignment; additive closure-governance determinism and operator certification hardening only.
+
+Latest run update (2026-07-17, M5 handoff scaffold super-slice):
+
+- Added deterministic M5 handoff-governance surfaces: M5 blockers/verdict, M5 handoff-ready gate, one-click handoff packet, timed handoff auto-capture cadence, and active-profile ready-vs-blocked notification lifecycle.
+- Added configurable handoff thresholds and freshness/score guardrails sourced from M4 exit certification outputs.
+- Runtime track disposition: implemented (additive M5 handoff scaffold in package lane).
+- Component track disposition: compatibility-shimmed (execution sink remains `spectra_ls.execute_control_center_input`; no component semantic mutation).
+- M5 impact check: no source-of-truth ownership reassignment; additive post-exit handoff determinism and operator stewardship hardening only.
 
 ## Validation Matrix
 

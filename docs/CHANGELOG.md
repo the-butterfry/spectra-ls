@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.07.17.24 -->
+<!-- Version: 2026.07.17.25 -->
 <!-- Last updated: 2026-07-17 -->
 
 # Changelog
 
 ## 2026-07-17
+
+- Runtime+Component/Interactables Roadmap Slice M5 Handoff Scaffold Super-Slice (`packages/spectra_ls_interactables.yaml`, `docs/roadmap/SPECTRA-REMOTE-INTERACTABLES-ROADMAP.md`, `docs/CHANGELOG.md`): add a deterministic M5 handoff scaffold on top of M4 exit certification with explicit M5 handoff blockers/verdict sensors, M5 handoff-ready binary gate, one-button handoff packet capture, and periodic handoff auto-capture cadence for sustained-ready evidence. Introduces configurable handoff thresholds (minimum M4 exit score and maximum M4 exit packet age), M4-exit soak-age tracking, and active-profile handoff readiness/blocker notification lifecycle plus profile-change cleanup for stale handoff packets. Runtime track disposition: implemented (additive M5 handoff governance scaffold in HA package lane). Component track disposition: compatibility-shimmed (execution sink remains `spectra_ls.execute_control_center_input`; no `custom_components/spectra_ls` semantic mutation). P1/P2/P3 impact: no source-of-truth ownership reassignment; additive handoff-governance and operator certification hardening only. README/wiki parity: no material operator workflow change.
 
 - Runtime+Component/Interactables Roadmap Slice M4 Exit Certification Super-Slice (`packages/spectra_ls_interactables.yaml`, `docs/roadmap/SPECTRA-REMOTE-INTERACTABLES-ROADMAP.md`, `docs/CHANGELOG.md`): add explicit M4 exit-readiness governance on top of finalization by introducing sustained finalization-soak tracking, configurable M4 exit thresholds (soak minutes, minimum finalization score, maximum finalization packet age), deterministic M4 exit blockers/verdict sensors, M4 exit-ready binary gate, one-button M4 exit packet capture, and periodic exit auto-capture cadence for sustained-ready certification evidence. Includes active-profile notification lifecycle for ready-vs-blocked M4 exit posture and profile-change cleanup for stale exit packets. Runtime track disposition: implemented (additive M4 exit certification lane in HA package path). Component track disposition: compatibility-shimmed (execution sink remains `spectra_ls.execute_control_center_input`; no `custom_components/spectra_ls` semantic mutation). P1/P2/P3 impact: no source-of-truth ownership reassignment; additive closure-governance determinism and operator certification hardening only. README/wiki parity: no material operator workflow change.
 

@@ -1,8 +1,16 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.07.07.1 -->
-<!-- Last updated: 2026-07-07 -->
+<!-- Version: 2026.07.16.3 -->
+<!-- Last updated: 2026-07-16 -->
 
 # Changelog
+
+## 2026-07-16
+
+- Runtime/Remote Compile Warning Cleanup (turn interval log format types) (`esphome/spectra_ls_remote.yaml`, `docs/CHANGELOG.md`): resolve ESPHome compile warnings in remote volume request diagnostics by aligning `turn_ms` log format specifiers with platform type width (`%lu` + explicit cast) for `turn_interval_ms` in both volume-up and volume-down paths. Behavior/logic is unchanged; this is a compile-signal hygiene fix to keep build output clean and avoid type-format drift across toolchains. Runtime track disposition: implemented (remote runtime compile-warning hygiene hardening). Component track disposition: compatibility-shimmed (no `custom_components/spectra_ls` behavior mutation; equivalent failure mode reviewed as not-applicable to component lane). P1/P2/P3 impact: no source-of-truth ownership reassignment; bounded compile/log-format correctness hardening only. README/wiki parity: no material operator workflow change.
+
+- Runtime/HA Recorder High-Churn Sensor Exclusion Tightening (`configuration.yaml`, `docs/CHANGELOG.md`): reduce recorder write pressure and disk growth by adding targeted `recorder.exclude.entity_globs` filters for high-frequency BLE telemetry patterns (notably `sensor.*_estimated_distance`, `sensor.*_rssi`, `sensor.*_signal_strength`, plus common `last_seen`/`linkquality` diagnostics) while preserving 3-day retention policy (`purge_keep_days: 3`) and existing control/automation contract entities. Runtime track disposition: implemented (runtime recorder filter hardening for active HA path). Component track disposition: compatibility-shimmed (no `custom_components/spectra_ls` behavior mutation; equivalent failure mode reviewed as non-owner path). P1/P2/P3 impact: no source-of-truth ownership reassignment; bounded storage/performance hardening only. README/wiki parity: no material operator workflow change.
+
+- Runtime/Remote Deep-Sleep Behavioral Rollback + Wake-Path Optimization (Encoder-Idle 30s + Turn-Only Wake) (`esphome/spectra_ls_remote.yaml`, `docs/CHANGELOG.md`): revert remote power policy from playback/time-of-day/wakelock-expanded behavior to the prior deterministic interaction model: enter deep sleep after 30 seconds of encoder inactivity and wake on encoder rotation inputs. This removes lingering playback/passthrough/day-night sleep suppression paths that could keep the remote awake and drain battery, narrows EXT1 wake scope to encoder turn pins only (excluding encoder-press wake), and uses ESP32-C6-compatible single-channel encoder wake (`encoder_pin_a`, `ANY_LOW`) to reduce false wake loops from multi-pin wake noise while preserving intentional wake-by-turn behavior. Runtime track disposition: implemented (remote runtime deep-sleep rollback + wake-path hardening in active path). Component track disposition: compatibility-shimmed (no `custom_components/spectra_ls` behavior mutation; equivalent failure mode reviewed as not-applicable to component lane). P1/P2/P3 impact: no source-of-truth ownership reassignment; bounded remote power-policy and wake-path hardening for battery preservation and practical wake reliability. README/wiki parity: no material operator workflow change.
 
 ## 2026-07-07
 

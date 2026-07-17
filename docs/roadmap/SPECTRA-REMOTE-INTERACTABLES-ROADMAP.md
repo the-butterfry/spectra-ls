@@ -1,5 +1,5 @@
 <!-- Description: Roadmap for Spectra remote BLE-first evolution with extensible interactables architecture. -->
-<!-- Version: 2026.07.17.9 -->
+<!-- Version: 2026.07.17.10 -->
 <!-- Last updated: 2026-07-17 -->
 
 # Spectra Remote + Interactables Roadmap
@@ -257,6 +257,13 @@ Latest run update (2026-07-17, M5 handoff scaffold super-slice):
 - Runtime track disposition: implemented (additive M5 handoff scaffold in package lane).
 - Component track disposition: compatibility-shimmed (execution sink remains `spectra_ls.execute_control_center_input`; no component semantic mutation).
 - M5 impact check: no source-of-truth ownership reassignment; additive post-exit handoff determinism and operator stewardship hardening only.
+
+Latest run update (2026-07-17, ESP remote control-center authority cutover):
+
+- Switched ESP remote canonical event emission lane to authoritative posture (`dry_run=false`) for control-center inputs and set direct transport actions to explicit fallback (default-off) behind a transport gate.
+- Runtime track disposition: implemented (ESP input authority now defaults to control-center sink lane).
+- Component track disposition: compatibility-shimmed (existing execution sink contract reused; no component semantic mutation).
+- ESP impact check: no source-of-truth ownership reassignment; direct transport is retained as explicit fallback-only behavior.
 
 ## Validation Matrix
 

@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.07.17.26 -->
+<!-- Version: 2026.07.17.27 -->
 <!-- Last updated: 2026-07-17 -->
 
 # Changelog
 
 ## 2026-07-17
+
+- Runtime+Component/ESP Remote Slice R5 Control-Center Authority Cutover (`esphome/spectra_ls_remote.yaml`, `docs/roadmap/SPECTRA-REMOTE-INTERACTABLES-ROADMAP.md`, `docs/CHANGELOG.md`): switch ESP remote canonical control-center emission from shadow to authoritative (`dry_run=false`) and disable direct Arylic transport actions by default through an explicit transport-lane gate. Hardware intents continue to emit (`encoder_turn`, `encoder_press`, `button_1`) into `spectra_ls.execute_control_center_input`, while direct volume/mute/next-track send scripts are retained but short-circuited unless transport fallback is explicitly re-enabled. Runtime track disposition: implemented (ESP remote authority moved to control-center sink by default). Component track disposition: compatibility-shimmed (existing `spectra_ls.execute_control_center_input` contract reused; no custom-component semantic mutation). P1/P2/P3 impact: no source-of-truth ownership reassignment; additive authority cutover hardening and fallback explicitness only. README/wiki parity: no material operator workflow change.
 
 - Runtime+Component/ESP Remote Slice R4 Control-Center Event Emitter (shadow-first) (`esphome/spectra_ls_remote.yaml`, `docs/CHANGELOG.md`): implement the first ESPHome-side canonical input emitter path by publishing remote hardware intents (`encoder_turn`, `encoder_press`, `button_1`) to `spectra_ls.execute_control_center_input` with deterministic correlation tokens and guarded shadow-first dry-run posture, while preserving the existing direct transport action lane as operational fallback. Runtime track disposition: implemented (ESP remote now emits canonical control-center events in parallel with existing direct lane). Component track disposition: compatibility-shimmed (existing execution sink contract reused; no `custom_components/spectra_ls` semantic mutation required). P1/P2/P3 impact: no source-of-truth ownership reassignment; additive ESP input-emission parity hardening only. README/wiki parity: no material operator workflow change.
 

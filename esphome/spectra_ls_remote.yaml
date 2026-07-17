@@ -1,0 +1,1043 @@
+# Description: Standalone ESPHome config for Spectra LS Remote tabletop control box (encoder + transport buttons + battery telemetry).
+# Version: 2026.07.17.2
+# Last updated: 2026-07-17
+# Notes:
+# - Primary bring-up path is Wi-Fi/API for fast iteration.
+# - BLE bridge remains the preferred battery-optimized control path direction and will be layered after MVP validation.
+
+substitutions:
+  device_name: spectra-ls-remote
+  friendly_name: "Spectra LS Remote"
+
+  # Network
+  wifi_ssid: !secret wifi_ssid
+  wifi_password: !secret wifi_password
+
+  # Control-hub contract surfaces
+  remote_force_target_enabled: "false"
+  remote_forced_target: media_player.kitchen_wiim
+  remote_target_helper: input_select.ma_active_target
+  remote_runtime_active_target_sensor: sensor.ma_active_target
+  remote_esp_control_target_sensor: sensor.spectra_ls_system_esp_control_target
+  remote_fallback_target_sensor: sensor.component_now_playing_entity
+  remote_control_host_sensor: sensor.spectra_ls_system_esp_control_host
+  remote_control_hosts_sensor: sensor.spectra_ls_system_esp_control_hosts
+  remote_control_port_sensor: sensor.spectra_ls_system_esp_control_port
+  remote_control_host_sensor_prefixed: sensor.living_room_spectra_ls_system_esp_control_host
+  remote_control_hosts_sensor_prefixed: sensor.living_room_spectra_ls_system_esp_control_hosts
+  remote_control_port_sensor_prefixed: sensor.living_room_spectra_ls_system_esp_control_port
+  remote_control_host_fallback_sensor: sensor.ma_control_host
+  remote_control_hosts_fallback_sensor: sensor.ma_control_hosts
+  remote_control_port_fallback_sensor: sensor.ma_control_port
+  remote_source_sensor: sensor.component_now_playing_source
+  remote_now_playing_state_sensor: sensor.now_playing_state
+  remote_active_volume_sensor: sensor.component_now_playing_volume
+  remote_volume_acceleration_helper: input_boolean.spectra_ls_remote_volume_acceleration
+  remote_direct_control_default_port: "8899"
+
+  # Hardware pins (baseline defaults for ESP32-C6 Super Mini bring-up)
+  encoder_pin_a: GPIO2
+  encoder_pin_b: GPIO3
+  encoder_press_pin: GPIO1
+  next_button_pin: GPIO7
+  battery_adc_pin: GPIO6
+
+  # Interaction tuning
+  button_cooldown_ms: "220"
+  mute_cooldown_ms: "250"
+  volume_step_cooldown_ms: "70"
+  remote_volume_step_pct: "5"
+  remote_volume_step_slow_pct: "3"
+  remote_volume_step_fast_pct: "7"
+  remote_volume_step_fast_window_ms: "320"
+  remote_encoder_emit_gate_ms: "45"
+  remote_encoder_same_dir_lock_ms: "120"
+  remote_encoder_max_detents_per_emit: "4"
+  remote_encoder_direction_multiplier: "-1"
+  remote_unresolved_log_interval_ms: "1500"
+  remote_control_center_emit_enabled: "true"
+  remote_control_center_emit_dry_run: "true"
+
+  # Battery model
+  remote_has_battery: "true"
+  battery_divider_ratio: "2.05"
+  battery_empty_v: "3.30"
+  battery_full_v: "4.20"
+
+  # Sleep model (disabled by default during bring-up)
+  remote_deep_sleep_enabled: "true"
+  remote_idle_sleep_ms: "30000"
+
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+  includes:
+    - arylic_tcp_remote.h
+  on_boot:
+    priority: 250
+    then:
+      - lambda: |-
+          const uint32_t now = millis();
+          id(remote_last_input_ms) = now;
+          id(remote_last_transport_ms) = 0;
+          id(remote_last_unresolved_log_ms) = 0;
+          id(remote_resolved_target) = "";
+          id(remote_last_encoder_turn_interval_ms) = 1000;
+          id(remote_last_playing_ms) = 0;
+          id(remote_last_encoder_interaction_ms) = now;
+
+esp32:
+  board: esp32-c6-devkitm-1
+  variant: esp32c6
+  framework:
+    type: esp-idf
+
+logger:
+  level: INFO
+
+api:
+  homeassistant_states: true
+  homeassistant_services: true
+
+ota:
+  - platform: esphome
+
+wifi:
+  ssid: ${wifi_ssid}
+  password: ${wifi_password}
+  fast_connect: true
+  power_save_mode: LIGHT
+  manual_ip:
+    static_ip: 192.168.10.41
+    gateway: 192.168.10.1
+    subnet: 255.255.255.0
+    dns1: 192.168.10.7
+
+deep_sleep:
+  id: remote_sleep_ctrl
+  esp32_ext1_wakeup:
+    pins:
+      - number: ${encoder_pin_a}
+        allow_other_uses: true
+    mode: ANY_LOW
+
+time:
+  - platform: homeassistant
+    id: remote_ha_time
+
+globals:
+  - id: remote_last_input_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: remote_last_transport_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: remote_last_mute_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: remote_last_unresolved_log_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: remote_resolved_target
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: remote_encoder_last_position
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: remote_encoder_position_initialized
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: remote_last_volume_step_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: remote_last_encoder_emit_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: remote_last_encoder_direction
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: remote_last_encoder_direction_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: remote_mute_state
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: remote_volume_level_shadow
+    type: float
+    restore_value: no
+    initial_value: "0.5"
+  - id: remote_route_host_last_valid
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: remote_route_hosts_last_valid
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: remote_route_port_last_valid
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: remote_last_volume_sensor_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: remote_last_encoder_turn_interval_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "1000"
+  - id: remote_last_playing_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: remote_last_encoder_interaction_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+
+text_sensor:
+  - platform: homeassistant
+    id: remote_active_target
+    entity_id: ${remote_target_helper}
+    internal: true
+  - platform: homeassistant
+    id: remote_fallback_target
+    entity_id: ${remote_fallback_target_sensor}
+    internal: true
+  - platform: homeassistant
+    id: remote_control_host
+    entity_id: ${remote_control_host_sensor}
+    internal: true
+    on_value:
+      - lambda: |-
+          std::string value = x.c_str();
+          std::string low = value;
+          for (auto &c : low) c = (char) ::tolower(c);
+          const bool valid = !(low.empty() || low == "unknown" || low == "unavailable" || low == "none" || low == "null");
+          if (valid) id(remote_route_host_last_valid) = value;
+  - platform: homeassistant
+    id: remote_control_host_prefixed
+    entity_id: ${remote_control_host_sensor_prefixed}
+    internal: true
+    on_value:
+      - lambda: |-
+          std::string value = x.c_str();
+          std::string low = value;
+          for (auto &c : low) c = (char) ::tolower(c);
+          const bool valid = !(low.empty() || low == "unknown" || low == "unavailable" || low == "none" || low == "null");
+          if (valid) id(remote_route_host_last_valid) = value;
+  - platform: homeassistant
+    id: remote_control_hosts
+    entity_id: ${remote_control_hosts_sensor}
+    internal: true
+    on_value:
+      - lambda: |-
+          std::string value = x.c_str();
+          std::string low = value;
+          for (auto &c : low) c = (char) ::tolower(c);
+          const bool valid = !(low.empty() || low == "unknown" || low == "unavailable" || low == "none" || low == "null");
+          if (valid) id(remote_route_hosts_last_valid) = value;
+  - platform: homeassistant
+    id: remote_control_hosts_prefixed
+    entity_id: ${remote_control_hosts_sensor_prefixed}
+    internal: true
+    on_value:
+      - lambda: |-
+          std::string value = x.c_str();
+          std::string low = value;
+          for (auto &c : low) c = (char) ::tolower(c);
+          const bool valid = !(low.empty() || low == "unknown" || low == "unavailable" || low == "none" || low == "null");
+          if (valid) id(remote_route_hosts_last_valid) = value;
+  - platform: homeassistant
+    id: remote_control_port
+    entity_id: ${remote_control_port_sensor}
+    internal: true
+    on_value:
+      - lambda: |-
+          std::string value = x.c_str();
+          std::string low = value;
+          for (auto &c : low) c = (char) ::tolower(c);
+          const bool valid = !(low.empty() || low == "unknown" || low == "unavailable" || low == "none" || low == "null");
+          if (valid) id(remote_route_port_last_valid) = value;
+  - platform: homeassistant
+    id: remote_control_port_prefixed
+    entity_id: ${remote_control_port_sensor_prefixed}
+    internal: true
+    on_value:
+      - lambda: |-
+          std::string value = x.c_str();
+          std::string low = value;
+          for (auto &c : low) c = (char) ::tolower(c);
+          const bool valid = !(low.empty() || low == "unknown" || low == "unavailable" || low == "none" || low == "null");
+          if (valid) id(remote_route_port_last_valid) = value;
+  - platform: homeassistant
+    id: remote_control_host_fallback
+    entity_id: ${remote_control_host_fallback_sensor}
+    internal: true
+    on_value:
+      - lambda: |-
+          std::string value = x.c_str();
+          std::string low = value;
+          for (auto &c : low) c = (char) ::tolower(c);
+          const bool valid = !(low.empty() || low == "unknown" || low == "unavailable" || low == "none" || low == "null");
+          if (valid) id(remote_route_host_last_valid) = value;
+  - platform: homeassistant
+    id: remote_control_hosts_fallback
+    entity_id: ${remote_control_hosts_fallback_sensor}
+    internal: true
+    on_value:
+      - lambda: |-
+          std::string value = x.c_str();
+          std::string low = value;
+          for (auto &c : low) c = (char) ::tolower(c);
+          const bool valid = !(low.empty() || low == "unknown" || low == "unavailable" || low == "none" || low == "null");
+          if (valid) id(remote_route_hosts_last_valid) = value;
+  - platform: homeassistant
+    id: remote_control_port_fallback
+    entity_id: ${remote_control_port_fallback_sensor}
+    internal: true
+    on_value:
+      - lambda: |-
+          std::string value = x.c_str();
+          std::string low = value;
+          for (auto &c : low) c = (char) ::tolower(c);
+          const bool valid = !(low.empty() || low == "unknown" || low == "unavailable" || low == "none" || low == "null");
+          if (valid) id(remote_route_port_last_valid) = value;
+  - platform: homeassistant
+    id: remote_runtime_active_target
+    entity_id: ${remote_runtime_active_target_sensor}
+    internal: true
+  - platform: homeassistant
+    id: remote_esp_control_target
+    entity_id: ${remote_esp_control_target_sensor}
+    internal: true
+  - platform: homeassistant
+    id: remote_active_source
+    entity_id: ${remote_source_sensor}
+    internal: true
+  - platform: homeassistant
+    id: remote_now_playing_state
+    entity_id: ${remote_now_playing_state_sensor}
+    internal: true
+    on_value:
+      - lambda: |-
+          std::string state = x.c_str();
+          for (auto &c : state) c = (char) ::tolower(c);
+          if (state == "playing") {
+            id(remote_last_playing_ms) = millis();
+          }
+sensor:
+  - platform: rotary_encoder
+    id: remote_encoder
+    internal: true
+    pin_a:
+      number: ${encoder_pin_a}
+      allow_other_uses: true
+      mode:
+        input: true
+        pullup: true
+    pin_b:
+      number: ${encoder_pin_b}
+      mode:
+        input: true
+        pullup: true
+    resolution: 4
+    restore_mode: ALWAYS_ZERO
+    on_value:
+      then:
+        - lambda: |-
+            const uint32_t now = millis();
+            const int position = (int) x;
+            if (!id(remote_encoder_position_initialized)) {
+              id(remote_encoder_last_position) = position;
+              id(remote_encoder_position_initialized) = true;
+              return;
+            }
+
+            const int delta = position - id(remote_encoder_last_position);
+            id(remote_encoder_last_position) = position;
+            if (delta == 0) {
+              return;
+            }
+
+            int detents = abs(delta);
+            if (detents < 1) detents = 1;
+
+            // Smooth/reproducible policy: one physical callback emits one logical step.
+            // This prevents bursty quadrature deltas (e.g. 2-3) from causing large jumps.
+            if (detents > 1) detents = 1;
+
+            if ((now - id(remote_last_encoder_emit_ms)) < (uint32_t) ${remote_encoder_emit_gate_ms}) {
+              return;
+            }
+
+            const int direction = (delta > 0 ? 1 : -1) * (int) ${remote_encoder_direction_multiplier};
+
+            // Suppress same-direction bounce bursts from a single physical detent.
+            if (direction == id(remote_last_encoder_direction) &&
+                (now - id(remote_last_encoder_direction_ms)) < (uint32_t) ${remote_encoder_same_dir_lock_ms}) {
+              return;
+            }
+
+            const uint32_t turn_interval_ms = (id(remote_last_encoder_emit_ms) == 0)
+                                              ? (uint32_t) 1000
+                                              : (now - id(remote_last_encoder_emit_ms));
+            id(remote_last_encoder_turn_interval_ms) = turn_interval_ms;
+            id(remote_last_encoder_emit_ms) = now;
+            id(remote_last_encoder_direction) = direction;
+            id(remote_last_encoder_direction_ms) = now;
+            id(remote_last_encoder_interaction_ms) = now;
+
+            const int signed_detents = direction * detents;
+            if (direction > 0) {
+              ESP_LOGI("remote", "remote encoder detent cw (%d)", detents);
+            } else {
+              ESP_LOGI("remote", "remote encoder detent anticlockwise (%d)", detents);
+            }
+            id(remote_emit_encoder_turn).execute(signed_detents);
+
+  - platform: adc
+    id: remote_battery_voltage_raw
+    pin: ${battery_adc_pin}
+    attenuation: 12db
+    update_interval: 25s
+    filters:
+      - median:
+          window_size: 5
+          send_every: 1
+          send_first_at: 1
+    internal: true
+
+  - platform: template
+    name: "Remote Battery SoC"
+    id: remote_battery_soc
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+    update_interval: 25s
+    lambda: |-
+      if (!${remote_has_battery}) return {};
+      if (!id(remote_battery_voltage_raw).has_state()) return {};
+      const float raw_v = id(remote_battery_voltage_raw).state;
+      if (isnan(raw_v)) return {};
+      const float v = raw_v * ${battery_divider_ratio};
+      if (isnan(v)) return {};
+      const float lo = ${battery_empty_v};
+      const float hi = ${battery_full_v};
+      if (v <= lo) return 0.0f;
+      if (v >= hi) return 100.0f;
+      return ((v - lo) / (hi - lo)) * 100.0f;
+
+  - platform: homeassistant
+    id: remote_active_volume_pct
+    entity_id: ${remote_active_volume_sensor}
+    internal: true
+    on_value:
+      - lambda: |-
+          const float sensed_pct = x;
+          if (sensed_pct >= 0.0f && sensed_pct <= 100.0f) {
+            id(remote_volume_level_shadow) = sensed_pct / 100.0f;
+            id(remote_last_volume_sensor_ms) = millis();
+          }
+
+binary_sensor:
+  - platform: homeassistant
+    id: remote_volume_acceleration_enabled
+    entity_id: ${remote_volume_acceleration_helper}
+    internal: true
+
+  - platform: gpio
+    id: remote_encoder_press_button
+    name: "Remote Encoder Press Button"
+    internal: true
+    pin:
+      number: ${encoder_press_pin}
+      mode:
+        input: true
+        pullup: true
+      inverted: true
+    filters:
+      - delayed_on: 20ms
+      - delayed_off: 20ms
+    on_press:
+      - script.execute: remote_emit_encoder_press
+
+  - platform: gpio
+    id: remote_next_track_button
+    name: "Remote Next Track Button"
+    pin:
+      number: ${next_button_pin}
+      mode:
+        input: true
+        pullup: true
+      inverted: true
+    filters:
+      - delayed_on: 20ms
+      - delayed_off: 20ms
+    on_press:
+      - script.execute:
+          id: remote_emit_control_center_event
+          event_name: "button_1"
+      - script.execute: remote_next_track_guarded
+
+script:
+  - id: remote_note_input
+    mode: restart
+    then:
+      - lambda: |-
+          id(remote_last_input_ms) = millis();
+
+  - id: remote_emit_control_center_encoder_turn
+    mode: restart
+    parameters:
+      turn_delta: int
+    then:
+      - if:
+          condition:
+            lambda: |-
+              return ${remote_control_center_emit_enabled};
+          then:
+            - homeassistant.service:
+                service: spectra_ls.execute_control_center_input
+                data:
+                  input_event: encoder_turn
+                  delta: !lambda |-
+                    return turn_delta;
+                  dry_run: !lambda |-
+                    return ${remote_control_center_emit_dry_run};
+                  correlation_id: !lambda |-
+                    std::string cid = "remote-encoder-turn-";
+                    cid += to_string((unsigned long) millis());
+                    return cid;
+
+  - id: remote_emit_control_center_event
+    mode: restart
+    parameters:
+      event_name: string
+    then:
+      - if:
+          condition:
+            lambda: |-
+              return ${remote_control_center_emit_enabled};
+          then:
+            - homeassistant.service:
+                service: spectra_ls.execute_control_center_input
+                data:
+                  input_event: !lambda |-
+                    return event_name;
+                  dry_run: !lambda |-
+                    return ${remote_control_center_emit_dry_run};
+                  correlation_id: !lambda |-
+                    std::string cid = "remote-";
+                    cid += event_name;
+                    cid += "-";
+                    cid += to_string((unsigned long) millis());
+                    return cid;
+
+  - id: remote_emit_encoder_turn
+    mode: restart
+    parameters:
+      delta: int
+    then:
+      - script.execute: remote_note_input
+      - script.execute:
+          id: remote_emit_control_center_encoder_turn
+          turn_delta: !lambda |-
+            return delta;
+      - if:
+          condition:
+            lambda: |-
+              return delta > 0;
+          then:
+            - script.execute:
+                id: remote_volume_up_guarded
+                steps: !lambda |-
+                  return delta;
+          else:
+            - script.execute:
+                id: remote_volume_down_guarded
+                steps: !lambda |-
+                  return -delta;
+
+  - id: remote_emit_encoder_press
+    mode: restart
+    then:
+      - lambda: |-
+          id(remote_last_encoder_interaction_ms) = millis();
+      - script.execute:
+          id: remote_emit_control_center_event
+          event_name: "encoder_press"
+      - script.execute: remote_mute_guarded
+
+  - id: remote_volume_up_guarded
+    mode: restart
+    parameters:
+      steps: int
+    then:
+      - script.execute: remote_note_input
+      - lambda: |-
+          const uint32_t now = millis();
+          if ((now - id(remote_last_volume_step_ms)) < (uint32_t) ${volume_step_cooldown_ms}) {
+            return;
+          }
+
+          auto to_lower = [](std::string value) {
+            for (auto &c : value) c = (char) ::tolower(c);
+            return value;
+          };
+          auto is_unresolved = [&](const std::string &value) {
+            const std::string low = to_lower(value);
+            return (low.empty() || low == "unknown" || low == "unavailable" || low == "none" || low == "null");
+          };
+
+          std::string target = "";
+          if (${remote_force_target_enabled}) {
+            target = std::string("${remote_forced_target}");
+          } else {
+            target = id(remote_active_target).has_state() ? id(remote_active_target).state.c_str() : "";
+            if (is_unresolved(target) && id(remote_runtime_active_target).has_state()) {
+              target = id(remote_runtime_active_target).state.c_str();
+            }
+            if (is_unresolved(target) && id(remote_esp_control_target).has_state()) {
+              target = id(remote_esp_control_target).state.c_str();
+            }
+            if (is_unresolved(target) && id(remote_fallback_target).has_state()) {
+              target = id(remote_fallback_target).state.c_str();
+            }
+            if (is_unresolved(target)) {
+              target = std::string("${remote_forced_target}");
+            }
+          }
+
+          if (is_unresolved(target)) {
+            if ((now - id(remote_last_unresolved_log_ms)) >= (uint32_t) ${remote_unresolved_log_interval_ms}) {
+              id(remote_last_unresolved_log_ms) = now;
+              ESP_LOGW("remote", "volume_up blocked: unresolved target helper='%s' runtime='%s' esp='%s' fallback='%s' forced='%s'", id(remote_active_target).state.c_str(), id(remote_runtime_active_target).state.c_str(), id(remote_esp_control_target).state.c_str(), id(remote_fallback_target).state.c_str(), "${remote_forced_target}");
+            }
+            return;
+          }
+
+          float current_pct = id(remote_volume_level_shadow) * 100.0f;
+          if (current_pct < 0.0f || current_pct > 100.0f) {
+            current_pct = 50.0f;
+          }
+
+          if (id(remote_active_volume_pct).has_state()) {
+            const float sensor_pct = id(remote_active_volume_pct).state;
+            const uint32_t sensor_age_ms = now - id(remote_last_volume_sensor_ms);
+            if (sensor_pct >= 0.0f && sensor_pct <= 100.0f && sensor_age_ms <= 1200 && fabsf(sensor_pct - current_pct) >= 20.0f) {
+              current_pct = sensor_pct;
+              id(remote_volume_level_shadow) = sensor_pct / 100.0f;
+            }
+          }
+
+          int step_count = steps;
+          if (step_count < 1) step_count = 1;
+          const int max_step_count = (int) ${remote_encoder_max_detents_per_emit};
+          if (step_count > max_step_count) step_count = max_step_count;
+
+          const bool accel_enabled = id(remote_volume_acceleration_enabled).has_state() && id(remote_volume_acceleration_enabled).state;
+          float step_pct = (float) ${remote_volume_step_slow_pct};
+          const uint32_t turn_interval_ms = id(remote_last_encoder_turn_interval_ms);
+          if (accel_enabled && turn_interval_ms <= (uint32_t) ${remote_volume_step_fast_window_ms}) {
+            step_pct = (float) ${remote_volume_step_fast_pct};
+          }
+
+          float next_pct = current_pct + ((float) step_count * step_pct);
+          if (next_pct > 100.0f) next_pct = 100.0f;
+          if (next_pct < 0.0f) next_pct = 0.0f;
+
+          id(remote_resolved_target) = target;
+          id(remote_volume_level_shadow) = next_pct / 100.0f;
+          std::string route_host = id(remote_control_host).has_state() ? id(remote_control_host).state.c_str() : "";
+          if (is_unresolved(route_host)) route_host = id(remote_control_host_prefixed).has_state() ? id(remote_control_host_prefixed).state.c_str() : "";
+          if (is_unresolved(route_host)) route_host = id(remote_control_host_fallback).has_state() ? id(remote_control_host_fallback).state.c_str() : "";
+          if (is_unresolved(route_host)) route_host = id(remote_route_host_last_valid);
+
+          std::string route_hosts = id(remote_control_hosts).has_state() ? id(remote_control_hosts).state.c_str() : "";
+          if (is_unresolved(route_hosts)) route_hosts = id(remote_control_hosts_prefixed).has_state() ? id(remote_control_hosts_prefixed).state.c_str() : "";
+          if (is_unresolved(route_hosts)) route_hosts = id(remote_control_hosts_fallback).has_state() ? id(remote_control_hosts_fallback).state.c_str() : "";
+          if (is_unresolved(route_hosts)) route_hosts = id(remote_route_hosts_last_valid);
+
+          std::string route_port = id(remote_control_port).has_state() ? id(remote_control_port).state.c_str() : "";
+          if (is_unresolved(route_port)) route_port = id(remote_control_port_prefixed).has_state() ? id(remote_control_port_prefixed).state.c_str() : "";
+          if (is_unresolved(route_port)) route_port = id(remote_control_port_fallback).has_state() ? id(remote_control_port_fallback).state.c_str() : "";
+          if (is_unresolved(route_port)) route_port = id(remote_route_port_last_valid);
+
+          ESP_LOGI("remote", "volume_up request target='%s' current_pct=%.1f next_pct=%.1f step_pct=%.1f accel=%d turn_ms=%lu route_host='%s' route_hosts='%s' route_port='%s'", id(remote_resolved_target).c_str(), current_pct, next_pct, step_pct, accel_enabled ? 1 : 0, (unsigned long) turn_interval_ms, route_host.c_str(), route_hosts.c_str(), route_port.c_str());
+          id(remote_last_volume_step_ms) = now;
+      - lambda: |-
+          auto to_lower = [](std::string value) {
+            for (auto &c : value) c = (char) ::tolower(c);
+            return value;
+          };
+          auto is_unresolved = [&](const std::string &value) {
+            const std::string low = to_lower(value);
+            return (low.empty() || low == "unknown" || low == "unavailable" || low == "none" || low == "null");
+          };
+
+          std::string route_hosts = id(remote_control_hosts).has_state() ? id(remote_control_hosts).state.c_str() : "";
+          if (is_unresolved(route_hosts)) route_hosts = id(remote_control_hosts_prefixed).has_state() ? id(remote_control_hosts_prefixed).state.c_str() : "";
+          if (is_unresolved(route_hosts)) route_hosts = id(remote_control_hosts_fallback).has_state() ? id(remote_control_hosts_fallback).state.c_str() : "";
+          if (is_unresolved(route_hosts)) route_hosts = id(remote_route_hosts_last_valid);
+
+          std::string route_host = id(remote_control_host).has_state() ? id(remote_control_host).state.c_str() : "";
+          if (is_unresolved(route_host)) route_host = id(remote_control_host_prefixed).has_state() ? id(remote_control_host_prefixed).state.c_str() : "";
+          if (is_unresolved(route_host)) route_host = id(remote_control_host_fallback).has_state() ? id(remote_control_host_fallback).state.c_str() : "";
+          if (is_unresolved(route_host)) route_host = id(remote_route_host_last_valid);
+
+          if (is_unresolved(route_hosts) && !is_unresolved(route_host)) {
+            route_hosts = route_host;
+          }
+
+          std::string route_port_raw = id(remote_control_port).has_state() ? id(remote_control_port).state.c_str() : "";
+          if (is_unresolved(route_port_raw)) route_port_raw = id(remote_control_port_prefixed).has_state() ? id(remote_control_port_prefixed).state.c_str() : "";
+          if (is_unresolved(route_port_raw)) route_port_raw = id(remote_control_port_fallback).has_state() ? id(remote_control_port_fallback).state.c_str() : "";
+          if (is_unresolved(route_port_raw)) route_port_raw = id(remote_route_port_last_valid);
+
+          int route_port = ${remote_direct_control_default_port};
+          if (!is_unresolved(route_port_raw)) {
+            char *end = nullptr;
+            long parsed = strtol(route_port_raw.c_str(), &end, 10);
+            if (end != route_port_raw.c_str() && parsed > 0 && parsed < 65535) {
+              route_port = (int) parsed;
+            }
+          }
+
+          if (is_unresolved(route_hosts)) {
+            ESP_LOGW("remote", "volume_up direct send blocked: no route hosts (target='%s')", id(remote_resolved_target).c_str());
+            return;
+          }
+
+          int target_volume = (int) (id(remote_volume_level_shadow) * 100.0f + 0.5f);
+          if (target_volume < 0) target_volume = 0;
+          if (target_volume > 100) target_volume = 100;
+
+          const bool ok = esphome::arylic_tcp::send_volume_multi(route_hosts, (uint16_t) route_port, target_volume);
+          ESP_LOGI("remote", "volume_up direct send hosts='%s' port=%d target='%s' vol=%d ok=%d", route_hosts.c_str(), route_port, id(remote_resolved_target).c_str(), target_volume, ok ? 1 : 0);
+
+  - id: remote_volume_down_guarded
+    mode: restart
+    parameters:
+      steps: int
+    then:
+      - script.execute: remote_note_input
+      - lambda: |-
+          const uint32_t now = millis();
+          if ((now - id(remote_last_volume_step_ms)) < (uint32_t) ${volume_step_cooldown_ms}) {
+            return;
+          }
+
+          auto to_lower = [](std::string value) {
+            for (auto &c : value) c = (char) ::tolower(c);
+            return value;
+          };
+          auto is_unresolved = [&](const std::string &value) {
+            const std::string low = to_lower(value);
+            return (low.empty() || low == "unknown" || low == "unavailable" || low == "none" || low == "null");
+          };
+
+          std::string target = "";
+          if (${remote_force_target_enabled}) {
+            target = std::string("${remote_forced_target}");
+          } else {
+            target = id(remote_active_target).has_state() ? id(remote_active_target).state.c_str() : "";
+            if (is_unresolved(target) && id(remote_runtime_active_target).has_state()) {
+              target = id(remote_runtime_active_target).state.c_str();
+            }
+            if (is_unresolved(target) && id(remote_esp_control_target).has_state()) {
+              target = id(remote_esp_control_target).state.c_str();
+            }
+            if (is_unresolved(target) && id(remote_fallback_target).has_state()) {
+              target = id(remote_fallback_target).state.c_str();
+            }
+            if (is_unresolved(target)) {
+              target = std::string("${remote_forced_target}");
+            }
+          }
+
+          if (is_unresolved(target)) {
+            if ((now - id(remote_last_unresolved_log_ms)) >= (uint32_t) ${remote_unresolved_log_interval_ms}) {
+              id(remote_last_unresolved_log_ms) = now;
+              ESP_LOGW("remote", "volume_down blocked: unresolved target helper='%s' runtime='%s' esp='%s' fallback='%s' forced='%s'", id(remote_active_target).state.c_str(), id(remote_runtime_active_target).state.c_str(), id(remote_esp_control_target).state.c_str(), id(remote_fallback_target).state.c_str(), "${remote_forced_target}");
+            }
+            return;
+          }
+
+          float current_pct = id(remote_volume_level_shadow) * 100.0f;
+          if (current_pct < 0.0f || current_pct > 100.0f) {
+            current_pct = 50.0f;
+          }
+
+          if (id(remote_active_volume_pct).has_state()) {
+            const float sensor_pct = id(remote_active_volume_pct).state;
+            const uint32_t sensor_age_ms = now - id(remote_last_volume_sensor_ms);
+            if (sensor_pct >= 0.0f && sensor_pct <= 100.0f && sensor_age_ms <= 1200 && fabsf(sensor_pct - current_pct) >= 20.0f) {
+              current_pct = sensor_pct;
+              id(remote_volume_level_shadow) = sensor_pct / 100.0f;
+            }
+          }
+
+          int step_count = steps;
+          if (step_count < 1) step_count = 1;
+          const int max_step_count = (int) ${remote_encoder_max_detents_per_emit};
+          if (step_count > max_step_count) step_count = max_step_count;
+
+          const bool accel_enabled = id(remote_volume_acceleration_enabled).has_state() && id(remote_volume_acceleration_enabled).state;
+          float step_pct = (float) ${remote_volume_step_slow_pct};
+          const uint32_t turn_interval_ms = id(remote_last_encoder_turn_interval_ms);
+          if (accel_enabled && turn_interval_ms <= (uint32_t) ${remote_volume_step_fast_window_ms}) {
+            step_pct = (float) ${remote_volume_step_fast_pct};
+          }
+
+          float next_pct = current_pct - ((float) step_count * step_pct);
+          if (next_pct > 100.0f) next_pct = 100.0f;
+          if (next_pct < 0.0f) next_pct = 0.0f;
+
+          id(remote_resolved_target) = target;
+          id(remote_volume_level_shadow) = next_pct / 100.0f;
+          std::string route_host = id(remote_control_host).has_state() ? id(remote_control_host).state.c_str() : "";
+          if (is_unresolved(route_host)) route_host = id(remote_control_host_prefixed).has_state() ? id(remote_control_host_prefixed).state.c_str() : "";
+          if (is_unresolved(route_host)) route_host = id(remote_control_host_fallback).has_state() ? id(remote_control_host_fallback).state.c_str() : "";
+          if (is_unresolved(route_host)) route_host = id(remote_route_host_last_valid);
+
+          std::string route_hosts = id(remote_control_hosts).has_state() ? id(remote_control_hosts).state.c_str() : "";
+          if (is_unresolved(route_hosts)) route_hosts = id(remote_control_hosts_prefixed).has_state() ? id(remote_control_hosts_prefixed).state.c_str() : "";
+          if (is_unresolved(route_hosts)) route_hosts = id(remote_control_hosts_fallback).has_state() ? id(remote_control_hosts_fallback).state.c_str() : "";
+          if (is_unresolved(route_hosts)) route_hosts = id(remote_route_hosts_last_valid);
+
+          std::string route_port = id(remote_control_port).has_state() ? id(remote_control_port).state.c_str() : "";
+          if (is_unresolved(route_port)) route_port = id(remote_control_port_prefixed).has_state() ? id(remote_control_port_prefixed).state.c_str() : "";
+          if (is_unresolved(route_port)) route_port = id(remote_control_port_fallback).has_state() ? id(remote_control_port_fallback).state.c_str() : "";
+          if (is_unresolved(route_port)) route_port = id(remote_route_port_last_valid);
+
+          ESP_LOGI("remote", "volume_down request target='%s' current_pct=%.1f next_pct=%.1f step_pct=%.1f accel=%d turn_ms=%lu route_host='%s' route_hosts='%s' route_port='%s'", id(remote_resolved_target).c_str(), current_pct, next_pct, step_pct, accel_enabled ? 1 : 0, (unsigned long) turn_interval_ms, route_host.c_str(), route_hosts.c_str(), route_port.c_str());
+          id(remote_last_volume_step_ms) = now;
+      - lambda: |-
+          auto to_lower = [](std::string value) {
+            for (auto &c : value) c = (char) ::tolower(c);
+            return value;
+          };
+          auto is_unresolved = [&](const std::string &value) {
+            const std::string low = to_lower(value);
+            return (low.empty() || low == "unknown" || low == "unavailable" || low == "none" || low == "null");
+          };
+
+          std::string route_hosts = id(remote_control_hosts).has_state() ? id(remote_control_hosts).state.c_str() : "";
+          if (is_unresolved(route_hosts)) route_hosts = id(remote_control_hosts_prefixed).has_state() ? id(remote_control_hosts_prefixed).state.c_str() : "";
+          if (is_unresolved(route_hosts)) route_hosts = id(remote_control_hosts_fallback).has_state() ? id(remote_control_hosts_fallback).state.c_str() : "";
+          if (is_unresolved(route_hosts)) route_hosts = id(remote_route_hosts_last_valid);
+
+          std::string route_host = id(remote_control_host).has_state() ? id(remote_control_host).state.c_str() : "";
+          if (is_unresolved(route_host)) route_host = id(remote_control_host_prefixed).has_state() ? id(remote_control_host_prefixed).state.c_str() : "";
+          if (is_unresolved(route_host)) route_host = id(remote_control_host_fallback).has_state() ? id(remote_control_host_fallback).state.c_str() : "";
+          if (is_unresolved(route_host)) route_host = id(remote_route_host_last_valid);
+
+          if (is_unresolved(route_hosts) && !is_unresolved(route_host)) {
+            route_hosts = route_host;
+          }
+
+          std::string route_port_raw = id(remote_control_port).has_state() ? id(remote_control_port).state.c_str() : "";
+          if (is_unresolved(route_port_raw)) route_port_raw = id(remote_control_port_prefixed).has_state() ? id(remote_control_port_prefixed).state.c_str() : "";
+          if (is_unresolved(route_port_raw)) route_port_raw = id(remote_control_port_fallback).has_state() ? id(remote_control_port_fallback).state.c_str() : "";
+          if (is_unresolved(route_port_raw)) route_port_raw = id(remote_route_port_last_valid);
+
+          int route_port = ${remote_direct_control_default_port};
+          if (!is_unresolved(route_port_raw)) {
+            char *end = nullptr;
+            long parsed = strtol(route_port_raw.c_str(), &end, 10);
+            if (end != route_port_raw.c_str() && parsed > 0 && parsed < 65535) {
+              route_port = (int) parsed;
+            }
+          }
+
+          if (is_unresolved(route_hosts)) {
+            ESP_LOGW("remote", "volume_down direct send blocked: no route hosts (target='%s')", id(remote_resolved_target).c_str());
+            return;
+          }
+
+          int target_volume = (int) (id(remote_volume_level_shadow) * 100.0f + 0.5f);
+          if (target_volume < 0) target_volume = 0;
+          if (target_volume > 100) target_volume = 100;
+
+          const bool ok = esphome::arylic_tcp::send_volume_multi(route_hosts, (uint16_t) route_port, target_volume);
+          ESP_LOGI("remote", "volume_down direct send hosts='%s' port=%d target='%s' vol=%d ok=%d", route_hosts.c_str(), route_port, id(remote_resolved_target).c_str(), target_volume, ok ? 1 : 0);
+
+  - id: remote_mute_guarded
+    mode: restart
+    then:
+      - script.execute: remote_note_input
+      - lambda: |-
+          const uint32_t now = millis();
+          if ((now - id(remote_last_mute_ms)) < (uint32_t) ${mute_cooldown_ms}) {
+            return;
+          }
+
+          auto to_lower = [](std::string value) {
+            for (auto &c : value) c = (char) ::tolower(c);
+            return value;
+          };
+          auto is_unresolved = [&](const std::string &value) {
+            const std::string low = to_lower(value);
+            return (low.empty() || low == "unknown" || low == "unavailable" || low == "none" || low == "null");
+          };
+
+          std::string target = "";
+          if (${remote_force_target_enabled}) {
+            target = std::string("${remote_forced_target}");
+          } else {
+            target = id(remote_active_target).has_state() ? id(remote_active_target).state.c_str() : "";
+            if (is_unresolved(target) && id(remote_runtime_active_target).has_state()) {
+              target = id(remote_runtime_active_target).state.c_str();
+            }
+            if (is_unresolved(target) && id(remote_esp_control_target).has_state()) {
+              target = id(remote_esp_control_target).state.c_str();
+            }
+            if (is_unresolved(target) && id(remote_fallback_target).has_state()) {
+              target = id(remote_fallback_target).state.c_str();
+            }
+            if (is_unresolved(target)) {
+              target = std::string("${remote_forced_target}");
+            }
+          }
+
+          if (is_unresolved(target)) {
+            if ((now - id(remote_last_unresolved_log_ms)) >= (uint32_t) ${remote_unresolved_log_interval_ms}) {
+              id(remote_last_unresolved_log_ms) = now;
+              ESP_LOGW("remote", "mute blocked: unresolved target helper='%s' runtime='%s' esp='%s' fallback='%s' forced='%s'", id(remote_active_target).state.c_str(), id(remote_runtime_active_target).state.c_str(), id(remote_esp_control_target).state.c_str(), id(remote_fallback_target).state.c_str(), "${remote_forced_target}");
+            }
+            return;
+          }
+
+          id(remote_resolved_target) = target;
+          id(remote_last_mute_ms) = now;
+          id(remote_mute_state) = !id(remote_mute_state);
+
+          std::string route_hosts = id(remote_control_hosts).has_state() ? id(remote_control_hosts).state.c_str() : "";
+          if (is_unresolved(route_hosts)) route_hosts = id(remote_control_hosts_prefixed).has_state() ? id(remote_control_hosts_prefixed).state.c_str() : "";
+          if (is_unresolved(route_hosts)) route_hosts = id(remote_control_hosts_fallback).has_state() ? id(remote_control_hosts_fallback).state.c_str() : "";
+          if (is_unresolved(route_hosts)) route_hosts = id(remote_route_hosts_last_valid);
+
+          std::string route_host = id(remote_control_host).has_state() ? id(remote_control_host).state.c_str() : "";
+          if (is_unresolved(route_host)) route_host = id(remote_control_host_prefixed).has_state() ? id(remote_control_host_prefixed).state.c_str() : "";
+          if (is_unresolved(route_host)) route_host = id(remote_control_host_fallback).has_state() ? id(remote_control_host_fallback).state.c_str() : "";
+          if (is_unresolved(route_host)) route_host = id(remote_route_host_last_valid);
+          if (is_unresolved(route_hosts) && !is_unresolved(route_host)) route_hosts = route_host;
+
+          std::string route_port_raw = id(remote_control_port).has_state() ? id(remote_control_port).state.c_str() : "";
+          if (is_unresolved(route_port_raw)) route_port_raw = id(remote_control_port_prefixed).has_state() ? id(remote_control_port_prefixed).state.c_str() : "";
+          if (is_unresolved(route_port_raw)) route_port_raw = id(remote_control_port_fallback).has_state() ? id(remote_control_port_fallback).state.c_str() : "";
+          if (is_unresolved(route_port_raw)) route_port_raw = id(remote_route_port_last_valid);
+
+          int route_port = ${remote_direct_control_default_port};
+          if (!is_unresolved(route_port_raw)) {
+            char *end = nullptr;
+            long parsed = strtol(route_port_raw.c_str(), &end, 10);
+            if (end != route_port_raw.c_str() && parsed > 0 && parsed < 65535) {
+              route_port = (int) parsed;
+            }
+          }
+
+          if (is_unresolved(route_hosts)) {
+            ESP_LOGW("remote", "mute direct send blocked: no route hosts (target='%s')", id(remote_resolved_target).c_str());
+            return;
+          }
+
+          const bool ok = esphome::arylic_tcp::send_mute_multi(route_hosts, (uint16_t) route_port, id(remote_mute_state));
+          ESP_LOGI("remote", "mute direct send hosts='%s' port=%d target='%s' mute=%d ok=%d", route_hosts.c_str(), route_port, id(remote_resolved_target).c_str(), id(remote_mute_state) ? 1 : 0, ok ? 1 : 0);
+
+  - id: remote_next_track_guarded
+    mode: restart
+    then:
+      - script.execute: remote_note_input
+      - lambda: |-
+          const uint32_t now = millis();
+          if ((now - id(remote_last_transport_ms)) < (uint32_t) ${button_cooldown_ms}) {
+            return;
+          }
+
+          auto to_lower = [](std::string value) {
+            for (auto &c : value) c = (char) ::tolower(c);
+            return value;
+          };
+
+          auto is_unresolved = [&](const std::string &value) {
+            const std::string low = to_lower(value);
+            return (low.empty() || low == "unknown" || low == "unavailable" || low == "none" || low == "null");
+          };
+
+          std::string target = "";
+          if (${remote_force_target_enabled}) {
+            target = std::string("${remote_forced_target}");
+          } else {
+            target = id(remote_active_target).has_state() ? id(remote_active_target).state.c_str() : "";
+          }
+          std::string fallback = id(remote_fallback_target).has_state() ? id(remote_fallback_target).state.c_str() : "";
+          if (is_unresolved(target) && !is_unresolved(fallback)) {
+            target = fallback;
+          }
+
+          if (is_unresolved(target)) {
+            if ((now - id(remote_last_unresolved_log_ms)) >= (uint32_t) ${remote_unresolved_log_interval_ms}) {
+              id(remote_last_unresolved_log_ms) = now;
+              ESP_LOGW("remote", "next_track blocked: target unresolved (helper='%s' fallback='%s')", id(remote_active_target).state.c_str(), id(remote_fallback_target).state.c_str());
+            }
+            return;
+          }
+
+          std::string source = id(remote_active_source).has_state() ? id(remote_active_source).state.c_str() : "";
+          std::string source_low = to_lower(source);
+          const bool passthrough = source_low.find("optical") != std::string::npos ||
+                                   source_low.find("line-in") != std::string::npos ||
+                                   source_low.find("line in") != std::string::npos ||
+                                   source_low.find("aux") != std::string::npos ||
+                                   source_low.find("coax") != std::string::npos ||
+                                   source_low.find("hdmi") != std::string::npos ||
+                                   source_low.find("arc") != std::string::npos;
+          if (passthrough) {
+            ESP_LOGI("remote", "next_track blocked: passthrough source '%s'", source.c_str());
+            return;
+          }
+
+          id(remote_resolved_target) = target;
+          id(remote_last_transport_ms) = now;
+      - homeassistant.service:
+          service: media_player.media_next_track
+          data:
+            entity_id: !lambda |-
+              return id(remote_resolved_target);
+
+interval:
+  - interval: 5s
+    then:
+      - if:
+          condition:
+            lambda: |-
+              if (!${remote_has_battery}) return false;
+              if (!${remote_deep_sleep_enabled}) return false;
+
+              const uint32_t tick = millis();
+
+              const uint32_t last_encoder_interaction =
+                  id(remote_last_encoder_interaction_ms) == 0
+                      ? id(remote_last_input_ms)
+                      : id(remote_last_encoder_interaction_ms);
+              const uint32_t idle = tick - last_encoder_interaction;
+              return idle >= (uint32_t) ${remote_idle_sleep_ms};
+          then:
+            - logger.log:
+                level: INFO
+                format: "Remote entering deep sleep after 30s encoder idle"
+            - deep_sleep.enter: remote_sleep_ctrl
+

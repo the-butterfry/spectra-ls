@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.07.17.25 -->
+<!-- Version: 2026.07.17.26 -->
 <!-- Last updated: 2026-07-17 -->
 
 # Changelog
 
 ## 2026-07-17
+
+- Runtime+Component/ESP Remote Slice R4 Control-Center Event Emitter (shadow-first) (`esphome/spectra_ls_remote.yaml`, `docs/CHANGELOG.md`): implement the first ESPHome-side canonical input emitter path by publishing remote hardware intents (`encoder_turn`, `encoder_press`, `button_1`) to `spectra_ls.execute_control_center_input` with deterministic correlation tokens and guarded shadow-first dry-run posture, while preserving the existing direct transport action lane as operational fallback. Runtime track disposition: implemented (ESP remote now emits canonical control-center events in parallel with existing direct lane). Component track disposition: compatibility-shimmed (existing execution sink contract reused; no `custom_components/spectra_ls` semantic mutation required). P1/P2/P3 impact: no source-of-truth ownership reassignment; additive ESP input-emission parity hardening only. README/wiki parity: no material operator workflow change.
 
 - Runtime+Component/Interactables Roadmap Slice M5 Handoff Scaffold Super-Slice (`packages/spectra_ls_interactables.yaml`, `docs/roadmap/SPECTRA-REMOTE-INTERACTABLES-ROADMAP.md`, `docs/CHANGELOG.md`): add a deterministic M5 handoff scaffold on top of M4 exit certification with explicit M5 handoff blockers/verdict sensors, M5 handoff-ready binary gate, one-button handoff packet capture, and periodic handoff auto-capture cadence for sustained-ready evidence. Introduces configurable handoff thresholds (minimum M4 exit score and maximum M4 exit packet age), M4-exit soak-age tracking, and active-profile handoff readiness/blocker notification lifecycle plus profile-change cleanup for stale handoff packets. Runtime track disposition: implemented (additive M5 handoff governance scaffold in HA package lane). Component track disposition: compatibility-shimmed (execution sink remains `spectra_ls.execute_control_center_input`; no `custom_components/spectra_ls` semantic mutation). P1/P2/P3 impact: no source-of-truth ownership reassignment; additive handoff-governance and operator certification hardening only. README/wiki parity: no material operator workflow change.
 

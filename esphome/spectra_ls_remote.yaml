@@ -468,6 +468,7 @@ sensor:
         pullup: true
     pin_b:
       number: ${encoder_pin_b}
+      allow_other_uses: true
       mode:
         input: true
         pullup: true
@@ -587,6 +588,7 @@ binary_sensor:
     internal: true
     pin:
       number: ${encoder_press_pin}
+      allow_other_uses: true
       mode:
         input: true
         pullup: true

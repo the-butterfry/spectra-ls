@@ -1,5 +1,5 @@
 # Description: Spectra interactables bridge scaffold (BLE/Wi-Fi hybrid ingest to control-center execution).
-# Version: 2026.07.17.13
+# Version: 2026.07.17.14
 # Last updated: 2026-07-17
 # Update version/date whenever you change this file.
 
@@ -130,6 +130,30 @@ input_text:
     max: 255
     mode: text
 
+  spectra_interactable_m3_matrix_source_key_a:
+    name: Spectra Interactable M3 Matrix Source Key A
+    initial: "ble_button_single"
+    max: 255
+    mode: text
+
+  spectra_interactable_m3_matrix_source_key_b:
+    name: Spectra Interactable M3 Matrix Source Key B
+    initial: "ble_arriving"
+    max: 255
+    mode: text
+
+  spectra_interactable_m3_matrix_source_key_c:
+    name: Spectra Interactable M3 Matrix Source Key C
+    initial: ""
+    max: 255
+    mode: text
+
+  spectra_interactable_last_m3_matrix_summary:
+    name: Spectra Interactable Last M3 Matrix Summary
+    initial: ""
+    max: 255
+    mode: text
+
 input_button:
   spectra_interactable_run_test_source_signal:
     name: Spectra Interactable Run Test Source Signal
@@ -166,6 +190,10 @@ input_button:
   spectra_interactable_run_m3_candidate_test:
     name: Spectra Interactable Run M3 Candidate Test
     icon: mdi:shape-plus-outline
+
+  spectra_interactable_run_m3_matrix_validation:
+    name: Spectra Interactable Run M3 Matrix Validation
+    icon: mdi:table-check
 
 input_select:
   spectra_interactable_cutover_profile:
@@ -271,6 +299,20 @@ input_number:
 
   spectra_interactable_last_evidence_capture_ts_ms:
     name: Spectra Interactable Last Evidence Capture TS ms
+    min: 0
+    max: 4102444800000
+    step: 1
+    initial: 0
+
+  spectra_interactable_m3_matrix_iterations:
+    name: Spectra Interactable M3 Matrix Iterations
+    min: 1
+    max: 20
+    step: 1
+    initial: 5
+
+  spectra_interactable_last_m3_matrix_ts_ms:
+    name: Spectra Interactable Last M3 Matrix TS ms
     min: 0
     max: 4102444800000
     step: 1
@@ -426,6 +468,100 @@ script:
           transport: "{{ transport if transport not in ['', 'unknown', 'unavailable'] else 'unknown' }}"
           correlation_id: >-
             m3-candidate-{{ now().timestamp() | int }}
+
+  spectra_interactable_run_m3_matrix_validation:
+    alias: Spectra Interactable - Run M3 Matrix Validation
+    mode: restart
+    sequence:
+      - variables:
+          source_a: "{{ states('input_text.spectra_interactable_m3_matrix_source_key_a') | lower | trim }}"
+          source_b: "{{ states('input_text.spectra_interactable_m3_matrix_source_key_b') | lower | trim }}"
+          source_c: "{{ states('input_text.spectra_interactable_m3_matrix_source_key_c') | lower | trim }}"
+          iterations: "{{ states('input_number.spectra_interactable_m3_matrix_iterations') | int(5) }}"
+          source_keys_valid: "{{ is_state('binary_sensor.spectra_interactable_m3_matrix_source_keys_valid', 'on') }}"
+          candidate_valid: "{{ is_state('binary_sensor.spectra_interactable_m3_candidate_valid', 'on') }}"
+          before_total: "{{ states('counter.spectra_interactable_events_total') | int(0) }}"
+          before_dispatched: "{{ states('counter.spectra_interactable_events_dispatched') | int(0) }}"
+          before_invalid: "{{ states('counter.spectra_interactable_events_invalid') | int(0) }}"
+          before_dropped: "{{ states('counter.spectra_interactable_events_dropped') | int(0) }}"
+      - choose:
+          - conditions: "{{ (not source_keys_valid) or (not candidate_valid) }}"
+            sequence:
+              - service: counter.increment
+                target:
+                  entity_id: counter.spectra_interactable_events_invalid
+              - service: input_text.set_value
+                data:
+                  entity_id: input_text.spectra_interactable_last_error
+                  value: >-
+                    m3_matrix_invalid_preflight source_keys_valid={{ source_keys_valid }} candidate_valid={{ candidate_valid }}
+              - stop: "M3 matrix validation blocked by source-key or candidate contract invalid state."
+      - repeat:
+          count: "{{ iterations }}"
+          sequence:
+            - service: script.spectra_interactable_process_source_signal
+              data:
+                source_key: "{{ source_a }}"
+                transport: "ble"
+                correlation_id: >-
+                  m3-matrix-a-{{ repeat.index }}-{{ now().timestamp() | int }}
+            - service: script.spectra_interactable_process_source_signal
+              data:
+                source_key: "{{ source_b }}"
+                transport: "ble"
+                correlation_id: >-
+                  m3-matrix-b-{{ repeat.index }}-{{ now().timestamp() | int }}
+            - choose:
+                - conditions: "{{ source_c not in ['', 'unknown', 'unavailable'] }}"
+                  sequence:
+                    - service: script.spectra_interactable_process_source_signal
+                      data:
+                        source_key: "{{ source_c }}"
+                        transport: "ble"
+                        correlation_id: >-
+                          m3-matrix-c-{{ repeat.index }}-{{ now().timestamp() | int }}
+            - service: script.spectra_interactable_run_m3_candidate_test
+            - delay:
+                milliseconds: 150
+      - variables:
+          after_total: "{{ states('counter.spectra_interactable_events_total') | int(0) }}"
+          after_dispatched: "{{ states('counter.spectra_interactable_events_dispatched') | int(0) }}"
+          after_invalid: "{{ states('counter.spectra_interactable_events_invalid') | int(0) }}"
+          after_dropped: "{{ states('counter.spectra_interactable_events_dropped') | int(0) }}"
+          delta_total: "{{ (after_total | int(0)) - (before_total | int(0)) }}"
+          delta_dispatched: "{{ (after_dispatched | int(0)) - (before_dispatched | int(0)) }}"
+          delta_invalid: "{{ (after_invalid | int(0)) - (before_invalid | int(0)) }}"
+          delta_dropped: "{{ (after_dropped | int(0)) - (before_dropped | int(0)) }}"
+          delta_success_pct: >-
+            {% set total = ((after_total | int(0)) - (before_total | int(0))) %}
+            {% set dispatched = ((after_dispatched | int(0)) - (before_dispatched | int(0))) %}
+            {% if total > 0 %}
+              {{ ((dispatched / total) * 100) | round(1) }}
+            {% else %}
+              0
+            {% endif %}
+          run_ts_ms: "{{ (as_timestamp(now()) * 1000) | int }}"
+          matrix_summary: >-
+            total={{ delta_total }} ok={{ delta_dispatched }} invalid={{ delta_invalid }} dropped={{ delta_dropped }} success={{ delta_success_pct }}%
+      - service: input_number.set_value
+        data:
+          entity_id: input_number.spectra_interactable_last_m3_matrix_ts_ms
+          value: "{{ run_ts_ms }}"
+      - service: input_text.set_value
+        data:
+          entity_id: input_text.spectra_interactable_last_m3_matrix_summary
+          value: "{{ matrix_summary[:255] }}"
+      - choose:
+          - conditions: "{{ is_state('input_boolean.spectra_interactable_rollback_notifications_enabled', 'on') }}"
+            sequence:
+              - service: persistent_notification.create
+                data:
+                  notification_id: spectra_interactable_m3_matrix_packet
+                  title: "Spectra Interactables M3 Matrix Validation"
+                  message: >-
+                    {{ matrix_summary }}
+                    verdict={{ states('sensor.spectra_interactable_m3_matrix_verdict') }}
+                    blockers={{ states('sensor.spectra_interactable_m3_matrix_blockers') }}
 
   spectra_interactable_activate_pilot_safe:
     alias: Spectra Interactable - Activate Pilot (Safe)
@@ -1022,6 +1158,15 @@ automation:
     action:
       - service: script.spectra_interactable_run_m3_candidate_test
 
+  - id: spectra_interactable_run_m3_matrix_validation_button
+    alias: "Spectra: Interactable Run M3 Matrix Validation Button"
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: input_button.spectra_interactable_run_m3_matrix_validation
+    action:
+      - service: script.spectra_interactable_run_m3_matrix_validation
+
   - id: spectra_interactable_cutover_safety_rollback
     alias: "Spectra: Interactable Cutover Safety Rollback"
     mode: single
@@ -1308,6 +1453,9 @@ automation:
               - service: persistent_notification.dismiss
                 data:
                   notification_id: spectra_interactable_evidence_packet
+              - service: persistent_notification.dismiss
+                data:
+                  notification_id: spectra_interactable_m3_matrix_packet
 
 template:
   - sensor:
@@ -1339,6 +1487,52 @@ template:
             ready_for_multi_interactable_validation
           {% else %}
             ready_but_profile_disabled
+          {% endif %}
+
+      - name: Spectra Interactable M3 Matrix Blockers
+        icon: mdi:alert-decagram-outline
+        state: >-
+          {% set ns = namespace(items=[]) %}
+          {% if not is_state('binary_sensor.spectra_interactable_m3_candidate_valid', 'on') %}
+            {% set ns.items = ns.items + ['candidate_invalid'] %}
+          {% endif %}
+          {% if not is_state('binary_sensor.spectra_interactable_m3_matrix_source_keys_valid', 'on') %}
+            {% set ns.items = ns.items + ['source_keys_invalid'] %}
+          {% endif %}
+          {% if states('input_select.spectra_interactable_cutover_profile') | lower == 'disabled' %}
+            {% set ns.items = ns.items + ['profile_disabled'] %}
+          {% endif %}
+          {% if ns.items | count == 0 %}
+            none
+          {% else %}
+            {{ ns.items | join('|') }}
+          {% endif %}
+
+      - name: Spectra Interactable M3 Matrix Verdict
+        icon: mdi:check-network-outline
+        state: >-
+          {% set blockers = states('sensor.spectra_interactable_m3_matrix_blockers') %}
+          {% if blockers == 'none' %}
+            go_m3_validation_ready
+          {% else %}
+            no_go
+          {% endif %}
+
+      - name: Spectra Interactable M3 Matrix Last Summary
+        icon: mdi:file-check-outline
+        state: >-
+          {% set summary = states('input_text.spectra_interactable_last_m3_matrix_summary') | trim %}
+          {{ summary if summary not in ['', 'unknown', 'unavailable'] else 'no_runs_yet' }}
+
+      - name: Spectra Interactable M3 Matrix Last Age S
+        unit_of_measurement: "s"
+        icon: mdi:timer-sand
+        state: >-
+          {% set ts = states('input_number.spectra_interactable_last_m3_matrix_ts_ms') | float(0) %}
+          {% if ts <= 0 %}
+            0
+          {% else %}
+            {{ ((as_timestamp(now()) * 1000 - ts) / 1000) | round(1) }}
           {% endif %}
 
               - name: Spectra Interactable Cutover Evidence Blockers
@@ -1518,6 +1712,20 @@ template:
           {% set valid_evt = evt in ['encoder_turn','encoder_press','encoder_long_press','button_1','button_2','button_3','button_4'] %}
           {% set valid_trn = trn in ['ble','wifi_api','unknown',''] %}
           {{ valid_id and valid_evt and valid_trn }}
+
+      - name: Spectra Interactable M3 Matrix Source Keys Valid
+        icon: mdi:format-list-checks
+        state: >-
+          {% set raw = states('input_text.spectra_interactable_source_map_json') | trim %}
+          {% set map_valid = raw not in ['', 'unknown', 'unavailable', 'none', 'None'] and raw.startswith('{') %}
+          {% set source_map = (raw | from_json) if map_valid else dict() %}
+          {% set a = states('input_text.spectra_interactable_m3_matrix_source_key_a') | lower | trim %}
+          {% set b = states('input_text.spectra_interactable_m3_matrix_source_key_b') | lower | trim %}
+          {% set c = states('input_text.spectra_interactable_m3_matrix_source_key_c') | lower | trim %}
+          {% set ab_valid = a not in ['', 'unknown', 'unavailable'] and b not in ['', 'unknown', 'unavailable'] %}
+          {% set ab_present = a in source_map and b in source_map %}
+          {% set c_ok = (c in ['', 'unknown', 'unavailable']) or (c in source_map) %}
+          {{ map_valid and ab_valid and ab_present and c_ok }}
 
       - name: Spectra Interactable Bridge Active
         icon: mdi:bridge

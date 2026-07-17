@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.07.17.15 -->
+<!-- Version: 2026.07.17.16 -->
 <!-- Last updated: 2026-07-17 -->
 
 # Changelog
 
 ## 2026-07-17
+
+- Runtime+Component/Interactables Roadmap Slice M2.7 M3-Prep Bulk Matrix Validation + Results Packet (`packages/spectra_ls_interactables.yaml`, `docs/CHANGELOG.md`): add a one-button bulk matrix validator that exercises mapped source-key lanes plus non-remote candidate injection across configurable iterations, then emits compact pass/fail summary and blockers packet surfaces for accelerated multi-interactable onboarding readiness checks. Runtime track disposition: implemented (additive validation/operability hardening in HA package lane). Component track disposition: compatibility-shimmed (execution sink remains `spectra_ls.execute_control_center_input`; no `custom_components/spectra_ls` semantic mutation). P1/P2/P3 impact: no source-of-truth ownership reassignment; additive M3 onboarding readiness hardening only. README/wiki parity: no material operator workflow change.
 
 - Runtime+Component/Interactables Roadmap Slice M2.6 M3-Prep Multi-Interactable Generalization Harness (`packages/spectra_ls_interactables.yaml`, `docs/CHANGELOG.md`): add a synthetic non-remote interactable test lane (direct canonical event injection) with candidate contract-validity surfaces so onboarding and parity verification can proceed for additional interactable classes without waiting for live BLE source wiring. Runtime track disposition: implemented (additive validation/operability hardening in HA package lane). Component track disposition: compatibility-shimmed (execution sink remains `spectra_ls.execute_control_center_input`; no `custom_components/spectra_ls` semantic mutation). P1/P2/P3 impact: no source-of-truth ownership reassignment; additive multi-interactable readiness hardening only. README/wiki parity: no material operator workflow change.
 

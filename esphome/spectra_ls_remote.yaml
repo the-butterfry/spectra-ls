@@ -1,5 +1,5 @@
 # Description: Standalone ESPHome config for Spectra LS Remote tabletop control box (encoder + transport buttons + battery telemetry).
-# Version: 2026.07.17.26
+# Version: 2026.07.17.27
 # Last updated: 2026-07-17
 # Notes:
 # - Default control lane is BLE advertisement events.
@@ -73,9 +73,9 @@ substitutions:
   battery_empty_v: "3.30"
   battery_full_v: "4.20"
 
-  # Sleep model (disabled by default during bring-up)
-  remote_deep_sleep_enabled: "false"
-  remote_idle_sleep_ms: "30000"
+  # Sleep model
+  remote_deep_sleep_enabled: "true"
+  remote_idle_sleep_ms: "60000"
 
 esphome:
   name: ${device_name}
@@ -146,6 +146,10 @@ deep_sleep:
   esp32_ext1_wakeup:
     pins:
       - number: ${encoder_pin_a}
+        allow_other_uses: true
+      - number: ${encoder_pin_b}
+        allow_other_uses: true
+      - number: ${encoder_press_pin}
         allow_other_uses: true
     mode: ANY_LOW
 
@@ -1616,6 +1620,6 @@ interval:
           then:
             - logger.log:
                 level: INFO
-                format: "Remote entering deep sleep after 30s encoder idle"
+                format: "Remote entering deep sleep after 60s encoder idle"
             - deep_sleep.enter: remote_sleep_ctrl
 

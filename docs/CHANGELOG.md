@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.07.17.1 -->
+<!-- Version: 2026.07.17.2 -->
 <!-- Last updated: 2026-07-17 -->
 
 # Changelog
 
 ## 2026-07-17
+
+- Docs/Roadmap Spectra Remote + Interactables Planning Baseline (`docs/roadmap/SPECTRA-REMOTE-INTERACTABLES-ROADMAP.md`, `docs/CHANGELOG.md`): publish the planning source-of-truth roadmap for BLE-first remote evolution with long-press Wi-Fi maintenance posture, HA ingest/mapping workstream, phased validation gates, and an extensible canonical interactable event contract so future Spectra interactables can onboard without one-off control logic. Runtime track disposition: compatibility-shimmed (planning/docs-only slice; no runtime behavior mutation). Component track disposition: compatibility-shimmed (planning/docs-only slice; no `custom_components/spectra_ls` behavior mutation). P1/P2/P3 impact: no source-of-truth ownership reassignment; roadmap/governance clarity hardening only. README/wiki parity: no material operator workflow change.
 
 - Runtime/Remote Subscription-First Route State + SoC-Only Telemetry Profile (`esphome/spectra_ls_remote.yaml`, `docs/CHANGELOG.md`): reduce battery overhead by removing optimistic 15-second `homeassistant.update_entity` polling of route/host contract entities and relying on Home Assistant state-subscription updates (`homeassistant_states`) as the primary change path. In the same slice, trim non-essential remote telemetry surfaces by removing published comms-posture, battery-voltage, and Wi-Fi RSSI entities so only battery SoC remains exposed, with SoC cadence set to 25 seconds. Runtime track disposition: implemented (active remote runtime battery/traffic optimization in Wi-Fi/API lane). Component track disposition: compatibility-shimmed (no `custom_components/spectra_ls` behavior mutation; equivalent failure mode reviewed as not-applicable to component lane). P1/P2/P3 impact: no source-of-truth ownership reassignment; bounded remote transport/telemetry overhead reduction only. README/wiki parity: no material operator workflow change.
 

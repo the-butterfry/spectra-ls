@@ -1,5 +1,5 @@
 # Description: Standalone ESPHome config for Spectra LS Remote tabletop control box (encoder + transport buttons + battery telemetry).
-# Version: 2026.07.17.22
+# Version: 2026.07.17.23
 # Last updated: 2026-07-17
 # Notes:
 # - Default control lane is BLE advertisement events.
@@ -623,14 +623,14 @@ binary_sensor:
 
 script:
   - id: remote_emit_ble_event
-    mode: restart
+    mode: queued
     parameters:
       ble_event: int
       event_delta: int
     then:
       - lambda: |-
           const bool ok = esphome::spectra_remote_ble::emit_event((uint8_t) ble_event, event_delta);
-          ESP_LOGI(
+          ESP_LOGD(
             "remote",
             "ble_emit event=%d delta=%d ok=%d",
             ble_event,
@@ -800,7 +800,7 @@ script:
                     return cid;
 
   - id: remote_emit_encoder_turn
-    mode: restart
+    mode: queued
     parameters:
       delta: int
     then:

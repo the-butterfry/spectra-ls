@@ -1,5 +1,5 @@
 # Description: Spectra interactables bridge scaffold (BLE/Wi-Fi hybrid ingest to control-center execution).
-# Version: 2026.07.17.17
+# Version: 2026.07.17.18
 # Last updated: 2026-07-17
 # Update version/date whenever you change this file.
 
@@ -172,6 +172,12 @@ input_text:
     max: 255
     mode: text
 
+  spectra_interactable_last_m4_closeout_summary:
+    name: Spectra Interactable Last M4 Closeout Summary
+    initial: ""
+    max: 255
+    mode: text
+
 input_button:
   spectra_interactable_run_test_source_signal:
     name: Spectra Interactable Run Test Source Signal
@@ -224,6 +230,10 @@ input_button:
   spectra_interactable_run_m4_stabilization_cycle:
     name: Spectra Interactable Run M4 Stabilization Cycle
     icon: mdi:stethoscope
+
+  spectra_interactable_run_m4_closeout_packet:
+    name: Spectra Interactable Run M4 Closeout Packet
+    icon: mdi:clipboard-check-multiple
 
 input_select:
   spectra_interactable_cutover_profile:
@@ -350,6 +360,13 @@ input_number:
 
   spectra_interactable_last_m3_closeout_ts_ms:
     name: Spectra Interactable Last M3 Closeout TS ms
+    min: 0
+    max: 4102444800000
+    step: 1
+    initial: 0
+
+  spectra_interactable_last_m4_closeout_ts_ms:
+    name: Spectra Interactable Last M4 Closeout TS ms
     min: 0
     max: 4102444800000
     step: 1
@@ -788,6 +805,66 @@ script:
                     {{ summary }}
                     m3_closeout_verdict={{ states('sensor.spectra_interactable_m3_closeout_verdict') }}
                     profile={{ states('input_select.spectra_interactable_cutover_profile') }}
+
+  spectra_interactable_run_m4_closeout_packet:
+    alias: Spectra Interactable - Run M4 Closeout Packet
+    mode: restart
+    sequence:
+      - variables:
+          blockers: "{{ states('sensor.spectra_interactable_m4_closeout_blockers') | trim }}"
+          verdict: "{{ states('sensor.spectra_interactable_m4_closeout_verdict') | trim }}"
+          profile: "{{ states('input_select.spectra_interactable_cutover_profile') | lower | trim }}"
+          bridge_active: "{{ is_state('binary_sensor.spectra_interactable_bridge_active', 'on') }}"
+          health_score: "{{ states('sensor.spectra_interactable_runtime_health_score') | float(0) }}"
+          m3_age_s: "{{ states('sensor.spectra_interactable_m3_closeout_last_age_s') | float(0) }}"
+          now_ts_ms: "{{ (as_timestamp(now()) * 1000) | int }}"
+          summary: >-
+            m4_closeout verdict={{ verdict }} profile={{ profile }} bridge_active={{ bridge_active }}
+            health={{ health_score | round(1) }} m3_closeout_age_s={{ m3_age_s | round(1) }}
+      - service: input_number.set_value
+        data:
+          entity_id: input_number.spectra_interactable_last_m4_closeout_ts_ms
+          value: "{{ now_ts_ms }}"
+      - service: input_text.set_value
+        data:
+          entity_id: input_text.spectra_interactable_last_m4_closeout_summary
+          value: "{{ summary[:255] }}"
+      - choose:
+          - conditions: "{{ verdict != 'go_m4_closeout_ready' }}"
+            sequence:
+              - service: input_text.set_value
+                data:
+                  entity_id: input_text.spectra_interactable_last_error
+                  value: >-
+                    m4_closeout_blocked blockers={{ blockers }}
+              - choose:
+                  - conditions: "{{ is_state('input_boolean.spectra_interactable_rollback_notifications_enabled', 'on') }}"
+                    sequence:
+                      - service: persistent_notification.create
+                        data:
+                          notification_id: spectra_interactable_m4_closeout_packet
+                          title: "Spectra Interactables M4 Closeout Blocked"
+                          message: >-
+                            {{ summary }}
+                            blockers={{ blockers if blockers not in ['', 'unknown', 'unavailable'] else 'none' }}
+              - stop: "M4 closeout packet blocked by unmet gates."
+      - service: input_text.set_value
+        data:
+          entity_id: input_text.spectra_interactable_last_error
+          value: ""
+      - choose:
+          - conditions: "{{ is_state('input_boolean.spectra_interactable_rollback_notifications_enabled', 'on') }}"
+            sequence:
+              - service: persistent_notification.dismiss
+                data:
+                  notification_id: spectra_interactable_m4_stabilization_packet
+              - service: persistent_notification.create
+                data:
+                  notification_id: spectra_interactable_m4_closeout_packet
+                  title: "Spectra Interactables M4 Closeout Packet"
+                  message: >-
+                    {{ summary }}
+                    blockers={{ blockers }}
 
   spectra_interactable_activate_pilot_safe:
     alias: Spectra Interactable - Activate Pilot (Safe)
@@ -1420,6 +1497,15 @@ automation:
     action:
       - service: script.spectra_interactable_run_m4_stabilization_cycle
 
+  - id: spectra_interactable_run_m4_closeout_packet_button
+    alias: "Spectra: Interactable Run M4 Closeout Packet Button"
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: input_button.spectra_interactable_run_m4_closeout_packet
+    action:
+      - service: script.spectra_interactable_run_m4_closeout_packet
+
   - id: spectra_interactable_m3_closeout_auto_capture
     alias: "Spectra: Interactable M3 Closeout Auto Capture"
     mode: single
@@ -1432,6 +1518,19 @@ automation:
         state: "on"
     action:
       - service: script.spectra_interactable_run_m3_closeout_packet
+
+  - id: spectra_interactable_m4_closeout_auto_capture
+    alias: "Spectra: Interactable M4 Closeout Auto Capture"
+    mode: single
+    trigger:
+      - platform: time_pattern
+        minutes: "/30"
+    condition:
+      - condition: state
+        entity_id: binary_sensor.spectra_interactable_m4_closeout_ready
+        state: "on"
+    action:
+      - service: script.spectra_interactable_run_m4_closeout_packet
 
   - id: spectra_interactable_cutover_safety_rollback
     alias: "Spectra: Interactable Cutover Safety Rollback"
@@ -1933,11 +2032,75 @@ template:
           {% set summary = states('input_text.spectra_interactable_last_m4_stabilization_summary') | trim %}
           {{ summary if summary not in ['', 'unknown', 'unavailable'] else 'no_runs_yet' }}
 
+      - name: Spectra Interactable M4 Closeout Blockers
+        icon: mdi:alert-circle-check
+        state: >-
+          {% set ns = namespace(items=[]) %}
+          {% if not is_state('binary_sensor.spectra_interactable_m3_closeout_ready', 'on') %}
+            {% set ns.items = ns.items + ['m3_closeout_not_ready'] %}
+          {% endif %}
+          {% if not is_state('binary_sensor.spectra_interactable_bridge_active', 'on') %}
+            {% set ns.items = ns.items + ['bridge_not_active'] %}
+          {% endif %}
+          {% if states('input_select.spectra_interactable_cutover_profile') | lower != 'active' %}
+            {% set ns.items = ns.items + ['profile_not_active'] %}
+          {% endif %}
+          {% if not is_state('binary_sensor.spectra_interactable_cutover_ready', 'on') %}
+            {% set ns.items = ns.items + ['cutover_not_ready'] %}
+          {% endif %}
+          {% if states('sensor.spectra_interactable_runtime_health_score') | float(0) < 90 %}
+            {% set ns.items = ns.items + ['health_score_below_90'] %}
+          {% endif %}
+          {% if states('sensor.spectra_interactable_dispatch_success_pct') | float(0) < 96 %}
+            {% set ns.items = ns.items + ['success_below_96'] %}
+          {% endif %}
+          {% if states('sensor.spectra_interactable_dropped_pct') | float(0) > 3 %}
+            {% set ns.items = ns.items + ['dropped_above_3'] %}
+          {% endif %}
+          {% if states('sensor.spectra_interactable_invalid_pct') | float(0) > 1.5 %}
+            {% set ns.items = ns.items + ['invalid_above_1_5'] %}
+          {% endif %}
+          {% set m3_age = states('sensor.spectra_interactable_m3_closeout_last_age_s') | float(0) %}
+          {% if m3_age <= 0 or m3_age > 1800 %}
+            {% set ns.items = ns.items + ['m3_closeout_evidence_stale'] %}
+          {% endif %}
+          {% if ns.items | count == 0 %}
+            none
+          {% else %}
+            {{ ns.items | join('|') }}
+          {% endif %}
+
+      - name: Spectra Interactable M4 Closeout Verdict
+        icon: mdi:certificate
+        state: >-
+          {% if states('sensor.spectra_interactable_m4_closeout_blockers') == 'none' %}
+            go_m4_closeout_ready
+          {% else %}
+            no_go
+          {% endif %}
+
+      - name: Spectra Interactable M4 Closeout Last Summary
+        icon: mdi:clipboard-check-multiple
+        state: >-
+          {% set summary = states('input_text.spectra_interactable_last_m4_closeout_summary') | trim %}
+          {{ summary if summary not in ['', 'unknown', 'unavailable'] else 'no_runs_yet' }}
+
       - name: Spectra Interactable M3 Closeout Last Age S
         unit_of_measurement: "s"
         icon: mdi:timer-sand-complete
         state: >-
           {% set ts = states('input_number.spectra_interactable_last_m3_closeout_ts_ms') | float(0) %}
+          {% if ts <= 0 %}
+            0
+          {% else %}
+            {{ ((as_timestamp(now()) * 1000 - ts) / 1000) | round(1) }}
+          {% endif %}
+
+      - name: Spectra Interactable M4 Closeout Last Age S
+        unit_of_measurement: "s"
+        icon: mdi:timer-check
+        state: >-
+          {% set ts = states('input_number.spectra_interactable_last_m4_closeout_ts_ms') | float(0) %}
           {% if ts <= 0 %}
             0
           {% else %}
@@ -2163,6 +2326,11 @@ template:
         icon: mdi:check-decagram-outline
         state: >-
           {{ states('sensor.spectra_interactable_m3_closeout_verdict') == 'go_m3_closeout_ready' }}
+
+      - name: Spectra Interactable M4 Closeout Ready
+        icon: mdi:check-bold
+        state: >-
+          {{ states('sensor.spectra_interactable_m4_closeout_verdict') == 'go_m4_closeout_ready' }}
 
       - name: Spectra Interactable Bridge Active
         icon: mdi:bridge

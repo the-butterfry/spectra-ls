@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.07.17.19 -->
+<!-- Version: 2026.07.17.20 -->
 <!-- Last updated: 2026-07-17 -->
 
 # Changelog
 
 ## 2026-07-17
+
+- Runtime+Component/Interactables Roadmap Slice M4 Closeout Gate + Evidence Packet Cadence (`packages/spectra_ls_interactables.yaml`, `docs/roadmap/SPECTRA-REMOTE-INTERACTABLES-ROADMAP.md`, `docs/CHANGELOG.md`): add deterministic M4 stabilization closeout governance with explicit blockers/verdict sensors, closeout-ready binary gate, one-button M4 closeout packet capture, and timed auto-capture cadence for sustained-ready evidence. Includes compact closeout age telemetry and notification hygiene for blocked-vs-ready packet posture. Runtime track disposition: implemented (M4 closeout gate + packet automation in HA package lane). Component track disposition: compatibility-shimmed (execution sink remains `spectra_ls.execute_control_center_input`; no `custom_components/spectra_ls` semantic mutation). P1/P2/P3 impact: no source-of-truth ownership reassignment; additive closeout determinism and operability hardening only. README/wiki parity: no material operator workflow change.
 
 - Runtime+Component/Interactables Roadmap Slice M3 Acceleration + M4 Stabilization Starter (`packages/spectra_ls_interactables.yaml`, `docs/roadmap/SPECTRA-REMOTE-INTERACTABLES-ROADMAP.md`, `docs/CHANGELOG.md`): add a sustained M3 closeout cadence with freshness timestamping, auto-capture packet automation, explicit closeout-ready binary gate, and a new M4 starter stabilization cycle (notification hygiene + bounded counter reset + health packet). Includes configurable matrix-freshness threshold and compact runtime health-score telemetry to keep rollout pace high without sacrificing safety visibility. Runtime track disposition: implemented (additive closeout cadence and stabilization controls in HA package lane). Component track disposition: compatibility-shimmed (execution sink remains `spectra_ls.execute_control_center_input`; no `custom_components/spectra_ls` semantic mutation). P1/P2/P3 impact: no source-of-truth ownership reassignment; additive rollout speed + operability hardening only. README/wiki parity: no material operator workflow change.
 

@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.07.17.6 -->
+<!-- Version: 2026.07.17.7 -->
 <!-- Last updated: 2026-07-17 -->
 
 # Changelog
 
 ## 2026-07-17
+
+- Runtime+Component/Interactables Roadmap Slice M1 Test/Replay Harness (`packages/spectra_ls_interactables.yaml`, `docs/CHANGELOG.md`): add operator-invokable test and replay scaffolding for interactables rollout validation, including source-key test emit helpers, replay of last processed event payload, and input-button triggers for deterministic bridge testing without waiting for live BLE pulses. This improves staged migration confidence while keeping bridge/source toggles and component execution semantics unchanged. Runtime track disposition: implemented (additive test/replay tooling in HA package path). Component track disposition: compatibility-shimmed (execution sink remains `spectra_ls.execute_control_center_input`; no `custom_components/spectra_ls` semantic mutation). P1/P2/P3 impact: no source-of-truth ownership reassignment; additive validation tooling and rollout safety hardening only. README/wiki parity: no material operator workflow change.
 
 - Runtime+Component/Interactables Roadmap Slice M1 Observability + Readiness Surfaces (`packages/spectra_ls_interactables.yaml`, `docs/CHANGELOG.md`): add operator-facing bridge readiness and quality telemetry for staged BLE rollout, including normalized last-event fields, aggregate dispatch/drop/invalid percentage sensors derived from bridge counters, and binary readiness states for bridge-active posture and source-intake enablement. This keeps rollout safety measurable without changing underlying component control-center execution semantics. Runtime track disposition: implemented (additive observability/readiness surfaces in HA interactables package). Component track disposition: compatibility-shimmed (execution sink remains `spectra_ls.execute_control_center_input`; no `custom_components/spectra_ls` semantic mutation). P1/P2/P3 impact: no source-of-truth ownership reassignment; additive diagnostics and rollout-governance hardening only. README/wiki parity: no material operator workflow change.
 

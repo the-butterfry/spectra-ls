@@ -1,5 +1,5 @@
 # Description: Spectra interactables bridge scaffold (BLE/Wi-Fi hybrid ingest to control-center execution).
-# Version: 2026.07.17.4
+# Version: 2026.07.17.5
 # Last updated: 2026-07-17
 # Update version/date whenever you change this file.
 
@@ -78,6 +78,27 @@ input_text:
     max: 255
     mode: text
 
+  spectra_interactable_test_source_key:
+    name: Spectra Interactable Test Source Key
+    initial: "ble_button_single"
+    max: 255
+    mode: text
+
+  spectra_interactable_test_transport:
+    name: Spectra Interactable Test Transport
+    initial: "ble"
+    max: 255
+    mode: text
+
+input_button:
+  spectra_interactable_run_test_source_signal:
+    name: Spectra Interactable Run Test Source Signal
+    icon: mdi:flask-outline
+
+  spectra_interactable_replay_last_event:
+    name: Spectra Interactable Replay Last Event
+    icon: mdi:history
+
 counter:
   spectra_interactable_events_total:
     name: Spectra Interactable Events Total
@@ -105,6 +126,51 @@ timer:
     duration: "00:10:00"
 
 script:
+  spectra_interactable_run_test_source_signal:
+    alias: Spectra Interactable - Run Test Source Signal
+    mode: restart
+    sequence:
+      - variables:
+          source_key: "{{ states('input_text.spectra_interactable_test_source_key') | trim }}"
+          transport: "{{ states('input_text.spectra_interactable_test_transport') | trim }}"
+          correlation_id: >-
+            test-src-{{ now().timestamp() | int }}
+      - service: script.spectra_interactable_process_source_signal
+        data:
+          source_key: "{{ source_key if source_key not in ['', 'unknown', 'unavailable'] else 'ble_button_single' }}"
+          transport: "{{ transport if transport not in ['', 'unknown', 'unavailable'] else 'ble' }}"
+          correlation_id: "{{ correlation_id }}"
+
+  spectra_interactable_replay_last_event:
+    alias: Spectra Interactable - Replay Last Event
+    mode: restart
+    sequence:
+      - variables:
+          interactable_id: "{{ states('input_text.spectra_interactable_last_interactable_id') | trim }}"
+          input_event: "{{ states('input_text.spectra_interactable_last_input_event') | trim }}"
+          transport: "{{ states('input_text.spectra_interactable_last_transport') | trim }}"
+          correlation_id: >-
+            replay-{{ now().timestamp() | int }}
+      - choose:
+          - conditions: >-
+              {{ interactable_id in ['', 'unknown', 'unavailable'] or input_event in ['', 'unknown', 'unavailable'] }}
+            sequence:
+              - service: counter.increment
+                target:
+                  entity_id: counter.spectra_interactable_events_invalid
+              - service: input_text.set_value
+                data:
+                  entity_id: input_text.spectra_interactable_last_error
+                  value: "replay_missing_last_event"
+              - stop: "No valid last event available for replay."
+      - service: script.spectra_interactable_process_event
+        data:
+          interactable_id: "{{ interactable_id }}"
+          input_event: "{{ input_event }}"
+          transport: "{{ transport if transport not in ['', 'unknown', 'unavailable'] else 'unknown' }}"
+          correlation_id: "{{ correlation_id }}"
+          dry_run: true
+
   spectra_interactable_process_source_signal:
     alias: Spectra Interactable - Process Source Signal
     mode: queued
@@ -420,6 +486,24 @@ automation:
           transport: "ble"
           correlation_id: >-
             ble-arriving-{{ trigger.to_state.last_changed.timestamp() | int }}
+
+  - id: spectra_interactable_test_source_signal_button
+    alias: "Spectra: Interactable Test Source Signal Button"
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: input_button.spectra_interactable_run_test_source_signal
+    action:
+      - service: script.spectra_interactable_run_test_source_signal
+
+  - id: spectra_interactable_replay_last_event_button
+    alias: "Spectra: Interactable Replay Last Event Button"
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: input_button.spectra_interactable_replay_last_event
+    action:
+      - service: script.spectra_interactable_replay_last_event
 
 template:
   - sensor:

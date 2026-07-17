@@ -1,9 +1,9 @@
 # Description: Standalone ESPHome config for Spectra LS Remote tabletop control box (encoder + transport buttons + battery telemetry).
-# Version: 2026.07.17.19
+# Version: 2026.07.17.20
 # Last updated: 2026-07-17
 # Notes:
-# - Primary bring-up path is Wi-Fi/API for fast iteration.
-# - BLE bridge remains the preferred battery-optimized control path direction and will be layered after MVP validation.
+# - Default control lane is BLE advertisement events.
+# - Long-press enables a bounded Wi-Fi maintenance/control session.
 
 substitutions:
   device_name: spectra-ls-remote
@@ -62,7 +62,7 @@ substitutions:
   remote_direct_transport_enabled: "false"
   remote_control_center_offline_direct_fallback: "true"
   remote_control_center_settle_ms: "250"
-  remote_wifi_requires_long_press: "false"
+  remote_wifi_requires_long_press: "true"
   remote_emit_disconnected_log_interval_ms: "1200"
   remote_wifi_reconnect_interval_ms: "2500"
   remote_wifi_maintenance_session_window_ms: "900000"
@@ -82,6 +82,7 @@ esphome:
   friendly_name: ${friendly_name}
   includes:
     - arylic_tcp_remote.h
+    - spectra_remote_ble_event.h
   on_boot:
     priority: 250
     then:
@@ -295,6 +296,18 @@ text_sensor:
     icon: mdi:lan-connect
     update_interval: 1s
     lambda: |-
+      if (${remote_wifi_requires_long_press}) {
+        if (id(remote_ha_api).is_connected()) {
+          return {"wifi_api_live"};
+        }
+        if (id(remote_wifi_maintenance_enable_pending)) {
+          return {"wifi_connecting"};
+        }
+        if (id(remote_wifi_maintenance_session_active)) {
+          return {"wifi_session_reconnect"};
+        }
+        return {"ble_advertising"};
+      }
       if (id(remote_ha_api).is_connected()) {
         return {"wifi_api_live"};
       }
@@ -604,12 +617,25 @@ binary_sensor:
       - delayed_on: 20ms
       - delayed_off: 20ms
     on_press:
-      - script.execute:
-          id: remote_emit_control_center_event
-          event_name: "button_1"
-      - script.execute: remote_next_track_guarded
+      - script.execute: remote_emit_button_1
 
 script:
+  - id: remote_emit_ble_event
+    mode: restart
+    parameters:
+      ble_event: int
+      event_delta: int
+    then:
+      - lambda: |-
+          const bool ok = esphome::spectra_remote_ble::emit_event((uint8_t) ble_event, event_delta);
+          ESP_LOGI(
+            "remote",
+            "ble_emit event=%d delta=%d ok=%d",
+            ble_event,
+            event_delta,
+            ok ? 1 : 0
+          );
+
   - id: remote_note_input
     mode: restart
     then:
@@ -777,13 +803,36 @@ script:
       delta: int
     then:
       - script.execute: remote_note_input
-      - script.execute:
-          id: remote_emit_control_center_encoder_turn
-          turn_delta: !lambda |-
-            return delta;
       - if:
           condition:
             lambda: |-
+              if (!${remote_wifi_requires_long_press}) {
+                return true;
+              }
+              return id(remote_wifi_maintenance_session_active) ||
+                     id(remote_wifi_maintenance_enable_pending) ||
+                     id(remote_ha_api).is_connected();
+          then:
+            - script.execute:
+                id: remote_emit_control_center_encoder_turn
+                turn_delta: !lambda |-
+                  return delta;
+          else:
+            - script.execute:
+                id: remote_emit_ble_event
+                ble_event: 1
+                event_delta: !lambda |-
+                  return delta;
+      - if:
+          condition:
+            lambda: |-
+              const bool wifi_lane_active = (!${remote_wifi_requires_long_press}) ||
+                                            id(remote_wifi_maintenance_session_active) ||
+                                            id(remote_wifi_maintenance_enable_pending) ||
+                                            id(remote_ha_api).is_connected();
+              if (!wifi_lane_active) {
+                return false;
+              }
               const bool has_cached_route = !id(remote_route_hosts_last_valid).empty() || !id(remote_route_host_last_valid).empty();
               return ${remote_direct_transport_enabled} ||
                      (${remote_control_center_offline_direct_fallback} && !id(remote_ha_api).is_connected() && has_cached_route);
@@ -808,17 +857,63 @@ script:
     then:
       - lambda: |-
           id(remote_last_encoder_interaction_ms) = millis();
-      - script.execute:
-          id: remote_emit_control_center_event
-          event_name: "encoder_press"
       - if:
           condition:
             lambda: |-
+              if (!${remote_wifi_requires_long_press}) {
+                return true;
+              }
+              return id(remote_wifi_maintenance_session_active) ||
+                     id(remote_wifi_maintenance_enable_pending) ||
+                     id(remote_ha_api).is_connected();
+          then:
+            - script.execute:
+                id: remote_emit_control_center_event
+                event_name: "encoder_press"
+          else:
+            - script.execute:
+                id: remote_emit_ble_event
+                ble_event: 2
+                event_delta: 0
+      - if:
+          condition:
+            lambda: |-
+              const bool wifi_lane_active = (!${remote_wifi_requires_long_press}) ||
+                                            id(remote_wifi_maintenance_session_active) ||
+                                            id(remote_wifi_maintenance_enable_pending) ||
+                                            id(remote_ha_api).is_connected();
+              if (!wifi_lane_active) {
+                return false;
+              }
               const bool has_cached_route = !id(remote_route_hosts_last_valid).empty() || !id(remote_route_host_last_valid).empty();
               return ${remote_direct_transport_enabled} ||
                      (${remote_control_center_offline_direct_fallback} && !id(remote_ha_api).is_connected() && has_cached_route);
           then:
             - script.execute: remote_mute_guarded
+
+  - id: remote_emit_button_1
+    mode: restart
+    then:
+      - script.execute: remote_note_input
+      - if:
+          condition:
+            lambda: |-
+              if (!${remote_wifi_requires_long_press}) {
+                return true;
+              }
+              return id(remote_wifi_maintenance_session_active) ||
+                     id(remote_wifi_maintenance_enable_pending) ||
+                     id(remote_ha_api).is_connected();
+          then:
+            - script.execute:
+                id: remote_emit_control_center_event
+                event_name: "button_1"
+            - script.execute: remote_next_track_guarded
+          else:
+            - script.execute:
+                id: remote_emit_ble_event
+                ble_event: 4
+                event_delta: 0
 
   - id: remote_emit_encoder_long_press
     mode: restart
@@ -828,12 +923,29 @@ script:
       - if:
           condition:
             lambda: |-
-              return ${remote_wifi_requires_long_press} && !id(remote_ha_api).is_connected();
+              return ${remote_wifi_requires_long_press};
           then:
-            - lambda: |-
-                id(remote_wifi_maintenance_enable_pending) = true;
-                ESP_LOGI("remote", "maintenance long-press: enabling Wi-Fi for maintenance session");
-            - wifi.enable:
+            - if:
+                condition:
+                  lambda: |-
+                    return id(remote_wifi_maintenance_session_active) || id(remote_wifi_maintenance_enable_pending);
+                then:
+                  - lambda: |-
+                      id(remote_wifi_maintenance_session_active) = false;
+                      id(remote_wifi_maintenance_enable_pending) = false;
+                      id(remote_wifi_maintenance_session_started_ms) = 0;
+                      id(remote_pending_encoder_delta) = 0;
+                      ESP_LOGI("remote", "maintenance long-press: switching back to BLE lane (Wi-Fi disabled)");
+                  - wifi.disable:
+                  - script.execute:
+                      id: remote_emit_ble_event
+                      ble_event: 3
+                      event_delta: 0
+                else:
+                  - lambda: |-
+                      id(remote_wifi_maintenance_enable_pending) = true;
+                      ESP_LOGI("remote", "maintenance long-press: enabling Wi-Fi lane");
+                  - wifi.enable:
           else:
             - script.execute:
                 id: remote_emit_control_center_event

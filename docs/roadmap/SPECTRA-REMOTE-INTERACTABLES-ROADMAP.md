@@ -1,5 +1,5 @@
 <!-- Description: Roadmap for Spectra remote BLE-first evolution with extensible interactables architecture. -->
-<!-- Version: 2026.07.17.4 -->
+<!-- Version: 2026.07.17.5 -->
 <!-- Last updated: 2026-07-17 -->
 
 # Spectra Remote + Interactables Roadmap
@@ -190,7 +190,7 @@ Future interactables should integrate by implementing the same canonical event c
 - `M1`: implemented (shadow validation and parity harness in place)
 - `M2`: implemented (cutover profiles + readiness/rollback safety + activation gating)
 - `M3`: active (closeout certification + sustained packet cadence executing)
-- `M4`: active (stabilization starter + closeout-gate evidence lane executing)
+- `M4`: active (stabilization starter + closeout/retirement-readiness evidence lanes executing)
 
 Latest run update (2026-07-17, M3 closeout packet + reusable-contract evidence gate):
 
@@ -212,6 +212,13 @@ Latest run update (2026-07-17, M4 closeout gate + packet cadence):
 - Runtime track disposition: implemented (M4 closeout readiness contract and packet automation added in package lane).
 - Component track disposition: compatibility-shimmed (execution sink remains `spectra_ls.execute_control_center_input`; no component semantic mutation).
 - M4 impact check: no source-of-truth ownership reassignment; stabilization-closeout evidence determinism and operator proof hardening only.
+
+Latest run update (2026-07-17, M4 retirement-readiness gate + packet cadence):
+
+- Added deterministic M4 retirement-readiness governance surfaces: retirement blockers/verdict, retirement-ready binary gate, one-click retirement packet capture, and periodic retirement auto-capture cadence for sustained-ready evidence.
+- Runtime track disposition: implemented (M4 retirement-readiness contract and packet automation added in package lane).
+- Component track disposition: compatibility-shimmed (execution sink remains `spectra_ls.execute_control_center_input`; no component semantic mutation).
+- M4 impact check: no source-of-truth ownership reassignment; stabilization-retirement evidence determinism and operator readiness proof hardening only.
 
 ## Validation Matrix
 

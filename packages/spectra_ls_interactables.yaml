@@ -1,5 +1,5 @@
 # Description: Spectra interactables bridge scaffold (BLE/Wi-Fi hybrid ingest to control-center execution).
-# Version: 2026.07.17.2
+# Version: 2026.07.17.3
 # Last updated: 2026-07-17
 # Update version/date whenever you change this file.
 
@@ -29,6 +29,11 @@ input_boolean:
     icon: mdi:gesture-tap-button
     initial: false
 
+  spectra_interactable_ble_arriving_source_enabled:
+    name: Spectra Interactable BLE Arriving Source Enabled
+    icon: mdi:walk
+    initial: false
+
 input_text:
   spectra_interactable_last_event_json:
     name: Spectra Interactable Last Event JSON
@@ -45,6 +50,13 @@ input_text:
   spectra_interactable_last_correlation_id:
     name: Spectra Interactable Last Correlation ID
     initial: ""
+    max: 255
+    mode: text
+
+  spectra_interactable_source_map_json:
+    name: Spectra Interactable Source Map JSON
+    initial: >-
+      {"ble_button_single":{"interactable_id":"spectra_remote_ble_button_single_source","input_event":"button_1","target_hint":"","delta":null,"dry_run":false},"ble_arriving":{"interactable_id":"spectra_remote_ble_arriving_source","input_event":"button_2","target_hint":"","delta":null,"dry_run":false}}
     max: 255
     mode: text
 
@@ -75,6 +87,82 @@ timer:
     duration: "00:10:00"
 
 script:
+  spectra_interactable_process_source_signal:
+    alias: Spectra Interactable - Process Source Signal
+    mode: queued
+    max: 50
+    fields:
+      source_key:
+        description: Source mapping key from source-map JSON
+        example: "ble_button_single"
+      transport:
+        description: Event transport lane (ble/wifi_api)
+        example: "ble"
+      correlation_id:
+        description: Optional event correlation ID
+        example: "evt-1721301123"
+    sequence:
+      - variables:
+          source_key_norm: "{{ source_key | default('', true) | string | lower | trim }}"
+          transport_norm: "{{ transport | default('unknown', true) | string | lower | trim }}"
+          correlation_id_norm: "{{ correlation_id | default('', true) | string | trim }}"
+          map_raw: "{{ states('input_text.spectra_interactable_source_map_json') | trim }}"
+          map_valid: >-
+            {{ map_raw not in ['', 'unknown', 'unavailable', 'none', 'None'] and (map_raw.startswith('{')) }}
+          source_map: >-
+            {% if map_valid %}
+              {{ map_raw | from_json }}
+            {% else %}
+              {{ dict() }}
+            {% endif %}
+          source_spec: >-
+            {% if source_key_norm in source_map %}
+              {{ source_map[source_key_norm] }}
+            {% else %}
+              {{ dict() }}
+            {% endif %}
+          has_source_spec: >-
+            {{ source_spec is mapping and (source_spec | count) > 0 }}
+          mapped_interactable_id: "{{ source_spec.interactable_id if has_source_spec else '' }}"
+          mapped_input_event: "{{ source_spec.input_event if has_source_spec else '' }}"
+          mapped_target_hint: "{{ source_spec.target_hint if has_source_spec else '' }}"
+          mapped_delta: "{{ source_spec.delta if has_source_spec and source_spec.delta is defined else none }}"
+          mapped_dry_run: "{{ source_spec.dry_run if has_source_spec and source_spec.dry_run is defined else false }}"
+
+      - choose:
+          - conditions: "{{ not has_source_spec or mapped_input_event == '' }}"
+            sequence:
+              - service: counter.increment
+                target:
+                  entity_id: counter.spectra_interactable_events_invalid
+              - service: input_text.set_value
+                data:
+                  entity_id: input_text.spectra_interactable_last_error
+                  value: "source_mapping_missing source={{ source_key_norm }}"
+              - stop: "No interactable source mapping found."
+
+      - choose:
+          - conditions: "{{ mapped_delta is not none }}"
+            sequence:
+              - service: script.spectra_interactable_process_event
+                data:
+                  interactable_id: "{{ mapped_interactable_id }}"
+                  input_event: "{{ mapped_input_event }}"
+                  target_hint: "{{ mapped_target_hint }}"
+                  delta: "{{ mapped_delta }}"
+                  transport: "{{ transport_norm }}"
+                  correlation_id: "{{ correlation_id_norm }}"
+                  dry_run: "{{ mapped_dry_run }}"
+        default:
+          - service: script.spectra_interactable_process_event
+            data:
+              interactable_id: "{{ mapped_interactable_id }}"
+              input_event: "{{ mapped_input_event }}"
+              target_hint: "{{ mapped_target_hint }}"
+              transport: "{{ transport_norm }}"
+              correlation_id: "{{ correlation_id_norm }}"
+              dry_run: "{{ mapped_dry_run }}"
+
   spectra_interactable_process_event:
     alias: Spectra Interactable - Process Event
     mode: queued
@@ -274,11 +362,28 @@ automation:
         entity_id: input_boolean.spectra_interactable_ble_button_single_source_enabled
         state: "on"
     action:
-      - service: script.spectra_interactable_process_event
+      - service: script.spectra_interactable_process_source_signal
         data:
-          interactable_id: "spectra_remote_ble_button_single_source"
-          input_event: "button_1"
+          source_key: "ble_button_single"
           transport: "ble"
           correlation_id: >-
             ble-btn-single-{{ trigger.to_state.last_changed.timestamp() | int }}
-          dry_run: false
+
+  - id: spectra_interactable_ble_arriving_source_bridge
+    alias: "Spectra: BLE Arriving Source to Interactable Bridge"
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.ble_presence_door_cory_ble_arriving
+        to: "on"
+    condition:
+      - condition: state
+        entity_id: input_boolean.spectra_interactable_ble_arriving_source_enabled
+        state: "on"
+    action:
+      - service: script.spectra_interactable_process_source_signal
+        data:
+          source_key: "ble_arriving"
+          transport: "ble"
+          correlation_id: >-
+            ble-arriving-{{ trigger.to_state.last_changed.timestamp() | int }}

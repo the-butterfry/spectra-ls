@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.07.17.4 -->
+<!-- Version: 2026.07.17.5 -->
 <!-- Last updated: 2026-07-17 -->
 
 # Changelog
 
 ## 2026-07-17
+
+- Runtime+Component/Interactables Roadmap Slice M1 Source-Mapping Generalization + Second BLE Hook (`packages/spectra_ls_interactables.yaml`, `docs/CHANGELOG.md`): generalize BLE source onboarding by adding a JSON-driven source-map helper and a reusable source-signal processing script that resolves source keys to canonical interactable payloads before dispatching to `spectra_ls.execute_control_center_input`. In the same slice, add a second opt-in live BLE source hook (`binary_sensor.ble_presence_door_cory_ble_arriving`) alongside the existing button-single source so future interactables can be added through mapping entries rather than one-off action payload hardcoding. Runtime track disposition: implemented (generic source-map bridge lane + second guarded BLE source). Component track disposition: compatibility-shimmed (component execution contract reused unchanged; no `custom_components/spectra_ls` service semantic mutation). P1/P2/P3 impact: no source-of-truth ownership reassignment; additive source onboarding scalability and staged BLE ingest expansion only. README/wiki parity: no material operator workflow change.
 
 - Runtime+Component/Interactables Roadmap Slice M1 Real BLE Source Hook (opt-in) (`packages/spectra_ls_interactables.yaml`, `docs/CHANGELOG.md`): wire the first live BLE-origin source into the interactables bridge by adding an opt-in automation trigger on existing BLE button-single sensor pulses (`binary_sensor.ble_presence_door_cory_ble_button_single`) that dispatches canonical bridge events to `spectra_ls.execute_control_center_input` via the processing script. Hook is disabled by default through a dedicated source-enable helper to preserve current behavior until explicitly enabled for staged rollout. Runtime track disposition: implemented (first real BLE source ingest path added behind guard). Component track disposition: compatibility-shimmed (component execution service contract reused; no semantic mutation of `custom_components/spectra_ls` control-center execution behavior). P1/P2/P3 impact: no source-of-truth ownership reassignment; additive real-source wiring for staged BLE bridge validation only. README/wiki parity: no material operator workflow change.
 

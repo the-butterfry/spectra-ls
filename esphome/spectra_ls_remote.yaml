@@ -1,5 +1,5 @@
 # Description: Standalone ESPHome config for Spectra LS Remote tabletop control box (encoder + transport buttons + battery telemetry).
-# Version: 2026.07.17.30
+# Version: 2026.07.17.31
 # Last updated: 2026-07-17
 # Notes:
 # - BLE transport removed; control lane is direct Wi-Fi/TCP.
@@ -539,7 +539,6 @@ sensor:
       - lambda: |-
           const float sensed_pct = x;
           if (sensed_pct >= 0.0f && sensed_pct <= 100.0f) {
-            id(remote_volume_level_shadow) = sensed_pct / 100.0f;
             id(remote_last_volume_sensor_ms) = millis();
           }
 
@@ -843,7 +842,7 @@ script:
           return;
 
   - id: remote_volume_up_guarded
-    mode: restart
+    mode: queued
     parameters:
       steps: int
     then:
@@ -905,18 +904,21 @@ script:
             const float sensor_pct = id(remote_active_volume_pct).state;
             const uint32_t sensor_age_ms = now - id(remote_last_volume_sensor_ms);
             const uint32_t interaction_age_ms = now - id(remote_last_encoder_interaction_ms);
+            const uint32_t local_step_age_ms = now - id(remote_last_volume_step_ms);
             if (sensor_pct >= 0.0f && sensor_pct <= 100.0f && sensor_age_ms <= 1000) {
               // During active knob motion, only allow small drift correction from HA sensor
               // to avoid abrupt rebasing/jumps from lagged state echoes.
-              if (interaction_age_ms <= 1500) {
+              if (interaction_age_ms <= 2000 || local_step_age_ms <= 4000) {
                 if (fabsf(sensor_pct - current_pct) <= 8.0f) {
                   current_pct = sensor_pct;
                   id(remote_volume_level_shadow) = sensor_pct / 100.0f;
                 }
               } else {
-                // When idle, re-anchor shadow to current sensed value.
-                current_pct = sensor_pct;
-                id(remote_volume_level_shadow) = sensor_pct / 100.0f;
+                // In idle windows, permit bounded re-anchor only.
+                if (fabsf(sensor_pct - current_pct) <= 15.0f) {
+                  current_pct = sensor_pct;
+                  id(remote_volume_level_shadow) = sensor_pct / 100.0f;
+                }
               }
             }
           }
@@ -1007,7 +1009,7 @@ script:
           ESP_LOGW("remote", "volume_up direct send hosts='%s' port=%d target='%s' vol=%d ok=%d", route_hosts.c_str(), route_port, id(remote_resolved_target).c_str(), target_volume, ok ? 1 : 0);
 
   - id: remote_volume_down_guarded
-    mode: restart
+    mode: queued
     parameters:
       steps: int
     then:
@@ -1069,15 +1071,18 @@ script:
             const float sensor_pct = id(remote_active_volume_pct).state;
             const uint32_t sensor_age_ms = now - id(remote_last_volume_sensor_ms);
             const uint32_t interaction_age_ms = now - id(remote_last_encoder_interaction_ms);
+            const uint32_t local_step_age_ms = now - id(remote_last_volume_step_ms);
             if (sensor_pct >= 0.0f && sensor_pct <= 100.0f && sensor_age_ms <= 1000) {
-              if (interaction_age_ms <= 1500) {
+              if (interaction_age_ms <= 2000 || local_step_age_ms <= 4000) {
                 if (fabsf(sensor_pct - current_pct) <= 8.0f) {
                   current_pct = sensor_pct;
                   id(remote_volume_level_shadow) = sensor_pct / 100.0f;
                 }
               } else {
-                current_pct = sensor_pct;
-                id(remote_volume_level_shadow) = sensor_pct / 100.0f;
+                if (fabsf(sensor_pct - current_pct) <= 15.0f) {
+                  current_pct = sensor_pct;
+                  id(remote_volume_level_shadow) = sensor_pct / 100.0f;
+                }
               }
             }
           }

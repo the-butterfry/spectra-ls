@@ -1,5 +1,5 @@
 # Description: Spectra interactables bridge scaffold (BLE/Wi-Fi hybrid ingest to control-center execution).
-# Version: 2026.07.17.6
+# Version: 2026.07.17.7
 # Last updated: 2026-07-17
 # Update version/date whenever you change this file.
 
@@ -103,6 +103,24 @@ input_button:
     name: Spectra Interactable Run Validation Bundle
     icon: mdi:playlist-check
 
+  spectra_interactable_apply_cutover_profile:
+    name: Spectra Interactable Apply Cutover Profile
+    icon: mdi:tune-variant
+
+  spectra_interactable_run_stress_test:
+    name: Spectra Interactable Run Stress Test
+    icon: mdi:rocket-launch
+
+input_select:
+  spectra_interactable_cutover_profile:
+    name: Spectra Interactable Cutover Profile
+    options:
+      - disabled
+      - shadow
+      - pilot
+      - active
+    initial: disabled
+
 input_number:
   spectra_interactable_last_ingest_ts_ms:
     name: Spectra Interactable Last Ingest TS ms
@@ -146,6 +164,20 @@ input_number:
     step: 0.1
     initial: 2
 
+  spectra_interactable_stress_iterations:
+    name: Spectra Interactable Stress Iterations
+    min: 1
+    max: 200
+    step: 1
+    initial: 20
+
+  spectra_interactable_stress_delay_ms:
+    name: Spectra Interactable Stress Delay ms
+    min: 50
+    max: 5000
+    step: 10
+    initial: 250
+
 counter:
   spectra_interactable_events_total:
     name: Spectra Interactable Events Total
@@ -173,6 +205,81 @@ timer:
     duration: "00:10:00"
 
 script:
+  spectra_interactable_apply_cutover_profile:
+    alias: Spectra Interactable - Apply Cutover Profile
+    mode: restart
+    sequence:
+      - variables:
+          profile: "{{ states('input_select.spectra_interactable_cutover_profile') | lower | trim }}"
+      - choose:
+          - conditions: "{{ profile == 'disabled' }}"
+            sequence:
+              - service: input_boolean.turn_off
+                target:
+                  entity_id:
+                    - input_boolean.spectra_interactable_bridge_enabled
+                    - input_boolean.spectra_interactable_ble_button_single_source_enabled
+                    - input_boolean.spectra_interactable_ble_arriving_source_enabled
+              - service: input_boolean.turn_on
+                target:
+                  entity_id: input_boolean.spectra_interactable_shadow_mode
+
+          - conditions: "{{ profile == 'shadow' }}"
+            sequence:
+              - service: input_boolean.turn_on
+                target:
+                  entity_id:
+                    - input_boolean.spectra_interactable_bridge_enabled
+                    - input_boolean.spectra_interactable_shadow_mode
+                    - input_boolean.spectra_interactable_ble_button_single_source_enabled
+                    - input_boolean.spectra_interactable_ble_arriving_source_enabled
+
+          - conditions: "{{ profile == 'pilot' }}"
+            sequence:
+              - service: input_boolean.turn_on
+                target:
+                  entity_id:
+                    - input_boolean.spectra_interactable_bridge_enabled
+                    - input_boolean.spectra_interactable_shadow_mode
+                    - input_boolean.spectra_interactable_ble_button_single_source_enabled
+              - service: input_boolean.turn_off
+                target:
+                  entity_id: input_boolean.spectra_interactable_ble_arriving_source_enabled
+
+          - conditions: "{{ profile == 'active' }}"
+            sequence:
+              - service: input_boolean.turn_on
+                target:
+                  entity_id:
+                    - input_boolean.spectra_interactable_bridge_enabled
+                    - input_boolean.spectra_interactable_ble_button_single_source_enabled
+                    - input_boolean.spectra_interactable_ble_arriving_source_enabled
+              - service: input_boolean.turn_off
+                target:
+                  entity_id: input_boolean.spectra_interactable_shadow_mode
+
+  spectra_interactable_run_stress_test:
+    alias: Spectra Interactable - Run Stress Test
+    mode: restart
+    sequence:
+      - variables:
+          iterations: "{{ states('input_number.spectra_interactable_stress_iterations') | int(20) }}"
+          delay_ms: "{{ states('input_number.spectra_interactable_stress_delay_ms') | int(250) }}"
+      - repeat:
+          count: "{{ iterations }}"
+          sequence:
+            - variables:
+                source_key: >-
+                  {{ 'ble_button_single' if (repeat.index % 2 == 1) else 'ble_arriving' }}
+            - service: script.spectra_interactable_process_source_signal
+              data:
+                source_key: "{{ source_key }}"
+                transport: "ble"
+                correlation_id: >-
+                  stress-{{ repeat.index }}-{{ now().timestamp() | int }}
+            - delay:
+                milliseconds: "{{ delay_ms }}"
+
   spectra_interactable_run_test_source_signal:
     alias: Spectra Interactable - Run Test Source Signal
     mode: restart
@@ -601,6 +708,46 @@ automation:
         entity_id: input_button.spectra_interactable_run_validation_bundle
     action:
       - service: script.spectra_interactable_run_validation_bundle
+
+  - id: spectra_interactable_apply_cutover_profile_button
+    alias: "Spectra: Interactable Apply Cutover Profile Button"
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: input_button.spectra_interactable_apply_cutover_profile
+    action:
+      - service: script.spectra_interactable_apply_cutover_profile
+
+  - id: spectra_interactable_run_stress_test_button
+    alias: "Spectra: Interactable Run Stress Test Button"
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: input_button.spectra_interactable_run_stress_test
+    action:
+      - service: script.spectra_interactable_run_stress_test
+
+  - id: spectra_interactable_cutover_safety_rollback
+    alias: "Spectra: Interactable Cutover Safety Rollback"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.spectra_interactable_cutover_ready
+        to: "off"
+        for:
+          minutes: 2
+    condition:
+      - condition: state
+        entity_id: binary_sensor.spectra_interactable_bridge_active
+        state: "on"
+    action:
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.spectra_interactable_shadow_mode
+      - service: input_text.set_value
+        data:
+          entity_id: input_text.spectra_interactable_last_error
+          value: "cutover_safety_rollback_triggered"
 
 template:
   - sensor:

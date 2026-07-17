@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.07.17.8 -->
+<!-- Version: 2026.07.17.9 -->
 <!-- Last updated: 2026-07-17 -->
 
 # Changelog
 
 ## 2026-07-17
+
+- Runtime+Component/Interactables Roadmap Slice M2 Cutover Profiles + Safety Rollback + Stress Harness (`packages/spectra_ls_interactables.yaml`, `docs/CHANGELOG.md`): add operator profile controls for staged bridge cutover posture (`disabled`, `shadow`, `pilot`, `active`), automatic rollback safety guard that reverts to shadow mode when cutover readiness degrades for a sustained window, and a configurable stress-test runner for repeated mapped source-signal execution under load. Runtime track disposition: implemented (additive control-plane safety and rollout tooling in HA package lane). Component track disposition: compatibility-shimmed (execution sink remains `spectra_ls.execute_control_center_input`; no `custom_components/spectra_ls` semantic mutation). P1/P2/P3 impact: no source-of-truth ownership reassignment; additive rollout governance/safety and validation hardening only. README/wiki parity: no material operator workflow change.
 
 - Runtime+Component/Interactables Roadmap Slice M1 Latency Metrics + Cutover Readiness Gate (`packages/spectra_ls_interactables.yaml`, `docs/CHANGELOG.md`): add bridge timing telemetry and go/no-go readiness evaluation for staged BLE cutover, including ingest/dispatch timestamp tracking, dispatch-lag metric surfaces, and a binary cutover-ready posture derived from bridge mode, source-intake state, and dispatch/drop/invalid quality thresholds. Runtime track disposition: implemented (additive rollout timing/quality instrumentation). Component track disposition: compatibility-shimmed (component execution sink unchanged; no `custom_components/spectra_ls` service semantic mutation). P1/P2/P3 impact: no source-of-truth ownership reassignment; additive cutover-governance hardening only. README/wiki parity: no material operator workflow change.
 

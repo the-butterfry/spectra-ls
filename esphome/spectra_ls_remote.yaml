@@ -1,5 +1,5 @@
 # Description: Standalone ESPHome config for Spectra LS Remote tabletop control box (encoder + transport buttons + battery telemetry).
-# Version: 2026.07.17.29
+# Version: 2026.07.17.30
 # Last updated: 2026-07-17
 # Notes:
 # - BLE transport removed; control lane is direct Wi-Fi/TCP.
@@ -46,12 +46,12 @@ substitutions:
   # Interaction tuning
   button_cooldown_ms: "220"
   mute_cooldown_ms: "250"
-  volume_step_cooldown_ms: "70"
+  volume_step_cooldown_ms: "35"
   remote_volume_step_pct: "5"
   remote_volume_step_slow_pct: "2"
-  remote_volume_step_fast_pct: "6"
+  remote_volume_step_fast_pct: "2"
   remote_volume_step_fast_window_ms: "320"
-  remote_encoder_emit_gate_ms: "80"
+  remote_encoder_emit_gate_ms: "30"
   remote_encoder_same_dir_lock_ms: "35"
   remote_encoder_max_detents_per_emit: "4"
   remote_encoder_direction_multiplier: "-1"
@@ -904,9 +904,20 @@ script:
           if (id(remote_active_volume_pct).has_state()) {
             const float sensor_pct = id(remote_active_volume_pct).state;
             const uint32_t sensor_age_ms = now - id(remote_last_volume_sensor_ms);
-            if (sensor_pct >= 0.0f && sensor_pct <= 100.0f && sensor_age_ms <= 1200 && fabsf(sensor_pct - current_pct) >= 20.0f) {
-              current_pct = sensor_pct;
-              id(remote_volume_level_shadow) = sensor_pct / 100.0f;
+            const uint32_t interaction_age_ms = now - id(remote_last_encoder_interaction_ms);
+            if (sensor_pct >= 0.0f && sensor_pct <= 100.0f && sensor_age_ms <= 1000) {
+              // During active knob motion, only allow small drift correction from HA sensor
+              // to avoid abrupt rebasing/jumps from lagged state echoes.
+              if (interaction_age_ms <= 1500) {
+                if (fabsf(sensor_pct - current_pct) <= 8.0f) {
+                  current_pct = sensor_pct;
+                  id(remote_volume_level_shadow) = sensor_pct / 100.0f;
+                }
+              } else {
+                // When idle, re-anchor shadow to current sensed value.
+                current_pct = sensor_pct;
+                id(remote_volume_level_shadow) = sensor_pct / 100.0f;
+              }
             }
           }
 
@@ -943,7 +954,7 @@ script:
           if (is_unresolved(route_port)) route_port = id(remote_control_port_fallback).has_state() ? id(remote_control_port_fallback).state.c_str() : "";
           if (is_unresolved(route_port)) route_port = id(remote_route_port_last_valid);
 
-          ESP_LOGI("remote", "volume_up request target='%s' current_pct=%.1f next_pct=%.1f step_pct=%.1f accel=%d turn_ms=%lu route_host='%s' route_hosts='%s' route_port='%s'", id(remote_resolved_target).c_str(), current_pct, next_pct, step_pct, accel_enabled ? 1 : 0, (unsigned long) turn_interval_ms, route_host.c_str(), route_hosts.c_str(), route_port.c_str());
+          ESP_LOGW("remote", "volume_up request target='%s' current_pct=%.1f next_pct=%.1f step_pct=%.1f accel=%d turn_ms=%lu route_host='%s' route_hosts='%s' route_port='%s'", id(remote_resolved_target).c_str(), current_pct, next_pct, step_pct, accel_enabled ? 1 : 0, (unsigned long) turn_interval_ms, route_host.c_str(), route_hosts.c_str(), route_port.c_str());
           id(remote_last_volume_step_ms) = now;
       - lambda: |-
           auto to_lower = [](std::string value) {
@@ -993,7 +1004,7 @@ script:
           if (target_volume > 100) target_volume = 100;
 
           const bool ok = esphome::arylic_tcp::send_volume_multi(route_hosts, (uint16_t) route_port, target_volume);
-          ESP_LOGI("remote", "volume_up direct send hosts='%s' port=%d target='%s' vol=%d ok=%d", route_hosts.c_str(), route_port, id(remote_resolved_target).c_str(), target_volume, ok ? 1 : 0);
+          ESP_LOGW("remote", "volume_up direct send hosts='%s' port=%d target='%s' vol=%d ok=%d", route_hosts.c_str(), route_port, id(remote_resolved_target).c_str(), target_volume, ok ? 1 : 0);
 
   - id: remote_volume_down_guarded
     mode: restart
@@ -1057,9 +1068,17 @@ script:
           if (id(remote_active_volume_pct).has_state()) {
             const float sensor_pct = id(remote_active_volume_pct).state;
             const uint32_t sensor_age_ms = now - id(remote_last_volume_sensor_ms);
-            if (sensor_pct >= 0.0f && sensor_pct <= 100.0f && sensor_age_ms <= 1200 && fabsf(sensor_pct - current_pct) >= 20.0f) {
-              current_pct = sensor_pct;
-              id(remote_volume_level_shadow) = sensor_pct / 100.0f;
+            const uint32_t interaction_age_ms = now - id(remote_last_encoder_interaction_ms);
+            if (sensor_pct >= 0.0f && sensor_pct <= 100.0f && sensor_age_ms <= 1000) {
+              if (interaction_age_ms <= 1500) {
+                if (fabsf(sensor_pct - current_pct) <= 8.0f) {
+                  current_pct = sensor_pct;
+                  id(remote_volume_level_shadow) = sensor_pct / 100.0f;
+                }
+              } else {
+                current_pct = sensor_pct;
+                id(remote_volume_level_shadow) = sensor_pct / 100.0f;
+              }
             }
           }
 
@@ -1096,7 +1115,7 @@ script:
           if (is_unresolved(route_port)) route_port = id(remote_control_port_fallback).has_state() ? id(remote_control_port_fallback).state.c_str() : "";
           if (is_unresolved(route_port)) route_port = id(remote_route_port_last_valid);
 
-          ESP_LOGI("remote", "volume_down request target='%s' current_pct=%.1f next_pct=%.1f step_pct=%.1f accel=%d turn_ms=%lu route_host='%s' route_hosts='%s' route_port='%s'", id(remote_resolved_target).c_str(), current_pct, next_pct, step_pct, accel_enabled ? 1 : 0, (unsigned long) turn_interval_ms, route_host.c_str(), route_hosts.c_str(), route_port.c_str());
+          ESP_LOGW("remote", "volume_down request target='%s' current_pct=%.1f next_pct=%.1f step_pct=%.1f accel=%d turn_ms=%lu route_host='%s' route_hosts='%s' route_port='%s'", id(remote_resolved_target).c_str(), current_pct, next_pct, step_pct, accel_enabled ? 1 : 0, (unsigned long) turn_interval_ms, route_host.c_str(), route_hosts.c_str(), route_port.c_str());
           id(remote_last_volume_step_ms) = now;
       - lambda: |-
           auto to_lower = [](std::string value) {
@@ -1146,7 +1165,7 @@ script:
           if (target_volume > 100) target_volume = 100;
 
           const bool ok = esphome::arylic_tcp::send_volume_multi(route_hosts, (uint16_t) route_port, target_volume);
-          ESP_LOGI("remote", "volume_down direct send hosts='%s' port=%d target='%s' vol=%d ok=%d", route_hosts.c_str(), route_port, id(remote_resolved_target).c_str(), target_volume, ok ? 1 : 0);
+          ESP_LOGW("remote", "volume_down direct send hosts='%s' port=%d target='%s' vol=%d ok=%d", route_hosts.c_str(), route_port, id(remote_resolved_target).c_str(), target_volume, ok ? 1 : 0);
 
   - id: remote_mute_guarded
     mode: restart

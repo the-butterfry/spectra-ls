@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.07.17.29 -->
+<!-- Version: 2026.07.17.30 -->
 <!-- Last updated: 2026-07-17 -->
 
 # Changelog
 
 ## 2026-07-17
+
+- Runtime+Component/ESP Remote Slice R7 Control-Center Volume Delta Scaling Hardening (`esphome/spectra_ls_remote.yaml`, `docs/CHANGELOG.md`, `docs/roadmap/SPECTRA-REMOTE-INTERACTABLES-ROADMAP.md`): fix operator-visible “encoder turns do nothing” posture when control-center lane consumed raw detent deltas (`±1`) that were too small/non-obvious in practice. Remote control-center emitter now scales encoder deltas using the configured step profile (slow/fast with acceleration window) before calling `spectra_ls.execute_control_center_input`, preserving control-center authority while restoring perceptible volume movement from each detent. Runtime track disposition: implemented (ESP control-center emit contract hardening with practical step semantics). Component track disposition: compatibility-shimmed (existing control-center execution sink contract reused; no semantic mutation in `custom_components/spectra_ls`). P1/P2/P3 impact: no source-of-truth ownership reassignment; additive control-lane usability and operator feedback hardening only. README/wiki parity: no material operator workflow change.
 
 - Runtime+Component/ESP Remote Slice R6 Startup Action-Settle + Encoder Long-Press Wiring (`esphome/spectra_ls_remote.yaml`, `docs/CHANGELOG.md`): fix observed no-op behavior during immediate post-boot interaction by adding a bounded control-center action settle window after boot and explicit encoder long-press emission (`encoder_long_press`) alongside short-press emission (`encoder_press`). Encoder button handling now uses multi-click timing so short-press and long-press intents are deterministic and routed into `spectra_ls.execute_control_center_input` under control-center authority posture. In the same slice, long-press now directly activates the HA maintenance helpers (`input_boolean.spectra_remote_wifi_maintenance_enabled` + `timer.spectra_remote_wifi_maintenance_window`) so maintenance mode feedback is deterministic even when action mapping profiles vary. Runtime track disposition: implemented (ESP remote input-contract completeness and post-boot action reliability hardening). Component track disposition: compatibility-shimmed (existing execution sink contract reused; no `custom_components/spectra_ls` semantic mutation). P1/P2/P3 impact: no source-of-truth ownership reassignment; additive input-path correctness, maintenance-mode determinism, and startup reliability hardening only. README/wiki parity: no material operator workflow change.
 

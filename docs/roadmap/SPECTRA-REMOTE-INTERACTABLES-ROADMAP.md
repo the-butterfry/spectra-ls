@@ -1,5 +1,5 @@
 <!-- Description: Roadmap for Spectra remote BLE-first evolution with extensible interactables architecture. -->
-<!-- Version: 2026.07.17.10 -->
+<!-- Version: 2026.07.17.11 -->
 <!-- Last updated: 2026-07-17 -->
 
 # Spectra Remote + Interactables Roadmap
@@ -264,6 +264,13 @@ Latest run update (2026-07-17, ESP remote control-center authority cutover):
 - Runtime track disposition: implemented (ESP input authority now defaults to control-center sink lane).
 - Component track disposition: compatibility-shimmed (existing execution sink contract reused; no component semantic mutation).
 - ESP impact check: no source-of-truth ownership reassignment; direct transport is retained as explicit fallback-only behavior.
+
+Latest run update (2026-07-17, ESP control-center volume delta scaling hardening):
+
+- Adjusted remote control-center encoder-turn emission to send scaled volume deltas derived from configured step profile (slow/fast acceleration semantics) rather than raw detent deltas, improving operator-visible volume movement while keeping control-center authority lane unchanged.
+- Runtime track disposition: implemented (ESP control-center emit usability hardening in runtime lane).
+- Component track disposition: compatibility-shimmed (existing `spectra_ls.execute_control_center_input` contract reused; no component semantic mutation).
+- ESP impact check: no source-of-truth ownership reassignment; additive control-lane responsiveness/usability hardening only.
 
 ## Validation Matrix
 

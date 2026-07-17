@@ -1,5 +1,5 @@
 # Description: Spectra interactables bridge scaffold (BLE/Wi-Fi hybrid ingest to control-center execution).
-# Version: 2026.07.17.5
+# Version: 2026.07.17.6
 # Last updated: 2026-07-17
 # Update version/date whenever you change this file.
 
@@ -99,6 +99,53 @@ input_button:
     name: Spectra Interactable Replay Last Event
     icon: mdi:history
 
+  spectra_interactable_run_validation_bundle:
+    name: Spectra Interactable Run Validation Bundle
+    icon: mdi:playlist-check
+
+input_number:
+  spectra_interactable_last_ingest_ts_ms:
+    name: Spectra Interactable Last Ingest TS ms
+    min: 0
+    max: 4102444800000
+    step: 1
+    initial: 0
+
+  spectra_interactable_last_dispatch_ts_ms:
+    name: Spectra Interactable Last Dispatch TS ms
+    min: 0
+    max: 4102444800000
+    step: 1
+    initial: 0
+
+  spectra_interactable_last_dispatch_lag_ms:
+    name: Spectra Interactable Last Dispatch Lag ms
+    min: 0
+    max: 600000
+    step: 1
+    initial: 0
+
+  spectra_interactable_cutover_success_threshold_pct:
+    name: Spectra Interactable Cutover Success Threshold %
+    min: 0
+    max: 100
+    step: 0.1
+    initial: 95
+
+  spectra_interactable_cutover_dropped_threshold_pct:
+    name: Spectra Interactable Cutover Dropped Threshold %
+    min: 0
+    max: 100
+    step: 0.1
+    initial: 5
+
+  spectra_interactable_cutover_invalid_threshold_pct:
+    name: Spectra Interactable Cutover Invalid Threshold %
+    min: 0
+    max: 100
+    step: 0.1
+    initial: 2
+
 counter:
   spectra_interactable_events_total:
     name: Spectra Interactable Events Total
@@ -170,6 +217,26 @@ script:
           transport: "{{ transport if transport not in ['', 'unknown', 'unavailable'] else 'unknown' }}"
           correlation_id: "{{ correlation_id }}"
           dry_run: true
+
+  spectra_interactable_run_validation_bundle:
+    alias: Spectra Interactable - Run Validation Bundle
+    mode: restart
+    sequence:
+      - service: script.spectra_interactable_process_source_signal
+        data:
+          source_key: "ble_button_single"
+          transport: "ble"
+          correlation_id: >-
+            bundle-btn-single-{{ now().timestamp() | int }}
+      - delay: "00:00:01"
+      - service: script.spectra_interactable_process_source_signal
+        data:
+          source_key: "ble_arriving"
+          transport: "ble"
+          correlation_id: >-
+            bundle-arriving-{{ now().timestamp() | int }}
+      - delay: "00:00:01"
+      - service: script.spectra_interactable_replay_last_event
 
   spectra_interactable_process_source_signal:
     alias: Spectra Interactable - Process Source Signal
@@ -279,6 +346,7 @@ script:
           entity_id: counter.spectra_interactable_events_total
 
       - variables:
+          now_ts_ms: "{{ (as_timestamp(now()) * 1000) | int }}"
           interactable_id_norm: "{{ interactable_id | default('unknown', true) | string | lower | trim }}"
           input_event_norm: "{{ input_event | default('', true) | string | lower | trim }}"
           target_hint_norm: "{{ target_hint | default('', true) | string | trim }}"
@@ -316,6 +384,11 @@ script:
               'shadow_mode': shadow_mode,
               'dry_run_effective': dry_run_effective
             } | tojson }}
+
+      - service: input_number.set_value
+        data:
+          entity_id: input_number.spectra_interactable_last_ingest_ts_ms
+          value: "{{ now_ts_ms }}"
 
       - service: input_text.set_value
         data:
@@ -389,6 +462,21 @@ script:
               dry_run: "{{ dry_run_effective }}"
               target_hint: "{{ target_hint_norm }}"
               correlation_id: "{{ correlation_id_norm }}"
+
+      - variables:
+          dispatch_ts_ms: "{{ (as_timestamp(now()) * 1000) | int }}"
+          dispatch_lag_ms: >-
+            {{ (dispatch_ts_ms | int(0)) - (now_ts_ms | int(0)) }}
+
+      - service: input_number.set_value
+        data:
+          entity_id: input_number.spectra_interactable_last_dispatch_ts_ms
+          value: "{{ dispatch_ts_ms }}"
+
+      - service: input_number.set_value
+        data:
+          entity_id: input_number.spectra_interactable_last_dispatch_lag_ms
+          value: "{{ dispatch_lag_ms if dispatch_lag_ms >= 0 else 0 }}"
 
       - choose:
           - conditions: "{{ input_event_norm == 'encoder_long_press' and interactable_id_norm.startswith('spectra_remote') }}"
@@ -505,6 +593,15 @@ automation:
     action:
       - service: script.spectra_interactable_replay_last_event
 
+  - id: spectra_interactable_run_validation_bundle_button
+    alias: "Spectra: Interactable Run Validation Bundle Button"
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: input_button.spectra_interactable_run_validation_bundle
+    action:
+      - service: script.spectra_interactable_run_validation_bundle
+
 template:
   - sensor:
       - name: Spectra Interactable Dispatch Success Pct
@@ -555,6 +652,23 @@ template:
             {{ src if src not in ['', 'unknown', 'unavailable'] else 'unknown_source' }}|{{ evt if evt not in ['', 'unknown', 'unavailable'] else 'unknown_event' }}|{{ trn if trn not in ['', 'unknown', 'unavailable'] else 'unknown_transport' }}
           {% endif %}
 
+      - name: Spectra Interactable Last Event Age S
+        unit_of_measurement: "s"
+        icon: mdi:timer-sand
+        state: >-
+          {% set ingest_ts = states('input_number.spectra_interactable_last_ingest_ts_ms') | float(0) %}
+          {% if ingest_ts <= 0 %}
+            0
+          {% else %}
+            {{ ((as_timestamp(now()) * 1000 - ingest_ts) / 1000) | round(2) }}
+          {% endif %}
+
+      - name: Spectra Interactable Last Dispatch Lag ms
+        unit_of_measurement: "ms"
+        icon: mdi:speedometer
+        state: >-
+          {{ states('input_number.spectra_interactable_last_dispatch_lag_ms') | float(0) | round(1) }}
+
   - binary_sensor:
       - name: Spectra Interactable Bridge Active
         icon: mdi:bridge
@@ -565,3 +679,16 @@ template:
         icon: mdi:connection
         state: >-
           {{ is_state('input_boolean.spectra_interactable_ble_button_single_source_enabled', 'on') or is_state('input_boolean.spectra_interactable_ble_arriving_source_enabled', 'on') }}
+
+      - name: Spectra Interactable Cutover Ready
+        icon: mdi:flag-checkered
+        state: >-
+          {% set active = is_state('binary_sensor.spectra_interactable_bridge_active', 'on') %}
+          {% set intake = is_state('binary_sensor.spectra_interactable_source_intake_enabled', 'on') %}
+          {% set success_pct = states('sensor.spectra_interactable_dispatch_success_pct') | float(0) %}
+          {% set dropped_pct = states('sensor.spectra_interactable_dropped_pct') | float(0) %}
+          {% set invalid_pct = states('sensor.spectra_interactable_invalid_pct') | float(0) %}
+          {% set success_min = states('input_number.spectra_interactable_cutover_success_threshold_pct') | float(95) %}
+          {% set drop_max = states('input_number.spectra_interactable_cutover_dropped_threshold_pct') | float(5) %}
+          {% set invalid_max = states('input_number.spectra_interactable_cutover_invalid_threshold_pct') | float(2) %}
+          {{ active and intake and success_pct >= success_min and dropped_pct <= drop_max and invalid_pct <= invalid_max }}

@@ -1,10 +1,14 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.07.17.7 -->
+<!-- Version: 2026.07.17.8 -->
 <!-- Last updated: 2026-07-17 -->
 
 # Changelog
 
 ## 2026-07-17
+
+- Runtime+Component/Interactables Roadmap Slice M1 Latency Metrics + Cutover Readiness Gate (`packages/spectra_ls_interactables.yaml`, `docs/CHANGELOG.md`): add bridge timing telemetry and go/no-go readiness evaluation for staged BLE cutover, including ingest/dispatch timestamp tracking, dispatch-lag metric surfaces, and a binary cutover-ready posture derived from bridge mode, source-intake state, and dispatch/drop/invalid quality thresholds. Runtime track disposition: implemented (additive rollout timing/quality instrumentation). Component track disposition: compatibility-shimmed (component execution sink unchanged; no `custom_components/spectra_ls` service semantic mutation). P1/P2/P3 impact: no source-of-truth ownership reassignment; additive cutover-governance hardening only. README/wiki parity: no material operator workflow change.
+
+- Runtime+Component/Interactables Roadmap Slice M1 Multi-Signal Validation Bundle Runner (`packages/spectra_ls_interactables.yaml`, `docs/CHANGELOG.md`): add operator-triggerable bundle validation harness that exercises multiple mapped source signals plus replay in one action for quicker staged verification without waiting on live BLE pulses. Runtime track disposition: implemented (additive validation tooling for bridge rollout). Component track disposition: compatibility-shimmed (execution sink unchanged; no component semantic mutation). P1/P2/P3 impact: no source-of-truth ownership reassignment; additive validation acceleration and rollout confidence hardening only. README/wiki parity: no material operator workflow change.
 
 - Runtime+Component/Interactables Roadmap Slice M1 Test/Replay Harness (`packages/spectra_ls_interactables.yaml`, `docs/CHANGELOG.md`): add operator-invokable test and replay scaffolding for interactables rollout validation, including source-key test emit helpers, replay of last processed event payload, and input-button triggers for deterministic bridge testing without waiting for live BLE pulses. This improves staged migration confidence while keeping bridge/source toggles and component execution semantics unchanged. Runtime track disposition: implemented (additive test/replay tooling in HA package path). Component track disposition: compatibility-shimmed (execution sink remains `spectra_ls.execute_control_center_input`; no `custom_components/spectra_ls` semantic mutation). P1/P2/P3 impact: no source-of-truth ownership reassignment; additive validation tooling and rollout safety hardening only. README/wiki parity: no material operator workflow change.
 

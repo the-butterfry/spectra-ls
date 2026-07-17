@@ -1,5 +1,5 @@
 <!-- Description: Roadmap for Spectra remote BLE-first evolution with extensible interactables architecture. -->
-<!-- Version: 2026.07.17.1 -->
+<!-- Version: 2026.07.17.2 -->
 <!-- Last updated: 2026-07-17 -->
 
 # Spectra Remote + Interactables Roadmap
@@ -183,6 +183,21 @@ Future interactables should integrate by implementing the same canonical event c
 - Retire obsolete polling/redundant transport branches where safe.
 - Lock in docs/runbooks/dashboard parity.
 - Exit criteria: stable BLE-first operations with explicit fallback posture.
+
+## Milestone Status Snapshot (2026-07-17)
+
+- `M0`: implemented (observability and bridge instrumentation in place)
+- `M1`: implemented (shadow validation and parity harness in place)
+- `M2`: implemented (cutover profiles + readiness/rollback safety + activation gating)
+- `M3`: active (closeout certification and reusable-contract evidence lane executing)
+- `M4`: not started
+
+Latest run update (2026-07-17, M3 closeout packet + reusable-contract evidence gate):
+
+- Added deterministic M3 closeout certification surfaces in the runtime interactables lane: reusable-contract status, unique interactable count, closeout blockers/verdict, and one-click packet capture path for operator proof.
+- Runtime track disposition: implemented (M3 closure automation and evidence surfaces added in package lane).
+- Component track disposition: compatibility-shimmed (execution continues through existing `spectra_ls.execute_control_center_input` sink; no component semantic mutation).
+- M3 impact check: no source-of-truth ownership reassignment; reusable-contract closure proof and activation confidence hardening only.
 
 ## Validation Matrix
 

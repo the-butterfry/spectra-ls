@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.07.17.17 -->
+<!-- Version: 2026.07.17.18 -->
 <!-- Last updated: 2026-07-17 -->
 
 # Changelog
 
 ## 2026-07-17
+
+- Runtime+Component/Interactables Roadmap Slice M3 Closeout Packet + Reuse Gate (`packages/spectra_ls_interactables.yaml`, `docs/roadmap/SPECTRA-REMOTE-INTERACTABLES-ROADMAP.md`, `docs/CHANGELOG.md`): deliver a full M3 certification lane that computes reusable-contract proof (multi-source mapping + unique interactable count + matrix recency + activation gate posture), publishes deterministic closeout blockers/verdict sensors, and emits a single operator-facing M3 closeout packet for promotion evidence. Runtime track disposition: implemented (additive M3 closure governance and proof automation in HA package lane). Component track disposition: compatibility-shimmed (execution sink remains `spectra_ls.execute_control_center_input`; no `custom_components/spectra_ls` semantic mutation). P1/P2/P3 impact: no source-of-truth ownership reassignment; additive M3 closeout determinism and reusable-contract evidence hardening only. README/wiki parity: no material operator workflow change.
 
 - Runtime+Component/Interactables Roadmap Slice M2.8 M3 Activation Gate + Fresh Validation Packet (`packages/spectra_ls_interactables.yaml`, `docs/CHANGELOG.md`): add a guarded one-button M3 activation flow that enforces candidate/source-key validity, recent matrix evidence freshness, and cutover readiness before declaring multi-interactable activation readiness, with deterministic blocked/ready packet notifications and compact activation-summary capture for operator proof. In the same slice, fix the recurring HA warning on `input_text.spectra_interactable_source_map_json` by shrinking default source-map JSON payload shape to a max-length-safe baseline while preserving mapping semantics. Runtime track disposition: implemented (additive activation-governance and operability hardening in HA package lane). Component track disposition: compatibility-shimmed (execution sink remains `spectra_ls.execute_control_center_input`; no `custom_components/spectra_ls` semantic mutation). P1/P2/P3 impact: no source-of-truth ownership reassignment; additive M3 activation safety and warning-free baseline hardening only. README/wiki parity: no material operator workflow change.
 

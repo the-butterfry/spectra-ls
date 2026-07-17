@@ -1,5 +1,5 @@
 # Description: Spectra interactables bridge scaffold (BLE/Wi-Fi hybrid ingest to control-center execution).
-# Version: 2026.07.17.15
+# Version: 2026.07.17.16
 # Last updated: 2026-07-17
 # Update version/date whenever you change this file.
 
@@ -160,6 +160,12 @@ input_text:
     max: 255
     mode: text
 
+  spectra_interactable_last_m3_closeout_summary:
+    name: Spectra Interactable Last M3 Closeout Summary
+    initial: ""
+    max: 255
+    mode: text
+
 input_button:
   spectra_interactable_run_test_source_signal:
     name: Spectra Interactable Run Test Source Signal
@@ -204,6 +210,10 @@ input_button:
   spectra_interactable_activate_m3_generalization_safe:
     name: Spectra Interactable Activate M3 Generalization (Safe)
     icon: mdi:rocket-launch-outline
+
+  spectra_interactable_run_m3_closeout_packet:
+    name: Spectra Interactable Run M3 Closeout Packet
+    icon: mdi:clipboard-check-outline
 
 input_select:
   spectra_interactable_cutover_profile:
@@ -634,6 +644,58 @@ script:
                   message: >-
                     {{ activation_summary }}
                     blockers={{ states('sensor.spectra_interactable_m3_activation_gate_blockers') }}
+
+  spectra_interactable_run_m3_closeout_packet:
+    alias: Spectra Interactable - Run M3 Closeout Packet
+    mode: restart
+    sequence:
+      - variables:
+          blockers: "{{ states('sensor.spectra_interactable_m3_closeout_blockers') | trim }}"
+          verdict: "{{ states('sensor.spectra_interactable_m3_closeout_verdict') | trim }}"
+          unique_count: "{{ states('sensor.spectra_interactable_m3_unique_interactable_count') | int(0) }}"
+          reuse_status: "{{ states('sensor.spectra_interactable_m3_reuse_contract_status') | trim }}"
+          profile: "{{ states('input_select.spectra_interactable_cutover_profile') | lower | trim }}"
+          matrix_age_s: "{{ states('sensor.spectra_interactable_m3_matrix_last_age_s') | float(0) }}"
+          summary: >-
+            m3_closeout verdict={{ verdict }} profile={{ profile }} unique={{ unique_count }}
+            reuse={{ reuse_status }} matrix_age_s={{ matrix_age_s | round(1) }}
+      - service: input_text.set_value
+        data:
+          entity_id: input_text.spectra_interactable_last_m3_closeout_summary
+          value: "{{ summary[:255] }}"
+      - choose:
+          - conditions: "{{ verdict != 'go_m3_closeout_ready' }}"
+            sequence:
+              - service: input_text.set_value
+                data:
+                  entity_id: input_text.spectra_interactable_last_error
+                  value: >-
+                    m3_closeout_blocked blockers={{ blockers }}
+              - choose:
+                  - conditions: "{{ is_state('input_boolean.spectra_interactable_rollback_notifications_enabled', 'on') }}"
+                    sequence:
+                      - service: persistent_notification.create
+                        data:
+                          notification_id: spectra_interactable_m3_closeout_packet
+                          title: "Spectra Interactables M3 Closeout Blocked"
+                          message: >-
+                            {{ summary }}
+                            blockers={{ blockers if blockers not in ['', 'unknown', 'unavailable'] else 'none' }}
+              - stop: "M3 closeout packet blocked by unmet gates."
+      - service: input_text.set_value
+        data:
+          entity_id: input_text.spectra_interactable_last_error
+          value: ""
+      - choose:
+          - conditions: "{{ is_state('input_boolean.spectra_interactable_rollback_notifications_enabled', 'on') }}"
+            sequence:
+              - service: persistent_notification.create
+                data:
+                  notification_id: spectra_interactable_m3_closeout_packet
+                  title: "Spectra Interactables M3 Closeout Packet"
+                  message: >-
+                    {{ summary }}
+                    blockers={{ blockers }}
 
   spectra_interactable_activate_pilot_safe:
     alias: Spectra Interactable - Activate Pilot (Safe)
@@ -1248,6 +1310,15 @@ automation:
     action:
       - service: script.spectra_interactable_activate_m3_generalization_safe
 
+  - id: spectra_interactable_run_m3_closeout_packet_button
+    alias: "Spectra: Interactable Run M3 Closeout Packet Button"
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: input_button.spectra_interactable_run_m3_closeout_packet
+    action:
+      - service: script.spectra_interactable_run_m3_closeout_packet
+
   - id: spectra_interactable_cutover_safety_rollback
     alias: "Spectra: Interactable Cutover Safety Rollback"
     mode: single
@@ -1661,6 +1732,81 @@ template:
         icon: mdi:clipboard-text-outline
         state: >-
           {% set summary = states('input_text.spectra_interactable_last_m3_activation_summary') | trim %}
+          {{ summary if summary not in ['', 'unknown', 'unavailable'] else 'no_runs_yet' }}
+
+      - name: Spectra Interactable M3 Unique Interactable Count
+        icon: mdi:counter
+        state: >-
+          {% set raw = states('input_text.spectra_interactable_source_map_json') | trim %}
+          {% set map_valid = raw not in ['', 'unknown', 'unavailable', 'none', 'None'] and raw.startswith('{') %}
+          {% set source_map = (raw | from_json) if map_valid else dict() %}
+          {% set ns = namespace(ids=[]) %}
+          {% for k, v in source_map.items() %}
+            {% if v is mapping and v.interactable_id is defined %}
+              {% set iid = (v.interactable_id | string | lower | trim) %}
+              {% if iid not in ['', 'unknown', 'unavailable'] and iid not in ns.ids %}
+                {% set ns.ids = ns.ids + [iid] %}
+              {% endif %}
+            {% endif %}
+          {% endfor %}
+          {% set candidate = states('input_text.spectra_interactable_m3_candidate_interactable_id') | lower | trim %}
+          {% if candidate not in ['', 'unknown', 'unavailable'] and candidate not in ns.ids %}
+            {% set ns.ids = ns.ids + [candidate] %}
+          {% endif %}
+          {{ ns.ids | count }}
+
+      - name: Spectra Interactable M3 Reuse Contract Status
+        icon: mdi:source-branch-check
+        state: >-
+          {% set unique = states('sensor.spectra_interactable_m3_unique_interactable_count') | int(0) %}
+          {% set matrix_ok = states('sensor.spectra_interactable_m3_matrix_verdict') == 'go_m3_validation_ready' %}
+          {% set act_ok = states('sensor.spectra_interactable_m3_activation_gate_verdict') == 'go_m3_activation_ready' %}
+          {% if unique >= 2 and matrix_ok and act_ok %}
+            reusable_contract_proven
+          {% elif unique < 2 %}
+            requires_second_interactable
+          {% else %}
+            validation_pending
+          {% endif %}
+
+      - name: Spectra Interactable M3 Closeout Blockers
+        icon: mdi:alert-circle-check-outline
+        state: >-
+          {% set ns = namespace(items=[]) %}
+          {% if states('sensor.spectra_interactable_m3_unique_interactable_count') | int(0) < 2 %}
+            {% set ns.items = ns.items + ['unique_interactable_count_lt_2'] %}
+          {% endif %}
+          {% if states('sensor.spectra_interactable_m3_reuse_contract_status') != 'reusable_contract_proven' %}
+            {% set ns.items = ns.items + ['reuse_contract_not_proven'] %}
+          {% endif %}
+          {% if states('sensor.spectra_interactable_m3_matrix_verdict') != 'go_m3_validation_ready' %}
+            {% set ns.items = ns.items + ['matrix_not_ready'] %}
+          {% endif %}
+          {% if states('sensor.spectra_interactable_m3_activation_gate_verdict') != 'go_m3_activation_ready' %}
+            {% set ns.items = ns.items + ['activation_gate_not_ready'] %}
+          {% endif %}
+          {% if states('sensor.spectra_interactable_m3_matrix_last_age_s') | float(0) > 900 %}
+            {% set ns.items = ns.items + ['matrix_stale'] %}
+          {% endif %}
+          {% if ns.items | count == 0 %}
+            none
+          {% else %}
+            {{ ns.items | join('|') }}
+          {% endif %}
+
+      - name: Spectra Interactable M3 Closeout Verdict
+        icon: mdi:certificate-outline
+        state: >-
+          {% if states('sensor.spectra_interactable_m3_closeout_blockers') == 'none' %}
+            go_m3_closeout_ready
+          {% else %}
+            no_go
+          {% endif %}
+
+      - name: Spectra Interactable M3 Closeout Last Summary
+        icon: mdi:clipboard-check-multiple-outline
+        state: >-
+          {% set summary = states('input_text.spectra_interactable_last_m3_closeout_summary') | trim %}
           {{ summary if summary not in ['', 'unknown', 'unavailable'] else 'no_runs_yet' }}
 
               - name: Spectra Interactable Cutover Evidence Blockers

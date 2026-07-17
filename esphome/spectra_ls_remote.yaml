@@ -1,5 +1,5 @@
 # Description: Standalone ESPHome config for Spectra LS Remote tabletop control box (encoder + transport buttons + battery telemetry).
-# Version: 2026.07.17.6
+# Version: 2026.07.17.7
 # Last updated: 2026-07-17
 # Notes:
 # - Primary bring-up path is Wi-Fi/API for fast iteration.
@@ -61,6 +61,7 @@ substitutions:
   remote_control_center_emit_dry_run: "false"
   remote_direct_transport_enabled: "false"
   remote_control_center_settle_ms: "5000"
+  remote_wifi_requires_long_press: "true"
 
   # Battery model
   remote_has_battery: "true"
@@ -90,6 +91,17 @@ esphome:
           id(remote_last_playing_ms) = 0;
           id(remote_last_encoder_interaction_ms) = now;
           id(remote_boot_ms) = now;
+          id(remote_wifi_maintenance_session_active) = false;
+          id(remote_wifi_maintenance_enable_pending) = false;
+      - if:
+          condition:
+            lambda: |-
+              return ${remote_wifi_requires_long_press};
+          then:
+            - logger.log:
+                level: INFO
+                format: "Remote Wi-Fi maintenance gate active: disabling Wi-Fi until long-press"
+            - wifi.disable:
 
 esp32:
   board: esp32-c6-devkitm-1
@@ -101,6 +113,7 @@ logger:
   level: INFO
 
 api:
+  id: remote_ha_api
   homeassistant_states: true
   homeassistant_services: true
 
@@ -219,6 +232,14 @@ globals:
     type: uint32_t
     restore_value: no
     initial_value: "0"
+  - id: remote_wifi_maintenance_session_active
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: remote_wifi_maintenance_enable_pending
+    type: bool
+    restore_value: no
+    initial_value: "false"
 
 text_sensor:
   - platform: homeassistant
@@ -642,17 +663,27 @@ script:
     then:
       - lambda: |-
           id(remote_last_encoder_interaction_ms) = millis();
-      - script.execute:
-          id: remote_emit_control_center_event
-          event_name: "encoder_long_press"
-      - homeassistant.service:
-          service: input_boolean.turn_on
-          data:
-            entity_id: ${remote_wifi_maintenance_enabled_helper}
-      - homeassistant.service:
-          service: timer.start
-          data:
-            entity_id: ${remote_wifi_maintenance_timer}
+      - if:
+          condition:
+            lambda: |-
+              return ${remote_wifi_requires_long_press} && !id(remote_wifi_maintenance_session_active);
+          then:
+            - lambda: |-
+                id(remote_wifi_maintenance_enable_pending) = true;
+                ESP_LOGI("remote", "maintenance long-press: enabling Wi-Fi for maintenance session");
+            - wifi.enable:
+          else:
+            - script.execute:
+                id: remote_emit_control_center_event
+                event_name: "encoder_long_press"
+            - homeassistant.service:
+                service: input_boolean.turn_on
+                data:
+                  entity_id: ${remote_wifi_maintenance_enabled_helper}
+            - homeassistant.service:
+                service: timer.start
+                data:
+                  entity_id: ${remote_wifi_maintenance_timer}
 
   - id: remote_volume_up_guarded
     mode: restart
@@ -1105,6 +1136,39 @@ script:
               return id(remote_resolved_target);
 
 interval:
+  - interval: 1s
+    then:
+      - if:
+          condition:
+            lambda: |-
+              return ${remote_wifi_requires_long_press} &&
+                     id(remote_wifi_maintenance_enable_pending) &&
+                     id(remote_ha_api).is_connected();
+          then:
+            - lambda: |-
+                id(remote_wifi_maintenance_enable_pending) = false;
+                id(remote_wifi_maintenance_session_active) = true;
+                ESP_LOGI("remote", "maintenance Wi-Fi gate opened: API connected after long-press");
+            - script.execute:
+                id: remote_emit_control_center_event
+                event_name: "encoder_long_press"
+            - homeassistant.service:
+                service: input_boolean.turn_on
+                data:
+                  entity_id: ${remote_wifi_maintenance_enabled_helper}
+            - homeassistant.service:
+                service: timer.start
+                data:
+                  entity_id: ${remote_wifi_maintenance_timer}
+  - interval: 3s
+    then:
+      - if:
+          condition:
+            lambda: |-
+              return ${remote_wifi_requires_long_press} && !id(remote_ha_api).is_connected();
+          then:
+            - lambda: |-
+                id(remote_wifi_maintenance_session_active) = false;
   - interval: 5s
     then:
       - if:

@@ -1,5 +1,5 @@
 # Description: Spectra interactables bridge scaffold (BLE/Wi-Fi hybrid ingest to control-center execution).
-# Version: 2026.07.17.9
+# Version: 2026.07.17.10
 # Last updated: 2026-07-17
 # Update version/date whenever you change this file.
 
@@ -191,6 +191,34 @@ input_number:
     step: 10
     initial: 250
 
+  spectra_interactable_cutover_soak_minutes:
+    name: Spectra Interactable Cutover Soak Minutes
+    min: 1
+    max: 120
+    step: 1
+    initial: 10
+
+  spectra_interactable_auto_remediation_max_per_hour:
+    name: Spectra Interactable Auto Remediation Max Per Hour
+    min: 1
+    max: 20
+    step: 1
+    initial: 3
+
+  spectra_interactable_remediation_cooldown_minutes:
+    name: Spectra Interactable Remediation Cooldown Minutes
+    min: 1
+    max: 60
+    step: 1
+    initial: 10
+
+  spectra_interactable_cutover_ready_since_ts_ms:
+    name: Spectra Interactable Cutover Ready Since TS ms
+    min: 0
+    max: 4102444800000
+    step: 1
+    initial: 0
+
 counter:
   spectra_interactable_events_total:
     name: Spectra Interactable Events Total
@@ -212,9 +240,18 @@ counter:
     initial: 0
     step: 1
 
+  spectra_interactable_auto_remediations:
+    name: Spectra Interactable Auto Remediations
+    initial: 0
+    step: 1
+
 timer:
   spectra_remote_wifi_maintenance_window:
     name: Spectra Remote Wi-Fi Maintenance Window
+    duration: "00:10:00"
+
+  spectra_interactable_remediation_cooldown:
+    name: Spectra Interactable Remediation Cooldown
     duration: "00:10:00"
 
 script:
@@ -223,14 +260,14 @@ script:
     mode: restart
     sequence:
       - variables:
-          active_ready: "{{ is_state('binary_sensor.spectra_interactable_cutover_ready', 'on') }}"
+          active_ready: "{{ is_state('binary_sensor.spectra_interactable_active_preflight_ready', 'on') }}"
       - choose:
           - conditions: "{{ not active_ready }}"
             sequence:
               - service: input_text.set_value
                 data:
                   entity_id: input_text.spectra_interactable_last_error
-                  value: "active_activation_blocked_cutover_not_ready"
+                  value: "active_activation_blocked_preflight"
               - choose:
                   - conditions: "{{ is_state('input_boolean.spectra_interactable_rollback_notifications_enabled', 'on') }}"
                     sequence:
@@ -239,11 +276,12 @@ script:
                           notification_id: spectra_interactable_active_activation_blocked
                           title: "Spectra Interactables Active Activation Blocked"
                           message: >-
-                            Active activation requires cutover-ready=on.
+                            Active activation requires active preflight ready (cutover-ready + soak + quality thresholds).
                             Recommended profile: {{ states('sensor.spectra_interactable_recommended_profile') }}.
                             success={{ states('sensor.spectra_interactable_dispatch_success_pct') }}%
                             dropped={{ states('sensor.spectra_interactable_dropped_pct') }}%
                             invalid={{ states('sensor.spectra_interactable_invalid_pct') }}%
+                            soak_age_s={{ states('sensor.spectra_interactable_cutover_ready_soak_age_s') }}.
               - stop: "Active activation blocked because cutover readiness is off."
       - service: input_select.select_option
         data:
@@ -854,6 +892,13 @@ automation:
       - condition: state
         entity_id: binary_sensor.spectra_interactable_bridge_active
         state: "on"
+      - condition: state
+        entity_id: timer.spectra_interactable_remediation_cooldown
+        state: "idle"
+      - condition: template
+        value_template: >-
+          {{ (states('counter.spectra_interactable_auto_remediations') | int(0)) <
+             (states('input_number.spectra_interactable_auto_remediation_max_per_hour') | int(3)) }}
     action:
       - service: input_select.select_option
         data:
@@ -866,6 +911,14 @@ automation:
         data:
           entity_id: input_text.spectra_interactable_last_error
           value: "cutover_safety_rollback_triggered"
+      - service: counter.increment
+        target:
+          entity_id: counter.spectra_interactable_auto_remediations
+      - service: timer.start
+        data:
+          entity_id: timer.spectra_interactable_remediation_cooldown
+          duration: >-
+            00:{{ '%02d' | format(states('input_number.spectra_interactable_remediation_cooldown_minutes') | int(10)) }}:00
       - choose:
           - conditions: "{{ is_state('input_boolean.spectra_interactable_rollback_notifications_enabled', 'on') }}"
             sequence:
@@ -879,6 +932,126 @@ automation:
                     dropped={{ states('sensor.spectra_interactable_dropped_pct') }}%
                     invalid={{ states('sensor.spectra_interactable_invalid_pct') }}%
                     lag_ms={{ states('sensor.spectra_interactable_last_dispatch_lag_ms') }}.
+
+  - id: spectra_interactable_quality_spike_auto_remediate
+    alias: "Spectra: Interactable Quality Spike Auto Remediate"
+    mode: single
+    trigger:
+      - platform: template
+        value_template: >-
+          {% set bridge_enabled = is_state('input_boolean.spectra_interactable_bridge_enabled', 'on') %}
+          {% set dropped = states('sensor.spectra_interactable_dropped_pct') | float(0) %}
+          {% set invalid = states('sensor.spectra_interactable_invalid_pct') | float(0) %}
+          {% set dropped_thr = (states('input_number.spectra_interactable_cutover_dropped_threshold_pct') | float(5)) + 5 %}
+          {% set invalid_thr = (states('input_number.spectra_interactable_cutover_invalid_threshold_pct') | float(2)) + 2 %}
+          {{ bridge_enabled and (dropped > dropped_thr or invalid > invalid_thr) }}
+        for:
+          minutes: 1
+    condition:
+      - condition: state
+        entity_id: timer.spectra_interactable_remediation_cooldown
+        state: "idle"
+      - condition: template
+        value_template: >-
+          {{ (states('counter.spectra_interactable_auto_remediations') | int(0)) <
+             (states('input_number.spectra_interactable_auto_remediation_max_per_hour') | int(3)) }}
+    action:
+      - service: input_select.select_option
+        data:
+          entity_id: input_select.spectra_interactable_cutover_profile
+          option: "shadow"
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.spectra_interactable_shadow_mode
+      - service: input_text.set_value
+        data:
+          entity_id: input_text.spectra_interactable_last_error
+          value: "auto_remediate_quality_spike"
+      - service: counter.increment
+        target:
+          entity_id: counter.spectra_interactable_auto_remediations
+      - service: timer.start
+        data:
+          entity_id: timer.spectra_interactable_remediation_cooldown
+          duration: >-
+            00:{{ '%02d' | format(states('input_number.spectra_interactable_remediation_cooldown_minutes') | int(10)) }}:00
+      - choose:
+          - conditions: "{{ is_state('input_boolean.spectra_interactable_rollback_notifications_enabled', 'on') }}"
+            sequence:
+              - service: persistent_notification.create
+                data:
+                  notification_id: spectra_interactable_auto_remediate
+                  title: "Spectra Interactables Auto-Remediation Applied"
+                  message: >-
+                    Quality spike triggered automatic shadow fallback.
+                    dropped={{ states('sensor.spectra_interactable_dropped_pct') }}%
+                    invalid={{ states('sensor.spectra_interactable_invalid_pct') }}%
+                    remediation_count={{ states('counter.spectra_interactable_auto_remediations') }}.
+
+  - id: spectra_interactable_quality_spike_remediation_suppressed
+    alias: "Spectra: Interactable Quality Spike Remediation Suppressed"
+    mode: single
+    trigger:
+      - platform: template
+        value_template: >-
+          {% set bridge_enabled = is_state('input_boolean.spectra_interactable_bridge_enabled', 'on') %}
+          {% set dropped = states('sensor.spectra_interactable_dropped_pct') | float(0) %}
+          {% set invalid = states('sensor.spectra_interactable_invalid_pct') | float(0) %}
+          {% set dropped_thr = (states('input_number.spectra_interactable_cutover_dropped_threshold_pct') | float(5)) + 5 %}
+          {% set invalid_thr = (states('input_number.spectra_interactable_cutover_invalid_threshold_pct') | float(2)) + 2 %}
+          {{ bridge_enabled and (dropped > dropped_thr or invalid > invalid_thr) }}
+        for:
+          minutes: 1
+    condition:
+      - condition: template
+        value_template: >-
+          {{ is_state('timer.spectra_interactable_remediation_cooldown', 'active') or
+             (states('counter.spectra_interactable_auto_remediations') | int(0)) >=
+             (states('input_number.spectra_interactable_auto_remediation_max_per_hour') | int(3)) }}
+      - condition: state
+        entity_id: input_boolean.spectra_interactable_rollback_notifications_enabled
+        state: "on"
+    action:
+      - service: persistent_notification.create
+        data:
+          notification_id: spectra_interactable_auto_remediate_suppressed
+          title: "Spectra Interactables Remediation Suppressed"
+          message: >-
+            Quality spike detected but remediation is suppressed by cooldown/rate limit.
+            cooldown={{ states('timer.spectra_interactable_remediation_cooldown') }}
+            remediation_count={{ states('counter.spectra_interactable_auto_remediations') }}
+            max_per_hour={{ states('input_number.spectra_interactable_auto_remediation_max_per_hour') }}.
+
+  - id: spectra_interactable_cutover_ready_since_tracker
+    alias: "Spectra: Interactable Cutover Ready Since Tracker"
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.spectra_interactable_cutover_ready
+    action:
+      - choose:
+          - conditions: "{{ trigger.to_state.state == 'on' }}"
+            sequence:
+              - service: input_number.set_value
+                data:
+                  entity_id: input_number.spectra_interactable_cutover_ready_since_ts_ms
+                  value: "{{ (as_timestamp(now()) * 1000) | int }}"
+        default:
+          - service: input_number.set_value
+            data:
+              entity_id: input_number.spectra_interactable_cutover_ready_since_ts_ms
+              value: 0
+
+  - id: spectra_interactable_hourly_remediation_counter_reset
+    alias: "Spectra: Interactable Hourly Remediation Counter Reset"
+    mode: single
+    trigger:
+      - platform: time_pattern
+        minutes: "0"
+    action:
+      - service: counter.reset
+        target:
+          entity_id: counter.spectra_interactable_auto_remediations
 
   - id: spectra_interactable_cutover_ready_notification_cleanup
     alias: "Spectra: Interactable Cutover Ready Notification Cleanup"
@@ -899,15 +1072,33 @@ automation:
       - service: persistent_notification.dismiss
         data:
           notification_id: spectra_interactable_active_activation_blocked
+      - service: persistent_notification.dismiss
+        data:
+          notification_id: spectra_interactable_auto_remediate
+      - service: persistent_notification.dismiss
+        data:
+          notification_id: spectra_interactable_auto_remediate_suppressed
 
 template:
   - sensor:
+      - name: Spectra Interactable Cutover Ready Soak Age S
+        unit_of_measurement: "s"
+        icon: mdi:timer-outline
+        state: >-
+          {% set ts = states('input_number.spectra_interactable_cutover_ready_since_ts_ms') | float(0) %}
+          {% if ts <= 0 or not is_state('binary_sensor.spectra_interactable_cutover_ready', 'on') %}
+            0
+          {% else %}
+            {{ ((as_timestamp(now()) * 1000 - ts) / 1000) | round(1) }}
+          {% endif %}
+
       - name: Spectra Interactable Recommended Profile
         icon: mdi:compass-outline
         state: >-
           {% set bridge_enabled = is_state('input_boolean.spectra_interactable_bridge_enabled', 'on') %}
           {% set intake = is_state('binary_sensor.spectra_interactable_source_intake_enabled', 'on') %}
           {% set cutover_ready = is_state('binary_sensor.spectra_interactable_cutover_ready', 'on') %}
+          {% set soaked = is_state('binary_sensor.spectra_interactable_cutover_ready_soaked', 'on') %}
           {% set success_pct = states('sensor.spectra_interactable_dispatch_success_pct') | float(0) %}
           {% set dropped_pct = states('sensor.spectra_interactable_dropped_pct') | float(0) %}
           {% set invalid_pct = states('sensor.spectra_interactable_invalid_pct') | float(0) %}
@@ -915,7 +1106,7 @@ template:
             disabled
           {% elif not intake %}
             shadow
-          {% elif cutover_ready and success_pct >= 98 and dropped_pct <= 2 and invalid_pct <= 1 %}
+          {% elif cutover_ready and soaked and success_pct >= 98 and dropped_pct <= 2 and invalid_pct <= 1 %}
             active
           {% elif is_state('binary_sensor.spectra_interactable_pilot_preflight_ready', 'on') %}
             pilot
@@ -1027,3 +1218,16 @@ template:
           {% set drop_max = [10, drop_max_cfg + 5] | min %}
           {% set invalid_max = [5, invalid_max_cfg + 2] | min %}
           {{ intake and total >= 5 and success_pct >= success_min and dropped_pct <= drop_max and invalid_pct <= invalid_max }}
+
+      - name: Spectra Interactable Cutover Ready Soaked
+        icon: mdi:timer-check-outline
+        state: >-
+          {% set soak_age = states('sensor.spectra_interactable_cutover_ready_soak_age_s') | float(0) %}
+          {% set soak_minutes = states('input_number.spectra_interactable_cutover_soak_minutes') | float(10) %}
+          {{ is_state('binary_sensor.spectra_interactable_cutover_ready', 'on') and soak_age >= (soak_minutes * 60) }}
+
+      - name: Spectra Interactable Active Preflight Ready
+        icon: mdi:shield-star-outline
+        state: >-
+          {{ is_state('binary_sensor.spectra_interactable_cutover_ready', 'on') and
+             is_state('binary_sensor.spectra_interactable_cutover_ready_soaked', 'on') }}

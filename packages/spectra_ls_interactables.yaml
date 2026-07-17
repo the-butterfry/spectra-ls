@@ -1,5 +1,5 @@
 # Description: Spectra interactables bridge scaffold (BLE/Wi-Fi hybrid ingest to control-center execution).
-# Version: 2026.07.17.12
+# Version: 2026.07.17.13
 # Last updated: 2026-07-17
 # Update version/date whenever you change this file.
 
@@ -112,6 +112,24 @@ input_text:
     max: 255
     mode: text
 
+  spectra_interactable_m3_candidate_interactable_id:
+    name: Spectra Interactable M3 Candidate Interactable ID
+    initial: "spectra_macro_pad_room"
+    max: 255
+    mode: text
+
+  spectra_interactable_m3_candidate_input_event:
+    name: Spectra Interactable M3 Candidate Input Event
+    initial: "button_3"
+    max: 255
+    mode: text
+
+  spectra_interactable_m3_candidate_transport:
+    name: Spectra Interactable M3 Candidate Transport
+    initial: "ble"
+    max: 255
+    mode: text
+
 input_button:
   spectra_interactable_run_test_source_signal:
     name: Spectra Interactable Run Test Source Signal
@@ -144,6 +162,10 @@ input_button:
   spectra_interactable_capture_evidence_packet:
     name: Spectra Interactable Capture Evidence Packet
     icon: mdi:file-document-check-outline
+
+  spectra_interactable_run_m3_candidate_test:
+    name: Spectra Interactable Run M3 Candidate Test
+    icon: mdi:shape-plus-outline
 
 input_select:
   spectra_interactable_cutover_profile:
@@ -373,6 +395,37 @@ script:
                     dropped={{ states('sensor.spectra_interactable_dropped_pct') }}%
                     invalid={{ states('sensor.spectra_interactable_invalid_pct') }}%
                     soak_age_s={{ states('sensor.spectra_interactable_cutover_ready_soak_age_s') }}.
+
+  spectra_interactable_run_m3_candidate_test:
+    alias: Spectra Interactable - Run M3 Candidate Test
+    mode: restart
+    sequence:
+      - variables:
+          interactable_id: "{{ states('input_text.spectra_interactable_m3_candidate_interactable_id') | lower | trim }}"
+          input_event: "{{ states('input_text.spectra_interactable_m3_candidate_input_event') | lower | trim }}"
+          transport: "{{ states('input_text.spectra_interactable_m3_candidate_transport') | lower | trim }}"
+          event_valid: "{{ input_event in ['encoder_turn','encoder_press','encoder_long_press','button_1','button_2','button_3','button_4'] }}"
+          transport_valid: "{{ transport in ['ble','wifi_api','unknown',''] }}"
+      - choose:
+          - conditions: >-
+              {{ interactable_id in ['', 'unknown', 'unavailable'] or (not event_valid) or (not transport_valid) }}
+            sequence:
+              - service: counter.increment
+                target:
+                  entity_id: counter.spectra_interactable_events_invalid
+              - service: input_text.set_value
+                data:
+                  entity_id: input_text.spectra_interactable_last_error
+                  value: >-
+                    m3_candidate_invalid id={{ interactable_id }} event={{ input_event }} transport={{ transport }}
+              - stop: "M3 candidate test blocked by invalid candidate contract fields."
+      - service: script.spectra_interactable_process_event
+        data:
+          interactable_id: "{{ interactable_id }}"
+          input_event: "{{ input_event }}"
+          transport: "{{ transport if transport not in ['', 'unknown', 'unavailable'] else 'unknown' }}"
+          correlation_id: >-
+            m3-candidate-{{ now().timestamp() | int }}
 
   spectra_interactable_activate_pilot_safe:
     alias: Spectra Interactable - Activate Pilot (Safe)
@@ -960,6 +1013,15 @@ automation:
     action:
       - service: script.spectra_interactable_capture_evidence_packet
 
+  - id: spectra_interactable_run_m3_candidate_test_button
+    alias: "Spectra: Interactable Run M3 Candidate Test Button"
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: input_button.spectra_interactable_run_m3_candidate_test
+    action:
+      - service: script.spectra_interactable_run_m3_candidate_test
+
   - id: spectra_interactable_cutover_safety_rollback
     alias: "Spectra: Interactable Cutover Safety Rollback"
     mode: single
@@ -1249,6 +1311,36 @@ automation:
 
 template:
   - sensor:
+      - name: Spectra Interactable M3 Candidate Contract
+        icon: mdi:shape-outline
+        state: >-
+          {% set iid = states('input_text.spectra_interactable_m3_candidate_interactable_id') | lower | trim %}
+          {% set evt = states('input_text.spectra_interactable_m3_candidate_input_event') | lower | trim %}
+          {% set trn = states('input_text.spectra_interactable_m3_candidate_transport') | lower | trim %}
+          {% set valid_evt = evt in ['encoder_turn','encoder_press','encoder_long_press','button_1','button_2','button_3','button_4'] %}
+          {% set valid_trn = trn in ['ble','wifi_api','unknown',''] %}
+          {% set valid_id = iid not in ['', 'unknown', 'unavailable'] and iid.startswith('spectra_') %}
+          {{ iid if valid_id else 'invalid_id' }}|{{ evt if valid_evt else 'invalid_event' }}|{{ trn if valid_trn else 'invalid_transport' }}
+        attributes:
+          interactable_id: "{{ states('input_text.spectra_interactable_m3_candidate_interactable_id') | lower | trim }}"
+          input_event: "{{ states('input_text.spectra_interactable_m3_candidate_input_event') | lower | trim }}"
+          transport: "{{ states('input_text.spectra_interactable_m3_candidate_transport') | lower | trim }}"
+          candidate_valid: "{{ is_state('binary_sensor.spectra_interactable_m3_candidate_valid', 'on') }}"
+          profile: "{{ states('input_select.spectra_interactable_cutover_profile') }}"
+
+      - name: Spectra Interactable M3 Generalization Status
+        icon: mdi:progress-wrench
+        state: >-
+          {% set candidate_valid = is_state('binary_sensor.spectra_interactable_m3_candidate_valid', 'on') %}
+          {% set profile = states('input_select.spectra_interactable_cutover_profile') | lower %}
+          {% if not candidate_valid %}
+            candidate_invalid
+          {% elif profile in ['shadow', 'pilot', 'active'] %}
+            ready_for_multi_interactable_validation
+          {% else %}
+            ready_but_profile_disabled
+          {% endif %}
+
               - name: Spectra Interactable Cutover Evidence Blockers
                 icon: mdi:alert-box-outline
                 state: >-
@@ -1416,6 +1508,17 @@ template:
           {{ states('input_number.spectra_interactable_last_dispatch_lag_ms') | float(0) | round(1) }}
 
   - binary_sensor:
+      - name: Spectra Interactable M3 Candidate Valid
+        icon: mdi:shield-check
+        state: >-
+          {% set iid = states('input_text.spectra_interactable_m3_candidate_interactable_id') | lower | trim %}
+          {% set evt = states('input_text.spectra_interactable_m3_candidate_input_event') | lower | trim %}
+          {% set trn = states('input_text.spectra_interactable_m3_candidate_transport') | lower | trim %}
+          {% set valid_id = iid not in ['', 'unknown', 'unavailable'] and iid.startswith('spectra_') %}
+          {% set valid_evt = evt in ['encoder_turn','encoder_press','encoder_long_press','button_1','button_2','button_3','button_4'] %}
+          {% set valid_trn = trn in ['ble','wifi_api','unknown',''] %}
+          {{ valid_id and valid_evt and valid_trn }}
+
       - name: Spectra Interactable Bridge Active
         icon: mdi:bridge
         state: >-

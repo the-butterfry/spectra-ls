@@ -1,5 +1,5 @@
 # Description: Standalone ESPHome config for Spectra LS Remote tabletop control box (encoder + transport buttons + battery telemetry).
-# Version: 2026.07.17.15
+# Version: 2026.07.17.16
 # Last updated: 2026-07-17
 # Notes:
 # - Primary bring-up path is Wi-Fi/API for fast iteration.
@@ -52,7 +52,7 @@ substitutions:
   remote_volume_step_slow_pct: "3"
   remote_volume_step_fast_pct: "7"
   remote_volume_step_fast_window_ms: "320"
-  remote_encoder_emit_gate_ms: "12"
+  remote_encoder_emit_gate_ms: "80"
   remote_encoder_same_dir_lock_ms: "35"
   remote_encoder_max_detents_per_emit: "4"
   remote_encoder_direction_multiplier: "-1"
@@ -555,6 +555,12 @@ binary_sensor:
     filters:
       - delayed_on: 20ms
       - delayed_off: 20ms
+    on_press:
+      - lambda: |-
+          ESP_LOGI("remote", "encoder press pin ON");
+    on_release:
+      - lambda: |-
+          ESP_LOGI("remote", "encoder press pin OFF");
     on_multi_click:
       - timing:
           - ON for at least 750ms

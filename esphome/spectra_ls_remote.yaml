@@ -1,9 +1,8 @@
 # Description: Standalone ESPHome config for Spectra LS Remote tabletop control box (encoder + transport buttons + battery telemetry).
-# Version: 2026.07.17.27
+# Version: 2026.07.17.28
 # Last updated: 2026-07-17
 # Notes:
-# - Default control lane is BLE advertisement events.
-# - Long-press enables a bounded Wi-Fi maintenance/control session.
+# - BLE transport removed; control lane is direct Wi-Fi/TCP.
 
 substitutions:
   device_name: spectra-ls-remote
@@ -82,7 +81,6 @@ esphome:
   friendly_name: ${friendly_name}
   includes:
     - arylic_tcp_remote.h
-    - spectra_ls_system/components/spectra_remote_ble_event.h
   on_boot:
     priority: 250
     then:
@@ -117,10 +115,8 @@ esp32:
   framework:
     type: esp-idf
 
-esp32_ble:
-
 logger:
-  level: INFO
+  level: WARN
 
 api:
   id: remote_ha_api
@@ -134,7 +130,7 @@ wifi:
   ssid: ${wifi_ssid}
   password: ${wifi_password}
   fast_connect: true
-  power_save_mode: NONE
+  power_save_mode: LIGHT
   manual_ip:
     static_ip: 192.168.10.41
     gateway: 192.168.10.1
@@ -280,40 +276,17 @@ text_sensor:
     name: "Remote Control Lane"
     id: remote_control_lane
     icon: mdi:transit-connection-variant
-    update_interval: 2s
+    update_interval: 30s
     lambda: |-
-      if (!${remote_control_center_emit_enabled}) {
-        return {"emit_disabled"};
-      }
-      if (id(remote_ha_api).is_connected()) {
-        return {"wifi_api_connected"};
-      }
-      if (${remote_wifi_requires_long_press} && !id(remote_wifi_maintenance_session_active)) {
-        return {"waiting_long_press"};
-      }
-      if (id(remote_wifi_maintenance_enable_pending)) {
-        return {"maintenance_connect_pending"};
-      }
-      return {"wifi_api_disconnected"};
+      if (id(remote_ha_api).is_connected()) return {"direct_wifi"};
+      return {"wifi_disconnected"};
 
   - platform: template
     name: "Remote Transport Mode"
     id: remote_transport_mode
     icon: mdi:lan-connect
-    update_interval: 1s
+    update_interval: 30s
     lambda: |-
-      if (${remote_wifi_requires_long_press}) {
-        if (id(remote_ha_api).is_connected()) {
-          return {"wifi_api_live"};
-        }
-        if (id(remote_wifi_maintenance_enable_pending)) {
-          return {"wifi_connecting"};
-        }
-        if (id(remote_wifi_maintenance_session_active)) {
-          return {"wifi_session_reconnect"};
-        }
-        return {"ble_advertising"};
-      }
       if (id(remote_ha_api).is_connected()) {
         return {"wifi_api_live"};
       }
@@ -630,22 +603,6 @@ binary_sensor:
       - script.execute: remote_emit_button_1
 
 script:
-  - id: remote_emit_ble_event
-    mode: queued
-    parameters:
-      ble_event: int
-      event_delta: int
-    then:
-      - lambda: |-
-          const bool ok = esphome::spectra_remote_ble::emit_event((uint8_t) ble_event, event_delta);
-          ESP_LOGD(
-            "remote",
-            "ble_emit event=%d delta=%d ok=%d",
-            ble_event,
-            event_delta,
-            ok ? 1 : 0
-          );
-
   - id: remote_note_input
     mode: restart
     then:
@@ -830,33 +787,7 @@ script:
       - if:
           condition:
             lambda: |-
-              if (!${remote_wifi_requires_long_press}) {
-                return true;
-              }
-              return id(remote_wifi_maintenance_session_active) ||
-                     id(remote_wifi_maintenance_enable_pending) ||
-                     id(remote_ha_api).is_connected();
-          then:
-            - script.execute:
-                id: remote_emit_control_center_encoder_turn
-                turn_delta: !lambda |-
-                  return delta;
-          else:
-            - script.execute:
-                id: remote_emit_ble_event
-                ble_event: 1
-                event_delta: !lambda |-
-                  return delta;
-      - if:
-          condition:
-            lambda: |-
-              const bool wifi_lane_active = (!${remote_wifi_requires_long_press}) ||
-                                            id(remote_wifi_maintenance_session_active) ||
-                                            id(remote_wifi_maintenance_enable_pending) ||
-                                            id(remote_ha_api).is_connected();
-              if (!wifi_lane_active) {
-                return false;
-              }
+              if (!id(remote_ha_api).is_connected()) return false;
               const bool has_cached_route = !id(remote_route_hosts_last_valid).empty() || !id(remote_route_host_last_valid).empty();
               return ${remote_direct_transport_enabled} ||
                      (${remote_control_center_offline_direct_fallback} && !id(remote_ha_api).is_connected() && has_cached_route);
@@ -884,31 +815,7 @@ script:
       - if:
           condition:
             lambda: |-
-              if (!${remote_wifi_requires_long_press}) {
-                return true;
-              }
-              return id(remote_wifi_maintenance_session_active) ||
-                     id(remote_wifi_maintenance_enable_pending) ||
-                     id(remote_ha_api).is_connected();
-          then:
-            - script.execute:
-                id: remote_emit_control_center_event
-                event_name: "encoder_press"
-          else:
-            - script.execute:
-                id: remote_emit_ble_event
-                ble_event: 2
-                event_delta: 0
-      - if:
-          condition:
-            lambda: |-
-              const bool wifi_lane_active = (!${remote_wifi_requires_long_press}) ||
-                                            id(remote_wifi_maintenance_session_active) ||
-                                            id(remote_wifi_maintenance_enable_pending) ||
-                                            id(remote_ha_api).is_connected();
-              if (!wifi_lane_active) {
-                return false;
-              }
+              if (!id(remote_ha_api).is_connected()) return false;
               const bool has_cached_route = !id(remote_route_hosts_last_valid).empty() || !id(remote_route_host_last_valid).empty();
               return ${remote_direct_transport_enabled} ||
                      (${remote_control_center_offline_direct_fallback} && !id(remote_ha_api).is_connected() && has_cached_route);
@@ -922,76 +829,18 @@ script:
       - if:
           condition:
             lambda: |-
-              if (!${remote_wifi_requires_long_press}) {
-                return true;
-              }
-              return id(remote_wifi_maintenance_session_active) ||
-                     id(remote_wifi_maintenance_enable_pending) ||
-                     id(remote_ha_api).is_connected();
+              return id(remote_ha_api).is_connected();
           then:
-            - script.execute:
-                id: remote_emit_control_center_event
-                event_name: "button_1"
             - script.execute: remote_next_track_guarded
-          else:
-            - script.execute:
-                id: remote_emit_ble_event
-                ble_event: 4
-                event_delta: 0
 
   - id: remote_emit_encoder_long_press
     mode: restart
     then:
       - lambda: |-
           id(remote_last_encoder_interaction_ms) = millis();
-      - if:
-          condition:
-            lambda: |-
-              return ${remote_wifi_requires_long_press};
-          then:
-            - if:
-                condition:
-                  lambda: |-
-                    return id(remote_wifi_maintenance_session_active) ||
-                           id(remote_wifi_maintenance_enable_pending) ||
-                           id(remote_ha_api).is_connected();
-                then:
-                  - lambda: |-
-                      id(remote_wifi_maintenance_session_active) = false;
-                      id(remote_wifi_maintenance_enable_pending) = false;
-                      id(remote_wifi_maintenance_session_started_ms) = 0;
-                      id(remote_pending_encoder_delta) = 0;
-                      ESP_LOGI("remote", "maintenance long-press: switching back to BLE lane (Wi-Fi disabled)");
-                  - homeassistant.service:
-                      service: input_boolean.turn_off
-                      data:
-                        entity_id: ${remote_wifi_maintenance_enabled_helper}
-                  - homeassistant.service:
-                      service: timer.cancel
-                      data:
-                        entity_id: ${remote_wifi_maintenance_timer}
-                  - wifi.disable:
-                  - script.execute:
-                      id: remote_emit_ble_event
-                      ble_event: 3
-                      event_delta: 0
-                else:
-                  - lambda: |-
-                      id(remote_wifi_maintenance_enable_pending) = true;
-                      ESP_LOGI("remote", "maintenance long-press: enabling Wi-Fi lane");
-                  - wifi.enable:
-          else:
-            - script.execute:
-                id: remote_emit_control_center_event
-                event_name: "encoder_long_press"
-            - homeassistant.service:
-                service: input_boolean.turn_on
-                data:
-                  entity_id: ${remote_wifi_maintenance_enabled_helper}
-            - homeassistant.service:
-                service: timer.start
-                data:
-                  entity_id: ${remote_wifi_maintenance_timer}
+      - lambda: |-
+          // BLE lane removed; keep long-press reserved for future Wi-Fi-only actions.
+          return;
 
   - id: remote_volume_up_guarded
     mode: restart
@@ -1456,36 +1305,6 @@ script:
               return id(remote_resolved_target);
 
 interval:
-  - interval: 1s
-    then:
-      - lambda: |-
-          if (!id(remote_ha_api).is_connected()) {
-            return;
-          }
-          auto to_lower = [](std::string value) {
-            for (auto &c : value) c = (char) ::tolower(c);
-            return value;
-          };
-          auto is_unresolved = [&](const std::string &value) {
-            const std::string low = to_lower(value);
-            return (low.empty() || low == "unknown" || low == "unavailable" || low == "none" || low == "null");
-          };
-
-          std::string host = id(remote_control_host).has_state() ? id(remote_control_host).state.c_str() : "";
-          if (is_unresolved(host)) host = id(remote_control_host_prefixed).has_state() ? id(remote_control_host_prefixed).state.c_str() : "";
-          if (is_unresolved(host)) host = id(remote_control_host_fallback).has_state() ? id(remote_control_host_fallback).state.c_str() : "";
-          if (!is_unresolved(host)) id(remote_route_host_last_valid) = host;
-
-          std::string hosts = id(remote_control_hosts).has_state() ? id(remote_control_hosts).state.c_str() : "";
-          if (is_unresolved(hosts)) hosts = id(remote_control_hosts_prefixed).has_state() ? id(remote_control_hosts_prefixed).state.c_str() : "";
-          if (is_unresolved(hosts)) hosts = id(remote_control_hosts_fallback).has_state() ? id(remote_control_hosts_fallback).state.c_str() : "";
-          if (!is_unresolved(hosts)) id(remote_route_hosts_last_valid) = hosts;
-
-          std::string port = id(remote_control_port).has_state() ? id(remote_control_port).state.c_str() : "";
-          if (is_unresolved(port)) port = id(remote_control_port_prefixed).has_state() ? id(remote_control_port_prefixed).state.c_str() : "";
-          if (is_unresolved(port)) port = id(remote_control_port_fallback).has_state() ? id(remote_control_port_fallback).state.c_str() : "";
-          if (!is_unresolved(port)) id(remote_route_port_last_valid) = port;
-
   - interval: 1s
     then:
       - if:

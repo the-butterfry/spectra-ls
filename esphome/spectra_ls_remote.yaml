@@ -1,5 +1,5 @@
 # Description: Standalone ESPHome config for Spectra LS Remote tabletop control box (encoder + transport buttons + battery telemetry).
-# Version: 2026.07.17.4
+# Version: 2026.07.17.5
 # Last updated: 2026-07-17
 # Notes:
 # - Primary bring-up path is Wi-Fi/API for fast iteration.

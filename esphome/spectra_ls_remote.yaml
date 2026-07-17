@@ -1,5 +1,5 @@
 # Description: Standalone ESPHome config for Spectra LS Remote tabletop control box (encoder + transport buttons + battery telemetry).
-# Version: 2026.07.17.11
+# Version: 2026.07.17.12
 # Last updated: 2026-07-17
 # Notes:
 # - Primary bring-up path is Wi-Fi/API for fast iteration.
@@ -61,7 +61,7 @@ substitutions:
   remote_control_center_emit_dry_run: "false"
   remote_direct_transport_enabled: "false"
   remote_control_center_settle_ms: "5000"
-  remote_wifi_requires_long_press: "false"
+  remote_wifi_requires_long_press: "true"
   remote_emit_disconnected_log_interval_ms: "1200"
   remote_wifi_reconnect_interval_ms: "2500"
   remote_wifi_maintenance_session_window_ms: "900000"
@@ -73,7 +73,7 @@ substitutions:
   battery_full_v: "4.20"
 
   # Sleep model (disabled by default during bring-up)
-  remote_deep_sleep_enabled: "false"
+  remote_deep_sleep_enabled: "true"
   remote_idle_sleep_ms: "30000"
 
 esphome:

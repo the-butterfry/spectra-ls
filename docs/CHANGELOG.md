@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.07.17.21 -->
+<!-- Version: 2026.07.17.22 -->
 <!-- Last updated: 2026-07-17 -->
 
 # Changelog
 
 ## 2026-07-17
+
+- Runtime+Component/Interactables Roadmap Slice M4 Finalization Super-Slice (`packages/spectra_ls_interactables.yaml`, `docs/roadmap/SPECTRA-REMOTE-INTERACTABLES-ROADMAP.md`, `docs/CHANGELOG.md`): add sustained finalization governance on top of M4 retirement-readiness, including retirement-ready soak tracking, configurable retirement soak threshold, configurable M4 closeout staleness threshold, explicit M4 finalization blockers/verdict sensors, finalization-ready binary gate, one-button finalization packet capture, and periodic finalization auto-capture cadence for deterministic proof collection. Also extends profile-change notification hygiene to dismiss stale M4 closeout/retirement/finalization packet notifications outside active posture. Runtime track disposition: implemented (M4 finalization readiness contract + packet cadence in HA package lane). Component track disposition: compatibility-shimmed (execution sink remains `spectra_ls.execute_control_center_input`; no `custom_components/spectra_ls` semantic mutation). P1/P2/P3 impact: no source-of-truth ownership reassignment; additive finalization determinism and operability hardening only. README/wiki parity: no material operator workflow change.
 
 - Runtime+Component/Interactables Roadmap Slice M4 Retirement-Readiness Gate + Packet Cadence (`packages/spectra_ls_interactables.yaml`, `docs/roadmap/SPECTRA-REMOTE-INTERACTABLES-ROADMAP.md`, `docs/CHANGELOG.md`): add deterministic retirement-readiness governance on top of M4 closeout, including explicit retirement blockers/verdict sensors, retirement-ready binary gate, one-button retirement packet capture, and periodic retirement auto-capture cadence for sustained-ready evidence. Includes compact retirement age telemetry and notification hygiene for blocked-vs-ready retirement packet posture. Runtime track disposition: implemented (M4 retirement-readiness gate + packet automation in HA package lane). Component track disposition: compatibility-shimmed (execution sink remains `spectra_ls.execute_control_center_input`; no `custom_components/spectra_ls` semantic mutation). P1/P2/P3 impact: no source-of-truth ownership reassignment; additive retirement-readiness determinism and operability hardening only. README/wiki parity: no material operator workflow change.
 

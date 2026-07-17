@@ -1,5 +1,5 @@
 <!-- Description: Roadmap for Spectra remote BLE-first evolution with extensible interactables architecture. -->
-<!-- Version: 2026.07.17.5 -->
+<!-- Version: 2026.07.17.6 -->
 <!-- Last updated: 2026-07-17 -->
 
 # Spectra Remote + Interactables Roadmap
@@ -190,7 +190,7 @@ Future interactables should integrate by implementing the same canonical event c
 - `M1`: implemented (shadow validation and parity harness in place)
 - `M2`: implemented (cutover profiles + readiness/rollback safety + activation gating)
 - `M3`: active (closeout certification + sustained packet cadence executing)
-- `M4`: active (stabilization starter + closeout/retirement-readiness evidence lanes executing)
+- `M4`: active (stabilization starter + closeout/retirement/finalization evidence lanes executing)
 
 Latest run update (2026-07-17, M3 closeout packet + reusable-contract evidence gate):
 
@@ -219,6 +219,13 @@ Latest run update (2026-07-17, M4 retirement-readiness gate + packet cadence):
 - Runtime track disposition: implemented (M4 retirement-readiness contract and packet automation added in package lane).
 - Component track disposition: compatibility-shimmed (execution sink remains `spectra_ls.execute_control_center_input`; no component semantic mutation).
 - M4 impact check: no source-of-truth ownership reassignment; stabilization-retirement evidence determinism and operator readiness proof hardening only.
+
+Latest run update (2026-07-17, M4 finalization super-slice):
+
+- Added sustained retirement-soak and finalization governance surfaces: retirement-ready soak age tracking, finalization blockers/verdict, finalization-ready binary gate, one-click finalization packet capture, and periodic finalization auto-capture cadence.
+- Runtime track disposition: implemented (M4 finalization readiness contract and packet automation added in package lane).
+- Component track disposition: compatibility-shimmed (execution sink remains `spectra_ls.execute_control_center_input`; no component semantic mutation).
+- M4 impact check: no source-of-truth ownership reassignment; stabilization-to-retirement closeout determinism and operator finalization proof hardening only.
 
 ## Validation Matrix
 

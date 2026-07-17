@@ -1,5 +1,5 @@
 # Description: Standalone ESPHome config for Spectra LS Remote tabletop control box (encoder + transport buttons + battery telemetry).
-# Version: 2026.07.17.18
+# Version: 2026.07.17.19
 # Last updated: 2026-07-17
 # Notes:
 # - Primary bring-up path is Wi-Fi/API for fast iteration.
@@ -131,7 +131,7 @@ wifi:
   ssid: ${wifi_ssid}
   password: ${wifi_password}
   fast_connect: true
-  power_save_mode: LIGHT
+  power_save_mode: NONE
   manual_ip:
     static_ip: 192.168.10.41
     gateway: 192.168.10.1

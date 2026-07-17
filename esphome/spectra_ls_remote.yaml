@@ -1,5 +1,5 @@
 # Description: Standalone ESPHome config for Spectra LS Remote tabletop control box (encoder + transport buttons + battery telemetry).
-# Version: 2026.07.17.28
+# Version: 2026.07.17.29
 # Last updated: 2026-07-17
 # Notes:
 # - BLE transport removed; control lane is direct Wi-Fi/TCP.
@@ -494,9 +494,9 @@ sensor:
 
             const int signed_detents = direction * detents;
             if (direction > 0) {
-              ESP_LOGI("remote", "remote encoder detent cw (%d)", detents);
+              ESP_LOGW("remote", "remote encoder detent cw (%d)", detents);
             } else {
-              ESP_LOGI("remote", "remote encoder detent anticlockwise (%d)", detents);
+              ESP_LOGW("remote", "remote encoder detent anticlockwise (%d)", detents);
             }
             id(remote_emit_encoder_turn).execute(signed_detents);
 

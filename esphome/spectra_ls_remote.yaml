@@ -117,6 +117,8 @@ esp32:
   framework:
     type: esp-idf
 
+esp32_ble:
+
 logger:
   level: INFO
 

@@ -1,5 +1,5 @@
 # Description: Spectra interactables bridge scaffold (BLE/Wi-Fi hybrid ingest to control-center execution).
-# Version: 2026.07.17.21
+# Version: 2026.07.17.22
 # Last updated: 2026-07-17
 # Update version/date whenever you change this file.
 
@@ -190,6 +190,12 @@ input_text:
     max: 255
     mode: text
 
+  spectra_interactable_last_m4_exit_summary:
+    name: Spectra Interactable Last M4 Exit Summary
+    initial: ""
+    max: 255
+    mode: text
+
 input_button:
   spectra_interactable_run_test_source_signal:
     name: Spectra Interactable Run Test Source Signal
@@ -254,6 +260,10 @@ input_button:
   spectra_interactable_run_m4_finalization_packet:
     name: Spectra Interactable Run M4 Finalization Packet
     icon: mdi:flag-checkered
+
+  spectra_interactable_run_m4_exit_packet:
+    name: Spectra Interactable Run M4 Exit Packet
+    icon: mdi:checkbox-multiple-marked-circle-outline
 
 input_select:
   spectra_interactable_cutover_profile:
@@ -406,8 +416,22 @@ input_number:
     step: 1
     initial: 0
 
+  spectra_interactable_last_m4_exit_ts_ms:
+    name: Spectra Interactable Last M4 Exit TS ms
+    min: 0
+    max: 4102444800000
+    step: 1
+    initial: 0
+
   spectra_interactable_m4_retirement_ready_since_ts_ms:
     name: Spectra Interactable M4 Retirement Ready Since TS ms
+    min: 0
+    max: 4102444800000
+    step: 1
+    initial: 0
+
+  spectra_interactable_m4_finalization_ready_since_ts_ms:
+    name: Spectra Interactable M4 Finalization Ready Since TS ms
     min: 0
     max: 4102444800000
     step: 1
@@ -426,6 +450,27 @@ input_number:
     max: 21600
     step: 300
     initial: 7200
+
+  spectra_interactable_m4_exit_soak_minutes:
+    name: Spectra Interactable M4 Exit Soak Minutes
+    min: 10
+    max: 480
+    step: 10
+    initial: 120
+
+  spectra_interactable_m4_exit_min_finalization_score:
+    name: Spectra Interactable M4 Exit Min Finalization Score
+    min: 80
+    max: 100
+    step: 0.5
+    initial: 95
+
+  spectra_interactable_m4_exit_max_finalization_age_s:
+    name: Spectra Interactable M4 Exit Max Finalization Age S
+    min: 600
+    max: 43200
+    step: 300
+    initial: 14400
 
   spectra_interactable_m3_closeout_max_matrix_age_s:
     name: Spectra Interactable M3 Closeout Max Matrix Age S
@@ -1036,6 +1081,66 @@ script:
                 data:
                   notification_id: spectra_interactable_m4_finalization_packet
                   title: "Spectra Interactables M4 Finalization Packet"
+                  message: >-
+                    {{ summary }}
+                    blockers={{ blockers }}
+
+  spectra_interactable_run_m4_exit_packet:
+    alias: Spectra Interactable - Run M4 Exit Packet
+    mode: restart
+    sequence:
+      - variables:
+          blockers: "{{ states('sensor.spectra_interactable_m4_exit_blockers') | trim }}"
+          verdict: "{{ states('sensor.spectra_interactable_m4_exit_verdict') | trim }}"
+          profile: "{{ states('input_select.spectra_interactable_cutover_profile') | lower | trim }}"
+          finalization_soak_age_s: "{{ states('sensor.spectra_interactable_m4_finalization_ready_soak_age_s') | float(0) }}"
+          finalization_score: "{{ states('sensor.spectra_interactable_m4_finalization_score') | float(0) }}"
+          finalization_age_s: "{{ states('sensor.spectra_interactable_m4_finalization_last_age_s') | float(0) }}"
+          now_ts_ms: "{{ (as_timestamp(now()) * 1000) | int }}"
+          summary: >-
+            m4_exit verdict={{ verdict }} profile={{ profile }} finalization_soak_age_s={{ finalization_soak_age_s | round(1) }}
+            finalization_score={{ finalization_score | round(1) }} finalization_age_s={{ finalization_age_s | round(1) }}
+      - service: input_number.set_value
+        data:
+          entity_id: input_number.spectra_interactable_last_m4_exit_ts_ms
+          value: "{{ now_ts_ms }}"
+      - service: input_text.set_value
+        data:
+          entity_id: input_text.spectra_interactable_last_m4_exit_summary
+          value: "{{ summary[:255] }}"
+      - choose:
+          - conditions: "{{ verdict != 'go_m4_exit_ready' }}"
+            sequence:
+              - service: input_text.set_value
+                data:
+                  entity_id: input_text.spectra_interactable_last_error
+                  value: >-
+                    m4_exit_blocked blockers={{ blockers }}
+              - choose:
+                  - conditions: "{{ is_state('input_boolean.spectra_interactable_rollback_notifications_enabled', 'on') }}"
+                    sequence:
+                      - service: persistent_notification.create
+                        data:
+                          notification_id: spectra_interactable_m4_exit_packet
+                          title: "Spectra Interactables M4 Exit Blocked"
+                          message: >-
+                            {{ summary }}
+                            blockers={{ blockers if blockers not in ['', 'unknown', 'unavailable'] else 'none' }}
+              - stop: "M4 exit packet blocked by unmet gates."
+      - service: input_text.set_value
+        data:
+          entity_id: input_text.spectra_interactable_last_error
+          value: ""
+      - choose:
+          - conditions: "{{ is_state('input_boolean.spectra_interactable_rollback_notifications_enabled', 'on') }}"
+            sequence:
+              - service: persistent_notification.dismiss
+                data:
+                  notification_id: spectra_interactable_m4_finalization_packet
+              - service: persistent_notification.create
+                data:
+                  notification_id: spectra_interactable_m4_exit_packet
+                  title: "Spectra Interactables M4 Exit Packet"
                   message: >-
                     {{ summary }}
                     blockers={{ blockers }}
@@ -1698,6 +1803,15 @@ automation:
     action:
       - service: script.spectra_interactable_run_m4_finalization_packet
 
+  - id: spectra_interactable_run_m4_exit_packet_button
+    alias: "Spectra: Interactable Run M4 Exit Packet Button"
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: input_button.spectra_interactable_run_m4_exit_packet
+    action:
+      - service: script.spectra_interactable_run_m4_exit_packet
+
   - id: spectra_interactable_m3_closeout_auto_capture
     alias: "Spectra: Interactable M3 Closeout Auto Capture"
     mode: single
@@ -1749,6 +1863,19 @@ automation:
         state: "on"
     action:
       - service: script.spectra_interactable_run_m4_finalization_packet
+
+  - id: spectra_interactable_m4_exit_auto_capture
+    alias: "Spectra: Interactable M4 Exit Auto Capture"
+    mode: single
+    trigger:
+      - platform: time_pattern
+        hours: "/4"
+    condition:
+      - condition: state
+        entity_id: binary_sensor.spectra_interactable_m4_exit_ready
+        state: "on"
+    action:
+      - service: script.spectra_interactable_run_m4_exit_packet
 
   - id: spectra_interactable_m4_finalization_pre_ready_capture
     alias: "Spectra: Interactable M4 Finalization Pre-Ready Capture"
@@ -1850,6 +1977,86 @@ automation:
             data:
               entity_id: input_number.spectra_interactable_m4_retirement_ready_since_ts_ms
               value: 0
+
+  - id: spectra_interactable_m4_finalization_ready_since_tracker
+    alias: "Spectra: Interactable M4 Finalization Ready Since Tracker"
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.spectra_interactable_m4_finalization_ready
+    action:
+      - choose:
+          - conditions: "{{ trigger.to_state.state == 'on' }}"
+            sequence:
+              - service: input_number.set_value
+                data:
+                  entity_id: input_number.spectra_interactable_m4_finalization_ready_since_ts_ms
+                  value: "{{ (as_timestamp(now()) * 1000) | int }}"
+        default:
+          - service: input_number.set_value
+            data:
+              entity_id: input_number.spectra_interactable_m4_finalization_ready_since_ts_ms
+              value: 0
+
+  - id: spectra_interactable_m4_exit_ready_notification
+    alias: "Spectra: Interactable M4 Exit Ready Notification"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.spectra_interactable_m4_exit_ready
+        to: "on"
+        for:
+          minutes: 2
+    condition:
+      - condition: state
+        entity_id: input_select.spectra_interactable_cutover_profile
+        state: "active"
+      - condition: state
+        entity_id: input_boolean.spectra_interactable_rollback_notifications_enabled
+        state: "on"
+    action:
+      - service: persistent_notification.dismiss
+        data:
+          notification_id: spectra_interactable_m4_exit_blocked
+      - service: persistent_notification.create
+        data:
+          notification_id: spectra_interactable_m4_exit_ready
+          title: "Spectra Interactables M4 Exit Certification Ready"
+          message: >-
+            M4 exit gate is sustained-ready in active profile.
+            score={{ states('sensor.spectra_interactable_m4_finalization_score') }}
+            exit_blockers={{ states('sensor.spectra_interactable_m4_exit_blockers') }}
+            finalization_soak_age_s={{ states('sensor.spectra_interactable_m4_finalization_ready_soak_age_s') }}.
+
+  - id: spectra_interactable_m4_exit_blocked_notification
+    alias: "Spectra: Interactable M4 Exit Blocked Notification"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.spectra_interactable_m4_exit_ready
+        to: "off"
+        for:
+          minutes: 5
+    condition:
+      - condition: state
+        entity_id: input_select.spectra_interactable_cutover_profile
+        state: "active"
+      - condition: state
+        entity_id: input_boolean.spectra_interactable_rollback_notifications_enabled
+        state: "on"
+    action:
+      - service: persistent_notification.dismiss
+        data:
+          notification_id: spectra_interactable_m4_exit_ready
+      - service: persistent_notification.create
+        data:
+          notification_id: spectra_interactable_m4_exit_blocked
+          title: "Spectra Interactables M4 Exit Certification Blocked"
+          message: >-
+            M4 exit certification remains blocked in active profile.
+            exit_blockers={{ states('sensor.spectra_interactable_m4_exit_blockers') }}
+            finalization_score={{ states('sensor.spectra_interactable_m4_finalization_score') }}
+            finalization_age_s={{ states('sensor.spectra_interactable_m4_finalization_last_age_s') }}.
 
   - id: spectra_interactable_cutover_safety_rollback
     alias: "Spectra: Interactable Cutover Safety Rollback"
@@ -2164,6 +2371,15 @@ automation:
               - service: persistent_notification.dismiss
                 data:
                   notification_id: spectra_interactable_m4_finalization_blocked
+              - service: persistent_notification.dismiss
+                data:
+                  notification_id: spectra_interactable_m4_exit_packet
+              - service: persistent_notification.dismiss
+                data:
+                  notification_id: spectra_interactable_m4_exit_ready
+              - service: persistent_notification.dismiss
+                data:
+                  notification_id: spectra_interactable_m4_exit_blocked
 
 template:
   - sensor:
@@ -2565,6 +2781,65 @@ template:
             blocked
           {% endif %}
 
+      - name: Spectra Interactable M4 Finalization Ready Soak Age S
+        unit_of_measurement: "s"
+        icon: mdi:timer-check
+        state: >-
+          {% set ts = states('input_number.spectra_interactable_m4_finalization_ready_since_ts_ms') | float(0) %}
+          {% if ts <= 0 or not is_state('binary_sensor.spectra_interactable_m4_finalization_ready', 'on') %}
+            0
+          {% else %}
+            {{ ((as_timestamp(now()) * 1000 - ts) / 1000) | round(1) }}
+          {% endif %}
+
+      - name: Spectra Interactable M4 Exit Blockers
+        icon: mdi:alert-circle-check
+        state: >-
+          {% set ns = namespace(items=[]) %}
+          {% if states('input_select.spectra_interactable_cutover_profile') | lower != 'active' %}
+            {% set ns.items = ns.items + ['profile_not_active'] %}
+          {% endif %}
+          {% if not is_state('binary_sensor.spectra_interactable_m4_finalization_ready', 'on') %}
+            {% set ns.items = ns.items + ['m4_finalization_not_ready'] %}
+          {% endif %}
+          {% set soak_needed_s = (states('input_number.spectra_interactable_m4_exit_soak_minutes') | float(120)) * 60 %}
+          {% set soak_age_s = states('sensor.spectra_interactable_m4_finalization_ready_soak_age_s') | float(0) %}
+          {% if soak_age_s < soak_needed_s %}
+            {% set ns.items = ns.items + ['m4_exit_soak_not_satisfied'] %}
+          {% endif %}
+          {% set min_score = states('input_number.spectra_interactable_m4_exit_min_finalization_score') | float(95) %}
+          {% if states('sensor.spectra_interactable_m4_finalization_score') | float(0) < min_score %}
+            {% set ns.items = ns.items + ['finalization_score_below_threshold'] %}
+          {% endif %}
+          {% set max_age = states('input_number.spectra_interactable_m4_exit_max_finalization_age_s') | float(14400) %}
+          {% set age_s = states('sensor.spectra_interactable_m4_finalization_last_age_s') | float(0) %}
+          {% if age_s <= 0 or age_s > max_age %}
+            {% set ns.items = ns.items + ['finalization_packet_stale'] %}
+          {% endif %}
+          {% if is_state('timer.spectra_interactable_remediation_cooldown', 'active') %}
+            {% set ns.items = ns.items + ['remediation_cooldown_active'] %}
+          {% endif %}
+          {% if ns.items | count == 0 %}
+            none
+          {% else %}
+            {{ ns.items | join('|') }}
+          {% endif %}
+
+      - name: Spectra Interactable M4 Exit Verdict
+        icon: mdi:check-all
+        state: >-
+          {% if states('sensor.spectra_interactable_m4_exit_blockers') == 'none' %}
+            go_m4_exit_ready
+          {% else %}
+            no_go
+          {% endif %}
+
+      - name: Spectra Interactable M4 Exit Last Summary
+        icon: mdi:file-certificate-outline
+        state: >-
+          {% set summary = states('input_text.spectra_interactable_last_m4_exit_summary') | trim %}
+          {{ summary if summary not in ['', 'unknown', 'unavailable'] else 'no_runs_yet' }}
+
       - name: Spectra Interactable M4 Finalization Last Summary
         icon: mdi:clipboard-text-clock
         state: >-
@@ -2609,6 +2884,17 @@ template:
         icon: mdi:clock-star-four-points-outline
         state: >-
           {% set ts = states('input_number.spectra_interactable_last_m4_finalization_ts_ms') | float(0) %}
+          {% if ts <= 0 %}
+            0
+          {% else %}
+            {{ ((as_timestamp(now()) * 1000 - ts) / 1000) | round(1) }}
+          {% endif %}
+
+      - name: Spectra Interactable M4 Exit Last Age S
+        unit_of_measurement: "s"
+        icon: mdi:clock-check-outline
+        state: >-
+          {% set ts = states('input_number.spectra_interactable_last_m4_exit_ts_ms') | float(0) %}
           {% if ts <= 0 %}
             0
           {% else %}
@@ -2856,6 +3142,11 @@ template:
         icon: mdi:check-decagram
         state: >-
           {{ states('sensor.spectra_interactable_m4_finalization_verdict') == 'go_m4_finalization_ready' }}
+
+      - name: Spectra Interactable M4 Exit Ready
+        icon: mdi:checkbox-multiple-marked-circle
+        state: >-
+          {{ states('sensor.spectra_interactable_m4_exit_verdict') == 'go_m4_exit_ready' }}
 
       - name: Spectra Interactable Bridge Active
         icon: mdi:bridge

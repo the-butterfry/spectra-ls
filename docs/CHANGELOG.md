@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.07.17.23 -->
+<!-- Version: 2026.07.17.24 -->
 <!-- Last updated: 2026-07-17 -->
 
 # Changelog
 
 ## 2026-07-17
+
+- Runtime+Component/Interactables Roadmap Slice M4 Exit Certification Super-Slice (`packages/spectra_ls_interactables.yaml`, `docs/roadmap/SPECTRA-REMOTE-INTERACTABLES-ROADMAP.md`, `docs/CHANGELOG.md`): add explicit M4 exit-readiness governance on top of finalization by introducing sustained finalization-soak tracking, configurable M4 exit thresholds (soak minutes, minimum finalization score, maximum finalization packet age), deterministic M4 exit blockers/verdict sensors, M4 exit-ready binary gate, one-button M4 exit packet capture, and periodic exit auto-capture cadence for sustained-ready certification evidence. Includes active-profile notification lifecycle for ready-vs-blocked M4 exit posture and profile-change cleanup for stale exit packets. Runtime track disposition: implemented (additive M4 exit certification lane in HA package path). Component track disposition: compatibility-shimmed (execution sink remains `spectra_ls.execute_control_center_input`; no `custom_components/spectra_ls` semantic mutation). P1/P2/P3 impact: no source-of-truth ownership reassignment; additive closure-governance determinism and operator certification hardening only. README/wiki parity: no material operator workflow change.
 
 - Runtime+Component/Interactables Roadmap Slice M4 Finalization Scoring + Notification Cadence Hardening (`packages/spectra_ls_interactables.yaml`, `docs/roadmap/SPECTRA-REMOTE-INTERACTABLES-ROADMAP.md`, `docs/CHANGELOG.md`): add deterministic finalization confidence scoring and posture surfacing (`m4_finalization_score`, `m4_finalization_posture`) and wire explicit ready-vs-blocked notification lifecycle automations so sustained-ready state emits a single clean readiness packet while prolonged blockers emit actionable blocker packets under active profile. Adds pre-ready cadence capture for blocked finalization packets in active mode to improve operator evidence continuity before full readiness. Runtime track disposition: implemented (additive scoring, posture, and readiness notification governance in HA package lane). Component track disposition: compatibility-shimmed (execution sink remains `spectra_ls.execute_control_center_input`; no `custom_components/spectra_ls` semantic mutation). P1/P2/P3 impact: no source-of-truth ownership reassignment; additive finalization confidence/operability hardening only. README/wiki parity: no material operator workflow change.
 

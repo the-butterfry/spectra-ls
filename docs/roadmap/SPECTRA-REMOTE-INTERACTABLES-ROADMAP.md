@@ -1,5 +1,5 @@
 <!-- Description: Roadmap for Spectra remote BLE-first evolution with extensible interactables architecture. -->
-<!-- Version: 2026.07.17.6 -->
+<!-- Version: 2026.07.17.7 -->
 <!-- Last updated: 2026-07-17 -->
 
 # Spectra Remote + Interactables Roadmap
@@ -226,6 +226,14 @@ Latest run update (2026-07-17, M4 finalization super-slice):
 - Runtime track disposition: implemented (M4 finalization readiness contract and packet automation added in package lane).
 - Component track disposition: compatibility-shimmed (execution sink remains `spectra_ls.execute_control_center_input`; no component semantic mutation).
 - M4 impact check: no source-of-truth ownership reassignment; stabilization-to-retirement closeout determinism and operator finalization proof hardening only.
+
+Latest run update (2026-07-17, M4 finalization scoring + notification cadence hardening):
+
+- Added deterministic finalization confidence/operability surfaces (`m4_finalization_score`, `m4_finalization_posture`) and active-profile readiness notification lifecycle controls for sustained-ready vs blocked finalization states.
+- Added blocked finalization packet pre-ready cadence in active profile to keep evidence continuity while readiness blockers are being worked down.
+- Runtime track disposition: implemented (additive M4 finalization scoring, posture, and readiness notification governance in package lane).
+- Component track disposition: compatibility-shimmed (execution sink remains `spectra_ls.execute_control_center_input`; no component semantic mutation).
+- M4 impact check: no source-of-truth ownership reassignment; additive finalization confidence and operator feedback-loop hardening only.
 
 ## Validation Matrix
 

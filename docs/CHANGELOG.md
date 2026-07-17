@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.07.17.22 -->
+<!-- Version: 2026.07.17.23 -->
 <!-- Last updated: 2026-07-17 -->
 
 # Changelog
 
 ## 2026-07-17
+
+- Runtime+Component/Interactables Roadmap Slice M4 Finalization Scoring + Notification Cadence Hardening (`packages/spectra_ls_interactables.yaml`, `docs/roadmap/SPECTRA-REMOTE-INTERACTABLES-ROADMAP.md`, `docs/CHANGELOG.md`): add deterministic finalization confidence scoring and posture surfacing (`m4_finalization_score`, `m4_finalization_posture`) and wire explicit ready-vs-blocked notification lifecycle automations so sustained-ready state emits a single clean readiness packet while prolonged blockers emit actionable blocker packets under active profile. Adds pre-ready cadence capture for blocked finalization packets in active mode to improve operator evidence continuity before full readiness. Runtime track disposition: implemented (additive scoring, posture, and readiness notification governance in HA package lane). Component track disposition: compatibility-shimmed (execution sink remains `spectra_ls.execute_control_center_input`; no `custom_components/spectra_ls` semantic mutation). P1/P2/P3 impact: no source-of-truth ownership reassignment; additive finalization confidence/operability hardening only. README/wiki parity: no material operator workflow change.
 
 - Runtime+Component/Interactables Roadmap Slice M4 Finalization Super-Slice (`packages/spectra_ls_interactables.yaml`, `docs/roadmap/SPECTRA-REMOTE-INTERACTABLES-ROADMAP.md`, `docs/CHANGELOG.md`): add sustained finalization governance on top of M4 retirement-readiness, including retirement-ready soak tracking, configurable retirement soak threshold, configurable M4 closeout staleness threshold, explicit M4 finalization blockers/verdict sensors, finalization-ready binary gate, one-button finalization packet capture, and periodic finalization auto-capture cadence for deterministic proof collection. Also extends profile-change notification hygiene to dismiss stale M4 closeout/retirement/finalization packet notifications outside active posture. Runtime track disposition: implemented (M4 finalization readiness contract + packet cadence in HA package lane). Component track disposition: compatibility-shimmed (execution sink remains `spectra_ls.execute_control_center_input`; no `custom_components/spectra_ls` semantic mutation). P1/P2/P3 impact: no source-of-truth ownership reassignment; additive finalization determinism and operability hardening only. README/wiki parity: no material operator workflow change.
 

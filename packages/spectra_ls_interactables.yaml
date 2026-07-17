@@ -1,5 +1,5 @@
 # Description: Spectra interactables bridge scaffold (BLE/Wi-Fi hybrid ingest to control-center execution).
-# Version: 2026.07.17.20
+# Version: 2026.07.17.21
 # Last updated: 2026-07-17
 # Update version/date whenever you change this file.
 
@@ -1750,6 +1750,87 @@ automation:
     action:
       - service: script.spectra_interactable_run_m4_finalization_packet
 
+  - id: spectra_interactable_m4_finalization_pre_ready_capture
+    alias: "Spectra: Interactable M4 Finalization Pre-Ready Capture"
+    mode: single
+    trigger:
+      - platform: time_pattern
+        minutes: "/30"
+    condition:
+      - condition: state
+        entity_id: input_select.spectra_interactable_cutover_profile
+        state: "active"
+      - condition: state
+        entity_id: binary_sensor.spectra_interactable_m4_finalization_ready
+        state: "off"
+      - condition: state
+        entity_id: input_boolean.spectra_interactable_rollback_notifications_enabled
+        state: "on"
+    action:
+      - service: script.spectra_interactable_run_m4_finalization_packet
+
+  - id: spectra_interactable_m4_finalization_ready_notification
+    alias: "Spectra: Interactable M4 Finalization Ready Notification"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.spectra_interactable_m4_finalization_ready
+        to: "on"
+        for:
+          minutes: 2
+    condition:
+      - condition: state
+        entity_id: input_select.spectra_interactable_cutover_profile
+        state: "active"
+      - condition: state
+        entity_id: input_boolean.spectra_interactable_rollback_notifications_enabled
+        state: "on"
+    action:
+      - service: persistent_notification.dismiss
+        data:
+          notification_id: spectra_interactable_m4_finalization_blocked
+      - service: persistent_notification.create
+        data:
+          notification_id: spectra_interactable_m4_finalization_ready
+          title: "Spectra Interactables M4 Finalization Ready"
+          message: >-
+            Finalization gate is sustained-ready in active profile.
+            score={{ states('sensor.spectra_interactable_m4_finalization_score') }}
+            posture={{ states('sensor.spectra_interactable_m4_finalization_posture') }}
+            blockers={{ states('sensor.spectra_interactable_m4_finalization_blockers') }}
+            retirement_soak_age_s={{ states('sensor.spectra_interactable_m4_retirement_ready_soak_age_s') }}.
+
+  - id: spectra_interactable_m4_finalization_blocked_notification
+    alias: "Spectra: Interactable M4 Finalization Blocked Notification"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.spectra_interactable_m4_finalization_ready
+        to: "off"
+        for:
+          minutes: 5
+    condition:
+      - condition: state
+        entity_id: input_select.spectra_interactable_cutover_profile
+        state: "active"
+      - condition: state
+        entity_id: input_boolean.spectra_interactable_rollback_notifications_enabled
+        state: "on"
+    action:
+      - service: persistent_notification.dismiss
+        data:
+          notification_id: spectra_interactable_m4_finalization_ready
+      - service: persistent_notification.create
+        data:
+          notification_id: spectra_interactable_m4_finalization_blocked
+          title: "Spectra Interactables M4 Finalization Blocked"
+          message: >-
+            Finalization is blocked in active profile.
+            score={{ states('sensor.spectra_interactable_m4_finalization_score') }}
+            posture={{ states('sensor.spectra_interactable_m4_finalization_posture') }}
+            blockers={{ states('sensor.spectra_interactable_m4_finalization_blockers') }}
+            retirement_soak_age_s={{ states('sensor.spectra_interactable_m4_retirement_ready_soak_age_s') }}.
+
   - id: spectra_interactable_m4_retirement_ready_since_tracker
     alias: "Spectra: Interactable M4 Retirement Ready Since Tracker"
     mode: restart
@@ -2077,6 +2158,12 @@ automation:
               - service: persistent_notification.dismiss
                 data:
                   notification_id: spectra_interactable_m4_finalization_packet
+              - service: persistent_notification.dismiss
+                data:
+                  notification_id: spectra_interactable_m4_finalization_ready
+              - service: persistent_notification.dismiss
+                data:
+                  notification_id: spectra_interactable_m4_finalization_blocked
 
 template:
   - sensor:
@@ -2431,6 +2518,51 @@ template:
             go_m4_finalization_ready
           {% else %}
             no_go
+          {% endif %}
+
+      - name: Spectra Interactable M4 Finalization Score
+        unit_of_measurement: "%"
+        icon: mdi:meter-electric-outline
+        state: >-
+          {% set score = 100 %}
+          {% if not is_state('binary_sensor.spectra_interactable_m4_retirement_ready', 'on') %}
+            {% set score = score - 40 %}
+          {% endif %}
+          {% if not is_state('binary_sensor.spectra_interactable_m4_retirement_ready_soaked', 'on') %}
+            {% set score = score - 20 %}
+          {% endif %}
+          {% if is_state('timer.spectra_interactable_remediation_cooldown', 'active') %}
+            {% set score = score - 20 %}
+          {% endif %}
+          {% set health = states('sensor.spectra_interactable_runtime_health_score') | float(0) %}
+          {% set success = states('sensor.spectra_interactable_dispatch_success_pct') | float(0) %}
+          {% set dropped = states('sensor.spectra_interactable_dropped_pct') | float(0) %}
+          {% set invalid = states('sensor.spectra_interactable_invalid_pct') | float(0) %}
+          {% set score = score - ([0, (96 - health) * 2] | max) %}
+          {% set score = score - ([0, (98 - success) * 2] | max) %}
+          {% set score = score - ([0, (dropped - 1.5) * 8] | max) %}
+          {% set score = score - ([0, (invalid - 0.8) * 10] | max) %}
+          {% if score < 0 %}
+            0
+          {% elif score > 100 %}
+            100
+          {% else %}
+            {{ score | round(1) }}
+          {% endif %}
+
+      - name: Spectra Interactable M4 Finalization Posture
+        icon: mdi:radar
+        state: >-
+          {% set profile = states('input_select.spectra_interactable_cutover_profile') | lower %}
+          {% set score = states('sensor.spectra_interactable_m4_finalization_score') | float(0) %}
+          {% if is_state('binary_sensor.spectra_interactable_m4_finalization_ready', 'on') %}
+            ready
+          {% elif profile != 'active' %}
+            non_active_profile
+          {% elif score >= 92 %}
+            nearing_ready
+          {% else %}
+            blocked
           {% endif %}
 
       - name: Spectra Interactable M4 Finalization Last Summary

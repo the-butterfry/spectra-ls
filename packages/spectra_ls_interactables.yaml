@@ -1,5 +1,5 @@
 # Description: Spectra interactables bridge scaffold (BLE/Wi-Fi hybrid ingest to control-center execution).
-# Version: 2026.07.17.7
+# Version: 2026.07.17.8
 # Last updated: 2026-07-17
 # Update version/date whenever you change this file.
 
@@ -33,6 +33,11 @@ input_boolean:
     name: Spectra Interactable BLE Arriving Source Enabled
     icon: mdi:walk
     initial: false
+
+  spectra_interactable_rollback_notifications_enabled:
+    name: Spectra Interactable Rollback Notifications Enabled
+    icon: mdi:bell-alert
+    initial: true
 
 input_text:
   spectra_interactable_last_event_json:
@@ -110,6 +115,10 @@ input_button:
   spectra_interactable_run_stress_test:
     name: Spectra Interactable Run Stress Test
     icon: mdi:rocket-launch
+
+  spectra_interactable_activate_pilot_safe:
+    name: Spectra Interactable Activate Pilot (Safe)
+    icon: mdi:shield-check
 
 input_select:
   spectra_interactable_cutover_profile:
@@ -205,6 +214,42 @@ timer:
     duration: "00:10:00"
 
 script:
+  spectra_interactable_activate_pilot_safe:
+    alias: Spectra Interactable - Activate Pilot (Safe)
+    mode: restart
+    sequence:
+      - variables:
+          pilot_ready: "{{ is_state('binary_sensor.spectra_interactable_pilot_preflight_ready', 'on') }}"
+      - choose:
+          - conditions: "{{ not pilot_ready }}"
+            sequence:
+              - service: input_text.set_value
+                data:
+                  entity_id: input_text.spectra_interactable_last_error
+                  value: "pilot_activation_blocked_preflight"
+              - choose:
+                  - conditions: "{{ is_state('input_boolean.spectra_interactable_rollback_notifications_enabled', 'on') }}"
+                    sequence:
+                      - service: persistent_notification.create
+                        data:
+                          title: "Spectra Interactables Pilot Activation Blocked"
+                          message: >-
+                            Pilot activation preflight is not ready.
+                            Recommended profile: {{ states('sensor.spectra_interactable_recommended_profile') }}.
+                            success={{ states('sensor.spectra_interactable_dispatch_success_pct') }}%
+                            dropped={{ states('sensor.spectra_interactable_dropped_pct') }}%
+                            invalid={{ states('sensor.spectra_interactable_invalid_pct') }}%
+              - stop: "Pilot activation blocked by preflight checks."
+      - service: input_select.select_option
+        data:
+          entity_id: input_select.spectra_interactable_cutover_profile
+          option: "pilot"
+      - service: script.spectra_interactable_apply_cutover_profile
+      - service: input_text.set_value
+        data:
+          entity_id: input_text.spectra_interactable_last_error
+          value: ""
+
   spectra_interactable_apply_cutover_profile:
     alias: Spectra Interactable - Apply Cutover Profile
     mode: restart
@@ -727,6 +772,15 @@ automation:
     action:
       - service: script.spectra_interactable_run_stress_test
 
+  - id: spectra_interactable_activate_pilot_safe_button
+    alias: "Spectra: Interactable Activate Pilot Safe Button"
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: input_button.spectra_interactable_activate_pilot_safe
+    action:
+      - service: script.spectra_interactable_activate_pilot_safe
+
   - id: spectra_interactable_cutover_safety_rollback
     alias: "Spectra: Interactable Cutover Safety Rollback"
     mode: single
@@ -741,6 +795,10 @@ automation:
         entity_id: binary_sensor.spectra_interactable_bridge_active
         state: "on"
     action:
+      - service: input_select.select_option
+        data:
+          entity_id: input_select.spectra_interactable_cutover_profile
+          option: "shadow"
       - service: input_boolean.turn_on
         target:
           entity_id: input_boolean.spectra_interactable_shadow_mode
@@ -748,9 +806,42 @@ automation:
         data:
           entity_id: input_text.spectra_interactable_last_error
           value: "cutover_safety_rollback_triggered"
+      - choose:
+          - conditions: "{{ is_state('input_boolean.spectra_interactable_rollback_notifications_enabled', 'on') }}"
+            sequence:
+              - service: persistent_notification.create
+                data:
+                  title: "Spectra Interactables Safety Rollback Triggered"
+                  message: >-
+                    Bridge was reverted to shadow mode after sustained cutover-readiness failure.
+                    success={{ states('sensor.spectra_interactable_dispatch_success_pct') }}%
+                    dropped={{ states('sensor.spectra_interactable_dropped_pct') }}%
+                    invalid={{ states('sensor.spectra_interactable_invalid_pct') }}%
+                    lag_ms={{ states('sensor.spectra_interactable_last_dispatch_lag_ms') }}.
 
 template:
   - sensor:
+      - name: Spectra Interactable Recommended Profile
+        icon: mdi:compass-outline
+        state: >-
+          {% set bridge_enabled = is_state('input_boolean.spectra_interactable_bridge_enabled', 'on') %}
+          {% set intake = is_state('binary_sensor.spectra_interactable_source_intake_enabled', 'on') %}
+          {% set cutover_ready = is_state('binary_sensor.spectra_interactable_cutover_ready', 'on') %}
+          {% set success_pct = states('sensor.spectra_interactable_dispatch_success_pct') | float(0) %}
+          {% set dropped_pct = states('sensor.spectra_interactable_dropped_pct') | float(0) %}
+          {% set invalid_pct = states('sensor.spectra_interactable_invalid_pct') | float(0) %}
+          {% if not bridge_enabled %}
+            disabled
+          {% elif not intake %}
+            shadow
+          {% elif cutover_ready and success_pct >= 98 and dropped_pct <= 2 and invalid_pct <= 1 %}
+            active
+          {% elif is_state('binary_sensor.spectra_interactable_pilot_preflight_ready', 'on') %}
+            pilot
+          {% else %}
+            shadow
+          {% endif %}
+
       - name: Spectra Interactable Dispatch Success Pct
         unit_of_measurement: "%"
         icon: mdi:check-decagram
@@ -839,3 +930,19 @@ template:
           {% set drop_max = states('input_number.spectra_interactable_cutover_dropped_threshold_pct') | float(5) %}
           {% set invalid_max = states('input_number.spectra_interactable_cutover_invalid_threshold_pct') | float(2) %}
           {{ active and intake and success_pct >= success_min and dropped_pct <= drop_max and invalid_pct <= invalid_max }}
+
+      - name: Spectra Interactable Pilot Preflight Ready
+        icon: mdi:shield-check-outline
+        state: >-
+          {% set intake = is_state('binary_sensor.spectra_interactable_source_intake_enabled', 'on') %}
+          {% set total = states('counter.spectra_interactable_events_total') | int(0) %}
+          {% set success_pct = states('sensor.spectra_interactable_dispatch_success_pct') | float(0) %}
+          {% set dropped_pct = states('sensor.spectra_interactable_dropped_pct') | float(0) %}
+          {% set invalid_pct = states('sensor.spectra_interactable_invalid_pct') | float(0) %}
+          {% set success_min_cfg = states('input_number.spectra_interactable_cutover_success_threshold_pct') | float(95) %}
+          {% set drop_max_cfg = states('input_number.spectra_interactable_cutover_dropped_threshold_pct') | float(5) %}
+          {% set invalid_max_cfg = states('input_number.spectra_interactable_cutover_invalid_threshold_pct') | float(2) %}
+          {% set success_min = [90, success_min_cfg - 5] | max %}
+          {% set drop_max = [10, drop_max_cfg + 5] | min %}
+          {% set invalid_max = [5, invalid_max_cfg + 2] | min %}
+          {{ intake and total >= 5 and success_pct >= success_min and dropped_pct <= drop_max and invalid_pct <= invalid_max }}

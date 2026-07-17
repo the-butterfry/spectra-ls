@@ -1,5 +1,5 @@
 # Description: Standalone ESPHome config for Spectra LS Remote tabletop control box (encoder + transport buttons + battery telemetry).
-# Version: 2026.07.17.2
+# Version: 2026.07.17.3
 # Last updated: 2026-07-17
 # Notes:
 # - Primary bring-up path is Wi-Fi/API for fast iteration.
@@ -56,7 +56,8 @@ substitutions:
   remote_encoder_direction_multiplier: "-1"
   remote_unresolved_log_interval_ms: "1500"
   remote_control_center_emit_enabled: "true"
-  remote_control_center_emit_dry_run: "true"
+  remote_control_center_emit_dry_run: "false"
+  remote_direct_transport_enabled: "false"
 
   # Battery model
   remote_has_battery: "true"
@@ -558,17 +559,22 @@ script:
       - if:
           condition:
             lambda: |-
-              return delta > 0;
+              return ${remote_direct_transport_enabled};
           then:
-            - script.execute:
-                id: remote_volume_up_guarded
-                steps: !lambda |-
-                  return delta;
-          else:
-            - script.execute:
-                id: remote_volume_down_guarded
-                steps: !lambda |-
-                  return -delta;
+            - if:
+                condition:
+                  lambda: |-
+                    return delta > 0;
+                then:
+                  - script.execute:
+                      id: remote_volume_up_guarded
+                      steps: !lambda |-
+                        return delta;
+                else:
+                  - script.execute:
+                      id: remote_volume_down_guarded
+                      steps: !lambda |-
+                        return -delta;
 
   - id: remote_emit_encoder_press
     mode: restart
@@ -578,7 +584,12 @@ script:
       - script.execute:
           id: remote_emit_control_center_event
           event_name: "encoder_press"
-      - script.execute: remote_mute_guarded
+      - if:
+          condition:
+            lambda: |-
+              return ${remote_direct_transport_enabled};
+          then:
+            - script.execute: remote_mute_guarded
 
   - id: remote_volume_up_guarded
     mode: restart
@@ -587,6 +598,9 @@ script:
     then:
       - script.execute: remote_note_input
       - lambda: |-
+          if (!${remote_direct_transport_enabled}) {
+            return;
+          }
           const uint32_t now = millis();
           if ((now - id(remote_last_volume_step_ms)) < (uint32_t) ${volume_step_cooldown_ms}) {
             return;
@@ -734,6 +748,9 @@ script:
     then:
       - script.execute: remote_note_input
       - lambda: |-
+          if (!${remote_direct_transport_enabled}) {
+            return;
+          }
           const uint32_t now = millis();
           if ((now - id(remote_last_volume_step_ms)) < (uint32_t) ${volume_step_cooldown_ms}) {
             return;
@@ -879,6 +896,9 @@ script:
     then:
       - script.execute: remote_note_input
       - lambda: |-
+          if (!${remote_direct_transport_enabled}) {
+            return;
+          }
           const uint32_t now = millis();
           if ((now - id(remote_last_mute_ms)) < (uint32_t) ${mute_cooldown_ms}) {
             return;
@@ -962,6 +982,9 @@ script:
     then:
       - script.execute: remote_note_input
       - lambda: |-
+          if (!${remote_direct_transport_enabled}) {
+            return;
+          }
           const uint32_t now = millis();
           if ((now - id(remote_last_transport_ms)) < (uint32_t) ${button_cooldown_ms}) {
             return;

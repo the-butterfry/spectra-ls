@@ -1,5 +1,5 @@
 # Description: Standalone ESPHome config for Spectra LS Remote tabletop control box (encoder + transport buttons + battery telemetry).
-# Version: 2026.07.17.21
+# Version: 2026.07.17.22
 # Last updated: 2026-07-17
 # Notes:
 # - Default control lane is BLE advertisement events.
@@ -930,7 +930,9 @@ script:
             - if:
                 condition:
                   lambda: |-
-                    return id(remote_wifi_maintenance_session_active) || id(remote_wifi_maintenance_enable_pending);
+                    return id(remote_wifi_maintenance_session_active) ||
+                           id(remote_wifi_maintenance_enable_pending) ||
+                           id(remote_ha_api).is_connected();
                 then:
                   - lambda: |-
                       id(remote_wifi_maintenance_session_active) = false;
@@ -938,6 +940,14 @@ script:
                       id(remote_wifi_maintenance_session_started_ms) = 0;
                       id(remote_pending_encoder_delta) = 0;
                       ESP_LOGI("remote", "maintenance long-press: switching back to BLE lane (Wi-Fi disabled)");
+                  - homeassistant.service:
+                      service: input_boolean.turn_off
+                      data:
+                        entity_id: ${remote_wifi_maintenance_enabled_helper}
+                  - homeassistant.service:
+                      service: timer.cancel
+                      data:
+                        entity_id: ${remote_wifi_maintenance_timer}
                   - wifi.disable:
                   - script.execute:
                       id: remote_emit_ble_event

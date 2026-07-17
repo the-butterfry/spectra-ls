@@ -1,5 +1,5 @@
 # Description: Spectra interactables bridge scaffold (BLE/Wi-Fi hybrid ingest to control-center execution).
-# Version: 2026.07.17.8
+# Version: 2026.07.17.9
 # Last updated: 2026-07-17
 # Update version/date whenever you change this file.
 
@@ -120,6 +120,10 @@ input_button:
     name: Spectra Interactable Activate Pilot (Safe)
     icon: mdi:shield-check
 
+  spectra_interactable_activate_active_safe:
+    name: Spectra Interactable Activate Active (Safe)
+    icon: mdi:shield-star
+
 input_select:
   spectra_interactable_cutover_profile:
     name: Spectra Interactable Cutover Profile
@@ -214,6 +218,52 @@ timer:
     duration: "00:10:00"
 
 script:
+  spectra_interactable_activate_active_safe:
+    alias: Spectra Interactable - Activate Active (Safe)
+    mode: restart
+    sequence:
+      - variables:
+          active_ready: "{{ is_state('binary_sensor.spectra_interactable_cutover_ready', 'on') }}"
+      - choose:
+          - conditions: "{{ not active_ready }}"
+            sequence:
+              - service: input_text.set_value
+                data:
+                  entity_id: input_text.spectra_interactable_last_error
+                  value: "active_activation_blocked_cutover_not_ready"
+              - choose:
+                  - conditions: "{{ is_state('input_boolean.spectra_interactable_rollback_notifications_enabled', 'on') }}"
+                    sequence:
+                      - service: persistent_notification.create
+                        data:
+                          notification_id: spectra_interactable_active_activation_blocked
+                          title: "Spectra Interactables Active Activation Blocked"
+                          message: >-
+                            Active activation requires cutover-ready=on.
+                            Recommended profile: {{ states('sensor.spectra_interactable_recommended_profile') }}.
+                            success={{ states('sensor.spectra_interactable_dispatch_success_pct') }}%
+                            dropped={{ states('sensor.spectra_interactable_dropped_pct') }}%
+                            invalid={{ states('sensor.spectra_interactable_invalid_pct') }}%
+              - stop: "Active activation blocked because cutover readiness is off."
+      - service: input_select.select_option
+        data:
+          entity_id: input_select.spectra_interactable_cutover_profile
+          option: "active"
+      - service: script.spectra_interactable_apply_cutover_profile
+      - service: input_text.set_value
+        data:
+          entity_id: input_text.spectra_interactable_last_error
+          value: ""
+      - choose:
+          - conditions: "{{ is_state('input_boolean.spectra_interactable_rollback_notifications_enabled', 'on') }}"
+            sequence:
+              - service: persistent_notification.dismiss
+                data:
+                  notification_id: spectra_interactable_rollback
+              - service: persistent_notification.dismiss
+                data:
+                  notification_id: spectra_interactable_active_activation_blocked
+
   spectra_interactable_activate_pilot_safe:
     alias: Spectra Interactable - Activate Pilot (Safe)
     mode: restart
@@ -232,6 +282,7 @@ script:
                     sequence:
                       - service: persistent_notification.create
                         data:
+                          notification_id: spectra_interactable_pilot_activation_blocked
                           title: "Spectra Interactables Pilot Activation Blocked"
                           message: >-
                             Pilot activation preflight is not ready.
@@ -781,6 +832,15 @@ automation:
     action:
       - service: script.spectra_interactable_activate_pilot_safe
 
+  - id: spectra_interactable_activate_active_safe_button
+    alias: "Spectra: Interactable Activate Active Safe Button"
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: input_button.spectra_interactable_activate_active_safe
+    action:
+      - service: script.spectra_interactable_activate_active_safe
+
   - id: spectra_interactable_cutover_safety_rollback
     alias: "Spectra: Interactable Cutover Safety Rollback"
     mode: single
@@ -811,6 +871,7 @@ automation:
             sequence:
               - service: persistent_notification.create
                 data:
+                  notification_id: spectra_interactable_rollback
                   title: "Spectra Interactables Safety Rollback Triggered"
                   message: >-
                     Bridge was reverted to shadow mode after sustained cutover-readiness failure.
@@ -818,6 +879,26 @@ automation:
                     dropped={{ states('sensor.spectra_interactable_dropped_pct') }}%
                     invalid={{ states('sensor.spectra_interactable_invalid_pct') }}%
                     lag_ms={{ states('sensor.spectra_interactable_last_dispatch_lag_ms') }}.
+
+  - id: spectra_interactable_cutover_ready_notification_cleanup
+    alias: "Spectra: Interactable Cutover Ready Notification Cleanup"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.spectra_interactable_cutover_ready
+        to: "on"
+        for:
+          minutes: 1
+    action:
+      - service: persistent_notification.dismiss
+        data:
+          notification_id: spectra_interactable_rollback
+      - service: persistent_notification.dismiss
+        data:
+          notification_id: spectra_interactable_pilot_activation_blocked
+      - service: persistent_notification.dismiss
+        data:
+          notification_id: spectra_interactable_active_activation_blocked
 
 template:
   - sensor:

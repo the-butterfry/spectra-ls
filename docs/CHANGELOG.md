@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.07.17.10 -->
+<!-- Version: 2026.07.17.11 -->
 <!-- Last updated: 2026-07-17 -->
 
 # Changelog
 
 ## 2026-07-17
+
+- Runtime+Component/Interactables Roadmap Slice M2.2 Safe Active Activation + Notification Lifecycle (`packages/spectra_ls_interactables.yaml`, `docs/CHANGELOG.md`): add guarded one-button active cutover activation, stabilize rollback/preflight notifications with deterministic IDs, and add readiness-based notification cleanup for lower operational noise during staged promotion from pilot to active mode. Runtime track disposition: implemented (additive rollout safety/operability hardening in HA package lane). Component track disposition: compatibility-shimmed (execution sink remains `spectra_ls.execute_control_center_input`; no `custom_components/spectra_ls` semantic mutation). P1/P2/P3 impact: no source-of-truth ownership reassignment; additive safety/governance hardening only. README/wiki parity: no material operator workflow change.
 
 - Runtime+Component/Interactables Roadmap Slice M2.1 Safe Pilot Activation + Rollback Notifications + Auto Profile Guidance (`packages/spectra_ls_interactables.yaml`, `docs/CHANGELOG.md`): add cutover guidance and guarded activation UX by introducing an auto profile suggestion surface, a one-button safe pilot activation flow with preflight gating, and persistent notification emission on cutover safety rollback events. Runtime track disposition: implemented (additive rollout safety/operability hardening in HA package lane). Component track disposition: compatibility-shimmed (execution sink remains `spectra_ls.execute_control_center_input`; no `custom_components/spectra_ls` semantic mutation). P1/P2/P3 impact: no source-of-truth ownership reassignment; additive safety/governance/operability hardening only. README/wiki parity: no material operator workflow change.
 

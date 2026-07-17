@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.07.17.18 -->
+<!-- Version: 2026.07.17.19 -->
 <!-- Last updated: 2026-07-17 -->
 
 # Changelog
 
 ## 2026-07-17
+
+- Runtime+Component/Interactables Roadmap Slice M3 Acceleration + M4 Stabilization Starter (`packages/spectra_ls_interactables.yaml`, `docs/roadmap/SPECTRA-REMOTE-INTERACTABLES-ROADMAP.md`, `docs/CHANGELOG.md`): add a sustained M3 closeout cadence with freshness timestamping, auto-capture packet automation, explicit closeout-ready binary gate, and a new M4 starter stabilization cycle (notification hygiene + bounded counter reset + health packet). Includes configurable matrix-freshness threshold and compact runtime health-score telemetry to keep rollout pace high without sacrificing safety visibility. Runtime track disposition: implemented (additive closeout cadence and stabilization controls in HA package lane). Component track disposition: compatibility-shimmed (execution sink remains `spectra_ls.execute_control_center_input`; no `custom_components/spectra_ls` semantic mutation). P1/P2/P3 impact: no source-of-truth ownership reassignment; additive rollout speed + operability hardening only. README/wiki parity: no material operator workflow change.
 
 - Runtime+Component/Interactables Roadmap Slice M3 Closeout Packet + Reuse Gate (`packages/spectra_ls_interactables.yaml`, `docs/roadmap/SPECTRA-REMOTE-INTERACTABLES-ROADMAP.md`, `docs/CHANGELOG.md`): deliver a full M3 certification lane that computes reusable-contract proof (multi-source mapping + unique interactable count + matrix recency + activation gate posture), publishes deterministic closeout blockers/verdict sensors, and emits a single operator-facing M3 closeout packet for promotion evidence. Runtime track disposition: implemented (additive M3 closure governance and proof automation in HA package lane). Component track disposition: compatibility-shimmed (execution sink remains `spectra_ls.execute_control_center_input`; no `custom_components/spectra_ls` semantic mutation). P1/P2/P3 impact: no source-of-truth ownership reassignment; additive M3 closeout determinism and reusable-contract evidence hardening only. README/wiki parity: no material operator workflow change.
 

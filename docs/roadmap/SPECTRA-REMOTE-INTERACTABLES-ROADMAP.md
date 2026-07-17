@@ -1,5 +1,5 @@
 <!-- Description: Roadmap for Spectra remote BLE-first evolution with extensible interactables architecture. -->
-<!-- Version: 2026.07.17.2 -->
+<!-- Version: 2026.07.17.3 -->
 <!-- Last updated: 2026-07-17 -->
 
 # Spectra Remote + Interactables Roadmap
@@ -189,8 +189,8 @@ Future interactables should integrate by implementing the same canonical event c
 - `M0`: implemented (observability and bridge instrumentation in place)
 - `M1`: implemented (shadow validation and parity harness in place)
 - `M2`: implemented (cutover profiles + readiness/rollback safety + activation gating)
-- `M3`: active (closeout certification and reusable-contract evidence lane executing)
-- `M4`: not started
+- `M3`: active (closeout certification + sustained packet cadence executing)
+- `M4`: active (stabilization starter controls and health packet lane executing)
 
 Latest run update (2026-07-17, M3 closeout packet + reusable-contract evidence gate):
 
@@ -198,6 +198,13 @@ Latest run update (2026-07-17, M3 closeout packet + reusable-contract evidence g
 - Runtime track disposition: implemented (M3 closure automation and evidence surfaces added in package lane).
 - Component track disposition: compatibility-shimmed (execution continues through existing `spectra_ls.execute_control_center_input` sink; no component semantic mutation).
 - M3 impact check: no source-of-truth ownership reassignment; reusable-contract closure proof and activation confidence hardening only.
+
+Latest run update (2026-07-17, M3 acceleration + M4 stabilization starter):
+
+- Added closeout freshness timestamping, automatic closeout packet cadence, explicit closeout-ready binary gate, and M4 starter stabilization cycle controls (notification hygiene + bounded counter reset + health packet output).
+- Runtime track disposition: implemented (cadence + stabilization controls in package lane).
+- Component track disposition: compatibility-shimmed (existing execution sink reused; no component semantic mutation).
+- M3/M4 impact check: no source-of-truth ownership reassignment; rollout velocity and operational stability hardening only.
 
 ## Validation Matrix
 

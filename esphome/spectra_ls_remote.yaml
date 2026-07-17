@@ -33,6 +33,8 @@ substitutions:
   remote_now_playing_state_sensor: sensor.now_playing_state
   remote_active_volume_sensor: sensor.component_now_playing_volume
   remote_volume_acceleration_helper: input_boolean.spectra_ls_remote_volume_acceleration
+  remote_wifi_maintenance_enabled_helper: input_boolean.spectra_remote_wifi_maintenance_enabled
+  remote_wifi_maintenance_timer: timer.spectra_remote_wifi_maintenance_window
   remote_direct_control_default_port: "8899"
 
   # Hardware pins (baseline defaults for ESP32-C6 Super Mini bring-up)
@@ -614,6 +616,14 @@ script:
       - script.execute:
           id: remote_emit_control_center_event
           event_name: "encoder_long_press"
+      - homeassistant.service:
+          service: input_boolean.turn_on
+          data:
+            entity_id: ${remote_wifi_maintenance_enabled_helper}
+      - homeassistant.service:
+          service: timer.start
+          data:
+            entity_id: ${remote_wifi_maintenance_timer}
 
   - id: remote_volume_up_guarded
     mode: restart

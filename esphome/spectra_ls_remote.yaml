@@ -1,5 +1,5 @@
 # Description: Standalone ESPHome config for Spectra LS Remote tabletop control box (encoder + transport buttons + battery telemetry).
-# Version: 2026.07.17.32
+# Version: 2026.07.17.33
 # Last updated: 2026-07-17
 # Notes:
 # - BLE transport removed; control lane is direct Wi-Fi/TCP.
@@ -211,6 +211,10 @@ globals:
     restore_value: no
     initial_value: "false"
   - id: remote_volume_level_shadow
+    type: float
+    restore_value: no
+    initial_value: "0.5"
+  - id: remote_volume_level_shadow_before_send
     type: float
     restore_value: no
     initial_value: "0.5"
@@ -940,6 +944,7 @@ script:
           if (next_pct < 0.0f) next_pct = 0.0f;
 
           id(remote_resolved_target) = target;
+          id(remote_volume_level_shadow_before_send) = id(remote_volume_level_shadow);
           id(remote_volume_level_shadow) = next_pct / 100.0f;
           std::string route_host = id(remote_control_host).has_state() ? id(remote_control_host).state.c_str() : "";
           if (is_unresolved(route_host)) route_host = id(remote_control_host_prefixed).has_state() ? id(remote_control_host_prefixed).state.c_str() : "";
@@ -1006,11 +1011,8 @@ script:
           if (target_volume > 100) target_volume = 100;
 
           const bool ok = esphome::arylic_tcp::send_volume_multi(route_hosts, (uint16_t) route_port, target_volume);
-          if (!ok && id(remote_active_volume_pct).has_state()) {
-            const float sensor_pct = id(remote_active_volume_pct).state;
-            if (sensor_pct >= 0.0f && sensor_pct <= 100.0f) {
-              id(remote_volume_level_shadow) = sensor_pct / 100.0f;
-            }
+          if (!ok) {
+            id(remote_volume_level_shadow) = id(remote_volume_level_shadow_before_send);
           }
           ESP_LOGW("remote", "volume_up direct send hosts='%s' port=%d target='%s' vol=%d ok=%d", route_hosts.c_str(), route_port, id(remote_resolved_target).c_str(), target_volume, ok ? 1 : 0);
 
@@ -1110,6 +1112,7 @@ script:
           if (next_pct < 0.0f) next_pct = 0.0f;
 
           id(remote_resolved_target) = target;
+          id(remote_volume_level_shadow_before_send) = id(remote_volume_level_shadow);
           id(remote_volume_level_shadow) = next_pct / 100.0f;
           std::string route_host = id(remote_control_host).has_state() ? id(remote_control_host).state.c_str() : "";
           if (is_unresolved(route_host)) route_host = id(remote_control_host_prefixed).has_state() ? id(remote_control_host_prefixed).state.c_str() : "";
@@ -1176,11 +1179,8 @@ script:
           if (target_volume > 100) target_volume = 100;
 
           const bool ok = esphome::arylic_tcp::send_volume_multi(route_hosts, (uint16_t) route_port, target_volume);
-          if (!ok && id(remote_active_volume_pct).has_state()) {
-            const float sensor_pct = id(remote_active_volume_pct).state;
-            if (sensor_pct >= 0.0f && sensor_pct <= 100.0f) {
-              id(remote_volume_level_shadow) = sensor_pct / 100.0f;
-            }
+          if (!ok) {
+            id(remote_volume_level_shadow) = id(remote_volume_level_shadow_before_send);
           }
           ESP_LOGW("remote", "volume_down direct send hosts='%s' port=%d target='%s' vol=%d ok=%d", route_hosts.c_str(), route_port, id(remote_resolved_target).c_str(), target_volume, ok ? 1 : 0);
 

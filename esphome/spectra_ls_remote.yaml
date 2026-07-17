@@ -1,5 +1,5 @@
 # Description: Standalone ESPHome config for Spectra LS Remote tabletop control box (encoder + transport buttons + battery telemetry).
-# Version: 2026.07.17.14
+# Version: 2026.07.17.15
 # Last updated: 2026-07-17
 # Notes:
 # - Primary bring-up path is Wi-Fi/API for fast iteration.
@@ -60,6 +60,7 @@ substitutions:
   remote_control_center_emit_enabled: "true"
   remote_control_center_emit_dry_run: "false"
   remote_direct_transport_enabled: "false"
+  remote_control_center_offline_direct_fallback: "true"
   remote_control_center_settle_ms: "250"
   remote_wifi_requires_long_press: "false"
   remote_emit_disconnected_log_interval_ms: "1200"
@@ -627,8 +628,21 @@ script:
               const int scaled_now = id(remote_last_control_center_scaled_delta);
               const bool settled = ((millis() - id(remote_boot_ms)) >= (uint32_t) ${remote_control_center_settle_ms});
               const bool connected = id(remote_ha_api).is_connected();
+              const bool fallback_direct = ${remote_control_center_offline_direct_fallback} && !connected;
               const bool allow_emit = ${remote_control_center_emit_enabled} && settled && connected;
               if (!allow_emit) {
+                if (fallback_direct) {
+                  const uint32_t now = millis();
+                  if ((now - id(remote_last_emit_disconnected_log_ms)) >= (uint32_t) ${remote_emit_disconnected_log_interval_ms}) {
+                    id(remote_last_emit_disconnected_log_ms) = now;
+                    ESP_LOGW(
+                      "remote",
+                      "control_center encoder_turn offline fallback active (delta=%d)",
+                      scaled_now
+                    );
+                  }
+                  return false;
+                }
                 int pending = id(remote_pending_encoder_delta) + scaled_now;
                 if (pending > 120) pending = 120;
                 if (pending < -120) pending = -120;
@@ -686,8 +700,21 @@ script:
             lambda: |-
               const bool settled = ((millis() - id(remote_boot_ms)) >= (uint32_t) ${remote_control_center_settle_ms});
               const bool connected = id(remote_ha_api).is_connected();
+              const bool fallback_direct = ${remote_control_center_offline_direct_fallback} && !connected;
               const bool allow_emit = ${remote_control_center_emit_enabled} && settled && connected;
               if (!allow_emit) {
+                if (fallback_direct) {
+                  const uint32_t now = millis();
+                  if ((now - id(remote_last_emit_disconnected_log_ms)) >= (uint32_t) ${remote_emit_disconnected_log_interval_ms}) {
+                    id(remote_last_emit_disconnected_log_ms) = now;
+                    ESP_LOGW(
+                      "remote",
+                      "control_center event '%s' offline fallback active",
+                      event_name.c_str()
+                    );
+                  }
+                  return false;
+                }
                 id(remote_pending_event_name) = event_name;
                 const uint32_t now = millis();
                 if ((now - id(remote_last_emit_disconnected_log_ms)) >= (uint32_t) ${remote_emit_disconnected_log_interval_ms}) {
@@ -731,7 +758,8 @@ script:
       - if:
           condition:
             lambda: |-
-              return ${remote_direct_transport_enabled};
+              return ${remote_direct_transport_enabled} ||
+                     (${remote_control_center_offline_direct_fallback} && !id(remote_ha_api).is_connected());
           then:
             - if:
                 condition:
@@ -759,7 +787,8 @@ script:
       - if:
           condition:
             lambda: |-
-              return ${remote_direct_transport_enabled};
+              return ${remote_direct_transport_enabled} ||
+                     (${remote_control_center_offline_direct_fallback} && !id(remote_ha_api).is_connected());
           then:
             - script.execute: remote_mute_guarded
 
@@ -797,7 +826,9 @@ script:
     then:
       - script.execute: remote_note_input
       - lambda: |-
-          if (!${remote_direct_transport_enabled}) {
+          const bool allow_direct = ${remote_direct_transport_enabled} ||
+                                    (${remote_control_center_offline_direct_fallback} && !id(remote_ha_api).is_connected());
+          if (!allow_direct) {
             return;
           }
           const uint32_t now = millis();
@@ -947,7 +978,9 @@ script:
     then:
       - script.execute: remote_note_input
       - lambda: |-
-          if (!${remote_direct_transport_enabled}) {
+          const bool allow_direct = ${remote_direct_transport_enabled} ||
+                                    (${remote_control_center_offline_direct_fallback} && !id(remote_ha_api).is_connected());
+          if (!allow_direct) {
             return;
           }
           const uint32_t now = millis();
@@ -1095,7 +1128,9 @@ script:
     then:
       - script.execute: remote_note_input
       - lambda: |-
-          if (!${remote_direct_transport_enabled}) {
+          const bool allow_direct = ${remote_direct_transport_enabled} ||
+                                    (${remote_control_center_offline_direct_fallback} && !id(remote_ha_api).is_connected());
+          if (!allow_direct) {
             return;
           }
           const uint32_t now = millis();
@@ -1181,7 +1216,9 @@ script:
     then:
       - script.execute: remote_note_input
       - lambda: |-
-          if (!${remote_direct_transport_enabled}) {
+          const bool allow_direct = ${remote_direct_transport_enabled} ||
+                                    (${remote_control_center_offline_direct_fallback} && !id(remote_ha_api).is_connected());
+          if (!allow_direct) {
             return;
           }
           const uint32_t now = millis();

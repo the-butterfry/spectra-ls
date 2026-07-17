@@ -1,5 +1,5 @@
 # Description: Standalone ESPHome config for Spectra LS Remote tabletop control box (encoder + transport buttons + battery telemetry).
-# Version: 2026.07.17.25
+# Version: 2026.07.17.26
 # Last updated: 2026-07-17
 # Notes:
 # - Default control lane is BLE advertisement events.
@@ -49,8 +49,8 @@ substitutions:
   mute_cooldown_ms: "250"
   volume_step_cooldown_ms: "70"
   remote_volume_step_pct: "5"
-  remote_volume_step_slow_pct: "3"
-  remote_volume_step_fast_pct: "7"
+  remote_volume_step_slow_pct: "2"
+  remote_volume_step_fast_pct: "6"
   remote_volume_step_fast_window_ms: "320"
   remote_encoder_emit_gate_ms: "80"
   remote_encoder_same_dir_lock_ms: "35"

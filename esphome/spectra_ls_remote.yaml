@@ -175,6 +175,10 @@ globals:
     type: uint32_t
     restore_value: no
     initial_value: "0"
+  - id: remote_last_control_center_scaled_delta
+    type: int
+    restore_value: no
+    initial_value: "0"
   - id: remote_mute_state
     type: bool
     restore_value: no

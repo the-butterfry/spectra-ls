@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.07.17.13 -->
+<!-- Version: 2026.07.17.14 -->
 <!-- Last updated: 2026-07-17 -->
 
 # Changelog
 
 ## 2026-07-17
+
+- Runtime+Component/Interactables Roadmap Slice M2.5 Evidence Packet + Go/No-Go Capture (`packages/spectra_ls_interactables.yaml`, `docs/CHANGELOG.md`): add a single operator-facing evidence packet surface with deterministic go/no-go verdict, blocker summary, and compact cutover telemetry snapshot capture flow for promotion decisions. Runtime track disposition: implemented (additive validation/operability hardening in HA package lane). Component track disposition: compatibility-shimmed (execution sink remains `spectra_ls.execute_control_center_input`; no `custom_components/spectra_ls` semantic mutation). P1/P2/P3 impact: no source-of-truth ownership reassignment; additive evidence quality and decision determinism hardening only. README/wiki parity: no material operator workflow change.
 
 - Runtime+Component/Interactables Roadmap Slice M2.4 Promotion Assist + Optional Auto-Promote (`packages/spectra_ls_interactables.yaml`, `docs/CHANGELOG.md`): add promotion-assist controls that surface active-preflight readiness in pilot mode and optional auto-promote behavior after sustained hold windows, enabling larger operational push-through with bounded safety gates. Runtime track disposition: implemented (additive rollout automation/operability hardening in HA package lane). Component track disposition: compatibility-shimmed (execution sink remains `spectra_ls.execute_control_center_input`; no `custom_components/spectra_ls` semantic mutation). P1/P2/P3 impact: no source-of-truth ownership reassignment; additive operability hardening only. README/wiki parity: no material operator workflow change.
 

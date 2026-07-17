@@ -1,5 +1,5 @@
 # Description: Spectra interactables bridge scaffold (BLE/Wi-Fi hybrid ingest to control-center execution).
-# Version: 2026.07.17.11
+# Version: 2026.07.17.12
 # Last updated: 2026-07-17
 # Update version/date whenever you change this file.
 
@@ -81,6 +81,18 @@ input_text:
     max: 255
     mode: text
 
+  spectra_interactable_last_evidence_verdict:
+    name: Spectra Interactable Last Evidence Verdict
+    initial: ""
+    max: 255
+    mode: text
+
+  spectra_interactable_last_evidence_blockers:
+    name: Spectra Interactable Last Evidence Blockers
+    initial: ""
+    max: 255
+    mode: text
+
   spectra_interactable_source_map_json:
     name: Spectra Interactable Source Map JSON
     initial: >-
@@ -128,6 +140,10 @@ input_button:
   spectra_interactable_activate_active_safe:
     name: Spectra Interactable Activate Active (Safe)
     icon: mdi:shield-star
+
+  spectra_interactable_capture_evidence_packet:
+    name: Spectra Interactable Capture Evidence Packet
+    icon: mdi:file-document-check-outline
 
 input_select:
   spectra_interactable_cutover_profile:
@@ -231,6 +247,13 @@ input_number:
     step: 1
     initial: 0
 
+  spectra_interactable_last_evidence_capture_ts_ms:
+    name: Spectra Interactable Last Evidence Capture TS ms
+    min: 0
+    max: 4102444800000
+    step: 1
+    initial: 0
+
 counter:
   spectra_interactable_events_total:
     name: Spectra Interactable Events Total
@@ -313,6 +336,43 @@ script:
               - service: persistent_notification.dismiss
                 data:
                   notification_id: spectra_interactable_active_activation_blocked
+
+  spectra_interactable_capture_evidence_packet:
+    alias: Spectra Interactable - Capture Evidence Packet
+    mode: restart
+    sequence:
+      - variables:
+          verdict: "{{ states('sensor.spectra_interactable_cutover_evidence_verdict') | trim }}"
+          blockers: "{{ states('sensor.spectra_interactable_cutover_evidence_blockers') | trim }}"
+          now_ts_ms: "{{ (as_timestamp(now()) * 1000) | int }}"
+      - service: input_number.set_value
+        data:
+          entity_id: input_number.spectra_interactable_last_evidence_capture_ts_ms
+          value: "{{ now_ts_ms }}"
+      - service: input_text.set_value
+        data:
+          entity_id: input_text.spectra_interactable_last_evidence_verdict
+          value: "{{ verdict[:255] }}"
+      - service: input_text.set_value
+        data:
+          entity_id: input_text.spectra_interactable_last_evidence_blockers
+          value: "{{ blockers[:255] }}"
+      - choose:
+          - conditions: "{{ is_state('input_boolean.spectra_interactable_rollback_notifications_enabled', 'on') }}"
+            sequence:
+              - service: persistent_notification.create
+                data:
+                  notification_id: spectra_interactable_evidence_packet
+                  title: "Spectra Interactables Evidence Packet Captured"
+                  message: >-
+                    verdict={{ verdict }}
+                    blockers={{ blockers if blockers not in ['', 'none', 'None'] else 'none' }}
+                    profile={{ states('input_select.spectra_interactable_cutover_profile') }}
+                    recommended={{ states('sensor.spectra_interactable_recommended_profile') }}
+                    success={{ states('sensor.spectra_interactable_dispatch_success_pct') }}%
+                    dropped={{ states('sensor.spectra_interactable_dropped_pct') }}%
+                    invalid={{ states('sensor.spectra_interactable_invalid_pct') }}%
+                    soak_age_s={{ states('sensor.spectra_interactable_cutover_ready_soak_age_s') }}.
 
   spectra_interactable_activate_pilot_safe:
     alias: Spectra Interactable - Activate Pilot (Safe)
@@ -891,6 +951,15 @@ automation:
     action:
       - service: script.spectra_interactable_activate_active_safe
 
+  - id: spectra_interactable_capture_evidence_packet_button
+    alias: "Spectra: Interactable Capture Evidence Packet Button"
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: input_button.spectra_interactable_capture_evidence_packet
+    action:
+      - service: script.spectra_interactable_capture_evidence_packet
+
   - id: spectra_interactable_cutover_safety_rollback
     alias: "Spectra: Interactable Cutover Safety Rollback"
     mode: single
@@ -1174,9 +1243,80 @@ automation:
               - service: persistent_notification.dismiss
                 data:
                   notification_id: spectra_interactable_auto_promoted_active
+              - service: persistent_notification.dismiss
+                data:
+                  notification_id: spectra_interactable_evidence_packet
 
 template:
   - sensor:
+              - name: Spectra Interactable Cutover Evidence Blockers
+                icon: mdi:alert-box-outline
+                state: >-
+                  {% set ns = namespace(items=[]) %}
+                  {% if not is_state('input_boolean.spectra_interactable_bridge_enabled', 'on') %}
+                    {% set ns.items = ns.items + ['bridge_disabled'] %}
+                  {% endif %}
+                  {% if not is_state('binary_sensor.spectra_interactable_source_intake_enabled', 'on') %}
+                    {% set ns.items = ns.items + ['source_intake_off'] %}
+                  {% endif %}
+                  {% if not is_state('binary_sensor.spectra_interactable_cutover_ready', 'on') %}
+                    {% set ns.items = ns.items + ['cutover_not_ready'] %}
+                  {% endif %}
+                  {% if not is_state('binary_sensor.spectra_interactable_cutover_ready_soaked', 'on') %}
+                    {% set ns.items = ns.items + ['soak_not_satisfied'] %}
+                  {% endif %}
+                  {% if not is_state('binary_sensor.spectra_interactable_active_preflight_ready', 'on') %}
+                    {% set ns.items = ns.items + ['active_preflight_not_ready'] %}
+                  {% endif %}
+                  {% if is_state('timer.spectra_interactable_remediation_cooldown', 'active') %}
+                    {% set ns.items = ns.items + ['remediation_cooldown_active'] %}
+                  {% endif %}
+                  {% set rem_count = states('counter.spectra_interactable_auto_remediations') | int(0) %}
+                  {% set rem_max = states('input_number.spectra_interactable_auto_remediation_max_per_hour') | int(3) %}
+                  {% if rem_count >= rem_max %}
+                    {% set ns.items = ns.items + ['remediation_rate_limited'] %}
+                  {% endif %}
+                  {% if ns.items | count == 0 %}
+                    none
+                  {% else %}
+                    {{ ns.items | join('|') }}
+                  {% endif %}
+
+              - name: Spectra Interactable Cutover Evidence Verdict
+                icon: mdi:clipboard-check-outline
+                state: >-
+                  {% set profile = states('input_select.spectra_interactable_cutover_profile') | lower %}
+                  {% set blockers = states('sensor.spectra_interactable_cutover_evidence_blockers') %}
+                  {% if blockers == 'none' and profile == 'active' %}
+                    go_active_confirmed
+                  {% elif blockers == 'none' and profile == 'pilot' %}
+                    go_active_ready
+                  {% elif blockers == 'none' %}
+                    go_pilot_or_active
+                  {% else %}
+                    no_go
+                  {% endif %}
+                attributes:
+                  profile: "{{ states('input_select.spectra_interactable_cutover_profile') }}"
+                  recommended_profile: "{{ states('sensor.spectra_interactable_recommended_profile') }}"
+                  blockers: "{{ states('sensor.spectra_interactable_cutover_evidence_blockers') }}"
+                  bridge_active: "{{ states('binary_sensor.spectra_interactable_bridge_active') }}"
+                  source_intake_enabled: "{{ states('binary_sensor.spectra_interactable_source_intake_enabled') }}"
+                  cutover_ready: "{{ states('binary_sensor.spectra_interactable_cutover_ready') }}"
+                  cutover_ready_soaked: "{{ states('binary_sensor.spectra_interactable_cutover_ready_soaked') }}"
+                  active_preflight_ready: "{{ states('binary_sensor.spectra_interactable_active_preflight_ready') }}"
+                  promotion_assist_status: "{{ states('sensor.spectra_interactable_promotion_assist_status') }}"
+                  success_pct: "{{ states('sensor.spectra_interactable_dispatch_success_pct') }}"
+                  dropped_pct: "{{ states('sensor.spectra_interactable_dropped_pct') }}"
+                  invalid_pct: "{{ states('sensor.spectra_interactable_invalid_pct') }}"
+                  last_dispatch_lag_ms: "{{ states('sensor.spectra_interactable_last_dispatch_lag_ms') }}"
+                  soak_age_s: "{{ states('sensor.spectra_interactable_cutover_ready_soak_age_s') }}"
+                  cutover_soak_minutes: "{{ states('input_number.spectra_interactable_cutover_soak_minutes') }}"
+                  remediation_count_hour: "{{ states('counter.spectra_interactable_auto_remediations') }}"
+                  remediation_max_per_hour: "{{ states('input_number.spectra_interactable_auto_remediation_max_per_hour') }}"
+                  remediation_cooldown_state: "{{ states('timer.spectra_interactable_remediation_cooldown') }}"
+                  last_evidence_capture_ts_ms: "{{ states('input_number.spectra_interactable_last_evidence_capture_ts_ms') }}"
+
       - name: Spectra Interactable Cutover Ready Soak Age S
         unit_of_measurement: "s"
         icon: mdi:timer-outline

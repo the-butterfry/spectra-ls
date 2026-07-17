@@ -1224,7 +1224,7 @@ interval:
             - lambda: |-
                 id(remote_wifi_maintenance_enable_pending) = false;
                 id(remote_wifi_maintenance_session_active) = true;
-              id(remote_wifi_maintenance_session_started_ms) = millis();
+                id(remote_wifi_maintenance_session_started_ms) = millis();
                 ESP_LOGI("remote", "maintenance Wi-Fi gate opened: API connected after long-press");
             - script.execute:
                 id: remote_emit_control_center_event

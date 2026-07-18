@@ -1,5 +1,5 @@
 # Description: Standalone ESPHome config for Spectra LS Remote tabletop control box (encoder + transport buttons + battery telemetry).
-# Version: 2026.07.17.33
+# Version: 2026.07.17.34
 # Last updated: 2026-07-17
 # Notes:
 # - BLE transport removed; control lane is direct Wi-Fi/TCP.
@@ -1012,7 +1012,13 @@ script:
 
           const bool ok = esphome::arylic_tcp::send_volume_multi(route_hosts, (uint16_t) route_port, target_volume);
           if (!ok) {
-            id(remote_volume_level_shadow) = id(remote_volume_level_shadow_before_send);
+            const uint32_t turn_interval_ms = id(remote_last_encoder_turn_interval_ms);
+            // Keep optimistic shadow during fast detent bursts so intent can
+            // continue accumulating through transient timeout windows.
+            // For isolated/slower failures, preserve conservative rollback.
+            if (turn_interval_ms > 250) {
+              id(remote_volume_level_shadow) = id(remote_volume_level_shadow_before_send);
+            }
           }
           ESP_LOGW("remote", "volume_up direct send hosts='%s' port=%d target='%s' vol=%d ok=%d", route_hosts.c_str(), route_port, id(remote_resolved_target).c_str(), target_volume, ok ? 1 : 0);
 
@@ -1180,7 +1186,10 @@ script:
 
           const bool ok = esphome::arylic_tcp::send_volume_multi(route_hosts, (uint16_t) route_port, target_volume);
           if (!ok) {
-            id(remote_volume_level_shadow) = id(remote_volume_level_shadow_before_send);
+            const uint32_t turn_interval_ms = id(remote_last_encoder_turn_interval_ms);
+            if (turn_interval_ms > 250) {
+              id(remote_volume_level_shadow) = id(remote_volume_level_shadow_before_send);
+            }
           }
           ESP_LOGW("remote", "volume_down direct send hosts='%s' port=%d target='%s' vol=%d ok=%d", route_hosts.c_str(), route_port, id(remote_resolved_target).c_str(), target_volume, ok ? 1 : 0);
 

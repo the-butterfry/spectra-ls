@@ -1,6 +1,6 @@
 # Description: Main ESPHome config for Spectra LS System main ESPHome config (ESP32-S3 + RP2040 UART + Arylic TCP).
-# Version: 2026.07.17.5
-# Last updated: 2026-07-17
+# Version: 2026.07.23.1
+# Last updated: 2026-07-23
 # Update version/date whenever you change this file.
 #
 # Setup checklist:
@@ -87,7 +87,9 @@ esphome:
       - script.execute: compute_display_state
 
 esp32:
-  board: ${esp32_board}
+  # Device Builder board matcher expects a concrete board id here.
+  # Keep literal pin to avoid `${esp32_board}` mismatch prompts in HA editor.
+  board: esp32-s3-devkitc-1
   variant: esp32s3
   framework:
     type: esp-idf

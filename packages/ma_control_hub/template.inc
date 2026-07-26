@@ -1,6 +1,6 @@
 # Description: Template entities for ma_control_hub runtime routing, metadata, and now-playing state surfaces.
-# Version: 2026.06.23.1
-# Last updated: 2026-06-23
+# Version: 2026.07.17.1
+# Last updated: 2026-07-17
 # PARITY DIRECTIVE (until full cutover): any behavior/contract change here requires same-slice custom-component parity review,
 # explicit implemented/shim/defer disposition in docs/CHANGELOG.md, and version-metadata review on both runtime and component tracks.
 # HUB MUST-READ: Contract parser methodology.
@@ -2014,8 +2014,14 @@
       unique_id: spectra_ls_system_esp_control_hosts_alias
       state: >-
         {% set invalid = ['', 'none', 'unknown', 'unavailable', 'null', none] %}
+        {% set runtime_hosts = states('sensor.ma_control_hosts') %}
+        {% set component_hosts = states('sensor.component_control_hosts') %}
         {% set pref = states('sensor.living_room_spectra_ls_system_esp_control_hosts') %}
-        {% if pref not in invalid %}
+        {% if runtime_hosts not in invalid %}
+          {{ runtime_hosts }}
+        {% elif component_hosts not in invalid %}
+          {{ component_hosts }}
+        {% elif pref not in invalid %}
           {{ pref }}
         {% else %}
           {% set ns = namespace(val='') %}
@@ -2029,20 +2035,21 @@
           {% if ns.val != '' %}
             {{ ns.val }}
           {% else %}
-            {% set component_hosts = states('sensor.component_control_hosts') %}
-            {% if component_hosts not in invalid %}
-              {{ component_hosts }}
-            {% else %}
-              {{ states('sensor.ma_control_hosts') if states('sensor.ma_control_hosts') not in invalid else 'unknown' }}
-            {% endif %}
+            {{ 'unknown' }}
           {% endif %}
         {% endif %}
     - name: Spectra LS System ESP Control Host
       unique_id: spectra_ls_system_esp_control_host_alias
       state: >-
         {% set invalid = ['', 'none', 'unknown', 'unavailable', 'null', none] %}
+        {% set runtime_host = states('sensor.ma_control_host') %}
+        {% set component_host = states('sensor.component_control_host') %}
         {% set pref = states('sensor.living_room_spectra_ls_system_esp_control_host') %}
-        {% if pref not in invalid %}
+        {% if runtime_host not in invalid %}
+          {{ runtime_host }}
+        {% elif component_host not in invalid %}
+          {{ component_host }}
+        {% elif pref not in invalid %}
           {{ pref }}
         {% else %}
           {% set ns = namespace(val='') %}
@@ -2056,12 +2063,7 @@
           {% if ns.val != '' %}
             {{ ns.val }}
           {% else %}
-            {% set component_host = states('sensor.component_control_host') %}
-            {% if component_host not in invalid %}
-              {{ component_host }}
-            {% else %}
-              {{ states('sensor.ma_control_host') if states('sensor.ma_control_host') not in invalid else 'unknown' }}
-            {% endif %}
+            {{ 'unknown' }}
           {% endif %}
         {% endif %}
     - name: Spectra LS System ESP Control Port

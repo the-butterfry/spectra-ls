@@ -1,6 +1,6 @@
 # Description: Event-recovery fabric workflow for Spectra LS state-change orchestration extracted from meta-fabric.
-# Version: 2026.06.22.1
-# Last updated: 2026-06-22
+# Version: 2026.07.17.1
+# Last updated: 2026-07-17
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -145,7 +145,7 @@ class EventRecoveryFabricWorkflow:
         )
         await self.async_run_component_auto_select_loop(
             source=f"{source}-auto-select",
-            force=False,
+            force=True,
         )
 
     async def async_apply_ambiguity_lock(self, *, source: str) -> None:

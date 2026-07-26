@@ -1,6 +1,6 @@
 # Description: Constants for Spectra LS custom integration shadow parity, Phase 3 guarded routing write-path controls, Phase 4 diagnostics scaffolding (F4-S01/F4-S03), Phase 5 metadata trial contract service, and Phase 6/8 control-center settings and fast-remap preset contracts including startup MA-readiness gating constants and selection-ownership migration services.
-# Version: 2026.06.22.2
-# Last updated: 2026-06-22
+# Version: 2026.07.17.2
+# Last updated: 2026-07-17
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -11,6 +11,16 @@ from typing import Any, Mapping
 from homeassistant.const import Platform
 
 DOMAIN = "spectra_ls"
+
+BLE_REMOTE_COMPANY_ID = 0x02E5
+BLE_REMOTE_MAGIC = b"SL"
+BLE_REMOTE_PROTO_VERSION = 1
+BLE_REMOTE_EVENT_MAP: dict[int, str] = {
+    1: "encoder_turn",
+    2: "encoder_press",
+    3: "encoder_long_press",
+    4: "button_1",
+}
 
 SERVICE_REBUILD_REGISTRY = "rebuild_registry"
 SERVICE_VALIDATE_CONTRACTS = "validate_contracts"
@@ -277,10 +287,10 @@ CONTROL_CENTER_PRESET_VALUES: dict[str, dict[str, Any]] = {
 
 CONTROL_CENTER_DEFAULTS: dict[str, Any] = {
     OPT_READ_ONLY_MODE: False,
-    OPT_MAPPING_PRESET: "custom",
+    OPT_MAPPING_PRESET: "media_default",
     OPT_ENCODER_TURN_ACTION: "volume",
-    OPT_ENCODER_PRESS_ACTION: "scene_quick_trigger",
-    OPT_ENCODER_LONG_PRESS_ACTION: "no_op",
+    OPT_ENCODER_PRESS_ACTION: "play_pause",
+    OPT_ENCODER_LONG_PRESS_ACTION: "mute_toggle",
     OPT_BUTTON_1_SCENE: "scene.none",
     OPT_BUTTON_2_SCENE: "scene.none",
     OPT_BUTTON_3_SCENE: "scene.none",

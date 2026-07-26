@@ -1,6 +1,6 @@
 # Description: Extracted metadata stack workflows for Spectra LS (metadata prep/bridge/cutover validation and metadata trial services).
-# Version: 2026.07.05.1
-# Last updated: 2026-07-05
+# Version: 2026.07.25.2
+# Last updated: 2026-07-25
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -1409,6 +1409,120 @@ class MetadataStackWorkflow:
 			return False
 		return any(token in normalized for token in self.NON_META_SOURCE_TOKENS)
 
+	def _discover_passthrough_upstream_meta_candidate(
+		self,
+		*,
+		now_playing_entity: str,
+		route_active_target: str,
+		route_active_source_continuity: str,
+	) -> tuple[str, str, str, str, str, float]:
+		"""Deterministically choose an upstream metadata carrier for passthrough source-only windows."""
+		c = self._coordinator
+		route_state = c.hass.states.get(route_active_target) if c._is_resolved_state(route_active_target) else None
+		route_attrs = route_state.attributes if route_state is not None and isinstance(route_state.attributes, dict) else {}
+
+		route_title_hint = str(route_attrs.get("media_title", "") or "").strip().lower()
+		route_artist_hint = str(route_attrs.get("media_artist", "") or "").strip().lower()
+		route_app_id_hint = str(route_attrs.get("app_id", "") or "").strip().lower()
+		route_app_name_hint = str(route_attrs.get("app_name", "") or "").strip().lower()
+		route_source_hint = str(route_active_source_continuity or "").strip().lower()
+		route_friendly_hint = str(route_attrs.get("friendly_name", "") or "").strip().lower()
+
+		anchor_tokens: set[str] = set()
+		for token in str(route_active_target or "").lower().replace(".", "_").split("_"):
+			token_norm = token.strip()
+			if len(token_norm) >= 4 and token_norm not in {"media", "player", "component", "shadow", "spectra"}:
+				anchor_tokens.add(token_norm)
+		for token in route_friendly_hint.replace("-", " ").replace("_", " ").split():
+			token_norm = token.strip()
+			if len(token_norm) >= 4:
+				anchor_tokens.add(token_norm)
+
+		best_entity = ""
+		best_title = ""
+		best_artist = ""
+		best_app = ""
+		best_reason = ""
+		best_score = -1.0
+
+		now_ts_local = datetime.now(UTC).timestamp()
+		for state_obj in c.hass.states.async_all("media_player"):
+			entity_id = str(getattr(state_obj, "entity_id", "") or "").strip()
+			if not c._is_resolved_state(entity_id):
+				continue
+			if entity_id == now_playing_entity:
+				continue
+
+			state_norm = c._normalize_state(str(getattr(state_obj, "state", "") or ""))
+			if state_norm not in {"playing", "paused", "buffering"}:
+				continue
+
+			title = str(state_obj.attributes.get("media_title", "") or "").strip()
+			artist = str(state_obj.attributes.get("media_artist", "") or "").strip()
+			if not (title or artist):
+				continue
+
+			app_name = str(state_obj.attributes.get("app_name", "") or "").strip()
+			app_id = str(state_obj.attributes.get("app_id", "") or "").strip()
+			source = str(state_obj.attributes.get("source", "") or "").strip()
+			source_lower = source.lower()
+			if self._is_non_meta_source(source) and not (app_name or app_id):
+				continue
+
+			updated_ts = c._timestamp_to_datetime(state_obj.last_updated)
+			age_s = (now_ts_local - updated_ts.timestamp()) if updated_ts is not None else 1_000_000.0
+			if state_norm == "playing" and age_s > 1800.0:
+				continue
+			if state_norm in {"paused", "buffering"} and age_s > 7200.0:
+				continue
+
+			signal = self._build_now_playing_signal(entity_id)
+			if bool(signal.get("long_idle_stale_hidden", False)):
+				continue
+
+			entity_lower = entity_id.lower()
+			friendly_lower = str(state_obj.attributes.get("friendly_name", "") or "").strip().lower()
+			title_lower = title.lower()
+			artist_lower = artist.lower()
+			app_name_lower = app_name.lower()
+			app_id_lower = app_id.lower()
+
+			title_match = bool(route_title_hint and title_lower == route_title_hint)
+			artist_match = bool(route_artist_hint and artist_lower == route_artist_hint)
+			app_match = bool(
+				(route_app_id_hint and app_id_lower == route_app_id_hint)
+				or (route_app_name_hint and app_name_lower == route_app_name_hint)
+			)
+			source_affinity = bool(route_source_hint and route_source_hint in source_lower)
+			anchor_match = any(token in entity_lower or token in friendly_lower for token in anchor_tokens)
+
+			score = 0.0
+			score += 420.0 if state_norm == "playing" else (280.0 if state_norm == "buffering" else 200.0)
+			score += float(self._entity_meta_richness(entity_id))
+			score += max(0.0, 180.0 - min(age_s, 180.0))
+			score += 160.0 if bool(signal.get("fresh_play_signal", False)) else 0.0
+			score += 60.0 if bool(signal.get("recent_play_progress", False)) else 0.0
+			score += 30.0 if bool(signal.get("recent_paused_progress", False)) else 0.0
+			score -= 120.0 if bool(signal.get("playing_without_fresh_signal", False)) else 0.0
+			score += 120.0 if title_match else 0.0
+			score += 80.0 if artist_match else 0.0
+			score += 50.0 if app_match else 0.0
+			score += 20.0 if source_affinity else 0.0
+			score += 15.0 if anchor_match else 0.0
+			score += 10.0 if (title and artist) else 0.0
+
+			if score > best_score:
+				best_score = score
+				best_entity = entity_id
+				best_title = title
+				best_artist = artist
+				best_app = app_name or app_id
+				best_reason = "deterministic_passthrough_upstream_rank"
+
+		if best_score <= 0.0:
+			return "", "", "", "", "", -1.0
+		return best_entity, best_title, best_artist, best_app, best_reason, round(best_score, 1)
+
 	def build_metadata_prep_validation(
 		self,
 		*,
@@ -1467,6 +1581,7 @@ class MetadataStackWorkflow:
 			else ""
 		).strip()
 		route_active_source = self._extract_entity_source_text(route_active_target)
+		route_active_source_continuity = route_active_source
 		passthrough_source_detected = self._is_non_meta_source(route_active_source)
 
 		(
@@ -1501,6 +1616,10 @@ class MetadataStackWorkflow:
 		passthrough_route_target_duration_fallback_used = False
 		passthrough_metadata_candidate_position_fallback_used = False
 		passthrough_metadata_candidate_duration_fallback_used = False
+		passthrough_upstream_meta_fallback_used = False
+		passthrough_upstream_meta_entity = ""
+		passthrough_upstream_meta_reason = ""
+		passthrough_upstream_meta_score: float | None = None
 		progress_clock_cache_reused = False
 		progress_clock_cache_cross_entity_reused = False
 		progress_clock_cache_age_s: float | None = None
@@ -1562,6 +1681,8 @@ class MetadataStackWorkflow:
 			now_playing_artist = str(selected_state_obj.attributes.get("media_artist", "") or "").strip()
 			now_playing_album = str(selected_state_obj.attributes.get("media_album_name", "") or "").strip()
 			now_playing_source = str(selected_state_obj.attributes.get("source", "") or "").strip()
+			if passthrough_source_detected and not c._is_resolved_state(now_playing_source):
+				now_playing_source = route_active_source_continuity
 			now_playing_app = str(
 				selected_state_obj.attributes.get("app_name", "")
 				or selected_state_obj.attributes.get("app_id", "")
@@ -1595,6 +1716,30 @@ class MetadataStackWorkflow:
 				# from previous queue sessions on the transport entity.
 				now_playing_album = ""
 				passthrough_album_suppressed = True
+
+			if passthrough_source_detected and not c._is_resolved_state(now_playing_title):
+				(
+					passthrough_hint_entity,
+					passthrough_hint_title,
+					passthrough_hint_artist,
+					passthrough_hint_app,
+					passthrough_hint_reason,
+					passthrough_hint_score,
+				) = self._discover_passthrough_upstream_meta_candidate(
+					now_playing_entity=now_playing_entity,
+					route_active_target=route_active_target,
+					route_active_source_continuity=route_active_source_continuity,
+				)
+				if c._is_resolved_state(passthrough_hint_title):
+					now_playing_title = passthrough_hint_title
+					if not c._is_resolved_state(now_playing_artist) and c._is_resolved_state(passthrough_hint_artist):
+						now_playing_artist = passthrough_hint_artist
+					if not c._is_resolved_state(now_playing_app) and c._is_resolved_state(passthrough_hint_app):
+						now_playing_app = passthrough_hint_app
+					passthrough_upstream_meta_fallback_used = True
+					passthrough_upstream_meta_entity = passthrough_hint_entity
+					passthrough_upstream_meta_reason = passthrough_hint_reason
+					passthrough_upstream_meta_score = passthrough_hint_score
 			selected_position = selected_state_obj.attributes.get("media_position")
 			if isinstance(selected_position, (int, float)):
 				now_playing_position = str(float(selected_position))
@@ -1861,16 +2006,42 @@ class MetadataStackWorkflow:
 		if (not now_playing_title_signal_ready) and (playing_without_fresh_signal or long_idle_stale_hidden):
 			now_playing_state = "idle"
 			active_playback_signal = False
-			now_playing_source = ""
-			now_playing_app = ""
+			if passthrough_source_detected:
+				now_playing_source = route_active_source_continuity or now_playing_source
+			else:
+				now_playing_source = ""
+				now_playing_app = ""
 		now_playing_state_norm = c._normalize_state(now_playing_state)
 		now_playing_identity_meta_present = bool(
 			c._is_resolved_state(now_playing_title) or c._is_resolved_state(now_playing_artist)
 		)
+		passthrough_signal_age_s_raw = now_playing_signal.get("position_age_s")
+		passthrough_signal_age_s = (
+			float(passthrough_signal_age_s_raw)
+			if isinstance(passthrough_signal_age_s_raw, (int, float))
+			else None
+		)
+		passthrough_pause_window_s = (
+			float(now_playing_signal.get("paused_hide_s", float(META_POLICY_DEFAULTS["paused_hide_s"])))
+			if isinstance(now_playing_signal.get("paused_hide_s"), (int, float))
+			else float(META_POLICY_DEFAULTS["paused_hide_s"])
+		)
+		passthrough_contract_source = now_playing_source if c._is_resolved_state(now_playing_source) else route_active_source_continuity
+		passthrough_display_contract_ready = (
+			passthrough_source_detected
+			and c._is_resolved_state(passthrough_contract_source)
+			and isinstance(passthrough_signal_age_s, float)
+			and passthrough_signal_age_s <= passthrough_pause_window_s
+		)
 		display_force_off_idle_no_meta = (
 			now_playing_state_norm in {"idle", "off", "stopped", "standby", "unknown", "unavailable"}
 			and not now_playing_identity_meta_present
+			and not passthrough_display_contract_ready
 		)
+		if passthrough_display_contract_ready:
+			now_playing_display_allowed_value = True
+			if now_playing_media_class in {"", "none", "unknown", "unavailable"}:
+				now_playing_media_class = "music"
 		if display_force_off_idle_no_meta:
 			now_playing_display_allowed_value = False
 			now_playing_source = ""
@@ -1963,7 +2134,10 @@ class MetadataStackWorkflow:
 			canonical_oled_posture = "display_policy_suppressed"
 		elif now_playing_title_signal_ready:
 			canonical_oled_posture = "title_ready"
-		elif passthrough_source_detected and now_playing_state_norm in {"playing", "paused"}:
+		elif passthrough_source_detected and (
+			now_playing_state_norm in {"playing", "paused"}
+			or passthrough_display_contract_ready
+		):
 			canonical_oled_posture = "passthrough_no_track_metadata"
 		elif freshness_gate_satisfied:
 			canonical_oled_posture = "freshness_ready_no_title"
@@ -2160,6 +2334,7 @@ class MetadataStackWorkflow:
 				"now_playing_display_allowed_resolved": now_playing_display_allowed_resolved,
 				"now_playing_display_contract_consistent": media_contract_consistent,
 				"now_playing_display_force_off_idle_no_meta": display_force_off_idle_no_meta,
+				"passthrough_display_contract_ready": passthrough_display_contract_ready,
 				"candidate_payload_ready": candidate_payload_ready,
 				"route_trace_present": route_trace_present,
 				"no_authority_expansion": no_authority_expansion,
@@ -2244,6 +2419,10 @@ class MetadataStackWorkflow:
 				"passthrough_route_target_duration_fallback_used": passthrough_route_target_duration_fallback_used,
 				"passthrough_metadata_candidate_position_fallback_used": passthrough_metadata_candidate_position_fallback_used,
 				"passthrough_metadata_candidate_duration_fallback_used": passthrough_metadata_candidate_duration_fallback_used,
+				"passthrough_upstream_meta_fallback_used": passthrough_upstream_meta_fallback_used,
+				"passthrough_upstream_meta_entity": passthrough_upstream_meta_entity,
+				"passthrough_upstream_meta_reason": passthrough_upstream_meta_reason,
+				"passthrough_upstream_meta_score": passthrough_upstream_meta_score,
 				"progress_clock_cache_reused": progress_clock_cache_reused,
 				"progress_clock_cache_cross_entity_reused": progress_clock_cache_cross_entity_reused,
 				"progress_clock_cache_age_s": round(progress_clock_cache_age_s, 1)
@@ -2305,6 +2484,10 @@ class MetadataStackWorkflow:
 				"passthrough_route_target_duration_fallback_used": passthrough_route_target_duration_fallback_used,
 				"passthrough_metadata_candidate_position_fallback_used": passthrough_metadata_candidate_position_fallback_used,
 				"passthrough_metadata_candidate_duration_fallback_used": passthrough_metadata_candidate_duration_fallback_used,
+				"passthrough_upstream_meta_fallback_used": passthrough_upstream_meta_fallback_used,
+				"passthrough_upstream_meta_entity": passthrough_upstream_meta_entity,
+				"passthrough_upstream_meta_reason": passthrough_upstream_meta_reason,
+				"passthrough_upstream_meta_score": passthrough_upstream_meta_score,
 				"progress_clock_cache_reused": progress_clock_cache_reused,
 				"progress_clock_cache_cross_entity_reused": progress_clock_cache_cross_entity_reused,
 				"progress_clock_cache_age_s": round(progress_clock_cache_age_s, 1)
@@ -2344,6 +2527,7 @@ class MetadataStackWorkflow:
 				"now_playing_preview_key": now_playing_preview_key,
 				"now_playing_display_allowed": now_playing_display_allowed_value,
 				"now_playing_display_force_off_idle_no_meta": display_force_off_idle_no_meta,
+				"passthrough_display_contract_ready": passthrough_display_contract_ready,
 				"now_playing_preview_age_s": round(now_playing_preview_age_s, 1)
 				if isinstance(now_playing_preview_age_s, float)
 				else None,

@@ -1,6 +1,6 @@
 # Description: Spectra LS UI/menu input handling + UI fonts + now-playing helper sensors.
-# Version: 2026.06.23.1
-# Last updated: 2026-06-23
+# Version: 2026.07.24.1
+# Last updated: 2026-07-24
 # Update version/date whenever you change this file.
 #
 # Sections:
@@ -622,10 +622,10 @@ interval:
             id(menu_active) = false;
             id(menu_level) = 0;
             id(menu_index) = 0;
-            id(screen_mode) = 0;
+            id(screen_mode) = 1;
           }
           const bool lighting_hold_active = id(lighting_return_to_audio_ms) > 0 && now < id(lighting_return_to_audio_ms);
-          if (playing && id(screen_mode) != 1 && !id(menu_active) && !lighting_hold_active && !hardware_lighting_mode && !lighting_resume_or_hold) {
+          if (playing && id(screen_mode) != 1 && !id(menu_active) && !lighting_hold_active && !lighting_resume_or_hold) {
             id(screen_mode) = 1;
             id(menu_level) = ${menu_level_main};
             id(menu_index) = 0;
@@ -634,15 +634,8 @@ interval:
             id(screen_mode) = 1;
             id(lighting_return_to_audio_ms) = 0;
           }
-          const uint32_t playback_off_grace_ms = 1200;
-          if (!playing && id(screen_mode) == 1 && !id(menu_active) &&
-              id(playing_false_since_ms) > 0 &&
-              (now - id(playing_false_since_ms)) >= playback_off_grace_ms) {
-            id(screen_mode) = 0;
-            id(menu_active) = false;
-            id(menu_level) = 0;
-            id(menu_index) = 0;
-          }
+          // Playback can flap briefly during passthrough transitions; do not auto-demote
+          // to lighting here. Lighting mode should remain explicit (menu/hold driven).
       - script.execute: compute_display_state
 
 # === UI helper text sensors ===

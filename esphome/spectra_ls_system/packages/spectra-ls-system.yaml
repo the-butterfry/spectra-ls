@@ -1,6 +1,6 @@
 # Description: Spectra LS core state + globals + system intervals + shared scripts.
-# Version: 2026.06.22.5
-# Last updated: 2026-06-22
+# Version: 2026.07.24.1
+# Last updated: 2026-07-24
 # Update version/date whenever you change this file.
 #
 # Sections:
@@ -1440,14 +1440,13 @@ text_sensor:
           is_passthrough_source(raw_src_display) ||
           is_passthrough_source(ha_source) ||
           is_passthrough_source(ary_source);
-        const bool passthrough_source_only_no_progress = passthrough_context && no_progress_payload;
 
-        if (passthrough_context && !passthrough_source_only_no_progress) {
+        if (passthrough_context) {
           if (has_displayable_text(app_label) && !is_passthrough_source(app_label)) line = app_label;
           else if (has_displayable_text(np_friendly) && !is_passthrough_source(np_friendly)) line = np_friendly;
         }
 
-        if (!passthrough_source_only_no_progress && !has_displayable_text(line)) {
+        if (!has_displayable_text(line)) {
           if (has_displayable_text(raw_source_label)) line = raw_source_label;
           else if (has_displayable_text(raw_src_display)) line = raw_src_display;
           else if (has_displayable_text(ha_source)) line = ha_source;
@@ -1456,9 +1455,6 @@ text_sensor:
       }
       line = normalize_source_label(line);
       line = sanitize_ascii(line);
-      if (no_progress_payload && is_passthrough_source(line)) {
-        line.clear();
-      }
       if (line.empty()) {
         if (id(screen_mode) == 0) {
           line = "LIGHTING";

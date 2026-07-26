@@ -1,6 +1,6 @@
 # Description: Spectra LS OLED-only peripherals package (no LED rings) for Control Board v2.
-# Version: 2026.06.21.2
-# Last updated: 2026-06-21
+# Version: 2026.07.24.1
+# Last updated: 2026-07-24
 # Update version/date whenever you change this file.
 esphome:
   name: ${device_name}
@@ -1003,11 +1003,6 @@ script:
             id(ha_audio_pos_last_value) <= 0.05f &&
             id(arylic_meta_position_state) <= 0 &&
             id(arylic_meta_duration_state) <= 0;
-          const bool passthrough_source_only_no_payload_screen =
-            passthrough_context &&
-            !has_cached_meta &&
-            !source_hint_window_active &&
-            no_progress_payload_screen;
           uint32_t passthrough_idle_cutoff_ms_screen = ((uint32_t) ${meta_pause_timeout_ms}) * 5U;
           if (passthrough_idle_cutoff_ms_screen < 300000U) passthrough_idle_cutoff_ms_screen = 300000U;
           const uint32_t source_popup_grace_ms_screen = ((uint32_t) ${source_popup_ms}) + 2000U;
@@ -1035,7 +1030,7 @@ script:
           const bool cached_recent = has_cached_meta && (playing || active_recent_screen);
           const bool playing_recent_hold = id(last_playing_true_ms) > 0 && (now - id(last_playing_true_ms)) < meta_stale_ms;
           const bool passthrough_suppression =
-            (passthrough_no_track_evidence || passthrough_silent_window_no_play_evidence || stale_passthrough_false_playing_screen || passthrough_idle_stale_cutoff_screen || passthrough_source_only_no_payload_screen) &&
+            (passthrough_no_track_evidence || passthrough_silent_window_no_play_evidence || stale_passthrough_false_playing_screen || passthrough_idle_stale_cutoff_screen) &&
             !wake_overlay_recent_input &&
             !paused_passthrough_keepalive_screen;
           const bool now_playing_active =

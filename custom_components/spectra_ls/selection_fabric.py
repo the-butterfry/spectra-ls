@@ -1,6 +1,6 @@
 # Description: Selection-fabric workflow for Spectra LS scheduler, target-options, and helper write orchestration extracted from meta-fabric.
-# Version: 2026.06.30.1
-# Last updated: 2026-06-30
+# Version: 2026.07.17.3
+# Last updated: 2026-07-17
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -749,6 +749,8 @@ class SelectionFabricWorkflow:
         helper_current_in_options = helper_current_resolved and helper_current in helper_options
         helper_current_state_norm = ""
         selected_target_state_norm = ""
+        now_playing_candidate = ""
+        now_playing_state_norm = ""
         if helper_current_resolved:
             helper_current_state = c.hass.states.get(helper_current)
             if helper_current_state is not None:
@@ -757,6 +759,44 @@ class SelectionFabricWorkflow:
             selected_target_state = c.hass.states.get(selected_target)
             if selected_target_state is not None:
                 selected_target_state_norm = c._normalize_state(str(selected_target_state.state or ""))
+
+        component_now_playing_state = c.hass.states.get("sensor.component_now_playing_entity")
+        component_now_playing_candidate = str(
+            component_now_playing_state.state if component_now_playing_state is not None else ""
+        ).strip()
+        now_playing_state = c.hass.states.get("sensor.now_playing_entity")
+        standard_now_playing_candidate = str(
+            now_playing_state.state if now_playing_state is not None else ""
+        ).strip()
+
+        component_candidate_selectable = (
+            c._is_resolved_state(component_now_playing_candidate)
+            and component_now_playing_candidate in helper_options
+        )
+        if component_candidate_selectable:
+            now_playing_candidate = component_now_playing_candidate
+        else:
+            now_playing_candidate = standard_now_playing_candidate
+
+        now_playing_candidate_valid = (
+            c._is_resolved_state(now_playing_candidate)
+            and now_playing_candidate in helper_options
+        )
+        if now_playing_candidate_valid:
+            now_playing_candidate_state = c.hass.states.get(now_playing_candidate)
+            if now_playing_candidate_state is not None:
+                now_playing_state_norm = c._normalize_state(str(now_playing_candidate_state.state or ""))
+
+        now_playing_active_override = (
+            now_playing_candidate_valid
+            and now_playing_candidate != selected_target
+            and now_playing_state_norm in {"playing", "paused"}
+            and selected_target_state_norm not in {"playing", "paused"}
+        )
+        if now_playing_active_override:
+            selected_target = now_playing_candidate
+            selected_target_state_norm = now_playing_state_norm
+            selection_reason = "now_playing_promoted_over_idle_current"
 
         detected_active_override = (
             helper_current_in_options
@@ -810,9 +850,10 @@ class SelectionFabricWorkflow:
         elif helper_state is None:
             result["status"] = "blocked_missing_target_helper"
             result["reason"] = "Target helper entity is missing"
+        effective_force = bool(force or detected_active_override)
         self._apply_component_write_guards(
             result=result,
-            force=force,
+            force=effective_force,
             dry_run=dry_run,
             authority_block_reason="Component-only authority required; auto-select apply is blocked",
         )

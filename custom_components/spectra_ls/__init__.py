@@ -1,6 +1,6 @@
 # Description: Spectra LS custom integration setup for shadow parity, Phase 3 guarded routing write-path services, Phase 4 diagnostics scaffolding services (F4-S01/F4-S03), Phase 5 metadata trial contract service wiring, and Phase 6 control-center settings/execution services including bounded startup auto-recovery scheduling and selection-ownership migration services with hardened authority-contract response service support.
-# Version: 2026.06.22.1
-# Last updated: 2026-06-22
+# Version: 2026.07.17.7
+# Last updated: 2026-07-17
 # PARITY DIRECTIVE: Behavior/contract edits must include same-slice two-track parity review and version-metadata review (runtime + component).
 
 from __future__ import annotations
@@ -8,14 +8,20 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from homeassistant.components import bluetooth
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.core import ServiceCall
 from homeassistant.core import SupportsResponse
+from homeassistant.core import callback
 from homeassistant.exceptions import HomeAssistantError
 
 from .authority_contract import build_authority_contract_packet
 from .const import (
+    BLE_REMOTE_COMPANY_ID,
+    BLE_REMOTE_EVENT_MAP,
+    BLE_REMOTE_MAGIC,
+    BLE_REMOTE_PROTO_VERSION,
     CONTROL_CENTER_DEFAULTS,
     DOMAIN,
     OPT_DEFAULT_WRITE_AUTHORITY_MODE,
@@ -231,6 +237,116 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = coordinator
+    ble_remote_seen_seq: dict[str, int] = {}
+    ble_adv_seen_count = 0
+    ble_adv_with_manufacturer_data_count = 0
+
+    @callback
+    def _async_ble_remote_event(service_info: Any, _change: Any) -> None:
+        """Parse Spectra remote BLE advertisement packets and dispatch input events."""
+        nonlocal ble_adv_seen_count, ble_adv_with_manufacturer_data_count
+        try:
+            ble_adv_seen_count += 1
+            if ble_adv_seen_count == 1:
+                _LOGGER.warning("BLE callback live: first advertisement observed")
+            elif ble_adv_seen_count % 500 == 0:
+                _LOGGER.info(
+                    "BLE callback heartbeat: adv_seen=%s manufacturer_seen=%s",
+                    ble_adv_seen_count,
+                    ble_adv_with_manufacturer_data_count,
+                )
+
+            manufacturer_data = getattr(service_info, "manufacturer_data", None)
+            if not isinstance(manufacturer_data, dict):
+                return
+            ble_adv_with_manufacturer_data_count += 1
+            raw_payload = manufacturer_data.get(BLE_REMOTE_COMPANY_ID)
+            if raw_payload is None:
+                return
+            payload = bytes(raw_payload)
+            if len(payload) < 6:
+                _LOGGER.warning("BLE remote drop: short payload len=%s", len(payload))
+                return
+            if payload[0:2] != BLE_REMOTE_MAGIC:
+                _LOGGER.warning("BLE remote drop: bad magic payload=%s", payload.hex())
+                return
+            if int(payload[2]) != BLE_REMOTE_PROTO_VERSION:
+                _LOGGER.warning(
+                    "BLE remote drop: unsupported proto=%s expected=%s",
+                    int(payload[2]),
+                    BLE_REMOTE_PROTO_VERSION,
+                )
+                return
+
+            event_code = int(payload[3])
+            input_event = BLE_REMOTE_EVENT_MAP.get(event_code)
+            if not input_event:
+                _LOGGER.warning("BLE remote drop: unknown event_code=%s", event_code)
+                return
+
+            delta_raw = int(payload[4])
+            delta = delta_raw - 256 if delta_raw > 127 else delta_raw
+            seq = int(payload[5])
+
+            address = str(getattr(service_info, "address", "") or "unknown").upper()
+            if ble_remote_seen_seq.get(address) == seq:
+                return
+            ble_remote_seen_seq[address] = seq
+
+            correlation_id = f"ble-remote-{address.replace(':', '').lower()}-{seq}"
+            task_kwargs: dict[str, Any] = {
+                "input_event": input_event,
+                "correlation_id": correlation_id,
+                "target_hint": None,
+                "dry_run": False,
+                "delta": delta if input_event == "encoder_turn" else None,
+            }
+            _LOGGER.info(
+                "BLE remote event: addr=%s seq=%s event=%s delta=%s",
+                address,
+                seq,
+                input_event,
+                delta,
+            )
+            hass.async_create_task(coordinator.async_execute_control_center_input(**task_kwargs))
+        except Exception:
+            _LOGGER.debug("Ignoring malformed BLE remote advertisement payload", exc_info=True)
+
+    ble_unsubs: list[Any] = []
+    try:
+        ble_unsubs.append(
+            bluetooth.async_register_callback(
+                hass,
+                _async_ble_remote_event,
+                {},
+                bluetooth.BluetoothScanningMode.ACTIVE,
+            )
+        )
+    except Exception:
+        _LOGGER.warning(
+            "Unable to register ACTIVE BLE remote callback for %s",
+            entry.entry_id,
+            exc_info=True,
+        )
+
+    try:
+        ble_unsubs.append(
+            bluetooth.async_register_callback(
+                hass,
+                _async_ble_remote_event,
+                {},
+                bluetooth.BluetoothScanningMode.PASSIVE,
+            )
+        )
+    except Exception:
+        _LOGGER.warning(
+            "Unable to register PASSIVE BLE remote callback for %s",
+            entry.entry_id,
+            exc_info=True,
+        )
+
+    if ble_unsubs:
+        hass.data[DOMAIN][f"{entry.entry_id}_ble_unsub"] = ble_unsubs
 
     async def _handle_options_update(hass: HomeAssistant, updated_entry: ConfigEntry) -> None:
         coordinator_obj: SpectraLsShadowCoordinator | None = hass.data.get(DOMAIN, {}).get(updated_entry.entry_id)
@@ -804,6 +920,13 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         unsub = hass.data.get(DOMAIN, {}).pop(f"{entry.entry_id}_options_unsub", None)
         if callable(unsub):
             unsub()
+        ble_unsub = hass.data.get(DOMAIN, {}).pop(f"{entry.entry_id}_ble_unsub", None)
+        if isinstance(ble_unsub, list):
+            for unsub in ble_unsub:
+                if callable(unsub):
+                    unsub()
+        elif callable(ble_unsub):
+            ble_unsub()
         if not hass.data.get(DOMAIN):
             for service_name in _DOMAIN_SERVICE_NAMES:
                 _remove_domain_service(hass, service_name)

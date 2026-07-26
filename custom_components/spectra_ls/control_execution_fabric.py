@@ -1,6 +1,6 @@
 # Description: Control-execution fabric workflow for Spectra LS control-center settings/input and guarded write-trial services extracted from coordinator.
-# Version: 2026.06.22.2
-# Last updated: 2026-06-22
+# Version: 2026.07.17.7
+# Last updated: 2026-07-17
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -24,6 +24,36 @@ class ControlExecutionFabricWorkflow:
 
     def __init__(self, coordinator: Any) -> None:
         self._coordinator = coordinator
+
+    def _resolve_route_target(self, target_hint: str | None) -> str:
+        """Resolve target from hint, cached route snapshot surfaces, or helper fallback."""
+        c = self._coordinator
+        hint = str(target_hint or "").strip()
+        if hint:
+            return hint
+
+        snapshot = c.data if isinstance(c.data, dict) else {}
+        route_trace = snapshot.get("route_trace", {}) if isinstance(snapshot.get("route_trace", {}), dict) else {}
+        route_target = str(route_trace.get("active_target", "") or "").strip()
+        if route_target:
+            return route_target
+
+        parity = snapshot.get("parity", {}) if isinstance(snapshot.get("parity", {}), dict) else {}
+        parity_target = str(parity.get("active_target", "") or "").strip()
+        if parity_target:
+            return parity_target
+
+        helper_state = c.hass.states.get("input_select.ma_active_target")
+        return str(helper_state.state if helper_state is not None else "").strip()
+
+    def _schedule_snapshot_refresh(self) -> None:
+        """Request throttled coordinator refresh instead of immediate full snapshot rebuild."""
+        c = self._coordinator
+        refresh = getattr(c, "_refresh_snapshot", None)
+        if callable(refresh):
+            refresh(force=False)
+            return
+        c.async_set_updated_data(c._build_snapshot())
 
     async def async_apply_control_center_settings(self, raw_options: dict[str, Any] | None) -> dict[str, Any]:
         """Normalize and apply control-center settings from config-entry options."""
@@ -83,22 +113,27 @@ class ControlExecutionFabricWorkflow:
                 mapped_action = str(c._control_center_settings.get("button_4_scene", "") or "").strip()
 
             result["mapped_action"] = mapped_action
+            action_key = mapped_action.strip().lower().replace("-", "_").replace(" ", "_")
+            if action_key == "playpause":
+                action_key = "play_pause"
+            elif action_key in {"mutetoggle", "mute"}:
+                action_key = "mute_toggle"
+            elif action_key in {"noop", "none_op"}:
+                action_key = "no_op"
+            elif action_key in {"scene_none", "scene.none"}:
+                action_key = "scene.none"
 
             if not mapped_action:
                 result["status"] = "blocked_unmapped_input"
                 result["reason"] = "No mapping exists for the selected input_event"
-            elif mapped_action.lower() in {"scene.none", "none"}:
+            elif action_key in {"scene.none", "none"}:
                 result["status"] = "blocked_scene_unconfigured"
                 result["reason"] = "Input is mapped to placeholder scene.none"
-            elif mapped_action == "no_op":
+            elif action_key == "no_op":
                 result["status"] = "noop_action"
                 result["reason"] = "Mapped action is no_op; execution intentionally performs no runtime write"
-            elif mapped_action == "volume":
-                snapshot = c._build_snapshot()
-                route_trace = snapshot.get("route_trace", {}) if isinstance(snapshot.get("route_trace", {}), dict) else {}
-                route_target = str(route_trace.get("active_target", "") or "").strip()
-                target_entity = hint or route_target
-                target_entity = target_entity.strip()
+            elif action_key == "volume":
+                target_entity = self._resolve_route_target(hint)
                 if target_entity.lower() in {"", "none", "unknown", "unavailable"}:
                     result["status"] = "blocked_target_unresolved"
                     result["reason"] = "No resolved component route target is available for volume action"
@@ -125,46 +160,124 @@ class ControlExecutionFabricWorkflow:
                                 current_level = float(raw_level)
                         except (TypeError, ValueError):
                             current_level = None
+                    current_mute: bool | None = None
+                    if state_obj is not None:
+                        raw_mute = state_obj.attributes.get("is_volume_muted")
+                        if isinstance(raw_mute, bool):
+                            current_mute = raw_mute
 
                     result["target_entity"] = target_entity
                     result["current_volume_level"] = current_level
+                    result["current_is_volume_muted"] = current_mute
 
                     if dry_run:
                         if current_level is not None:
                             proposed_level = max(0.0, min(1.0, round(current_level + (parsed_delta / 100.0), 3)))
                             result["proposed_volume_level"] = proposed_level
+                        if current_mute is True:
+                            result["proposed_is_volume_muted"] = False
                         result["status"] = "dry_run_ok"
                         result["reason"] = "Volume action resolved successfully in dry-run mode"
                     else:
                         try:
-                            if current_level is not None:
-                                proposed_level = max(0.0, min(1.0, round(current_level + (parsed_delta / 100.0), 3)))
+                            if current_mute is True:
                                 await c.hass.services.async_call(
                                     "media_player",
-                                    "volume_set",
+                                    "volume_mute",
                                     {
                                         "entity_id": target_entity,
-                                        "volume_level": proposed_level,
+                                        "is_volume_muted": False,
                                     },
                                     blocking=True,
                                 )
-                                result["proposed_volume_level"] = proposed_level
-                                result["status"] = "applied_volume_set"
-                                result["reason"] = "Mapped volume action executed via media_player.volume_set"
+                                result["proposed_is_volume_muted"] = False
+
+                            service_name = "volume_up" if parsed_delta >= 0 else "volume_down"
+                            abs_delta = abs(parsed_delta)
+                            if abs_delta < 8:
+                                step_count = 1
+                            elif abs_delta < 16:
+                                step_count = 2
                             else:
-                                service_name = "volume_up" if parsed_delta >= 0 else "volume_down"
+                                step_count = 3
+                            for _ in range(step_count):
                                 await c.hass.services.async_call(
                                     "media_player",
                                     service_name,
                                     {"entity_id": target_entity},
                                     blocking=True,
                                 )
-                                result["status"] = "applied_volume_step"
-                                result["reason"] = f"Mapped volume action executed via media_player.{service_name}"
+
+                            result["volume_step_service"] = service_name
+                            result["volume_step_count"] = step_count
+                            result["status"] = "applied_volume_step"
+                            result["reason"] = (
+                                f"Mapped volume action executed via media_player.{service_name} "
+                                f"(steps={step_count})"
+                            )
                         except Exception as err:  # pragma: no cover - defensive runtime guard
                             result["status"] = "volume_write_error"
                             result["reason"] = f"Volume action failed: {err}"
-            elif mapped_action == "scene_quick_trigger":
+            elif action_key in {"play_pause", "mute_toggle"}:
+                target_entity = self._resolve_route_target(hint)
+                if target_entity.lower() in {"", "none", "unknown", "unavailable"}:
+                    result["status"] = "blocked_target_unresolved"
+                    result["reason"] = f"No resolved component route target is available for {action_key} action"
+                elif result["read_only_mode"] and not dry_run:
+                    result["status"] = "blocked_read_only_mode"
+                    result["reason"] = "Control-center read_only_mode is enabled; non-dry-run execution is blocked"
+                else:
+                    result["target_entity"] = target_entity
+                    state_obj = c.hass.states.get(target_entity)
+                    current_mute: bool | None = None
+                    if state_obj is not None:
+                        raw_mute = state_obj.attributes.get("is_volume_muted")
+                        if isinstance(raw_mute, bool):
+                            current_mute = raw_mute
+
+                    if dry_run:
+                        result["status"] = "dry_run_ok"
+                        if action_key == "play_pause":
+                            result["reason"] = "play_pause action resolved successfully in dry-run mode"
+                        else:
+                            result["current_is_volume_muted"] = current_mute
+                            if current_mute is not None:
+                                result["proposed_is_volume_muted"] = not current_mute
+                            result["reason"] = "mute_toggle action resolved successfully in dry-run mode"
+                    else:
+                        try:
+                            if action_key == "play_pause":
+                                await c.hass.services.async_call(
+                                    "media_player",
+                                    "media_play_pause",
+                                    {"entity_id": target_entity},
+                                    blocking=False,
+                                )
+                                result["status"] = "applied_play_pause"
+                                result["reason"] = "Mapped play_pause action executed via media_player.media_play_pause"
+                            else:
+                                desired_mute = not current_mute if current_mute is not None else True
+                                await c.hass.services.async_call(
+                                    "media_player",
+                                    "volume_mute",
+                                    {
+                                        "entity_id": target_entity,
+                                        "is_volume_muted": desired_mute,
+                                    },
+                                    blocking=False,
+                                )
+                                result["current_is_volume_muted"] = current_mute
+                                result["proposed_is_volume_muted"] = desired_mute
+                                result["status"] = "applied_mute_toggle"
+                                result["reason"] = "Mapped mute_toggle action executed via media_player.volume_mute"
+                        except Exception as err:  # pragma: no cover - defensive runtime guard
+                            if action_key == "play_pause":
+                                result["status"] = "play_pause_error"
+                                result["reason"] = f"play_pause action failed: {err}"
+                            else:
+                                result["status"] = "mute_toggle_error"
+                                result["reason"] = f"mute_toggle action failed: {err}"
+            elif action_key == "scene_quick_trigger":
                 quick_scene = str(c._control_center_settings.get("button_1_scene", "scene.none") or "scene.none").strip()
                 result["mapped_action"] = f"scene_quick_trigger:{quick_scene}"
                 if quick_scene.lower() in {"", "scene.none"}:
@@ -182,7 +295,7 @@ class ControlExecutionFabricWorkflow:
                             "scene",
                             "turn_on",
                             {"entity_id": quick_scene},
-                            blocking=True,
+                            blocking=False,
                         )
                         result["status"] = "applied_scene_turn_on"
                         result["reason"] = "scene_quick_trigger executed via button_1_scene binding"
@@ -195,13 +308,13 @@ class ControlExecutionFabricWorkflow:
             elif dry_run:
                 result["status"] = "dry_run_ok"
                 result["reason"] = "Mapping resolved successfully in dry-run mode"
-            elif mapped_action.startswith("scene."):
+            elif mapped_action.lower().startswith("scene."):
                 try:
                     await c.hass.services.async_call(
                         "scene",
                         "turn_on",
                         {"entity_id": mapped_action},
-                        blocking=True,
+                        blocking=False,
                     )
                     result["status"] = "applied_scene_turn_on"
                     result["reason"] = "Mapped scene turn_on call executed"
@@ -210,11 +323,11 @@ class ControlExecutionFabricWorkflow:
                     result["reason"] = f"Scene call failed: {err}"
             else:
                 result["status"] = "blocked_unimplemented_action"
-                result["reason"] = "Mapped action is reserved for future bounded execution slices"
+                result["reason"] = f"Mapped action '{mapped_action}' (normalized='{action_key}') is reserved for future bounded execution slices"
 
         result["completed_at"] = datetime.now(UTC).isoformat()
         c._last_control_center_action_attempt = result
-        c.async_set_updated_data(c._build_snapshot())
+        self._schedule_snapshot_refresh()
         return result
 
     async def async_set_write_authority(self, mode: str, reason: str = "") -> None:

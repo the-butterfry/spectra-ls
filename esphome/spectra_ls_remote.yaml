@@ -1,6 +1,6 @@
 # Description: Standalone ESPHome config for Spectra LS Remote tabletop control box (encoder + transport buttons + battery telemetry).
-# Version: 2026.07.17.34
-# Last updated: 2026-07-17
+# Version: 2026.07.31.1
+# Last updated: 2026-07-31
 # Notes:
 # - BLE transport removed; control lane is direct Wi-Fi/TCP.
 
@@ -130,7 +130,7 @@ wifi:
   ssid: ${wifi_ssid}
   password: ${wifi_password}
   fast_connect: true
-  power_save_mode: LIGHT
+  power_save_mode: NONE
   manual_ip:
     static_ip: 192.168.10.41
     gateway: 192.168.10.1
@@ -790,7 +790,6 @@ script:
       - if:
           condition:
             lambda: |-
-              if (!id(remote_ha_api).is_connected()) return false;
               const bool has_cached_route = !id(remote_route_hosts_last_valid).empty() || !id(remote_route_host_last_valid).empty();
               return ${remote_direct_transport_enabled} ||
                      (${remote_control_center_offline_direct_fallback} && !id(remote_ha_api).is_connected() && has_cached_route);
@@ -818,7 +817,6 @@ script:
       - if:
           condition:
             lambda: |-
-              if (!id(remote_ha_api).is_connected()) return false;
               const bool has_cached_route = !id(remote_route_hosts_last_valid).empty() || !id(remote_route_host_last_valid).empty();
               return ${remote_direct_transport_enabled} ||
                      (${remote_control_center_offline_direct_fallback} && !id(remote_ha_api).is_connected() && has_cached_route);

@@ -1,5 +1,5 @@
 # Description: Standalone ESPHome config for Spectra LS Remote tabletop control box (encoder + transport buttons + battery telemetry).
-# Version: 2026.07.31.1
+# Version: 2026.07.31.2
 # Last updated: 2026-07-31
 # Notes:
 # - BLE transport removed; control lane is direct Wi-Fi/TCP.
@@ -32,8 +32,6 @@ substitutions:
   remote_now_playing_state_sensor: sensor.now_playing_state
   remote_active_volume_sensor: sensor.component_now_playing_volume
   remote_volume_acceleration_helper: input_boolean.spectra_ls_remote_volume_acceleration
-  remote_wifi_maintenance_enabled_helper: input_boolean.spectra_remote_wifi_maintenance_enabled
-  remote_wifi_maintenance_timer: timer.spectra_remote_wifi_maintenance_window
   remote_direct_control_default_port: "8899"
 
   # Hardware pins (baseline defaults for ESP32-C6 Super Mini bring-up)
@@ -56,15 +54,8 @@ substitutions:
   remote_encoder_max_detents_per_emit: "4"
   remote_encoder_direction_multiplier: "-1"
   remote_unresolved_log_interval_ms: "1500"
-  remote_control_center_emit_enabled: "false"
-  remote_control_center_emit_dry_run: "false"
   remote_direct_transport_enabled: "true"
   remote_control_center_offline_direct_fallback: "true"
-  remote_control_center_settle_ms: "250"
-  remote_wifi_requires_long_press: "false"
-  remote_emit_disconnected_log_interval_ms: "1200"
-  remote_wifi_reconnect_interval_ms: "2500"
-  remote_wifi_maintenance_session_window_ms: "900000"
 
   # Battery model
   remote_has_battery: "true"
@@ -93,21 +84,6 @@ esphome:
           id(remote_last_encoder_turn_interval_ms) = 1000;
           id(remote_last_playing_ms) = 0;
           id(remote_last_encoder_interaction_ms) = now;
-          id(remote_boot_ms) = now;
-          id(remote_wifi_maintenance_session_active) = false;
-          id(remote_wifi_maintenance_enable_pending) = false;
-          id(remote_pending_encoder_delta) = 0;
-          id(remote_last_wifi_reconnect_attempt_ms) = 0;
-          id(remote_wifi_maintenance_session_started_ms) = 0;
-      - if:
-          condition:
-            lambda: |-
-              return ${remote_wifi_requires_long_press};
-          then:
-            - logger.log:
-                level: INFO
-                format: "Remote Wi-Fi maintenance gate active: disabling Wi-Fi until long-press"
-            - wifi.disable:
 
 esp32:
   board: esp32-c6-devkitm-1

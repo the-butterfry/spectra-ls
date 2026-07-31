@@ -146,10 +146,6 @@ globals:
     type: uint32_t
     restore_value: no
     initial_value: "0"
-  - id: remote_last_emit_disconnected_log_ms
-    type: uint32_t
-    restore_value: no
-    initial_value: "0"
   - id: remote_resolved_target
     type: std::string
     restore_value: no
@@ -176,10 +172,6 @@ globals:
     initial_value: "0"
   - id: remote_last_encoder_direction_ms
     type: uint32_t
-    restore_value: no
-    initial_value: "0"
-  - id: remote_last_control_center_scaled_delta
-    type: int
     restore_value: no
     initial_value: "0"
   - id: remote_mute_state
@@ -219,34 +211,6 @@ globals:
     restore_value: no
     initial_value: "0"
   - id: remote_last_encoder_interaction_ms
-    type: uint32_t
-    restore_value: no
-    initial_value: "0"
-  - id: remote_boot_ms
-    type: uint32_t
-    restore_value: no
-    initial_value: "0"
-  - id: remote_wifi_maintenance_session_active
-    type: bool
-    restore_value: no
-    initial_value: "false"
-  - id: remote_wifi_maintenance_enable_pending
-    type: bool
-    restore_value: no
-    initial_value: "false"
-  - id: remote_pending_encoder_delta
-    type: int
-    restore_value: no
-    initial_value: "0"
-  - id: remote_pending_event_name
-    type: std::string
-    restore_value: no
-    initial_value: '""'
-  - id: remote_last_wifi_reconnect_attempt_ms
-    type: uint32_t
-    restore_value: no
-    initial_value: "0"
-  - id: remote_wifi_maintenance_session_started_ms
     type: uint32_t
     restore_value: no
     initial_value: "0"

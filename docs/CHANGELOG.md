@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Spectra L/S integration-first development. -->
-<!-- Version: 2026.08.01.3 -->
+<!-- Version: 2026.08.01.4 -->
 <!-- Last updated: 2026-08-01 -->
 
 # Changelog
 
 ## 2026-08-01
+
+- README opening clarity pass: replaced remaining abstract intro language with a direct end-user statement of product identity ("physical control board for Home Assistant" / "home DJ mixer for music + lights") so first-time readers immediately understand what Spectra L/S is.
 
 - README plain-language rewrite for non-technical readers: replaced implementation-heavy top-of-page status/roadmap copy with user-first messaging focused on what Spectra L/S is, what it does today, who it is for, and what to expect during beta.
 

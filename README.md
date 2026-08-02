@@ -1,14 +1,23 @@
 <!-- Description: End-user overview for the Spectra L/S Home Assistant + ESPHome system. -->
-<!-- Version: 2026.08.01.4 -->
+<!-- Version: 2026.08.01.5 -->
 <!-- Last updated: 2026-08-01 -->
 
 # Spectra L/S
 
-**⚠️ State of project (reviewed 2026-08-01): Public beta. It works and people can run it today, but it is still moving quickly. If you want a "set it once and never touch it" setup, wait for a stable milestone.**
+**⚠️ State of project (reviewed 2026-08-01): Public beta. It works today, but it still changes quickly. If you want "set it once and never touch it," wait for a stable milestone.**
 
-Spectra Level / Source (Spectra L/S) is a **physical control surface for Home Assistant**.
+## What is Spectra L/S?
 
-Plain-English version: it gives you real knobs, buttons, and on-device feedback so controlling your home audio/lights feels like using quality hardware, not hunting through phone apps.
+Spectra L/S is a **physical control board for Home Assistant**.
+
+Think of it like a **home DJ mixer for music + lights**:
+
+- turn a knob for volume,
+- press a button for playback,
+- switch rooms/targets quickly,
+- see what’s happening on the OLED.
+
+It exists to make home control feel instant and tactile, instead of app-heavy and slow.
 
 ## What Spectra L/S is (in one minute)
 

@@ -1,62 +1,52 @@
 <!-- Description: End-user overview for the Spectra L/S Home Assistant + ESPHome system. -->
-<!-- Version: 2026.08.01.3 -->
+<!-- Version: 2026.08.01.4 -->
 <!-- Last updated: 2026-08-01 -->
 
 # Spectra L/S
 
-**⚠️ State of project (reviewed 2026-08-01): Public beta. Fresh pilot installs are reasonable for experienced Home Assistant operators. If you need low-change, enterprise-style stability, wait for a declared stable milestone because `main` still moves fast.**
+**⚠️ State of project (reviewed 2026-08-01): Public beta. It works and people can run it today, but it is still moving quickly. If you want a "set it once and never touch it" setup, wait for a stable milestone.**
 
-Spectra Level / Source (Spectra L/S) is the tactile control surface for Home Assistant: instant, physical control over the moments that matter in your home.
+Spectra Level / Source (Spectra L/S) is a **physical control surface for Home Assistant**.
 
-Instead of digging through apps and dashboards, you can touch real controls for transport, lighting, volume, tone, scenes, and automations. The goal is simple: make everyday home control feel immediate, shared, and human.
+Plain-English version: it gives you real knobs, buttons, and on-device feedback so controlling your home audio/lights feels like using quality hardware, not hunting through phone apps.
 
-Audio and lighting are the deepest focus areas today, but the model is broader: if Home Assistant can run it, Spectra L/S is designed to make it feel physical.
+## What Spectra L/S is (in one minute)
 
-## Program Status — Home Assistant Integration First
+- A hardware-first controller for your home
+- Built for fast, tactile control of music and lighting
+- Backed by Home Assistant so it can drive your existing entities, scripts, and automations
+- Focused on daily usability: quick actions, clear feedback, and room-aware control
 
-Current operating posture:
+## What you can do with it today
 
-- The Home Assistant integration at `custom_components/spectra_ls` is the main path for active behavior and feature work.
-- The runtime files in `packages/` + `esphome/` consume integration-owned contracts.
-- Active target, host routing, and metadata behavior are driven by integration contracts and services.
-- New install-specific hardcoded entity IDs/private host literals are CI-blocked in active product logic paths.
-- Current build targets are the active integration and system runtime paths documented under `docs/`.
+- Control playback (play/pause, next, volume)
+- Control room lighting
+- Switch targets/rooms with physical controls
+- See live context/status on the onboard OLED
+- Route actions through Home Assistant services and automations
 
-This keeps operations stable while keeping active development focused.
+## Who this is for right now
 
-## Hardware-First Context (Important)
+- You already run Home Assistant (or are comfortable learning it)
+- You want a premium physical interface for audio + home control
+- You’re okay with a beta product that still evolves quickly
 
-Spectra L/S is a **hardware-first control stack**. The physical control surface comes first; Home Assistant orchestration is what makes that hardware useful across your home.
+## What this is not (yet)
 
-Core MCU/control path today:
+- Not a mass-market plug-and-play consumer product yet
+- Not frozen/stable enterprise software yet
+- Not "no-maintenance forever" if you follow `main`
 
-- **ESP32-S3** — main ESPHome runtime/controller (UI/menu/orchestration path)
-- **RP2040** — physical input capture firmware path (buttons/encoders/pots) feeding the controller runtime
+## Hardware-first by design
 
-In short: hardware first, then ESPHome + Home Assistant software stack.
+Spectra L/S is built around the physical interface first, software second:
 
-## What It Feels Like to Use Spectra L/S
+- **ESP32-S3** handles control/runtime orchestration
+- **RP2040** handles physical input capture (buttons/encoders/pots)
 
-- **Instant physical control**: adjust sound and lights in real time from dedicated controls, not nested app screens.
-- **Room-aware operation**: jump between rooms quickly and control the right targets without reconfiguring every step.
-- **Always-clear feedback**: the OLED keeps navigation and active actions visible, so you always know what you’re controlling.
-- **Reliable day-to-day flow**: physical actions stay responsive even when the smart-home stack is busy in the background.
+Home Assistant ties it together so your hardware actions map cleanly to your home.
 
-## Why This Is Missing from Home Assistant
-
-- Most smart-home workflows are app-first; Spectra L/S brings control back to physical space.
-- No app gatekeeping for the actions that should be instantly accessible in your home.
-- Shared spaces become more inclusive: anyone can walk up and use dedicated controls without training.
-- It restores “eyes-up, hands-on” control for moments where touchscreens are friction.
-
-Inspired by modern physical-control craftsmanship from [Condesa Electronics — Carmen SE](https://condesaelectronics.com/) and [Varia Instruments — RDM series](https://www.varia-instruments.com/), Spectra L/S is a minimal home DJ-mixer style control surface coupled with lighting, automation, and human-centric interaction for everyday Home Assistant control.
-
-## Analog Surface for the Whole Home
-
-- **Audio + lighting first**: these remain the deepest, most polished domains.
-- **Mappable physical inputs**: buttons/sliders/encoders can be assigned to broader Home Assistant actions.
-- **Touchscreen alternative**: where many dashboards are glass-first, Spectra L/S is designed as a tactile-first control surface.
-- **Composable control model**: one hardware interface can drive media, scenes, automations, scripts, and domain-specific home controls.
+Inspired by premium physical control products like [Condesa Electronics — Carmen SE](https://condesaelectronics.com/) and [Varia Instruments — RDM series](https://www.varia-instruments.com/), Spectra L/S brings that tactile philosophy to Home Assistant.
 
 ## Works with the Audio Ecosystem You Already Have
 
@@ -68,24 +58,18 @@ Inspired by modern physical-control craftsmanship from [Condesa Electronics — 
 - AirPlay / Apple TV style sources
 - Plex sessions/players (optional)
 
-## Roadmap (Current Build Direction)
+## What’s being built now
 
-- We are actively building the Home Assistant sidebar **Spectra Control Center** in `custom_components/spectra_ls` as the primary product surface.
-- Current execution focus: setup/onboarding, mapped-environment visibility, tuning/defaults/overrides, and bounded input-to-action execution under evidence-first gates.
-- HA setup-flow foundation now includes guided entity-policy capture for routing/metadata include-exclude lists (component options flow), establishing the first end-user onboarding framework for per-install entity curation.
-- Control Center settings + execution contracts are already live and operator-verifiable via `spectra_ls.set_control_center_settings` and `spectra_ls.execute_control_center_input`.
-- Host-control cutover readiness is service-addressable via `spectra_ls.get_host_cutover_gate` (with fail-closed options for readiness/activation gating in automation workflows).
-- Canonical playback/progress robustness is now formalized as an integration-first architecture program (`custom_components/spectra_ls`) with multi-source field-level resolution, provenance, and deterministic healing (`docs/architecture/COMPONENT-DATA-FABRIC-ARCHITECTURE.md`).
-- Canonical ownership/read/write authority across runtime + component surfaces is now centralized in a single ledger: `docs/architecture/CONTRACT-OWNERSHIP-LEDGER.md`.
-- Canonical execution is codified as `CA-S01..CA-S08` (CORE/PROJ/COMPAT/OPS lanes), and those baseline CA slices are now validated; active work continues in post-CA parity/hardening lanes (see `docs/roadmap/v-next-NOTES.md`).
-- Architecture governance is explicit and normative with token-locked MA authority semantics and deterministic health-state diagnostics.
-- Ecosystem expansion remains capability-mapped and discovery-first; Sendspin-class and adjacent endpoint families are treated as roadmap integrations under the same safety/rollback gate discipline.
-- Runtime control-target host resolution is discovery-only and fail-closed by contract: no install-specific hardcoded target IP bootstrap defaults in tracked product logic.
-- Fast MA backend testing is now helper-driven in runtime: use `input_select.ma_server_profile` (`beta` / `stable` / `manual`) with profile URL helpers to switch endpoints quickly without editing package YAML.
-- HACS publishing cadence is release-tag driven (not commit-driven): keep iterative work on `main`, then publish to HACS only when a tagged release is intentionally cut.
-- ESPHome runtime deploy guidance is aligned to 2026.4.x OTA schema: `ota` platform entries (`esphome` + `web_server`) are the supported path, and older `web_server.ota: true` usage should be treated as incompatible in modern builds.
-- Operator-grade validation artifacts remain the execution truth surface: `docs/testing/raw/*` checklists/monitors and synchronized roadmap ledgers.
-- Startup authority handling is hardened to avoid mixed boot semantics across migration windows, and deterministic diagnostics now include source/provenance + playback-modality context for faster operator triage.
+- A polished in-app Home Assistant control center
+- Better onboarding/setup flow for real homes with different device layouts
+- Stronger playback and metadata reliability across mixed audio ecosystems
+- Faster and cleaner input-to-action response from physical controls
+
+If you want the deep implementation/roadmap details, see:
+
+- `docs/roadmap/v-next-NOTES.md`
+- `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`
+- `docs/architecture/`
 
 ## Compatibility baseline (verified vs expected)
 

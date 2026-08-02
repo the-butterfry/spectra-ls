@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Spectra L/S integration-first development. -->
-<!-- Version: 2026.08.01.2 -->
+<!-- Version: 2026.08.01.3 -->
 <!-- Last updated: 2026-08-01 -->
 
 # Changelog
 
 ## 2026-08-01
+
+- README plain-language rewrite for non-technical readers: replaced implementation-heavy top-of-page status/roadmap copy with user-first messaging focused on what Spectra L/S is, what it does today, who it is for, and what to expect during beta.
 
 - Integration-only residue cleanup: removed remaining legacy/fallback wording from active validation and architecture docs, and switched the full-stack tester guidance to component-contract-only messaging/sources.
 

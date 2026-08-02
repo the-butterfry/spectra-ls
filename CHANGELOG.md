@@ -1,8 +1,20 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.07.04.3 -->
-<!-- Last updated: 2026-07-04 -->
+<!-- Version: 2026.08.01.1 -->
+<!-- Last updated: 2026-08-01 -->
 
 # Changelog
+
+> **Canonical changelog location:** `docs/CHANGELOG.md`
+>
+> This root file is kept as a legacy pointer for repository visitors.
+> The actively maintained, current changelog (including all recent 2026-08-01 updates) lives at:
+>
+> - [`docs/CHANGELOG.md`](docs/CHANGELOG.md)
+
+## 2026-08-01
+
+- Changelog canonicalization note added at root so GitHub viewers do not mistake this file for the current project log.
+- Recent updates (README plain-language rewrite, second-pass concision, complete hardware list, integration-only residue cleanup) are recorded in `docs/CHANGELOG.md`.
 
 ## 2026-07-04
 

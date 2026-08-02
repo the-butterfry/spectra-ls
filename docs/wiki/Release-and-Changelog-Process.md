@@ -1,14 +1,14 @@
 <!-- Description: Release-note and changelog discipline for Spectra L/S behavior, contract, and governance changes. -->
-<!-- Version: 2026.04.29.4 -->
-<!-- Last updated: 2026-04-29 -->
+<!-- Version: 2026.08.01.5 -->
+<!-- Last updated: 2026-08-01 -->
 
 # Release and Changelog Process
 
-This is the minimum release hygiene for every slice.
+This is the release hygiene baseline. Keep it simple and consistent.
 
 ## Changelog is mandatory
 
-For functional behavior, contract, architecture, workflow, or governance changes:
+If behavior, contracts, process, or governance changed, update changelog in the same slice.
 
 1. Update [`docs/CHANGELOG.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/CHANGELOG.md) in the same change set.
 2. Include affected file paths in the entry.
@@ -23,11 +23,11 @@ For roadmap/process/contract changes, update these together:
 3. [`docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md)
 4. [`README.md`](https://github.com/the-butterfry/spectra-ls/blob/main/README.md) (or explicit no-material-change note)
 
-## Release hygiene recommendations
+## Release hygiene
 
-- Use `changelog:*` labels on PRs for future automation.
-- Keep PR scope narrow to improve release-note quality.
-- Include risk and rollback notes in PR descriptions.
+- Keep PR scopes narrow.
+- Include risk and rollback notes.
+- Use consistent changelog phrasing tied to operator impact.
 
 HACS publication cadence (recommended):
 
@@ -48,6 +48,13 @@ HACS publication cadence (recommended):
 - Changes merged with docs parity complete.
 - Verification evidence present.
 - Changelog entry accurately reflects user/operator impact.
+
+## Quick pre-merge release checklist
+
+- [ ] Changelog entry added or updated
+- [ ] Roadmap docs updated if contract/process shifted
+- [ ] README updated or explicit no-material-change note included
+- [ ] Verification evidence captured
 
 ## Linked references
 

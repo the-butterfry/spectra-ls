@@ -1,5 +1,5 @@
 <!-- Description: Sidebar navigation for Spectra L/S GitHub Wiki pages published from docs/wiki sources. -->
-<!-- Version: 2026.08.01.9 -->
+<!-- Version: 2026.08.01.10 -->
 <!-- Last updated: 2026-08-01 -->
 
 # Spectra L/S Wiki
@@ -8,6 +8,7 @@
 - [Getting Started](Getting-Started)
 - [Install on Your Own Home Assistant](Install-on-Your-Own-HA)
 - [User Setup, Deploy, and HA Integration](User-Setup-Deploy-and-HA-Integration)
+- [Complete Operator Runbook](Complete-Operator-Runbook)
 - [Welcome, README, and Bug Workflow](Welcome-README-and-Bug-Workflow)
 - [Operations Runbooks](Operations-Runbooks)
 - [Spectra Sidebar Settings](Spectra-Sidebar-Settings)

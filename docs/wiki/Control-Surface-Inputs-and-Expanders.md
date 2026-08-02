@@ -1,10 +1,10 @@
 <!-- Description: Operator-facing control-surface reference for Spectra inputs, buttons, sliders/pots, encoders, expanders, and event path. -->
-<!-- Version: 2026.04.22.2 -->
-<!-- Last updated: 2026-04-22 -->
+<!-- Version: 2026.08.01.3 -->
+<!-- Last updated: 2026-08-01 -->
 
 # Control Surface Inputs, Buttons, Sliders, and Expanders
 
-This page is the practical “where are all the controls?” index.
+This is the hardware/input map you use when buttons or knobs do the wrong thing.
 
 Quick links:
 
@@ -13,17 +13,17 @@ Quick links:
 - RP source config: [`esphome/circuitpy/sls_config.py`](https://github.com/the-butterfry/spectra-ls/blob/main/esphome/circuitpy/sls_config.py)
 - RP runtime input code: [`esphome/circuitpy/code.py`](https://github.com/the-butterfry/spectra-ls/blob/main/esphome/circuitpy/code.py)
 
-## Hardware input stack at a glance
+## Signal path (30-second mental model)
 
-- **RP2040** captures physical inputs.
-- **PCF8575** expanders provide digital button/selector inputs.
-- **Seesaw encoders** provide rotary delta + press events.
-- **ADS1015 + internal ADC** provide analog slider/pot values.
-- **UART transport** carries RP events to ESPHome runtime.
+1. Physical control changes
+2. RP2040 reads it
+3. RP2040 emits event packet
+4. ESPHome `rp2040_uart` ingests packet
+5. HA/runtime/component logic applies behavior
 
-## Digital buttons (PCF8575 path)
+## Digital buttons (PCF8575)
 
-Current canonical button pin map from [`esphome/circuitpy/sls_config.py`](https://github.com/the-butterfry/spectra-ls/blob/main/esphome/circuitpy/sls_config.py):
+Canonical map from [`esphome/circuitpy/sls_config.py`](https://github.com/the-butterfry/spectra-ls/blob/main/esphome/circuitpy/sls_config.py):
 
 | Button | PCF pin | Event ID |
 | --- | ---: | ---: |
@@ -37,7 +37,7 @@ Current canonical button pin map from [`esphome/circuitpy/sls_config.py`](https:
 | mute | 7 | 22 |
 | select | 8 | 37 |
 
-## Selectors and mode/class controls (PCF8575 path)
+## Selector and mode controls
 
 - **Mode selector event**: `120`
 - **Control-class selector event**: `121`
@@ -51,18 +51,18 @@ Selector pin contracts are defined in [`esphome/circuitpy/sls_config.py`](https:
 - mode selector pins: `9..13` (one-hot)
 - control class pins: `14..15` (mapped combinations)
 
-## Rotary encoders (Seesaw path)
+## Rotary encoders (Seesaw)
 
-Current encoder map from [`esphome/circuitpy/code.py`](https://github.com/the-butterfry/spectra-ls/blob/main/esphome/circuitpy/code.py):
+Current map from [`esphome/circuitpy/code.py`](https://github.com/the-butterfry/spectra-ls/blob/main/esphome/circuitpy/code.py):
 
 | Encoder | I2C address | Delta event ID | Press event ID |
 | --- | ---: | ---: | ---: |
 | menu | `0x36` | 2 | 21 |
 | lighting | `0x37` | 1 | 20 |
 
-## Sliders and pots (analog path)
+## Sliders and pots (analog)
 
-Current analog input map from [`esphome/circuitpy/code.py`](https://github.com/the-butterfry/spectra-ls/blob/main/esphome/circuitpy/code.py):
+Current map from [`esphome/circuitpy/code.py`](https://github.com/the-butterfry/spectra-ls/blob/main/esphome/circuitpy/code.py):
 
 | Control | Source | Channel/Pin | Event ID |
 | --- | --- | --- | ---: |
@@ -72,19 +72,19 @@ Current analog input map from [`esphome/circuitpy/code.py`](https://github.com/t
 | EQ mid pot | internal ADC | `board.A0` | 105 |
 | EQ treble pot | external ADC | ADS channel 3 | 106 |
 
-## Expanders and buses
+## I2C addresses quick reference
 
 - PCF8575 addresses (digital inputs): `0x20`, `0x21`
 - Seesaw encoder addresses: `0x36`, `0x37`
 - External ADS1015 ADC address: `0x48`
 
-## Event path (end-to-end)
+## Troubleshooting quick checks
 
-1. Physical input changes at control surface.
-2. RP2040 reads digital/encoder/analog values.
-3. RP normalizes and emits event packets.
-4. ESPHome runtime ingests packets via `rp2040_uart`.
-5. UI/audio/lighting/runtime packages apply behavior in HA context.
+| Symptom | First check | Next action |
+| --- | --- | --- |
+| Button press does nothing | Event ID map for that button | Confirm packet appears in RP/ESP logs and route mapping consumes it |
+| Encoder rotates backward or jumps | Encoder address + delta event map | Verify Seesaw address wiring and event mapping in `code.py` |
+| Slider behavior is noisy/stuck | ADS/internal ADC channel mapping | Validate channel-to-event mapping and analog calibration |
 
 ## Source-of-truth files
 

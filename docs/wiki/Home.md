@@ -1,5 +1,5 @@
 <!-- Description: Wiki home page for Spectra L/S operations, architecture, contribution flow, and runbooks. -->
-<!-- Version: 2026.08.01.2 -->
+<!-- Version: 2026.08.01.3 -->
 <!-- Last updated: 2026-08-01 -->
 
 # Spectra L/S Wiki
@@ -21,6 +21,7 @@ If you only read one section on this page, read the next one.
 - [Install on Your Own Home Assistant](Install-on-Your-Own-HA)
 - [User Setup, Deploy, and HA Integration](User-Setup-Deploy-and-HA-Integration)
 - [Operations Runbooks](Operations-Runbooks)
+- [Complete Operator Runbook](Complete-Operator-Runbook)
 - [Welcome, README, and Bug Workflow](Welcome-README-and-Bug-Workflow)
 - [System Architecture](System-Architecture)
 

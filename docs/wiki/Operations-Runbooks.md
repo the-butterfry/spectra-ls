@@ -1,10 +1,12 @@
 <!-- Description: Practical operations runbooks for docs parity, runtime validation, deployment proof, and rollback readiness. -->
-<!-- Version: 2026.08.01.2 -->
+<!-- Version: 2026.08.01.3 -->
 <!-- Last updated: 2026-08-01 -->
 
 # Operations Runbooks
 
 Use this page when something is broken and you want a clear next step, not a theory lecture.
+
+Need the full install→validate→rollback flow in one page? Use [Complete Operator Runbook](Complete-Operator-Runbook).
 
 ## Symptom routing
 

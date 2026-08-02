@@ -1,18 +1,18 @@
 <!-- Description: GitHub Discussions and Projects operating workflow mapped to Spectra L/S scope paths. -->
-<!-- Version: 2026.04.22.2 -->
-<!-- Last updated: 2026-04-22 -->
+<!-- Version: 2026.08.01.3 -->
+<!-- Last updated: 2026-08-01 -->
 
 # Discussions and Projects Workflow
 
-Use this page to route ideas into scoped, trackable, reviewable work.
+Use this page to move ideas into executed work without ambiguity.
 
-## Why use both
+## Why both Discussions and Projects exist
 
-- **Discussions**: idea shaping, Q&A, architecture tradeoff threads, early UX feedback.
-- **Issues/PRs**: execution artifacts with reproducible scope and verification evidence.
-- **Projects**: portfolio-level tracking across runtime, docs, tooling, and migration paths.
+- **Discussions** = exploration and decision-making.
+- **Issues/PRs** = implementation with evidence.
+- **Projects** = status and prioritization.
 
-## Recommended Discussions categories
+## Suggested Discussion categories
 
 - `Ideas`
 - `Q&A`
@@ -22,7 +22,7 @@ Use this page to route ideas into scoped, trackable, reviewable work.
 
 Use Discussions for exploration and consensus; promote to Issues when a bounded implementation task exists.
 
-## Recommended Project board model
+## Project board model
 
 Single org/repo project titled: **Spectra Program Board**
 
@@ -46,7 +46,7 @@ Single org/repo project titled: **Spectra Program Board**
 | `docs/**`, `.github/**` | Docs/Governance | `type:documentation` or `type:governance` + `area:docs`/`area:governance` |
 | `bin/**` | Tooling | `type:*` + `area:tooling` |
 
-## Intake flow (mature OSS style)
+## Intake flow
 
 1. Idea/question starts in Discussions.
 2. Maintainer adds summary + decision note.
@@ -63,7 +63,7 @@ Single org/repo project titled: **Spectra Program Board**
 - Component roadmap: [`docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md)
 - Label taxonomy/governance: [`docs/governance/LABEL-TAXONOMY.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/governance/LABEL-TAXONOMY.md)
 
-## Definition of ready (Issue)
+## Definition of ready (issue)
 
 - Problem statement is clear and user-impactful.
 - Repro or acceptance criteria are concrete.
@@ -71,14 +71,14 @@ Single org/repo project titled: **Spectra Program Board**
 - Area/priority labels are present.
 - Project fields are populated (`Status`, `Area`, `Track`, `Priority`).
 
-## Definition of done (Issue/PR)
+## Definition of done (issue/PR)
 
 - Implementation is merged with verification evidence.
 - Changelog/docs/wiki parity is updated as required.
 - Any contract/routing implications are documented.
 - Project item moved to `Done`.
 
-## Practical board hygiene
+## Board hygiene rules
 
 - Keep `In Progress` limited to active owner capacity.
 - Move stale items back to `Planned` or `Blocked` with reason.

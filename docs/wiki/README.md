@@ -1,5 +1,5 @@
 <!-- Description: Wiki source and synchronization instructions for Spectra documentation pages. -->
-<!-- Version: 2026.08.01.2 -->
+<!-- Version: 2026.08.01.3 -->
 <!-- Last updated: 2026-08-01 -->
 
 # Wiki Source + Sync
@@ -21,6 +21,7 @@ This folder is the source-of-truth for wiki pages published to GitHub Wiki.
 - `Welcome-README-and-Bug-Workflow.md`
 - `Install-on-Your-Own-HA.md`
 - `User-Setup-Deploy-and-HA-Integration.md`
+- `Complete-Operator-Runbook.md`
 - `Discussions-and-Projects-Workflow.md`
 - `Operations-Runbooks.md`
 - `Release-and-Changelog-Process.md`

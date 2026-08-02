@@ -1,12 +1,12 @@
 <!-- Description: Policy for wiki content boundaries, ownership, and parity with repository docs. -->
-<!-- Version: 2026.04.22.3 -->
-<!-- Last updated: 2026-04-22 -->
+<!-- Version: 2026.08.01.4 -->
+<!-- Last updated: 2026-08-01 -->
 
 # Wiki Content Scope Policy
 
-This policy keeps wiki content useful, concise, and user-focused.
+This policy keeps wiki pages useful for humans under real pressure.
 
-## What SHOULD be in wiki
+## Put this in wiki
 
 - User/operator setup and deployment runbooks
 - Home Assistant integration guidance
@@ -15,7 +15,7 @@ This policy keeps wiki content useful, concise, and user-focused.
 - Governance intake flow (Discussions → Issues → Projects → PR)
 - Release/changelog orientation pages
 
-## What SHOULD NOT be in wiki
+## Do not put this in wiki
 
 - Deep low-level implementation internals better suited to [`docs/architecture/`](https://github.com/the-butterfry/spectra-ls/tree/main/docs/architecture)
 - Exhaustive branch-specific engineering notes better suited to [`docs/roadmap/`](https://github.com/the-butterfry/spectra-ls/tree/main/docs/roadmap), [`docs/program/`](https://github.com/the-butterfry/spectra-ls/tree/main/docs/program), [`docs/notes/`](https://github.com/the-butterfry/spectra-ls/tree/main/docs/notes)
@@ -35,6 +35,11 @@ This policy keeps wiki content useful, concise, and user-focused.
 - Docs index: [`docs/README.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/README.md)
 - Architecture docs: [`docs/architecture/`](https://github.com/the-butterfry/spectra-ls/tree/main/docs/architecture)
 - Roadmaps and planning docs: [`docs/roadmap/`](https://github.com/the-butterfry/spectra-ls/tree/main/docs/roadmap), [`docs/program/`](https://github.com/the-butterfry/spectra-ls/tree/main/docs/program), [`docs/notes/`](https://github.com/the-butterfry/spectra-ls/tree/main/docs/notes)
+
+## Quick decision rule
+
+If a page helps an operator complete a task today, it belongs in wiki.
+If a page is deep engineering detail, keep it in `docs/architecture`, `docs/roadmap`, `docs/program`, or `docs/notes` and link it from wiki.
 
 ## Mature-project pattern (recommended)
 

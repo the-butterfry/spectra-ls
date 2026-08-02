@@ -1,49 +1,50 @@
 <!-- Description: High-level architecture map for Spectra L/S runtime, control plane, and migration tracks. -->
-<!-- Version: 2026.07.04.1 -->
-<!-- Last updated: 2026-07-04 -->
+<!-- Version: 2026.08.01.2 -->
+<!-- Last updated: 2026-08-01 -->
 
 # System Architecture
 
-This page explains where things live and which path owns what.
+This page answers one practical question: **where should this change live?**
 
-## Top-level domains
+## The three domains
 
-1. **Runtime domain (legacy compatibility baseline)**
+1. **Runtime domain (compatibility + rollback baseline)**
    - [`esphome/spectra_ls_system/`](https://github.com/the-butterfry/spectra-ls/tree/main/esphome/spectra_ls_system)
    - [`packages/`](https://github.com/the-butterfry/spectra-ls/tree/main/packages)
-2. **Control-center domain (primary growth path)**
+2. **Component domain (primary growth path)**
    - [`custom_components/spectra_ls/`](https://github.com/the-butterfry/spectra-ls/tree/main/custom_components/spectra_ls)
-3. **RP2040 input firmware domain**
+3. **RP2040 input domain**
    - live source: `CIRCUITPY/`
    - mirror source: [`esphome/circuitpy/`](https://github.com/the-butterfry/spectra-ls/tree/main/esphome/circuitpy)
 
-## What “sealed runtime baseline” means
+## What “sealed runtime baseline” actually means
 
-- Runtime remains available for compatibility and rollback.
-- Net-new growth is directed to the custom component path.
-- Behavior-visible bugfixes should be evaluated in both tracks.
+- Runtime stays available for stability and rollback.
+- Net-new behavior goes to `custom_components/spectra_ls/` by default.
+- Behavior-visible bugfixes still require a two-track check (runtime + component).
 
-## Program execution model
+## Ownership rules (short version)
 
-Spectra runs a required parallel program:
+- If you are adding/changing behavior: start in component path.
+- If you are patching active runtime behavior: include bounded rationale and rollback notes.
+- If you touch RP2040 logic: keep live `CIRCUITPY/` and `esphome/circuitpy/` mirror in parity.
 
-- Runtime track: current stable behavior and rollback safety.
-- Custom-component track: primary implementation path for forward features.
+## File-routing quick map
 
-Every feature slice must map both tracks as implemented, compatibility-shimmed, or deferred with rationale.
+| If you are changing... | Start here |
+| --- | --- |
+| Control-plane logic, selectors, routing policy, metadata policy | [`custom_components/spectra_ls/`](https://github.com/the-butterfry/spectra-ls/tree/main/custom_components/spectra_ls) |
+| Runtime package behavior, HA helper contracts | [`packages/`](https://github.com/the-butterfry/spectra-ls/tree/main/packages) |
+| ESP runtime firmware behavior | [`esphome/spectra_ls_system/`](https://github.com/the-butterfry/spectra-ls/tree/main/esphome/spectra_ls_system) |
+| RP2040 input protocol/event map | live `CIRCUITPY/` + [`esphome/circuitpy/`](https://github.com/the-butterfry/spectra-ls/tree/main/esphome/circuitpy) |
+| Process/docs/governance | [`docs/`](https://github.com/the-butterfry/spectra-ls/tree/main/docs) + [`.github/`](https://github.com/the-butterfry/spectra-ls/tree/main/.github) |
 
-## Ownership snapshot (current)
-
-- Source-of-truth for active growth: [`custom_components/spectra_ls/`](https://github.com/the-butterfry/spectra-ls/tree/main/custom_components/spectra_ls)
-- Source-of-truth for compatibility baseline: [`packages/`](https://github.com/the-butterfry/spectra-ls/tree/main/packages) + [`esphome/spectra_ls_system/`](https://github.com/the-butterfry/spectra-ls/tree/main/esphome/spectra_ls_system)
-- RP2040 firmware updates must be mirrored in both required locations.
-
-## If you are new, read in this order
+## If you are new
 
 1. [`docs/wiki/Getting-Started.md`](Getting-Started)
 2. [`docs/wiki/Install-on-Your-Own-HA.md`](Install-on-Your-Own-HA)
 3. [`docs/wiki/User-Setup-Deploy-and-HA-Integration.md`](User-Setup-Deploy-and-HA-Integration)
-4. this page (for architecture context)
+4. this page
 
 ## Authoritative references
 

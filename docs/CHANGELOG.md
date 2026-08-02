@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.08.01.61 -->
+<!-- Version: 2026.08.01.62 -->
 <!-- Last updated: 2026-08-01 -->
 
 # Changelog
 
 ## 2026-08-01 (Docs Refresh)
+
+- Repo Hygiene Scrub — Non-Spectra Local Residue Purge + Guardrail Tightening (`docs/CHANGELOG.md`, `.gitignore`, local untracked artifacts): execute an explicit non-Spectra residue scrub for local workspace artifacts and snapshots while confirming Git-tracked repository scope remains Spectra-focused. Safety gate executed before delete: backup path `/tmp/spectra_scrub_backup_2026-08-01/homeassistant_scrub_bundle/`; restore command `cp -a /tmp/spectra_scrub_backup_2026-08-01/homeassistant_scrub_bundle/. /mnt/homeassistant/`. Local purge scope includes untracked backup trees and side-cache artifacts (`_backup_2026-*`, `diyhue/`, `.cache/`, `.worktrees/`, stale log/corrupt dumps). Runtime track disposition: compatibility-shimmed (docs/ops hygiene only; no runtime behavior mutation). Component track disposition: compatibility-shimmed (docs/ops hygiene only; no component behavior mutation). Version-parity review: runtime `not-applicable`; component `not-applicable`. P1/P2/P3 impact: no source-of-truth ownership reassignment; repository hygiene and anti-reintroduction guard hardening only. README/wiki parity: no material operator workflow change.
 
 - README Readiness Language Calibration — Public Beta Posture (`README.md`, `docs/CHANGELOG.md`): replace overly blunt “not recommended for fresh production installs” banner wording with a clearer public-beta posture that reflects current maturity: pilot installs are reasonable for experienced operators, while zero-churn production expectations should wait for a declared stable milestone. Runtime track disposition: compatibility-shimmed (docs-only; no runtime behavior mutation). Component track disposition: compatibility-shimmed (docs-only; no component behavior mutation). Version-parity review: runtime `not-applicable`; component `not-applicable`. P1/P2/P3 impact: no source-of-truth ownership reassignment; operator expectation accuracy and release-posture clarity hardening only. README/wiki parity: updated in-slice.
 

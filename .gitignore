@@ -1,6 +1,6 @@
 # Description: Top-level ignore rules for Home Assistant monorepo.
-# Version: 2026.05.04.1
-# Last updated: 2026-05-04
+# Version: 2026.08.01.1
+# Last updated: 2026-08-01
 
 # Secrets / credentials
 secrets.yaml
@@ -35,6 +35,14 @@ _backup_*/
 esphome_repo_src/
 .worktrees/
 test.txt
+
+# Local side-project / non-Spectra residue
+diyhue/
+deps/
+tts/
+www/
+home-assistant.log.old
+home-assistant.log.fault
 
 # Archived project trees (local-only; do not sync to GitHub)
 esphome/control-py/previous/

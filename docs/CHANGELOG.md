@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.08.01.60 -->
+<!-- Version: 2026.08.01.61 -->
 <!-- Last updated: 2026-08-01 -->
 
 # Changelog
 
 ## 2026-08-01 (Docs Refresh)
+
+- README Readiness Language Calibration — Public Beta Posture (`README.md`, `docs/CHANGELOG.md`): replace overly blunt “not recommended for fresh production installs” banner wording with a clearer public-beta posture that reflects current maturity: pilot installs are reasonable for experienced operators, while zero-churn production expectations should wait for a declared stable milestone. Runtime track disposition: compatibility-shimmed (docs-only; no runtime behavior mutation). Component track disposition: compatibility-shimmed (docs-only; no component behavior mutation). Version-parity review: runtime `not-applicable`; component `not-applicable`. P1/P2/P3 impact: no source-of-truth ownership reassignment; operator expectation accuracy and release-posture clarity hardening only. README/wiki parity: updated in-slice.
 
 - Docs/Governance README Recency Discipline Hardening (`README.md`, `.github/copilot-instructions.md`, `docs/CHANGELOG.md`): refresh stale top-banner project-state review timestamp in main README and codify explicit per-slice README recency maintenance in workspace operating instructions so operator-facing status does not lag active development cadence. Runtime track disposition: compatibility-shimmed (docs/instructions-only; no runtime behavior mutation). Component track disposition: compatibility-shimmed (docs/instructions-only; no component behavior mutation). Version-parity review: runtime `not-applicable`; component `not-applicable`. P1/P2/P3 impact: no source-of-truth ownership reassignment; documentation recency and governance execution hardening only. README/wiki parity: updated in-slice.
 

@@ -1,10 +1,10 @@
 <!-- Description: End-user overview for the Spectra L/S Home Assistant + ESPHome system. -->
-<!-- Version: 2026.08.01.5 -->
+<!-- Version: 2026.08.01.6 -->
 <!-- Last updated: 2026-08-01 -->
 
 # Spectra L/S
 
-**⚠️ State of project (reviewed 2026-07-04): Active heavy development on `main`. Not currently recommended for fresh production installations unless you are comfortable with frequent updates and migration churn.**
+**⚠️ State of project (reviewed 2026-08-01): Active heavy development on `main`. Not currently recommended for fresh production installations unless you are comfortable with frequent updates and migration churn.**
 
 Spectra Level / Source (Spectra L/S) is the tactile control surface for Home Assistant: instant, physical control over the moments that matter in your home.
 

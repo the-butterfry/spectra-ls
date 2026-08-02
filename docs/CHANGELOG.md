@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.08.01.59 -->
+<!-- Version: 2026.08.01.60 -->
 <!-- Last updated: 2026-08-01 -->
 
 # Changelog
 
 ## 2026-08-01 (Docs Refresh)
+
+- Docs/Governance README Recency Discipline Hardening (`README.md`, `.github/copilot-instructions.md`, `docs/CHANGELOG.md`): refresh stale top-banner project-state review timestamp in main README and codify explicit per-slice README recency maintenance in workspace operating instructions so operator-facing status does not lag active development cadence. Runtime track disposition: compatibility-shimmed (docs/instructions-only; no runtime behavior mutation). Component track disposition: compatibility-shimmed (docs/instructions-only; no component behavior mutation). Version-parity review: runtime `not-applicable`; component `not-applicable`. P1/P2/P3 impact: no source-of-truth ownership reassignment; documentation recency and governance execution hardening only. README/wiki parity: updated in-slice.
 
 - Docs/Wiki Voice Consistency Pass + Complete Operator Runbook + Scoped Interactables Guard Policy (`docs/wiki/System-Architecture.md`, `docs/wiki/Control-Contracts-and-Scope-Paths.md`, `docs/wiki/Control-Surface-Inputs-and-Expanders.md`, `docs/wiki/Spectra-Sidebar-Settings.md`, `docs/wiki/Contributing-Workflow.md`, `docs/wiki/Release-and-Changelog-Process.md`, `docs/wiki/Discussions-and-Projects-Workflow.md`, `docs/wiki/Custom-Component-Setup-Roadmap-Stub.md`, `docs/wiki/Wiki-Content-Scope-Policy.md`, `docs/wiki/DOCUMENTATION-WRITING-STANDARD.md`, `docs/wiki/Complete-Operator-Runbook.md`, `docs/wiki/Home.md`, `docs/wiki/_Sidebar.md`, `docs/wiki/README.md`, `bin/audit_hardcoded_entities.py`, `docs/CHANGELOG.md`): perform a second-pass rewrite for remaining wiki pages to keep one blunt, human, action-first tone and add a complete end-to-end operator runbook (deploy, verify, troubleshoot, rollback, escalation). Also tighten hardcode guard policy by scoping `spectra_interactable_*` namespace allowance to interactables contract file context instead of broad global allowance, preserving strict install-specific literal protection while reducing false-positive CI failures on canonical repo-owned namespaces. Runtime track disposition: compatibility-shimmed (docs/tooling-only; no runtime behavior mutation). Component track disposition: compatibility-shimmed (docs/tooling-only; no component behavior mutation). Version-parity review: runtime `not-applicable`; component `not-applicable`. P1/P2/P3 impact: no source-of-truth ownership reassignment; docs usability and CI signal-quality hardening only. README/wiki parity: updated in-slice.
 

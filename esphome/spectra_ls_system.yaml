@@ -1,5 +1,5 @@
 # Description: Main ESPHome config for Spectra LS System main ESPHome config (ESP32-S3 + RP2040 UART + Arylic TCP).
-# Version: 2026.08.01.2
+# Version: 2026.08.01.3
 # Last updated: 2026-08-01
 # Update version/date whenever you change this file.
 #
@@ -67,6 +67,11 @@ esphome:
           }
       - lambda: |-
           float v = id(oled_contrast);
+          if (v < 0.20f) {
+            ESP_LOGW("oled", "restored contrast %.2f below visibility floor; applying recovery default 0.80", v);
+            v = 0.80f;
+            id(oled_contrast) = v;
+          }
           if (v < 0.0f) v = 0.0f;
           if (v > 1.0f) v = 1.0f;
           const uint8_t contrast = (uint8_t) (v * 255.0f);

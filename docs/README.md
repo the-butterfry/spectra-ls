@@ -1,5 +1,5 @@
 <!-- Description: Documentation index for Spectra L/S technical, onboarding, roadmap, and operations artifacts. -->
-<!-- Version: 2026.08.01.4 -->
+<!-- Version: 2026.08.01.5 -->
 <!-- Last updated: 2026-08-01 -->
 
 # Spectra L/S Documentation Index
@@ -21,10 +21,10 @@ If you are in a hurry:
 - Active ESPHome runtime path on `main`: `esphome/spectra_ls_system/**` (entrypoint `esphome/spectra_ls_system.yaml`).
 - Parallel combined ESP lane: `esphome/spectra_ls_system_amped_combined.yaml` (guide: `docs/spectra_ls_system/SPECTRA-LS-AMPED-COMBINED-CONFIG.md`).
 
-Legacy-seal status (current):
+Current status:
 
-- Runtime path (`packages/` + `esphome/`) is sealed as compatibility + rollback baseline.
-- Custom integration path (`custom_components/spectra_ls/`) is primary for net-new control-plane/feature growth.
+- Runtime path (`packages/` + `esphome/`) and integration path (`custom_components/spectra_ls/`) are synchronized under integration-first ownership.
+- Active behavior is documented through current contract outputs and current runbooks.
 
 Operator-facing wiki entry pages live under `docs/wiki/`.
 
@@ -38,9 +38,9 @@ Operator-facing wiki entry pages live under `docs/wiki/`.
 - `docs/program/CA-S02B-RESOLVER-REPLAY-CHECKLIST.md`
 - `docs/program/CA-S03-CONSUMER-PROJECTION-CUTOVER-CHECKLIST.md`
 - `docs/program/CA-S04-RUNTIME-WRITE-LANE-RETIREMENT-CHECKLIST.md`
-- `docs/program/CA-S05-ESP-FALLBACK-LISTENER-SOAK-CHECKLIST.md`
+- `docs/program/CA-S05-ESP-LISTENER-SOAK-CHECKLIST.md`
 - `docs/program/CA-S06-RUNTIME-WRITE-HELPER-RETIREMENT-WAVE2-CHECKLIST.md`
-- `docs/program/CA-S07-LEGACY-DIAGNOSTICS-TEMPLATE-FALLBACK-CLEANUP-CHECKLIST.md`
+- `docs/program/CA-S07-DIAGNOSTICS-TEMPLATE-CLEANUP-CHECKLIST.md`
 - `docs/program/CA-S08-DOMAIN-CLOSEOUT-ROLLBACK-SEAL-CHECKLIST.md`
 
 ## Architecture
@@ -55,9 +55,9 @@ Operator-facing wiki entry pages live under `docs/wiki/`.
 - Dev Tools templates: `docs/testing/DEVTOOLS-TEMPLATES.local.md`
 - WLED palette room E2E runbook: `docs/testing/raw/wled_palette_room_e2e_runbook.md`
 - CA-S04 runtime write-lane validation template: `docs/testing/raw/ca_s04_runtime_write_lane_retirement_validation.jinja`
-- CA-S05 fallback-listener soak validation template: `docs/testing/raw/ca_s05_esp_fallback_listener_soak_validation.jinja`
+- CA-S05 listener soak validation template: `docs/testing/raw/ca_s05_esp_listener_soak_validation.jinja`
 - CA-S06 runtime write/helper wave-2 validation template: `docs/testing/raw/ca_s06_runtime_write_helper_retirement_wave2_validation.jinja`
-- CA-S07 diagnostics/template fallback cleanup validation template: `docs/testing/raw/ca_s07_legacy_diagnostics_template_fallback_cleanup_validation.jinja`
+- CA-S07 diagnostics/template cleanup validation template: `docs/testing/raw/ca_s07_diagnostics_template_cleanup_validation.jinja`
 - CA-S08 domain closeout + rollback-safe seal validation template: `docs/testing/raw/ca_s08_domain_closeout_rollback_seal_validation.jinja`
 
 Quick operator bundle:
@@ -86,7 +86,7 @@ Quick operator bundle:
 
 - Wiki source pages: `docs/wiki/`
 - Auto-sync workflow: `.github/workflows/wiki-sync.yml`
-- Auto-sync script (fallback): `bin/sync_docs_to_wiki.sh`
+- Auto-sync script (manual path): `bin/sync_docs_to_wiki.sh`
 - Wiki setup runbook: `docs/wiki/README.md`
 - Welcome + bug workflow: `docs/wiki/Welcome-README-and-Bug-Workflow.md`
 - User setup/deploy/integration guide: `docs/wiki/User-Setup-Deploy-and-HA-Integration.md`

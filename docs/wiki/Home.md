@@ -1,6 +1,6 @@
 <!-- Description: Wiki home page for Spectra L/S operations, architecture, contribution flow, and runbooks. -->
-<!-- Version: 2026.08.01.3 -->
-<!-- Last updated: 2026-08-01 -->
+<!-- Version: 2026.08.02.1 -->
+<!-- Last updated: 2026-08-02 -->
 
 # Spectra L/S Wiki
 
@@ -34,8 +34,8 @@ If you only read one section on this page, read the next one.
 
 ## Quick context (so language in other pages makes sense)
 
-- Runtime path (`packages/` + `esphome/`) is the compatibility/rollback baseline.
-- `custom_components/spectra_ls/` is the primary lane for net-new behavior.
+- Home Assistant integration path: `custom_components/spectra_ls/`.
+- Runtime files in `packages/` + `esphome/` remain available for stability/recovery.
 - Good fixes stay discovery-first, reproducible, and evidence-backed.
 
 ## Wiki publishing notes

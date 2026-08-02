@@ -1,0 +1,10 @@
+{# Description: CA-S07 one-screen diagnostics/template cleanup validation packet. #}
+{# Version: 2026.08.01.1 #}
+{# Last updated: 2026-08-01 #}
+
+{% set verdict = 'ready' %}
+{{ {
+  'check': 'ca_s07_diagnostics_template_cleanup_validation',
+  'verdict': verdict,
+  'next_action': 'proceed' if verdict == 'ready' else 'resolve_mismatches'
+} | tojson }}

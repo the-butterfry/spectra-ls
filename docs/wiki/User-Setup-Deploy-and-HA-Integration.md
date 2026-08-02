@@ -1,6 +1,6 @@
 <!-- Description: Practical setup/deploy/integration guide for Spectra on Home Assistant with clear operator outcomes and failure actions. -->
-<!-- Version: 2026.08.01.2 -->
-<!-- Last updated: 2026-08-01 -->
+<!-- Version: 2026.08.02.1 -->
+<!-- Last updated: 2026-08-02 -->
 
 # User Setup, Deploy, and HA Integration
 
@@ -15,8 +15,8 @@ Use this page after install when you want confidence that Spectra is truly usabl
 
 ## Current operating model
 
-- Runtime path (`packages/` + `esphome/`) is the compatibility baseline.
-- Component path (`custom_components/spectra_ls/`) is the primary lane for net-new behavior.
+- Home Assistant integration path (`custom_components/spectra_ls/`) is the primary lane for active behavior.
+- Runtime path (`packages/` + `esphome/`) stays available for stability and recovery.
 - Discovery-first and fail-closed routing remain the safety defaults.
 
 ## What is automatic vs what you own

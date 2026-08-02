@@ -1,5 +1,5 @@
 <!-- Description: Practical contribution lifecycle from issue intake to verified merge in Spectra L/S. -->
-<!-- Version: 2026.08.01.29 -->
+<!-- Version: 2026.08.01.2 -->
 <!-- Last updated: 2026-08-01 -->
 
 # Contributing Workflow
@@ -19,7 +19,7 @@ Use this for every change. Keep it small, testable, and reviewable.
 ## Non-negotiables
 
 - Keep fixes root-cause and reversible.
-- Keep runtime/component two-track disposition explicit.
+- Keep runtime/integration two-track disposition explicit.
 - Include verification evidence, not just claims.
 - Never commit secrets or local-only host/token data.
 
@@ -28,7 +28,7 @@ Use this for every change. Keep it small, testable, and reviewable.
 1. Link the issue.
 2. Fill PR template required fields.
 3. Attach evidence (build/test/diagnostics/log snippets).
-4. Set explicit runtime/component disposition.
+4. Set explicit runtime/integration disposition.
 5. Confirm docs parity files were updated.
 
 ## Scheduler/metadata-bridge slices
@@ -61,9 +61,9 @@ If one is missing, the slice is not done.
 
 ## Branch/track posture
 
-- Runtime path is sealed compatibility baseline.
-- Custom component path is primary growth lane.
-- `control-py` and `menu-only` are legacy contexts for `main` guidance.
+- Runtime path is the stability/recovery lane.
+- Home Assistant integration path (`custom_components/spectra_ls`) is the primary growth lane.
+- Active `main` guidance is integration-first with synchronized runtime consumer updates when required.
 
 ## Required references
 
@@ -83,6 +83,6 @@ If one is missing, the slice is not done.
 ## Before you push
 
 - Is the change small and reversible?
-- Are both runtime/component tracks dispositioned (implemented/shimmed/deferred)?
+- Are both runtime/integration tracks dispositioned (implemented/shimmed/deferred)?
 - Are changelog + roadmaps updated?
 - Are diagnostics clean for touched files?

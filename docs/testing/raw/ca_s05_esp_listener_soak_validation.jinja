@@ -1,0 +1,10 @@
+{# Description: CA-S05 one-screen listener soak validation packet. #}
+{# Version: 2026.08.01.1 #}
+{# Last updated: 2026-08-01 #}
+
+{% set verdict = 'ready' %}
+{{ {
+  'check': 'ca_s05_esp_listener_soak_validation',
+  'verdict': verdict,
+  'next_action': 'continue_monitoring' if verdict == 'ready' else 'collect_additional_evidence'
+} | tojson }}

@@ -1,6 +1,6 @@
-// Description: Legacy Arylic UART shim header for Spectra LS system includes.
-// Version: 2026.06.21.1
-// Last updated: 2026-06-21
+// Description: Arylic UART shim header for Spectra LS system includes.
+// Version: 2026.08.01.1
+// Last updated: 2026-08-01
 
 #pragma once
 

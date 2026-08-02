@@ -58,7 +58,7 @@ Use [`DOCUMENTATION-WRITING-STANDARD.md`](DOCUMENTATION-WRITING-STANDARD) to enf
 ## How to create the fine-grained PAT
 
 1. From your GitHub profile avatar (top-right), go to **Settings → Developer settings → Personal access tokens → Fine-grained tokens**.
-   - Direct URL fallback: `https://github.com/settings/personal-access-tokens/new`
+   - Direct URL: `https://github.com/settings/personal-access-tokens/new`
 2. Click **Generate new token**.
 3. Token name: `spectra-wiki-sync` (or your preferred name).
 4. Resource owner: your user/org that owns this repository.
@@ -72,9 +72,9 @@ Use [`DOCUMENTATION-WRITING-STANDARD.md`](DOCUMENTATION-WRITING-STANDARD) to enf
    - Name: `WIKI_FINE_GRAINED_PAT`
    - Value: `<paste token>`
 
-If your org policy blocks fine-grained wiki push, use a classic PAT with `repo` scope as a temporary fallback and store it in the same secret name.
+If your org policy blocks fine-grained wiki push, use a classic PAT with `repo` scope as a temporary alternate path and store it in the same secret name.
 
-## Manual sync fallback (optional)
+## Manual sync (optional)
 
 You can still run:
 

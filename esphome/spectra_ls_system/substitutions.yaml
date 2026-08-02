@@ -1,6 +1,6 @@
 # Description: Spectra LS System substitutions for ESPHome main config and packages.
-# Version: 2026.06.22.8
-# Last updated: 2026-06-22
+# Version: 2026.08.01.1
+# Last updated: 2026-08-01
 # Spectra LS substitutions scoped to spectra_ls_system.
 # Use absolute paths for assets so this file can move with spectra_ls_system.
 
@@ -72,9 +72,10 @@ arylic_tcp_log_interval_ms: "800"
 # Gain: central host/port control for transport paths.
 # Risk: mismatched host/port produces connect timeouts and false lag symptoms.
 # Runtime authority note (discovery-first, fail-closed):
-# - Active TCP control host(s)/port are resolved dynamically from HA (`sensor.ma_control_hosts`,
-#   `sensor.ma_control_host`, `sensor.ma_control_port`) in spectra-ls-audio-tcp.yaml.
-# - No install-specific host fallback is allowed here; empty host defaults keep runtime sends blocked
+# - Active TCP control host(s)/port are resolved dynamically from HA integration contract entities
+#   (`sensor.component_control_hosts`, `sensor.component_control_host`, `sensor.component_control_port`)
+#   through package substitutions.
+# - No install-specific host default is allowed here; empty host defaults keep runtime sends blocked
 #   until HA publishes a valid resolved target.
 # Primary device (discovery-resolved TCP + optional HTTP status)
 arylic_tcp_host: ""
@@ -157,7 +158,7 @@ input_select_room: input_select.control_board_room
 input_select_target: input_select.control_board_target
 
 # Room option labels
-# Purpose: fallback labels for rendered menus/popups.
+# Purpose: default labels for rendered menus/popups.
 # Gain: quick UX relabeling without package edits.
 room_label_living: "Room 1"
 room_label_dining: "Room 2"

@@ -1,6 +1,6 @@
-// Description: Legacy RP2040 UART hub shim header for Spectra LS system includes.
-// Version: 2026.07.31.1
-// Last updated: 2026-07-31
+// Description: RP2040 UART hub shim header for Spectra LS system includes.
+// Version: 2026.08.01.1
+// Last updated: 2026-08-01
 
 #pragma once
 

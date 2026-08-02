@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Spectra L/S integration-first development. -->
-<!-- Version: 2026.08.01.4 -->
+<!-- Version: 2026.08.01.5 -->
 <!-- Last updated: 2026-08-01 -->
 
 # Changelog
 
 ## 2026-08-01
+
+- README second-pass concision + hardware inventory: removed duplicate-sounding intro sections, tightened user-facing product copy, and added a complete current hardware list (main unit, controlled endpoint hardware, and optional remote lane) with an explicit maintainer reminder to update the list and changelog in the same hardware-change slice.
 
 - README opening clarity pass: replaced remaining abstract intro language with a direct end-user statement of product identity ("physical control board for Home Assistant" / "home DJ mixer for music + lights") so first-time readers immediately understand what Spectra L/S is.
 

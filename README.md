@@ -1,5 +1,5 @@
 <!-- Description: End-user overview for the Spectra L/S Home Assistant + ESPHome system. -->
-<!-- Version: 2026.08.01.5 -->
+<!-- Version: 2026.08.01.6 -->
 <!-- Last updated: 2026-08-01 -->
 
 # Spectra L/S
@@ -18,13 +18,6 @@ Think of it like a **home DJ mixer for music + lights**:
 - see what’s happening on the OLED.
 
 It exists to make home control feel instant and tactile, instead of app-heavy and slow.
-
-## What Spectra L/S is (in one minute)
-
-- A hardware-first controller for your home
-- Built for fast, tactile control of music and lighting
-- Backed by Home Assistant so it can drive your existing entities, scripts, and automations
-- Focused on daily usability: quick actions, clear feedback, and room-aware control
 
 ## What you can do with it today
 
@@ -46,14 +39,31 @@ It exists to make home control feel instant and tactile, instead of app-heavy an
 - Not frozen/stable enterprise software yet
 - Not "no-maintenance forever" if you follow `main`
 
-## Hardware-first by design
+## Complete hardware list (current)
 
-Spectra L/S is built around the physical interface first, software second:
+### Main Spectra L/S unit (active build)
 
-- **ESP32-S3** handles control/runtime orchestration
-- **RP2040** handles physical input capture (buttons/encoders/pots)
+- **ESP32-S3 dev board** (`esp32-s3-devkitc-1` in active firmware)
+- **RP2040 board** for physical input capture (buttons/encoders/pots)
+- **I2C OLED display** (SSD1306 128x64, SSD1309-compatible, address `0x3C`)
 
-Home Assistant ties it together so your hardware actions map cleanly to your home.
+### Audio endpoint hardware (what Spectra controls)
+
+- **WiiM devices**
+- **Arylic / LinkPlay-class devices** (TCP control, port `8899`)
+
+### Optional remote lane (active project, additive)
+
+- **ESP32-S3 remote node**
+- Current target board: **ESP32-S3-DEVKIT-LIPO**
+- Encoder + buttons (play/pause, next-track flow)
+
+### Maintainer note
+
+- When hardware changes, update this list **in the same change set** as the hardware/firmware change.
+- Also add the hardware-list update note to `docs/CHANGELOG.md` in that same slice.
+
+Home Assistant ties these hardware pieces together so physical actions map cleanly to your home.
 
 Inspired by premium physical control products like [Condesa Electronics — Carmen SE](https://condesaelectronics.com/) and [Varia Instruments — RDM series](https://www.varia-instruments.com/), Spectra L/S brings that tactile philosophy to Home Assistant.
 

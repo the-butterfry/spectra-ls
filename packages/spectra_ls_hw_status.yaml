@@ -1,6 +1,6 @@
 # Description: Spectra LS hardware play-state polling via UART-over-TCP.
-# Version: 2026.04.23.1
-# Last updated: 2026-04-23
+# Version: 2026.08.02.1
+# Last updated: 2026-08-02
 # Update version/date whenever you change this file.
 
 command_line:
@@ -42,10 +42,10 @@ automation:
     trigger:
       - platform: state
         entity_id:
-          - sensor.ma_active_state
-          - sensor.ma_active_title
-          - sensor.ma_active_artist
-          - sensor.ma_active_source
+          - sensor.component_now_playing_state
+          - sensor.component_now_playing_title
+          - sensor.component_now_playing_artist
+          - sensor.component_now_playing_source
       - platform: time_pattern
         seconds: "/15"
     action:
@@ -53,7 +53,7 @@ automation:
           - conditions:
               - condition: template
                 value_template: >-
-                  {% set st = states('sensor.ma_active_state') | lower %}
+                  {% set st = states('sensor.component_now_playing_state') | lower %}
                   {{ st in ['playing','paused'] }}
             sequence:
               - service: homeassistant.update_entity
@@ -62,10 +62,10 @@ automation:
           - conditions:
               - condition: template
                 value_template: >-
-                  {{ trigger.platform == 'state' and trigger.entity_id == 'sensor.ma_active_state' }}
+                  {{ trigger.platform == 'state' and trigger.entity_id == 'sensor.component_now_playing_state' }}
               - condition: template
                 value_template: >-
-                  {% set st = states('sensor.ma_active_state') | lower %}
+                  {% set st = states('sensor.component_now_playing_state') | lower %}
                   {{ st not in ['playing','paused'] }}
             sequence:
               - service: homeassistant.update_entity

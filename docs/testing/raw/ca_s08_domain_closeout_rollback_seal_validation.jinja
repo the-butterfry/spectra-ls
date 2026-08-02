@@ -1,6 +1,6 @@
-{# Description: CA-S08 one-screen validator for domain closeout and rollback-safe seal evidence. #}
-{# Version: 2026.05.05.1 #}
-{# Last updated: 2026-05-05 #}
+{# Description: CA-S08 one-screen validator for domain closeout and final readiness seal evidence. #}
+{# Version: 2026.08.01.1 #}
+{# Last updated: 2026-08-01 #}
 
 {%- set lc06 = states('sensor.component_lc06_final_disposition') | lower -%}
 {%- set lc07 = states('sensor.component_lc07_final_disposition') | lower -%}
@@ -21,7 +21,7 @@
 {%- endif -%}
 
 {%- set verdict = 'READY' if (blockers.items | length) == 0 else 'HOLD' -%}
-{%- set next_action = 'CA program closeout seal complete. Maintain rollback-safe compatibility baseline evidence.' if verdict == 'READY' else 'Resolve blockers and re-run CA-S08 validator before claiming final closure.' -%}
+{%- set next_action = 'CA program closeout seal complete. Maintain final readiness evidence.' if verdict == 'READY' else 'Resolve blockers and re-run CA-S08 validator before claiming final closure.' -%}
 
 CA-S08 | DOMAIN CLOSEOUT + ROLLBACK-SAFE SEAL
 - slice_id: CA-S08

@@ -1,5 +1,5 @@
 <!-- Description: End-user overview for the Spectra L/S Home Assistant + ESPHome system. -->
-<!-- Version: 2026.08.01.7 -->
+<!-- Version: 2026.08.01.3 -->
 <!-- Last updated: 2026-08-01 -->
 
 # Spectra L/S
@@ -12,22 +12,17 @@ Instead of digging through apps and dashboards, you can touch real controls for 
 
 Audio and lighting are the deepest focus areas today, but the model is broader: if Home Assistant can run it, Spectra L/S is designed to make it feel physical.
 
-## Program Status — Component-Primary, Runtime Compatibility Baseline
+## Program Status — Home Assistant Integration First
 
 Current operating posture:
 
-- The legacy runtime path (`packages/` + `esphome/`) is treated as a **rollback-safe compatibility baseline**.
-- The custom integration (`custom_components/spectra_ls`) is the **primary path for net-new control-plane and feature growth**.
-- Active ESP runtime cycle actions now call component service `spectra_ls.cycle_active_target` (legacy `script.ma_cycle_target` cycle invocations removed from active runtime flow).
-- Component selection and metadata override mutation lanes now use component-owned state stores as the active write path (legacy helper writes retired from active component mutation flow).
-- Legacy runtime `ma_control_hub` implementation was physically removed (`packages/ma_control_hub/*.inc` hard-deleted after backup); `packages/ma_control_hub.yaml` remains as an archived stub and component contracts are the active authority path for startup/selection/metadata readiness.
-- New install-specific hardcoded entity IDs/private host literals are now CI-blocked in active product logic paths via the Phase-0 hardcode guard workflow.
-- Active target/host authority runs in **component-primary non-hybrid mode** during normal operation (legacy writer lanes are authority-gated and remain rollback-safe fallback semantics).
-- Authority mode is now **component-pinned** in active operation (legacy authority-mode selection is disabled), and component auto-select keeps current valid target by default unless explicitly forced.
-- The legacy `control-py` path is **archived exploration history** on `main` and is no longer a development or run target.
-- Legacy path changes are still allowed for compatibility, safety, and rollback integrity — but not for unbounded new ownership behavior.
+- The Home Assistant integration at `custom_components/spectra_ls` is the main path for active behavior and feature work.
+- The runtime files in `packages/` + `esphome/` consume integration-owned contracts.
+- Active target, host routing, and metadata behavior are driven by integration contracts and services.
+- New install-specific hardcoded entity IDs/private host literals are CI-blocked in active product logic paths.
+- Current build targets are the active integration and system runtime paths documented under `docs/`.
 
-This keeps migration reversible while keeping forward development focused.
+This keeps operations stable while keeping active development focused.
 
 ## Hardware-First Context (Important)
 
@@ -80,15 +75,15 @@ Inspired by modern physical-control craftsmanship from [Condesa Electronics — 
 - HA setup-flow foundation now includes guided entity-policy capture for routing/metadata include-exclude lists (component options flow), establishing the first end-user onboarding framework for per-install entity curation.
 - Control Center settings + execution contracts are already live and operator-verifiable via `spectra_ls.set_control_center_settings` and `spectra_ls.execute_control_center_input`.
 - Host-control cutover readiness is service-addressable via `spectra_ls.get_host_cutover_gate` (with fail-closed options for readiness/activation gating in automation workflows).
-- Canonical playback/progress robustness is now formalized as a component-first architecture program (`custom_components/spectra_ls`) with multi-source field-level resolution, provenance, and deterministic healing (`docs/architecture/COMPONENT-DATA-FABRIC-ARCHITECTURE.md`).
+- Canonical playback/progress robustness is now formalized as an integration-first architecture program (`custom_components/spectra_ls`) with multi-source field-level resolution, provenance, and deterministic healing (`docs/architecture/COMPONENT-DATA-FABRIC-ARCHITECTURE.md`).
 - Canonical ownership/read/write authority across runtime + component surfaces is now centralized in a single ledger: `docs/architecture/CONTRACT-OWNERSHIP-LEDGER.md`.
 - Canonical execution is codified as `CA-S01..CA-S08` (CORE/PROJ/COMPAT/OPS lanes), and those baseline CA slices are now validated; active work continues in post-CA parity/hardening lanes (see `docs/roadmap/v-next-NOTES.md`).
-- Architecture governance is explicit and normative with token-locked MA authority semantics: `health.authority_mode` is `ma_primary | ma_degraded_fallback`, and degraded authority reasons include `ma_degraded_fallback_active`, `ma_payload_stale`, `ma_payload_shape_invalid`, and `ma_api_unreachable`.
+- Architecture governance is explicit and normative with token-locked MA authority semantics and deterministic health-state diagnostics.
 - Ecosystem expansion remains capability-mapped and discovery-first; Sendspin-class and adjacent endpoint families are treated as roadmap integrations under the same safety/rollback gate discipline.
 - Runtime control-target host resolution is discovery-only and fail-closed by contract: no install-specific hardcoded target IP bootstrap defaults in tracked product logic.
 - Fast MA backend testing is now helper-driven in runtime: use `input_select.ma_server_profile` (`beta` / `stable` / `manual`) with profile URL helpers to switch endpoints quickly without editing package YAML.
 - HACS publishing cadence is release-tag driven (not commit-driven): keep iterative work on `main`, then publish to HACS only when a tagged release is intentionally cut.
-- ESPHome runtime deploy guidance is aligned to 2026.4.x OTA schema: `ota` platform entries (`esphome` + `web_server`) are the supported path, and legacy `web_server.ota: true` usage should be treated as incompatible in modern builds.
+- ESPHome runtime deploy guidance is aligned to 2026.4.x OTA schema: `ota` platform entries (`esphome` + `web_server`) are the supported path, and older `web_server.ota: true` usage should be treated as incompatible in modern builds.
 - Operator-grade validation artifacts remain the execution truth surface: `docs/testing/raw/*` checklists/monitors and synchronized roadmap ledgers.
 - Startup authority handling is hardened to avoid mixed boot semantics across migration windows, and deterministic diagnostics now include source/provenance + playback-modality context for faster operator triage.
 
@@ -120,7 +115,7 @@ This section reflects an evidence-first compatibility audit against current upst
 - A new standalone ESPHome node (`spectra-ls-remote`) is being introduced as a **movable coffee-table control box**.
 - Current input model is encoder-first: rotary volume step control + encoder center-press play/pause + dedicated momentary next-track button.
 - Power direction is battery-aware by design (final target board: ESP32-S3-DEVKIT-LIPO with charging + deep-sleep + battery telemetry).
-- Communication direction is BLE-bridge-primary for low wake overhead, with Wi-Fi retained as fallback/OTA/service lane.
+- Communication direction is BLE-bridge-primary for low wake overhead, with Wi-Fi retained as secondary OTA/service lane.
 - Scope/progress source of truth: `docs/program/SPECTRA-LS-REMOTE-SCOPE-PROGRESS.md`.
 - Separate local operations helpers:
   - build: `bin/esphome_spectra_remote_build_local.sh`

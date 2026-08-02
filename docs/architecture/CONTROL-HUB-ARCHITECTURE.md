@@ -1,352 +1,57 @@
-<!-- Description: Retroactive architecture and feature documentation for the MA control hub package split. -->
-<!-- Version: 2026.06.23.1 -->
-<!-- Last updated: 2026-06-23 -->
+<!-- Description: Control-plane architecture reference for Spectra L/S integration-first operation. -->
+<!-- Version: 2026.08.01.1 -->
+<!-- Last updated: 2026-08-01 -->
 
-# MA Control Hub Architecture (Retroactive Baseline)
+# Control Plane Architecture
 
 ## Purpose
 
-Document the active behavior and contracts of `packages/ma_control_hub.yaml` and split fragments under `packages/ma_control_hub/`.
-
-Aggregate package entrypoint: `packages/ma_control_hub.yaml`
-
-## Active include graph
-
-- `input_select.inc`
-- `input_boolean.inc`
-- `input_number.inc`
-- `input_text.inc`
-- `rest.inc`
-- `rest_command.inc`
-- `script.inc`
-- `automation.inc`
-- `template.inc`
-
-Guardrail script: `.github/validate-ma-control-hub-layout.sh`
-
-## Domain breakdown
-
-### 1) Helper contract domain
-
-Defined by `input_*.inc` fragments:
-
-- target selector (`input_select.ma_active_target`)
-- MA backend profile selector (`input_select.ma_server_profile`: `beta` / `stable` / `manual`)
-- manual/override/fallback booleans
-- confidence/staleness/timing numeric tunables
-- install-local endpoint and mapping text helpers
-- MA backend profile URL helpers (`input_text.ma_server_url_beta`, `input_text.ma_server_url_stable`, `input_text.ma_server_url`)
-
-### 2) MA API ingestion domain
-
-Defined by `rest.inc` + `rest_command.inc`:
-
-- `players/all` polling surface (`sensor.ma_players`)
-- active player request surface (`sensor.ma_active_player`)
-- generic MA API POST wrapper (`rest_command.ma_api_command`)
-- profile-aware MA API URL surface (`sensor.ma_api_url`) with active profile visibility (`sensor.ma_server_profile_effective`)
-- LC6-L05 phase-1 bridge note: component snapshot packet `ma_backend_profile` now mirrors runtime profile/effective/API URL state and publishes component diagnostics bridge entities `sensor.component_backend_profile` + `sensor.component_ma_api_url` for migration parity checks
-- LC6-L05 phase-2 consumer note: diagnostics/operator validation consumers now read component backend/API entities first (`sensor.component_backend_profile`, `sensor.component_ma_api_url`) and only fall back to runtime helper/API surfaces (`sensor.ma_server_profile_effective`, `sensor.ma_api_url`) for compatibility windows
-- LC6-L05 phase-3 runtime REST consumer note: active runtime REST callers in `rest.inc` and `rest_command.inc` now resolve endpoint URL from `sensor.component_ma_api_url` first with bounded fallback to `sensor.ma_api_url` to preserve rollback-safe continuity while reducing direct helper-stack coupling
-- LC6-L05 phase-4 template/read-lane note: runtime read-lane profile surface `sensor.ma_server_profile_effective` now resolves component backend profile first (bounded helper fallback retained), and full-stack validation templates now emit backend/API read-lane readiness from component-first endpoint/profile contracts
-- Slice-CB component now-playing truthfulness note: component metadata prep now selects its own now-playing winner (route active target → active meta entity → legacy now-playing fallback) with freshness gating, rather than blindly mirroring legacy `sensor.now_playing_entity`.
-- command-shape compatibility note: avoid unsupported MA command aliases in REST sensors (for example `players/get_active`); use supported command shapes and template-side selection/parsing.
-
-### 3) Orchestration script domain
-
-Defined by `script.inc`:
-
-- target option synthesis (`ma_update_target_options`)
-- target option synthesis now includes a live fallback discovery pass over `media_player.*` entities when MA player feeds are sparse, admitting only IP-backed control-hinted targets (`control_capable=true`, `control_path=linkplay_tcp`, or supported LinkPlay/WiiM-class identity hints) to preserve discovery-first routing without hardcoded install IDs
-- target cycling (`ma_cycle_target`)
-- auto-selection policy (`ma_auto_select`)
-- explicit MA metadata-provider refresh dispatch (`ma_send_metadata_to_providers`) via command `metadata/update_metadata` through `rest_command.ma_api_command`, using resolved now-playing MA item URI (`ma_uri` with guarded `media_content_id` fallback)
-- metadata provider item URI selection now includes MA active-player payload fallback (`sensor.ma_active_player_id_resolved.player_json.current_media.uri`) between now-playing `ma_uri` and `media_content_id` fallback, reducing false invalid-URI skips during active playback
-- provider-refresh API response telemetry persistence via helpers:
-  - `input_text.ma_metadata_provider_last_status`
-  - `input_text.ma_metadata_provider_last_response`
-  - `input_text.ma_metadata_provider_last_providers`
-  - `input_text.ma_metadata_provider_last_item_uri`
-  - `input_text.ma_metadata_provider_last_reason`
-  - `input_text.ma_metadata_provider_last_updated_at`
-- LC6-L04 retirement contract: runtime provider dispatch now publishes telemetry directly to component service `spectra_ls.set_metadata_provider_packet`; component snapshot/write-controls exposes the authoritative packet at `write_controls.metadata_provider_last` and diagnostics surface `sensor.component_metadata_provider_status` (state=`status`, attributes for providers/response/item_uri/reason/updated_at/age/source).
-- Runtime helper sink (`input_text.ma_metadata_provider_last_*`) is no longer the active telemetry owner; helper writes remain fallback-only compatibility behavior when component sink availability cannot be confirmed.
-- provider summary persistence is bounded/truncated for helper-length safety and now accepts both mapping and list-shaped MA response payloads for resilient provider extraction
-- runtime/component provider-refresh trigger surfaces normalize mixed-type boolean inputs (`true`/`false` strings, numeric values, booleans) to avoid accidental dispatch on string-like falsy payloads
-- explicit read-only lock for write helpers:
-  - `ma_set_volume` -> disabled
-  - `ma_set_balance` -> disabled
-
-### 4) Automation lifecycle domain
-
-Defined by `automation.inc`:
-
-- startup option refresh and auto-select
-- continuous auto-select loop (with guard conditions)
-- startup cadence hardening for handoff responsiveness: startup refresh delay reduced to 15s, periodic refresh tightened to 1-minute cadence, and restore-last-valid retries now re-arm on early MA/control-target feed changes (not startup-only one-shot)
-- last-valid target persistence
-- ambiguity lock + stale-unlock handling
-- startup restore of last-valid target
-- event-driven handoff acceleration triggers for target-options/auto-select on detected receiver and now-playing entity changes (legacy authority lane)
-- user feedback notification path for host capability degradation (`binary_sensor.ma_no_control_capable_hosts` -> persistent notification create/dismiss)
-- pre-notification self-heal for host-capability degradation (`script.ma_update_target_options` + `script.ma_auto_select`) before warning emission
-
-### 5) Template computation domain
-
-Defined by `template.inc`:
-
-- room payload normalization (`sensor.spectra_ls_rooms_json`)
-- MA/HA candidate scoring and selection (`ma_meta_candidates`, `ma_meta_resolver`)
-- now-playing entity and resolved fields
-- duration contract resilience: `sensor.ma_active_duration` and `sensor.now_playing_duration` now fall back to MA player payload duration (`player_fields_json` derived from MA current-media fields) when entity `media_duration` attributes are missing, preserving progress-surface continuity before fail-closed `0`.
-- MA-authoritative progress augmentation: duration contracts now include discovery-first MA-managed peer fallback (`states.media_player` with MA app/source hints and title/artist match) so active playback can retain valid track duration even when the selected render entity carries position but no `media_duration`.
-- explicit playback-state derivation (`playing/paused/stopped/idle/...`) that prioritizes authoritative state over metadata recency/title presence
-- dual-threshold freshness policy for metadata winner selection: `input_number.ma_meta_stale_s` gates `playing` freshness while `input_number.ma_meta_paused_hide_s` governs paused hold/hide behavior
-- sticky capture stability policy: `sensor.ma_active_meta_entity` and `sensor.ma_control_host` now hold their captured values during active/fresh playback windows and only release/re-resolve when stale freshness gates fail or paused hold exceeds `ma_meta_paused_hide_s`
-- sticky host convergence guard: `sensor.ma_control_host` sticky hold is suppressed whenever `sensor.ma_control_hosts` is currently resolved, so single-host surface follows aggregate host resolution deterministically and avoids stale host split churn.
-- stale-hold prevention guards: resolver winner eligibility now requires active-or-recent playback evidence, and preferred-meta fallback no longer promotes based on metadata presence alone
-- paused stale suppression: paused candidates without recent progress evidence are excluded from active metadata winner eligibility to prevent stale-title promotion
-- mapped-meta freshness guard: room-mapped meta fallbacks must meet the same active/recent criteria before they can override target metadata selection
-- component gate visibility: metadata-prep diagnostics include explicit gate scoring and blocking reasons for authority/freshness failures
-- active control path/capability/host derivation
-- ambiguity/staleness/confidence binary surfaces
-- HA-authoritative OLED media policy contract: `template.inc` exports `sensor.now_playing_media_class` (`music`/`none`), `sensor.now_playing_preview_key`, and `binary_sensor.now_playing_display_allowed`; ESP consumes these contracts and does not run local app/source media-class heuristics or local preview timers
-- Now-playing app contract surface: `template.inc` exports `sensor.now_playing_app` from the selected `sensor.now_playing_entity` app context (`app_name`) to keep app provenance aligned with now-playing source/state/title surfaces.
-- Now-playing title source coherency contract: `sensor.now_playing_entity` `resolved_title` is entity-local and does not fall back to `sensor.ma_active_title`; fallback order is bounded to now-playing entity-resolved MA fields/stream metadata and current now-playing entity HA title only, preventing cross-source stale title carryover during stale transport contexts.
-- OLED display gate policy: runtime display gating is active-playback based (`binary_sensor.now_playing_display_allowed` follows resolved now-playing entity readiness + `playing/paused` state), not TV/movie/media-class filtering.
-- Component parity diagnostics validate this same simplified HA media-contract surface (contract-surface readiness + display-allow state + preview-key observability) so runtime/component drift is explicit in one diagnostics lane without changing source-of-truth ownership.
-- Metadata-prep now publishes a canonical summary packet (`metadata_prep_validation.canonical_summary`) and mirrored value keys (`canonical_*`) for consumer-first diagnostics: canonical control/meta/now-playing entities, alignment state (`aligned|mismatch|intentional_divergence_component_owner`), OLED posture, payload-ready flag, and deterministic cause hint. Downstream templates should consume these source fields first and use legacy reconstruction only as bounded fallback.
-- Runtime now-playing selector and meta-resolver freshness guards use bounded recency fallback: when `media_position_updated_at` is missing, freshness age falls back to entity `last_updated` then `last_changed` (instead of treating missing clocks as implicitly fresh), preventing stale winner lock while preserving short recency windows after true state transitions.
-- Component now-playing freshness diagnostics retain this same bounded recency fallback parity with runtime stale guards.
-- friendly labels and helper projection sensors
-- ESP-facing handoff note: on active-target changes, ESP requests immediate HA recompute for control-target/host surfaces (`sensor.ma_control_targets`, `sensor.ma_control_hosts`, `sensor.ma_control_host`) to reduce host handoff latency, but forced recompute is reconnect-safe gated (HA API reconnect grace window + template-feed readiness checks) to avoid HA reboot startup assertion races.
-- ESP exported handoff telemetry: ESP now publishes HA-visible diagnostics sensors for handoff status, resolved control target, and OLED/UI status (`sensor.spectra_ls_system_esp_control_handoff_status`, `sensor.spectra_ls_system_esp_control_target`, `sensor.spectra_ls_system_esp_oled_status`) for deterministic operator validation.
-- Canonical ESP route telemetry aliases: runtime template contracts guarantee canonical host/port surfaces (`sensor.spectra_ls_system_esp_control_host`, `sensor.spectra_ls_system_esp_control_hosts`, `sensor.spectra_ls_system_esp_control_port`) even when HA entity-id prefixing yields install-specific upstream names (for example `sensor.living_room_spectra_ls_system_esp_control_*`).
-
-## Parser contract (critical)
-
-`ma_control_hub` uses a dual-mode parser contract for complex attributes:
-
-1. accept native sequence payloads,
-2. accept native mapping payloads with `rooms`/`result` extraction,
-3. parse string JSON only when trimmed payload starts with `[` or `{` and is not `unknown/unavailable/none/''`.
-
-`script.ma_update_target_options` explicitly follows this same string-mode rule for both array and object payloads (object payloads extract `rooms`/`result`) to avoid accidental target-option collapse during room-contract shape drift.
-
-This contract is required across readers of:
-
-- room maps,
-- candidate JSON payloads,
-- derived summary payloads.
-
-## External dependencies consumed
-
-- `sensor.spectra_ls_rooms_raw` (`rooms` attribute)
-- media_player entity attributes/state
-- labels (`no-spectra`, `no_spectra`)
-- optional Plex allowlist helpers (`input_text.plex_allowed_users`, `input_text.plex_allowed_players`)
-- MA token + URL helpers
-
-## Feature responsibilities
-
-- choose active control target from known + discovered + valid candidates
-- classify active target route (`linkplay_tcp` vs `other`) and control capability
-- resolve now-playing title/artist/album/source/state with fallback ordering
-- expose host(s)/port contracts for ESPHome TCP control
-- surface ambiguity/confidence/staleness for prompt gating
-
-## Known constraints
-
-- `ma_set_volume` and `ma_set_balance` are intentionally disabled (read-only write path policy).
-- Route support is currently practical for `linkplay_tcp`; other routes are classified but not direct-routed by runtime.
-- Legacy helper names are still part of active runtime contract.
-- Discovery-first control-host contract is fail-closed: runtime must not rely on install-specific bootstrap IP defaults for control hosts, and control sends stay blocked until `sensor.ma_control_hosts` / `sensor.ma_control_host` provide valid resolved values.
-- `ma_update_target_options` is now resilient to temporary `sensor.ma_players.result` sparsity by adding a bounded live `media_player.*` fallback source; this source is intentionally filtered to IP-backed, control-hinted targets only to avoid broad unsupported-target promotion.
-- Host resolution should come from live HA entity discovery (for example `media_player.<target>.ip_address` on WiiM/LinkPlay-class targets) before any manual override paths are considered.
-- Host recovery for target-bound rooms is deadlock-safe: active-target host resolution does not depend on downstream classifier outputs (`control_path` / `control_capable`), and room contracts may fall back to the mapped `meta` entity `ip_address` when the selected target entity is a wrapper/group entity without direct `ip_address`.
-- When room-target matching is unresolved for wrapper targets, host recovery may use active MA player mapping (`sensor.ma_active_player_id_resolved.player_json.entity_id`) to resolve host by discovered `ip_address` while preserving fail-closed/no-static-bootstrap posture.
-- Host recovery also includes room `meta` entity fallback (`meta.ip_address`) and meta-group member IP fallback (`meta.group_members` / `meta.members`) when wrapper entities expose no direct `ip_address`.
-- Wrapper-target alias recovery includes direct entity alias probing by receiver/meta/now-playing/player entities and friendly-name-matched `media_player` entities with `ip_address` (including member fallback) before static `tcp_host` fallback.
-- `binary_sensor.ma_no_control_capable_hosts` is intentionally contract-readiness gated (MA players + control-target surfaces must be resolved) and ambiguity-suppressed, to avoid startup/transient false alarm churn while preserving actionable persistent degradation warnings.
-- `binary_sensor.ma_no_control_capable_hosts` also requires explicit control-expected signals for the active target (direct/member `ip_address` or room contract host/capability hint) before raising degradation; metadata-only/non-control-expected active targets now report `target_not_control_expected` instead of noisy host-capability alarms.
-
-## Component migration interaction contract (P3-S01)
-
-During guarded migration trials, the custom component may attempt routing writes to
-`input_select.ma_active_target` only when explicit authority mode is set to `component`.
-
-Implemented guard controls in `custom_components/spectra_ls` include:
-
-- single-writer authority mode (`legacy` default, `component` opt-in),
-- guarded manual route-write trial path (no broad autonomous write loop),
-- debounce and reentrancy protections,
-- route-decision eligibility gate (`route_linkplay_tcp` only in P3-S01),
-- explicit route-safety diagnostics (`route_safety_validation`) that verify selected route target matches active target and host resolution remains fail-closed,
-- explicit shadow-attribute exposure of `route_safety_validation` on `sensor.shadow_active_target` so Developer Tools templates can consume route-safety verdicts directly without reconstructing from `route_trace`,
-- correlation-id and last-attempt diagnostics (`write_controls`).
-
-Compatibility posture:
-
-- legacy control-hub remains source-of-truth by default,
-- component write behavior is explicitly opt-in and reversible,
-- metadata/selection broader ownership remains deferred to later P3 slices.
-
-Metadata authority migration note (Slice-D kickoff):
-
-- Component metadata diagnostics now compute `metadata_authority_owner` and `metadata_cutover_active` from explicit component authority mode plus resolver-cutover readiness, rather than hardcoding permanent legacy ownership.
-- Legacy metadata surfaces remain rollback-safe compatibility baseline; component cutover posture is treated as valid only when resolver readiness and metadata-prep gates are satisfied.
-
-## Pluggable host-resolution feed contract (scheduler-facing)
-
-To support deterministic scheduling without hardcoding a single device family, the custom component registry now emits host resolution through host-type modules:
-
-- `wiim` -> `hostmods.wiim`
-- `linkplay_tcp` -> `hostmods.linkplay_tcp`
-- `generic` -> `hostmods.generic`
-
-Each registry entry now carries scheduler-facing host-resolution metadata:
-
-- `host_type`
-- `resolver_module`
-- `host_resolution`:
-  - selected `host`
-  - selected `reason` (source path)
-  - ordered `candidates` list (`source`, `host`, `resolved`)
-
-Each registry entry also carries profile inputs for scheduler decisions:
-
-- `feature_profile` (runtime snapshot profile):
-  - `integration_domain`
-  - `supported_features`
-  - `observed_capabilities`
-  - `manufacturer` / `model` / `via_device`
-  - `availability_quality` + freshness fields (`state_age_s`, `position_age_s`)
-- `empirical_profile` (optional overlay from DB-fed payload)
-- `scheduler_profile` (normalized scheduler-ready summary)
-
-Empirical data ingestion hook:
-
-- optional source entity: `sensor.spectra_ls_feature_profile_db`
-- expected payload: attribute `profiles_json` with target-keyed metrics/contracts
-- overlay presence is explicit in snapshot summary (`empirical_profiled_targets_count`)
-
-Diagnostics visibility:
-
-- sensor `sensor.spectra_ls_host_resolution_status` exposes aggregate module counts, per-target host-resolution traces, and unresolved source hints.
-- same sensor now also exposes profile coverage counts and per-target feature/empirical/scheduler profiles.
-
-Compatibility note:
-
-- runtime (`packages/ma_control_hub`) host logic remains authoritative for current control-path execution;
-- component pluggable host-module outputs are currently additive scheduler-feed diagnostics/normalization surfaces.
-
-## Scheduler decision engine contract (component)
-
-The component now provides a deterministic scheduler decision layer that ranks targets using:
-
-- resolved host module outputs (`host`, `host_type`, `resolver_module`),
-- runtime feature profile signals (`availability_quality`, `observed_capabilities`, integration identity),
-- optional empirical overlay metrics (`empirical_profile`),
-- policy inputs (`require_control_capable`, `prefer_fresh`, `max_results`, `target_hint`).
-
-Service surfaces:
-
-- `spectra_ls.validate_scheduler`
-- `spectra_ls.run_scheduler_choice`
-- `spectra_ls.apply_scheduler_choice` (guarded helper-apply path)
-- `spectra_ls.build_target_options_scaffold` (component-native target-options planning/apply scaffold)
-- `spectra_ls.run_auto_select_scaffold` (component-native auto-select planning/apply scaffold)
-- `spectra_ls.run_metadata_resolver_scaffold` (component-native metadata resolver planning/apply scaffold)
-- `spectra_ls.run_metadata_trial_bridge_scaffold` (resolver-authority gated metadata bridge sequencing)
-- `spectra_ls.validate_metadata_policy` now supports an optional runtime MA provider-refresh dispatch (`script.ma_send_metadata_to_providers`) after metadata-prep diagnostics refresh, keeping diagnostics + refresh action in one service path
-- `spectra_ls.cycle_active_target` (component-native parity path for legacy `ma_cycle_target` behavior)
-- component-parity feedback lifecycle for host-capability degradation is available under guarded component-authority windows (30s hold -> one-shot self-heal -> 10s recheck -> persistent notification create/dismiss using `spectra_ls_no_control_capable_hosts`)
-- MA-player-change parity sequencing is additive in component authority windows: target-options scaffold refresh runs before auto-select loop, and target option candidate synthesis now consumes capability-aware registry/profile signals (control-capable + host-resolved + supported path + availability quality) without replacing existing discovery feeds
-- component registry classification is fail-closed for unsupported host families: host resolution/profile diagnostics may surface `wiim`/`generic` host types, but only supported control-path mappings are marked `control_capable=true` for routing eligibility in current scaffold
-- component state-change trigger parity now includes detected receiver + now-playing entity transitions in the same players-change refresh sequencing path (`target-options` scaffold refresh -> guarded auto-select), matching runtime handoff acceleration intent during migration windows.
-- `spectra_ls.restore_last_valid_target` (component-native parity path for legacy startup/repair restore behavior)
-- `spectra_ls.track_last_valid_target` (component-native parity path for legacy last-valid persistence behavior)
-
-Diagnostics surfaces:
-
-- `scheduler_validation` snapshot payload (readiness/checks/default decision)
-- `write_controls.scheduler_last_decision` payload (last run status + ranked candidates)
-- `write_controls.scheduler_last_apply` payload (last apply attempt status/reason/target/guards)
-- `write_controls.target_options_last_attempt` payload (last options-scaffold attempt)
-- `write_controls.auto_select_last_attempt` payload (last auto-select-scaffold attempt)
-- `write_controls.metadata_resolver_last_attempt` payload (last metadata-resolver scaffold attempt)
-- `write_controls.metadata_bridge_last_attempt` payload (last resolver/trial bridge sequence attempt)
-- `write_controls.cycle_target_last_attempt` payload (last component cycle-target attempt)
-- `write_controls.restore_last_valid_last_attempt` payload (last restore-last-valid attempt)
-- `write_controls.track_last_valid_last_attempt` payload (last last-valid tracking attempt)
-- `sensor.spectra_ls_scheduler_decision_status` convenience sensor
-- `handoff_inventory` payload (legacy-only dependency map + component scaffold status)
-
-Metadata bridge alignment note:
-
-- metadata trial contract remains legacy-authority gated (`authority_mode=legacy` required),
-- resolver scaffold stages are component-authority gated,
-- bridge sequencing explicitly handles this authority transition and records stage statuses/blockers so migration runs are deterministic and reversible.
-- bridge sequencing now includes an automatic pre-bridge target recovery stage (`run_auto_select_scaffold` with options sync enabled) so stale/non-control-capable active targets are recovered to a control-capable candidate without manual helper-option editing before resolver/trial checks.
-- component target-options scaffolding is now parity-expanded with legacy option-synthesis behavior: options planning pulls from room contracts, MA players payload, live IP-backed `media_player.*` discovery with LinkPlay/WiiM-class hints, detected receiver candidate, and helper current/last-valid context (instead of registry-only candidates).
-- component target-options apply now includes default-option recovery semantics so invalid/not-in-options helper current state is corrected to a computed fallback (`current valid` -> `last-valid` -> `first selectable` -> `none`) in the same apply path.
-- component auto-select scaffold planning now prefers a ready detected receiver candidate first, then active playable helper options, before generic candidate fallback for closer legacy behavioral parity during migration windows.
-- scaffold debounce guards now skip dry-run executions for target-options/auto-select/metadata-resolver scaffolds, so back-to-back dry-run validation and bridge preflight sequences remain deterministic without weakening non-dry-run write safeguards.
-- metadata bridge internal target-recovery sequencing now applies an explicit in-sequence override for the bridge-owned auto-select recovery stage so same-transaction debounce timing from earlier attempts cannot prematurely fail bridge orchestration as `blocked_target_recovery_stage`.
-- metadata bridge validation now infers trial-stage success from `bridge_completed` context when trial-stage status payloads are transiently unresolved (`unknown`/missing), preventing contradictory diagnostics states where completed bridge execution is still flagged as `trial_stage_not_ok`.
-- scheduler/metadata validation authority-policy checks now treat supported authority modes (`legacy`, `component`) as diagnostics-valid posture for bounded migration runs, while metadata trial execution remains legacy-gated at execution time; completed bridge context satisfies trial-authority validation even when authority is restored to component after bridge sequencing.
-- on integration startup, the component now schedules a bounded automatic bridge-recovery sequence (delayed initial attempt + retries) so HA restarts can self-recover helper target/options alignment and control-capable target selection without requiring manual scaffold action calls.
-- startup recovery is MA boot-gated and reports explicit wait-state messaging (`waiting_for_ma_boot` / "waiting for Music Assistant boot readiness") while MA/control-target surfaces are still initializing, using operator-friendly reason text (for example player-list/control-target readiness) instead of internal token strings or premature recovery-error style messaging.
-- scheduler and bridge validation payloads now mirror this boot-gate posture: when MA boot-readiness is not yet satisfied, diagnostics classify the state as explicit wait (`waiting_for_ma_boot`) with operator-friendly reason text instead of hard failure classification for transient pre-boot gaps.
-- startup bridge sequencing now restores write authority to the pre-run mode on all exit paths (including blocked target-recovery stages), preventing stale `component` authority residue after failed startup attempts.
-- startup recovery now has an explicit legacy no-mix guard: when authority is `legacy`, component bridge sequencing is skipped (`skipped_legacy_authority`) so startup does not perform component-owned helper mutations in legacy single-writer windows.
-- startup recovery now also has a component no-mix guard: when authority is `component`, startup executes component-only options/auto-select recovery and skips legacy-trial bridge transitions (`skipped_component_startup_no_mix`) to avoid cross-authority boot sequencing.
-- startup auto-recovery cadence is latency-hardened: initial delay reduced to 4s, retry interval reduced to 8s, and max wait cycles reduced to 20 so component boot recovery does not sit in multi-minute deadspots before retrying MA-readiness checks.
-- startup boot-readiness gating now requires resolved control-host surface and initialized active-target helper options (at least one non-`none` option) in addition to MA players/control-target readiness, reducing premature bridge-attempt exhaustion during reboot churn.
-- startup boot-readiness gating is additionally hardened for host-surface lag: unresolved `sensor.ma_control_hosts` by itself no longer keeps startup in perpetual MA-boot wait when MA players/control-targets and helper options are otherwise ready.
-- startup auto-select recovery now supports a guarded helper-current fallback (`input_select.ma_active_target` resolved and present in options) when candidate scaffolds are temporarily empty, preventing avoidable `blocked_no_candidate` bridge-stage failures during reboot churn.
-- startup wait messaging now distinguishes phases: true MA gates (`ma_players` / control-target catalog) use “waiting for Music Assistant boot readiness,” while post-boot helper/options readiness waits use control-contract wording to avoid false “MA is not booted” interpretation.
-- shadow diagnostic sensor payloads are recorder-size hardened: high-volume attributes are trimmed from generic shadow entities and concentrated to the primary active-target diagnostics surface (with bulky catalogs omitted) to avoid Recorder attribute-drop warnings and preserve persisted diagnostics visibility.
-- contract validation now treats host-feed surfaces (`sensor.ma_control_hosts`, `sensor.ma_control_host`) as soft-required warnings rather than hard-invalid gates, so transient fail-closed host clears do not force global `contract_invalid` cascades while still surfacing host-quality risk explicitly.
-- scheduler decision now includes a guarded helper-current fallback when ranked candidates are empty, allowing a resolved `input_select.ma_active_target` value (present in helper options) to be reused as deterministic selected target instead of emitting a false `no_scheduler_candidate` during transient profile/host freshness churn.
-- helper-current scheduler fallback now requires registry-backed control capability and resolved host (`control_capable=true` + non-empty host) before promotion; otherwise decision remains `no_candidate` with explicit fallback-rejection reason to avoid false control-capable assumptions for AppleTV-like/non-TCP targets.
-- when authority is `legacy`, scheduler decision output is explicitly pinned to helper-current target (when helper state is resolved and in-options) so diagnostics and blocker classification remain ownership-consistent during boot/startup churn.
-- deterministic scheduler validation template now falls back to coordinator `scheduler_validation.default_decision` when `scheduler_last_decision` is `never_attempted`, preventing stale `selected_target=none` / `candidate_count=0` displays in otherwise PASS-ready snapshots.
-- deterministic scheduler validation template additionally falls back to helper-current selection (when scheduler readiness is PASS and helper current is valid/in-options) to keep displayed decision fields truthful even when shadow-entity decision payload attributes are stale or partially absent.
-- deterministic scheduler validation template now includes a dedicated hotspot-triage section (decision-source provenance, shadow-source selection rationale, route decision, registry coverage, contract hard/soft warning surfaces, metadata-prep blockers, and top-candidate score context) to reduce multi-template debugging loops during reboot/post-boot churn.
-- registry snapshot seeding is now hardened with helper/active-target fallback inputs (`input_select.ma_active_target` options/current + active-target state) and broader rooms payload parsing fallbacks (`rooms_raw`/`rooms_json` state+attribute variants), reducing empty-registry diagnostic churn during transient legacy-feed lag.
-- route defer classification ordering now prefers `defer_not_capable` before `defer_unsupported_path` when selected targets lack control capability, improving operator signal quality for host-resolution gaps.
-- bridge validation now infers metadata-trial stage status from bridge-attempt stage telemetry (`stages.metadata_trial.status`) when global `metadata_trial_last_attempt` still reports `never_attempted`, reducing false bridge WARN persistence after successful bridge dry-run sequencing.
-- registry snapshot build path now reuses first-hit room mappings per target (instead of rescanning full rooms list per target), reducing avoidable refresh overhead during frequent coordinator snapshots.
-- metadata-prep readiness now treats title availability as a signal gate (`now_playing_title_signal_ready`) rather than a strict raw-title requirement: unresolved `now_playing_title` can still classify as ready when fresh-play evidence and resolved active-meta context are present, reducing false WARN loops during transient metadata lag.
-- metadata-candidate readiness now includes a resolver fallback (`ma_meta_resolver.best_entity` + positive score) when `ma_meta_candidates` payload shape is delayed, and handoff inventory maturity status (`target_options_builder`, `auto_select_pipeline`, `metadata_resolver_authority`) now advances to `implemented` based on successful guarded scaffold attempts instead of static scaffold-plan presence only.
-- component selection-ownership migration now includes executable parity services for cycle/restore/track last-valid target flows, and active-target helper state changes trigger bounded component-mode last-valid tracking (`state_change_listener`) to reduce reliance on runtime-only lifecycle automations during migration windows.
-- component selection-ownership migration now also mirrors legacy lock lifecycle behaviors in component-authority windows: lock-on-ambiguous-select parity, stale-meta unlock parity with 5-second hold behavior, and guarded component auto-select loop triggering on legacy-equivalent state transitions (`ma_players`, active-target helper, and watched target state changes).
-- auto-select loop parity watcher semantics are now aligned to legacy options-membership behavior (full non-empty helper options set); the prior `media_player.*`-only watcher filter was removed as an unnecessary restriction.
-
-Guarded apply semantics (`apply_scheduler_choice`):
-
-- requires `authority_mode=component`,
-- enforces write reentrancy + debounce safeguards unless `force=true`,
-- verifies target helper presence and option-membership contract before write,
-- supports `dry_run` for deterministic preflight without helper mutation,
-- records full attempt/audit payload for operator triage.
-
-Current parity status:
-
-- legacy/runtime path is **compatibility-shimmed** for scheduler behavior (no legacy scheduler implementation in this slice),
-- component path is **implemented** for scheduler decision computation and diagnostics.
-
-Control-lane hotfix note (2026-06-21):
-
-- write-authority normalization now honors persisted `default_write_authority_mode` (`legacy` or `component`) instead of force-normalizing to `component`.
-- control-center mapped `volume` action now has an executable path (`media_player.volume_set` with bounded step semantics, plus dry-run/read-only guards) rather than unconditionally falling through to unimplemented-action status.
-
-## Change discipline for future slices
-
-When editing `ma_control_hub` behavior, update this document with:
-
-1. changed domain(s) above,
-2. parser contract impact (if any),
-3. new/removed exported helper/sensor contracts,
-4. compatibility note for ESPHome runtime consumers.
+Describe the active control-plane contracts for Spectra L/S with integration-owned authority and runtime consumers bound to integration surfaces.
+
+## Active ownership model
+
+- Authority owner: `custom_components/spectra_ls`
+- Runtime role: consume integration-published contracts and execute device I/O paths
+- Control center services: `spectra_ls.execute_control_center_input`, `spectra_ls.set_control_center_settings`
+- Validation services: `spectra_ls.validate_contracts`, `spectra_ls.dump_route_trace`, `spectra_ls.validate_scheduler`
+
+## Core contract surfaces
+
+- Active target: `sensor.component_active_target`
+- Control host(s):
+  - `sensor.component_control_host`
+  - `sensor.component_control_hosts`
+  - `sensor.component_control_port`
+- Now-playing:
+  - `sensor.component_now_playing_entity`
+  - `sensor.component_now_playing_state`
+  - `sensor.component_now_playing_title`
+  - `sensor.component_now_playing_artist`
+  - `sensor.component_now_playing_source`
+  - `sensor.component_now_playing_freshness_age`
+  - `binary_sensor.component_now_playing_display_allowed`
+
+## Runtime consumption rules
+
+- Runtime routing and metadata reads must bind to component contract entities.
+- Host resolution is discovery-first and fail-closed.
+- No install-specific target IP defaults in tracked product logic.
+- Active-path validation should use component diagnostics packets and route traces.
+
+## Operational verification
+
+Use these proofs for control-plane health checks:
+
+- `sensor.shadow_active_target` packet freshness + contract validity
+- `route_trace` decision + active target coherence
+- Scheduler verdict and cutover gate readiness
+- ESP handoff + OLED status telemetry consistency
+
+## Documentation parity rule
+
+When control-plane behavior or ownership changes:
+
+1. Update this architecture document.
+2. Update `docs/CHANGELOG.md`.
+3. Update roadmap status in `docs/roadmap/v-next-NOTES.md`.
+4. Update user-facing docs when operator behavior changes.

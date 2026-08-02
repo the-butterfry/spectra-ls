@@ -1,5 +1,5 @@
 {# Description: Full-stack one-screen Spectra LS component validation template for HA Developer Tools. #}
-{# Version: 2026.08.01.1 #}
+{# Version: 2026.08.01.2 #}
 {# Last updated: 2026-08-01 #}
 
 {% set invalid = ['','none','unknown','unavailable','null'] %}
@@ -59,12 +59,8 @@
 {% set esp_oled_ready = esp_oled_state not in invalid or esp_lighting_blank_ok %}
 {% set esp_runtime_ready = esp_runtime_visible and esp_handoff_state not in invalid and esp_oled_ready %}
 
-{% set helper_target = states('input_select.ma_active_target') %}
-{% set helper_options = state_attr('input_select.ma_active_target','options') or [] %}
-{% set helper_target_state = states(helper_target) if helper_target is string and helper_target|trim not in invalid else 'unknown' %}
-{% set helper_target_valid_legacy = helper_target is string and helper_target|trim not in invalid and '.' in helper_target and helper_target in helper_options and helper_target_state not in invalid %}
-{% set helper_target_valid_component = active_target is string and active_target|trim not in invalid and '.' in active_target and states(active_target) not in invalid %}
-{% set helper_target_valid = helper_target_valid_legacy or helper_target_valid_component %}
+{% set helper_target = active_target %}
+{% set helper_target_valid = active_target is string and active_target|trim not in invalid and '.' in active_target and states(active_target) not in invalid %}
 
 {% set now_playing_entity = states('sensor.now_playing_entity') %}
 {% set now_playing_state = states('sensor.now_playing_state') %}
@@ -75,7 +71,7 @@
 {% set now_playing_source = states('sensor.now_playing_source') %}
 {% set now_playing_app = states('sensor.now_playing_app') %}
 {% set now_playing_display_allowed = states('binary_sensor.now_playing_display_allowed') %}
-{% set active_meta_entity = states('sensor.ma_active_meta_entity') %}
+{% set active_meta_entity = states('sensor.component_metadata_override_entity') %}
 
 {% set component_now_playing_entity = states('sensor.component_now_playing_entity') %}
 {% set component_now_playing_state = states('sensor.component_now_playing_state') %}
@@ -138,16 +134,16 @@
   {% set oled_cause = 'audio_blank_unclassified' %}
 {% endif %}
 
-{% set host_sensor = states('sensor.ma_control_host') %}
-{% set hosts_sensor = states('sensor.ma_control_hosts') %}
+{% set host_sensor = states('sensor.component_control_host') %}
+{% set hosts_sensor = states('sensor.component_control_hosts') %}
 {% set component_backend_profile = states('sensor.component_backend_profile') %}
 {% set component_api_url = states('sensor.component_ma_api_url') %}
-{% set helper_backend_profile = states('sensor.ma_server_profile_effective') %}
-{% set helper_api_url = states('sensor.ma_api_url') %}
+{% set helper_backend_profile = 'missing' %}
+{% set helper_api_url = 'missing' %}
 {% set effective_backend_profile = component_backend_profile if component_backend_profile not in invalid else helper_backend_profile %}
 {% set effective_api_url = component_api_url if component_api_url not in invalid else helper_api_url %}
-{% set backend_source = 'component_primary' if component_backend_profile not in invalid else 'runtime_helper_fallback' %}
-{% set api_source = 'component_primary' if component_api_url not in invalid else 'runtime_helper_fallback' %}
+{% set backend_source = 'component_primary' if component_backend_profile not in invalid else 'component_missing' %}
+{% set api_source = 'component_primary' if component_api_url not in invalid else 'component_missing' %}
 {% set backend_profile_ready = (effective_backend_profile | lower) in ['beta','stable','manual','component_discovered'] %}
 {% set backend_api_ready = effective_api_url not in invalid and (effective_api_url | lower).startswith('http') %}
 {% set backend_api_contract_ready = backend_profile_ready and backend_api_ready %}
@@ -271,7 +267,7 @@
 {% elif not shadow_exists %}
 - Trigger refresh sequence first (`spectra_ls.rebuild_registry`, `spectra_ls.validate_contracts`, `spectra_ls.dump_route_trace`) and rerun.
 {% elif not helper_target_valid %}
-- In component-primary mode, verify `route_trace.active_target` is resolved and playable; if legacy helper mode is intentionally active, repair `input_select.ma_active_target` + `script.ma_update_target_options`, then rerun.
+- Verify `route_trace.active_target` is resolved and playable, then rerun.
 {% elif route_decision != 'route_linkplay_tcp' %}
 - Resolve route eligibility before further trials; inspect `route_trace.reason` and active-target registry capability mapping.
 {% elif not (contract_ready and contract_valid) %}
@@ -287,7 +283,7 @@
 {% elif oled_cause == 'selector_telemetry_partial' %}
 - Selector winner pool is present but winner entity telemetry is partial. Capture a fresh packet after `spectra_ls.dump_route_trace` and inspect `component_now_playing_selection_*` checks/values.
 {% elif not backend_api_contract_ready %}
-- LC6-L05 backend/API read lane is degraded. Refresh `sensor.component_backend_profile` + `sensor.component_ma_api_url`, then verify fallback surfaces `sensor.ma_server_profile_effective` + `sensor.ma_api_url` are not unresolved, and rerun.
+- Backend/API read lane is degraded. Refresh `sensor.component_backend_profile` + `sensor.component_ma_api_url`, then rerun.
 {% elif not esp_runtime_ready %}
 - Component metadata gates are green, but ESP runtime telemetry is degraded/missing. Verify ESP node online status in ESPHome, then refresh with `homeassistant.update_entity` for `sensor.spectra_ls_system_esp_control_handoff_status` and `sensor.spectra_ls_system_esp_oled_status`, and rerun.
 {% elif metadata_verdict == 'PASS' and not authority_contract_ready %}

@@ -1,139 +1,78 @@
 <!-- Description: Operator runbook for installing Spectra on a user-owned Home Assistant instance with explicit pass/fail checkpoints. -->
-<!-- Version: 2026.07.04.1 -->
-<!-- Last updated: 2026-07-04 -->
+<!-- Version: 2026.08.01.2 -->
+<!-- Last updated: 2026-08-01 -->
 
 # Install on Your Own Home Assistant
 
-Use this page when you want a clean, reproducible install on your own HA instance.
+Use this for a practical, reproducible install.
 
-Goal: finish with working audio + lighting control, populated room/target menus, and rollback-safe evidence.
+Target outcome: audio + lighting control working, room/target menus populated, and enough evidence to debug quickly if anything misbehaves.
 
-## Reader checkpoints
+## Done means all of these are true
 
-You are done with this page when all are true:
+- HA config validates
+- ESPHome build and deploy complete
+- room/target options are real (not placeholders)
+- at least one audio action and one lighting action pass
 
-- HA config validates,
-- ESPHome build and deploy complete,
-- room/target options are concrete,
-- one audio action and one lighting action both pass.
+## 1) Preflight
 
-## Track A (current path): Runtime-first install
+- [ ] Home Assistant is reachable
+- [ ] ESPHome integration/add-on is available
+- [ ] You have a backup/snapshot
 
-Parallel optional lane (advanced/testing only):
+## 2) Local values and secrets
 
-- Combined ESP entrypoint: [`esphome/spectra_ls_system_amped_combined.yaml`](https://github.com/the-butterfry/spectra-ls/blob/main/esphome/spectra_ls_system_amped_combined.yaml)
-- Combined lane guide: [`docs/spectra_ls_system/SPECTRA-LS-AMPED-COMBINED-CONFIG.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/spectra_ls_system/SPECTRA-LS-AMPED-COMBINED-CONFIG.md)
-- ESP-specific changelog: [`esphome/CHANGELOG.md`](https://github.com/the-butterfry/spectra-ls/blob/main/esphome/CHANGELOG.md)
+- [ ] Put install-specific values in `secrets.yaml` or local includes
+- [ ] Do not commit tokens/IPs/private host mappings
+- [ ] Resolve placeholders from [`docs/setup/SPECTRA-HA-CONFIG-PLACEHOLDERS.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/setup/SPECTRA-HA-CONFIG-PLACEHOLDERS.md)
 
-### 0) Before you start
+## 3) Apply config
 
-- [ ] Home Assistant is running and reachable.
-- [ ] ESPHome integration/add-on is installed.
-- [ ] You can edit HA config files safely.
-- [ ] You have a rollback snapshot/backup.
+- [ ] Apply package/runtime config
+- [ ] Apply ESPHome config
+- [ ] Confirm expected entities/helpers appear in HA
 
-### 1) Prepare secrets and local values
+## 4) Validate and deploy
 
-- [ ] Put deployment-specific values in `secrets.yaml` or local includes.
-- [ ] Do **not** commit IPs, tokens, or private host mappings.
-- [ ] Resolve placeholders from [`docs/setup/SPECTRA-HA-CONFIG-PLACEHOLDERS.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/setup/SPECTRA-HA-CONFIG-PLACEHOLDERS.md).
+- [ ] Validate HA config
+- [ ] Compile ESPHome
+- [ ] Upload OTA/flash as needed
+- [ ] Verify entities/controls in HA
 
-### 2) Apply runtime config
+Keep these proof lines:
 
-- [ ] Apply required package configuration.
-- [ ] Apply ESPHome runtime configuration.
-- [ ] Ensure route/target helpers are present.
+- build success output
+- OTA success output (if used)
+- one screenshot/state dump of populated control entities
 
-Expected result after Step 2:
+### OTA schema reminder
 
-- [ ] Required entities/helpers appear in Home Assistant with valid states.
+Use modern `ota:` platform entries (`esphome`, `web_server`). Avoid legacy `web_server.ota: true` syntax.
 
-### 3) Validate + deploy
+## 5) Functional verification
 
-- [ ] Validate Home Assistant config.
-- [ ] Compile ESPHome successfully.
-- [ ] Upload OTA/flash if required for your target.
-- [ ] Confirm runtime entities and controls appear as expected.
+- [ ] Audio control works and reflects state
+- [ ] Lighting control works and reflects state
+- [ ] Room/target selection is populated
+- [ ] Routing stays stable across restart/reload
 
-ESPHome OTA schema note (2026.4.x):
+## 6) If it fails
 
-- Use platform-based OTA entries under `ota:` (for example `esphome` + `web_server`).
-- Avoid legacy `web_server.ota: true` syntax in active configs; modern builds reject it.
+Don’t guess—capture evidence and route it:
 
-Evidence to keep (copy/paste into notes/issue if needed):
+1. [Operations Runbooks](Operations-Runbooks)
+2. [Welcome, README, and Bug Workflow](Welcome-README-and-Bug-Workflow)
 
-- [ ] Build success output snippet.
-- [ ] OTA success output snippet (if applicable).
-- [ ] One screenshot or state dump showing control entities populated.
+## Custom component install note (current reality)
 
-### 4) Integration verification
+Component-first setup is still evolving. For now, if you update `custom_components/spectra_ls/`:
 
-- [ ] Audio controls work and reflect state.
-- [ ] Lighting controls work and reflect state.
-- [ ] Room/target selection is populated (not placeholders only).
-- [ ] Control target/routing behavior is stable across reload/restart.
+1. Restart Home Assistant fully
+2. Use **Settings → Devices & Services → Add Integration**
+3. Configure include/exclude policy for `media_player` routing/metadata selectors
 
-Failure indicators (stop and investigate):
-
-- [ ] Placeholder-only room/target lists remain after reload.
-- [ ] Controls issue commands but entity state never updates.
-- [ ] Route metadata (`control_path`, `control_capable`) is missing/invalid.
-
-### 5) If something breaks
-
-- [ ] File a bug using the issue form.
-- [ ] Include logs, repro steps, affected area, and impact.
-- [ ] Link to `Welcome-README-and-Bug-Workflow` for triage flow.
-
-## Track B (evolving): Custom component install flow
-
-This becomes the preferred path as `custom_components/spectra_ls` matures through active roadmap slices.
-
-Current required discovery note (applies now):
-
-- [ ] After adding/updating files under `custom_components/spectra_ls/`, perform a full Home Assistant restart **before** using **Add Integration**.
-- [ ] After restart, go to **Settings → Devices & Services → Add Integration** and search for `Spectra LS`.
-- [ ] In **Settings → Devices & Services → Spectra LS → Configure**, set setup-policy include/exclude entity lists for routing + metadata (`media_player` selectors) to curate which entities participate in setup behavior per install.
-
-Planned additions to this page:
-
-- [ ] HACS/manual custom component install steps
-- [ ] Config flow onboarding screens
-- [ ] Registry/routing diagnostics walkthrough
-- [ ] Migration checkpoints from runtime helpers to component surfaces
-- [ ] First-time setup wizard expectations and diagnostics capture
-
-Release publication note:
-
-- You do not need to publish every commit to HACS.
-- Recommended cadence is release-tag based: publish when you intentionally cut a stable release checkpoint.
-
-Roadmap references:
+Roadmap source:
 
 - [`docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md)
 - [`docs/roadmap/v-next-NOTES.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/roadmap/v-next-NOTES.md)
-
-## Optional: wiki publishing token (docs automation only)
-
-This is **not** needed to run Spectra in your home.
-
-- Use `WIKI_FINE_GRAINED_PAT` only if you want GitHub Actions to publish changes from [`docs/wiki/*`](https://github.com/the-butterfry/spectra-ls/tree/main/docs/wiki) to the GitHub Wiki.
-- Setup steps are in [`docs/wiki/README.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/wiki/README.md).
-
-## Rollback checklist (operator safety)
-
-- [ ] Keep known-good config backup before changing runtime files.
-- [ ] If deploy fails, restore prior known-good config snapshot.
-- [ ] Re-validate baseline controls before attempting incremental changes.
-
-## Quick troubleshooting map
-
-| Symptom | Likely cause | Action |
-| --- | --- | --- |
-| Room/target menus are empty | unresolved placeholders or helper bootstrap failure | Re-check [`docs/setup/SPECTRA-HA-CONFIG-PLACEHOLDERS.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/setup/SPECTRA-HA-CONFIG-PLACEHOLDERS.md), reload helpers, and revalidate template entities |
-| Controls trigger but state never changes | route metadata unresolved or wrong target path | Verify `control_path` and `control_capable` surfaces, then confirm active target selection is valid |
-| OTA/build succeeds but behavior is wrong | stale runtime state after deploy | Restart HA + integration path, then rerun integration verification checklist |
-
-Need deeper triage?
-
-- Go directly to [Operations Runbooks](Operations-Runbooks) for docs/deploy/wiki-sync and proof-driven troubleshooting flow.

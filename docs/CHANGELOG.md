@@ -1,8 +1,14 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.08.02.56 -->
-<!-- Last updated: 2026-08-02 -->
+<!-- Version: 2026.08.01.58 -->
+<!-- Last updated: 2026-08-01 -->
 
 # Changelog
+
+## 2026-08-01 (Docs Refresh)
+
+- Tooling/CI Hardcode Guard False-Positive Fix for Interactables Contract Namespace (`bin/audit_hardcoded_entities.py`, `docs/CHANGELOG.md`): allowlist product-owned `spectra_interactable_*` helper/sensor namespaces so CI hardcode guard continues blocking install-specific host/entity literals while no longer failing on intentionally canonical, repo-owned contract entities in `packages/spectra_ls_interactables.yaml`. Runtime track disposition: compatibility-shimmed (tooling-only; no runtime behavior mutation). Component track disposition: compatibility-shimmed (tooling-only; no component behavior mutation). Version-parity review: runtime `not-applicable`; component `not-applicable`. P1/P2/P3 impact: no source-of-truth ownership reassignment; CI signal-quality hardening only. README/wiki parity: no material operator workflow change.
+
+- Docs/Wiki Quality Pass — Prune + Align + Conversational Rewrite (`docs/wiki/Home.md`, `docs/wiki/Getting-Started.md`, `docs/wiki/Welcome-README-and-Bug-Workflow.md`, `docs/wiki/Install-on-Your-Own-HA.md`, `docs/wiki/User-Setup-Deploy-and-HA-Integration.md`, `docs/wiki/Operations-Runbooks.md`, `docs/wiki/README.md`, `docs/wiki/_Sidebar.md`, `docs/README.md`, `docs/CHANGELOG.md`): run a practical readability and navigation pass to remove circular/duplicate phrasing, tighten stale references, and make operator workflows more direct and human while keeping governance and proof gates intact. Runtime track disposition: compatibility-shimmed (documentation-only; no runtime behavior mutation). Component track disposition: compatibility-shimmed (documentation-only; no component behavior mutation). Version-parity review: runtime `not-applicable`; component `not-applicable`. P1/P2/P3 impact: no source-of-truth ownership reassignment; docs clarity, navigation, and operator actionability hardening only. README/wiki parity: updated in-slice.
 
 ## 2026-08-02
 

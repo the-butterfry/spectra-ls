@@ -1,10 +1,16 @@
 <!-- Description: Documentation index for Spectra L/S technical, onboarding, roadmap, and operations artifacts. -->
-<!-- Version: 2026.07.04.3 -->
-<!-- Last updated: 2026-07-04 -->
+<!-- Version: 2026.08.01.4 -->
+<!-- Last updated: 2026-08-01 -->
 
 # Spectra L/S Documentation Index
 
-Use this folder as the source of truth for project documentation and notes.
+Use this folder as the source of truth for project docs.
+
+If you are in a hurry:
+
+1. read `README.md` (project direction),
+2. read `docs/CHANGELOG.md` (what changed),
+3. read `docs/roadmap/v-next-NOTES.md` (what is active now).
 
 ## Start here
 
@@ -20,7 +26,7 @@ Legacy-seal status (current):
 - Runtime path (`packages/` + `esphome/`) is sealed as compatibility + rollback baseline.
 - Custom integration path (`custom_components/spectra_ls/`) is primary for net-new control-plane/feature growth.
 
-If you are new: read `README.md` first, then this file, then `docs/roadmap/v-next-NOTES.md`.
+Operator-facing wiki entry pages live under `docs/wiki/`.
 
 ## Roadmap and program governance
 
@@ -53,6 +59,12 @@ If you are new: read `README.md` first, then this file, then `docs/roadmap/v-nex
 - CA-S06 runtime write/helper wave-2 validation template: `docs/testing/raw/ca_s06_runtime_write_helper_retirement_wave2_validation.jinja`
 - CA-S07 diagnostics/template fallback cleanup validation template: `docs/testing/raw/ca_s07_legacy_diagnostics_template_fallback_cleanup_validation.jinja`
 - CA-S08 domain closeout + rollback-safe seal validation template: `docs/testing/raw/ca_s08_domain_closeout_rollback_seal_validation.jinja`
+
+Quick operator bundle:
+
+- `docs/testing/DEVTOOLS-TEMPLATES.local.md`
+- `docs/wiki/Operations-Runbooks.md`
+- `docs/wiki/Welcome-README-and-Bug-Workflow.md`
 
 ## Cleanup and maintenance
 

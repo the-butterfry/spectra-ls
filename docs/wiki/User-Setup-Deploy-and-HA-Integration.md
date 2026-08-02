@@ -1,238 +1,88 @@
 <!-- Description: Practical setup/deploy/integration guide for Spectra on Home Assistant with clear operator outcomes and failure actions. -->
-<!-- Version: 2026.07.04.1 -->
-<!-- Last updated: 2026-07-04 -->
+<!-- Version: 2026.08.01.2 -->
+<!-- Last updated: 2026-08-01 -->
 
 # User Setup, Deploy, and HA Integration
 
-Use this page to deploy Spectra and verify that control paths are actually usable.
+Use this page after install when you want confidence that Spectra is truly usable, not just “running.”
 
-Target outcome:
+## Success criteria
 
-- runtime deploy completes,
-- audio + lighting routes work,
-- room/target menus are populated,
-- you have enough evidence to debug or file a high-quality bug if needed.
+- deploy completes cleanly
+- audio + lighting controls both work
+- room/target menus are populated with real values
+- you have evidence ready if you need to open a bug
 
-## Current setup model (today)
+## Current operating model
 
-- Runtime control path: ESPHome + Home Assistant packages
-- Parallel migration target: [`custom_components/spectra_ls`](https://github.com/the-butterfry/spectra-ls/tree/main/custom_components/spectra_ls) (in roadmap phases)
-- Discovery-first design remains default
-- Parallel combined ESP lane (optional validation track): [`esphome/spectra_ls_system_amped_combined.yaml`](https://github.com/the-butterfry/spectra-ls/blob/main/esphome/spectra_ls_system_amped_combined.yaml)
-- Combined lane guide: [`docs/spectra_ls_system/SPECTRA-LS-AMPED-COMBINED-CONFIG.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/spectra_ls_system/SPECTRA-LS-AMPED-COMBINED-CONFIG.md)
-- ESP-specific changelog: [`esphome/CHANGELOG.md`](https://github.com/the-butterfry/spectra-ls/blob/main/esphome/CHANGELOG.md)
+- Runtime path (`packages/` + `esphome/`) is the compatibility baseline.
+- Component path (`custom_components/spectra_ls/`) is the primary lane for net-new behavior.
+- Discovery-first and fail-closed routing remain the safety defaults.
 
-### Program phase snapshot (operator clarity)
+## What is automatic vs what you own
 
-- Phase 0 governance baseline is complete.
-- Phase 1 shadow-parity work is complete/validated and kept as baseline reference.
-- Active development is in post-Phase-1 slices; use roadmap notes for the current active queue.
+### Automatic (when healthy)
 
-## What is automated vs manual today
+- Target discovery and route metadata publication
+- Control path state updates in HA entities
+- Component diagnostics surfaces
 
-### Automated (when healthy)
+### You still own
 
-- Target discovery and route metadata publication.
-- Control-host resolution from MA/HA discovery surfaces (`sensor.ma_control_hosts` / `sensor.ma_control_host`) with fail-closed runtime gating until valid hosts are present.
-- Runtime surface synchronization between HA helper/catalog entities and control UI.
-- Wiki publishing (if `WIKI_FINE_GRAINED_PAT` is configured and workflow succeeds).
+- Local secrets and host values
+- Initial placement/wiring of runtime files
+- Environment troubleshooting and rollback actions
 
-### Manual (operator responsibility)
+## Practical integration checklist
 
-- Environment-specific host/IP/secret values.
-- Initial HA package/runtime placement and include wiring.
-- Token/secret setup for optional automation workflows.
-- Troubleshooting and rollback actions when environment drift occurs.
+1. Resolve local placeholders/secrets
+2. Validate HA config
+3. Compile/deploy ESPHome
+4. Verify routing metadata and active target state
+5. Verify at least one audio + one lighting action
+6. Restart once and confirm state recovers cleanly
 
-### Guardrail note for contributors
+## Control-center settings quick path
 
-- Active product logic paths now run a hardcode guard in CI that blocks new install-specific entity IDs/private host literals.
-- If your change legitimately needs a bounded exception, document the rationale in `docs/CHANGELOG.md` in the same slice before review.
-- Keep setup values discovery-first and secret/local-only where environment-specific data is required.
+Use **Settings → Devices & Services → Spectra LS → Configure** for remap/tuning.
 
-## Prerequisites
+Recommended flow:
 
-1. Home Assistant installed and reachable.
-2. ESPHome addon/integration available.
-3. Spectra runtime files available in your deployment path.
-4. Network reachability between HA and control endpoints.
-5. Secrets strategy in place (`!secret` + local non-tracked files).
+1. choose a mapping preset
+2. tweak actions/scenes
+3. save
+4. verify readiness via `sensor.spectra_ls_control_center_readiness`
 
-## Manual items you must provide (non-automated)
+Useful services:
 
-### Required
-
-- Home Assistant host/address details for your environment.
-- Environment-specific secret values in `secrets.yaml` or local secrets include.
-
-Discovery contract note:
-
-- Spectra runtime no longer ships install-specific target host/IP bootstrap defaults.
-- If discovery surfaces are unresolved or invalid, control writes remain blocked (fail-closed) until valid hosts are published.
-
-### Optional / workflow tooling
-
-- GitHub wiki publish token (if enabling wiki sync automation): `WIKI_FINE_GRAINED_PAT`
-- Home Assistant Long-Lived Access Token (only if using custom external API tooling that requires token auth).
-
-## Minimum viable integration baseline
-
-- A reachable HA instance with expected helper/entity contracts present.
-- ESPHome runtime compiled and deployed without errors.
-- At least one valid audio target and one valid lighting target discovered.
-- Room/target navigation menus populated with concrete options.
-
-## Control-center settings (P6 validated and available)
-
-You can now stage core control-center mappings from the Spectra integration itself:
-
-- **Sidebar settings page (new):** Home Assistant sidebar -> `Spectra L/S` (dashboard-backed settings surface).
-- This gives you a persistent full page for readiness/mapping visibility while tuning, instead of relying only on the small configure modal.
-- Sidebar page now includes direct one-click action controls for safe checks/preset application:
-  - `Dry-run encoder press`
-  - `Dry-run encoder turn`
-  - `Apply media preset`
-  - `Apply target-nav preset`
-
-- **Fast remap path (today):** Home Assistant -> Settings -> Devices & Services -> Integrations -> `Spectra LS` -> Configure.
-- This remains the canonical settings write path and is now intentionally kept simple.
-
-- Integration options (Configure on `Spectra LS`) now include:
-  - **Single-step form:** read-only mode + mapping preset + encoder turn/press/long-press actions + button 1–4 scene bindings.
-  - **Setup-policy foundation (new):** guided capture fields for routing/metadata entity include/exclude lists (`media_player.*`) so each install can explicitly curate entity participation without patching tracked code.
-- Recommended fast-remap workflow:
-  1. choose a mapping preset,
-  2. adjust any per-input actions/scenes you want,
-  3. save,
-  4. confirm active mapping via `sensor.spectra_ls_control_center_readiness` attributes.
-- Scene bindings now use scene-aware selectors in options flow (instead of free-text only), and button-1 quick-trigger defaults are pre-suggested when scenes are discoverable.
-- Service path is also available for automation/operator workflows:
-  - `spectra_ls.set_control_center_settings`
-  - `spectra_ls.execute_control_center_input` (dry-run-first)
-- New readiness diagnostics entities improve setup visibility without opening full diagnostics payloads:
-  - `sensor.spectra_ls_control_center_readiness`
-  - `sensor.spectra_ls_control_center_last_attempt_status`
-
-This is additive and migration-safe: runtime/source-of-truth ownership remains unchanged while Control Center settings and execution surfaces are available for bounded operator use.
-
-## MA beta/stable fast-switch workflow (runtime helper contract)
-
-For rapid backend testing (for example Beta vs Stable Music Assistant), use helper entities instead of editing package files:
-
-- `input_select.ma_server_profile`
-  - `beta` → uses `input_text.ma_server_url_beta`
-  - `stable` → uses `input_text.ma_server_url_stable`
-  - `manual` → uses `input_text.ma_server_url`
-- Effective selection visibility: `sensor.ma_server_profile_effective`
-- REST/API path remains sourced from `sensor.ma_api_url`.
-
-Recommended operator flow:
-
-1. set your Beta URL in `input_text.ma_server_url_beta`,
-2. set your Stable URL in `input_text.ma_server_url_stable`,
-3. switch `input_select.ma_server_profile` between `beta` and `stable` as needed,
-4. confirm backend/API surfaces before running checks.
-
-Phase-2 preference order:
-
-- primary: `sensor.component_backend_profile`, `sensor.component_ma_api_url`
-- compatibility fallback: `sensor.ma_server_profile_effective`, `sensor.ma_api_url`
-
-Phase-3 runtime/read-lane note:
-
-- Runtime REST consumers and read-lane validation now run component-first for backend/API endpoint surfaces with bounded helper fallback retained for rollback safety.
-- `sensor.ma_server_profile_effective` now resolves component backend-profile first when available, while preserving helper-based fallback semantics.
-- For one-screen validation, use `docs/testing/raw/meta_component_full_stack_tester.jinja` and confirm `backend/api read lane: ready`.
-
-This keeps testing fast and reversible while preserving the discovery-first/fail-closed routing posture.
-
-Cutover note:
-
-- Component is the primary development lane for net-new control-center behavior.
-- Legacy runtime remains a rollback-safe compatibility baseline until bounded retirement gates are completed.
-
-For P6 execution-lane validation evidence, use:
-
-- [`docs/testing/raw/p6_s04_control_input_execution_monitor.jinja`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/testing/raw/p6_s04_control_input_execution_monitor.jinja)
-- [`docs/testing/raw/p6_s04_control_input_execution_checklist.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/testing/raw/p6_s04_control_input_execution_checklist.md)
-
-## Step-by-step runtime setup (operator flow)
-
-1. Copy/setup required package and ESPHome config references for your install.
-2. Ensure placeholders from [`docs/setup/SPECTRA-HA-CONFIG-PLACEHOLDERS.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/setup/SPECTRA-HA-CONFIG-PLACEHOLDERS.md) are resolved with your local values.
-3. Store secrets using `!secret` and local-only files (never commit deployment secrets).
-4. Validate HA configuration and template entities.
-5. Compile ESPHome configuration.
-6. Deploy OTA/flash and confirm success.
-7. Verify routing, room/target options, and core controls in HA UI.
-
-Deployment schema note (ESPHome 2026.4.x):
-
-- Active OTA config should use platform-list entries under `ota:` (`esphome` + `web_server`).
-- `web_server.ota: true` is not valid for modern ESPHome builds and should not be used in active runtime configs.
-
-Expected result after Step 7:
-
-- no placeholder-only room/target menus,
-- control-path metadata is present,
-- at least one audio and one lighting action succeed and reflect state.
-
-## Integration checks with your own HA
-
-- Target discovery surfaces are populated (no placeholder-only menus).
-- Control path metadata resolves correctly (`control_path`, `control_capable`).
-- Audio and lighting controls both operate and reflect expected state.
-- Menu feedback and selected target synchronization are stable.
-
-## Verification matrix (quick)
-
-| Check | Pass condition |
-| --- | --- |
-| Discovery | Room/target options are concrete, not placeholder-only |
-| Routing | `control_path` and `control_capable` are present/consistent |
-| Audio actions | Transport/volume actions apply and state reflects changes |
-| Lighting actions | Brightness/color actions apply and state reflects changes |
-| Restart resilience | State and options recover correctly after restart |
-
-## Bug reporting when setup fails
-
-Use the issue form and include:
-
-- exact repro steps,
-- affected area,
-- branch/version context,
-- redacted logs and config snippets,
-- impact and workaround.
-
-See: [`docs/wiki/Welcome-README-and-Bug-Workflow.md`](Welcome-README-and-Bug-Workflow).
-
-Attach these when possible:
-
-- runtime build/deploy evidence,
-- concise repro timeline,
-- redacted config snippets,
-- affected area + impact statement.
+- `spectra_ls.set_control_center_settings`
+- `spectra_ls.execute_control_center_input` (start with dry-run)
 
 ## Fast failure triage
 
-| If you see this | Check this first | Then do this |
+| Symptom | First check | Next move |
 | --- | --- | --- |
-| Empty room/target options | Placeholder resolution and helper entities | Re-apply local values, reload templates/helpers, rerun checks |
-| Route keeps deferring/no target | Active target/helper state + route metadata | Set a known-good target and revalidate `control_path` + `control_capable` |
-| Scene/input mapping does nothing | Control Center mapping + read-only mode | Check integration options, confirm mapping exists, and verify `read_only_mode` behavior |
+| Empty room/target options | Placeholder resolution + helper/entity health | Re-apply local values, reload, retry |
+| No route / deferred route | Active target + `control_path`/`control_capable` | Set known-good target and retest |
+| Mapping feels ignored | Read-only mode + current mapping | Re-open Configure, verify applied settings |
 
-## Custom component setup roadmap (stub)
+## If setup fails hard
 
-Setup will gradually move from package-heavy wiring to guided integration flows in [`custom_components/spectra_ls`](https://github.com/the-butterfry/spectra-ls/tree/main/custom_components/spectra_ls).
+Open a bug with:
 
-Roadmap source:
+- deterministic repro
+- expected vs actual
+- redacted logs/config
+- commit/version context
+- user impact
 
-- [`docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md)
-- [`docs/roadmap/v-next-NOTES.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/roadmap/v-next-NOTES.md)
+Routing pages:
 
-As each phase lands, this page will gain concrete screenshots/steps/migration notes.
+- [Welcome, README, and Bug Workflow](Welcome-README-and-Bug-Workflow)
+- [Operations Runbooks](Operations-Runbooks)
 
-Release cadence note:
+## References
 
-- HACS publication should follow intentional release tags, not every commit pushed to `main`.
-- Keep rapid iteration in Git history; publish when a release checkpoint is explicitly ready.
+- Setup placeholders: [`docs/setup/SPECTRA-HA-CONFIG-PLACEHOLDERS.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/setup/SPECTRA-HA-CONFIG-PLACEHOLDERS.md)
+- Runtime roadmap: [`docs/roadmap/v-next-NOTES.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/roadmap/v-next-NOTES.md)
+- Component roadmap: [`docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md)

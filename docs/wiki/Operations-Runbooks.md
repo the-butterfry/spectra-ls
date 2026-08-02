@@ -1,35 +1,32 @@
 <!-- Description: Practical operations runbooks for docs parity, runtime validation, deployment proof, and rollback readiness. -->
-<!-- Version: 2026.05.01.1 -->
-<!-- Last updated: 2026-05-01 -->
+<!-- Version: 2026.08.01.2 -->
+<!-- Last updated: 2026-08-01 -->
 
 # Operations Runbooks
 
-Use this page when you need the exact “what do I do next?” steps.
+Use this page when something is broken and you want a clear next step, not a theory lecture.
 
-## Start with symptom routing
+## Symptom routing
 
 | If your problem is... | Start here |
 | --- | --- |
-| Docs out of sync across README/wiki/roadmaps | Documentation parity runbook |
-| Runtime change needs build/deploy proof | Runtime-impacting change runbook |
-| Wiki publishing failed in Actions | Wiki sync failed runbook |
-| Issue needs triage-to-execution path | Bug intake to execution runbook |
+| Docs are out of sync | Documentation parity runbook |
+| Runtime change needs proof | Runtime-impacting change runbook |
+| Wiki sync is failing | Wiki sync failed runbook |
+| Bug needs triage routing | Bug intake to execution runbook |
 
 ## Documentation parity runbook
 
-1. Update [`docs/CHANGELOG.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/CHANGELOG.md) first.
-2. Update the affected roadmap docs:
+1. Update [`docs/CHANGELOG.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/CHANGELOG.md).
+2. Update affected roadmap docs:
    - [`docs/roadmap/v-next-NOTES.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/roadmap/v-next-NOTES.md)
    - [`docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`](https://github.com/the-butterfry/spectra-ls/blob/main/docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md)
-3. Update any changed wiki source pages under [`docs/wiki/`](https://github.com/the-butterfry/spectra-ls/tree/main/docs/wiki).
-4. Update [`README.md`](https://github.com/the-butterfry/spectra-ls/blob/main/README.md) only when user-facing behavior or workflow changed.
-5. Validate markdown and file diagnostics.
+3. Update changed wiki pages under [`docs/wiki/`](https://github.com/the-butterfry/spectra-ls/tree/main/docs/wiki).
+4. Update [`README.md`](https://github.com/the-butterfry/spectra-ls/blob/main/README.md) if user-facing behavior/workflow changed.
+5. Run markdown/diagnostic checks.
 6. Commit and push with a clear slice label.
 
-Expected result:
-
-- changelog + roadmap + docs stay in sync,
-- no “mystery” documentation drift between pages.
+Outcome: no mystery drift between README, roadmap, and wiki.
 
 ## Runtime-impacting change runbook
 
@@ -58,7 +55,7 @@ Required proof lines:
    - push a small change under [`docs/wiki/*`](https://github.com/the-butterfry/spectra-ls/tree/main/docs/wiki) and rerun.
 4. Confirm the `Sync docs/wiki to GitHub Wiki` step is green.
 
-Quick triage checklist:
+Quick triage cheatsheet:
 
 - If clone of `<repo>.wiki.git` fails: wiki is disabled/uninitialized or token cannot read it.
 - If push fails with auth error: token scope/target repo is wrong.
@@ -71,7 +68,7 @@ Quick triage checklist:
 4. Move to implementation only after scope is clear.
 5. Require PR evidence + docs parity before merge.
 
-## Required proof in status updates
+## Proof required in status updates
 
 - Build result (success/failure summary)
 - OTA result (`OTA successful` or exact failure)

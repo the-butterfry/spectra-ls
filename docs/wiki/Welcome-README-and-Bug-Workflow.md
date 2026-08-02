@@ -1,85 +1,63 @@
 <!-- Description: First-stop operator page for orientation, support routing, and high-quality bug submission workflow. -->
-<!-- Version: 2026.05.02.1 -->
-<!-- Last updated: 2026-05-02 -->
+<!-- Version: 2026.08.01.2 -->
+<!-- Last updated: 2026-08-01 -->
 
 # Welcome, README, and Bug Workflow
 
-Start here if you are new to Spectra or if something is broken and you need the right intake path.
+If you’re new, or if things are on fire, start here.
 
-## Step 1 — Read these pages first
+## Read this first
 
-1. [`README.md`](https://github.com/the-butterfry/spectra-ls/blob/main/README.md) (what Spectra is and why it exists)
-2. [`docs/wiki/Install-on-Your-Own-HA.md`](Install-on-Your-Own-HA) (strict install checklist)
-3. [`docs/wiki/User-Setup-Deploy-and-HA-Integration.md`](User-Setup-Deploy-and-HA-Integration) (operator setup and deployment)
-4. [`docs/wiki/Discussions-and-Projects-Workflow.md`](Discussions-and-Projects-Workflow) (how work moves from idea to implementation)
+1. [`README.md`](https://github.com/the-butterfry/spectra-ls/blob/main/README.md)
+2. [Install on Your Own Home Assistant](Install-on-Your-Own-HA)
+3. [User Setup, Deploy, and HA Integration](User-Setup-Deploy-and-HA-Integration)
 
-## Step 2 — Choose the right intake path
+## Pick the right channel
 
-- **Question / idea / architectural discussion** → GitHub Discussions
-- **Reproducible defect** → GitHub Issue (`bug_report.yml`)
-- **Implementation work** → GitHub Issue + Project item + PR
+- **Question / idea** → GitHub Discussions
+- **Reproducible bug** → GitHub Issue (`bug_report.yml`)
+- **Code/docs change** → Issue + PR
 
-## Step 2.5 — Fast sanity checks before filing a bug
+## Before filing a bug (saves everyone time)
 
-Do these first to avoid filing environment drift as a product defect:
+1. Confirm target/routing surfaces are not `none/unknown/unavailable`.
+2. Confirm your latest build/deploy was successful.
+3. Run the matching runbook once: [Operations Runbooks](Operations-Runbooks).
 
-1. Confirm active target and route surfaces are populated (not `none/unknown/unavailable`).
-2. Confirm latest deploy succeeded (build + OTA evidence if runtime path changed).
-3. Re-run the relevant runbook once from [`Operations-Runbooks.md`](Operations-Runbooks).
+If it still breaks, file it.
 
-If all three still fail, file the bug.
+## What makes a bug report actually useful
 
-## Step 3 — Submit a useful bug report
-
-When submitting a bug:
-
-1. Reproduce the issue with deterministic steps.
-2. Capture exact logs and relevant redacted config.
-3. Specify affected area (`esphome`, `packages`, `rp2040`, docs/tooling).
-4. Include branch/commit/version context.
-5. State user impact and any workaround.
-
-For scheduler/metadata-bridge behavior-visible reports, also include:
-
-1. Write-path lane classification (`scheduler` or `metadata_bridge`).
-2. Canonical owner file routing (`packages/ma_control_hub/template.inc` or `custom_components/spectra_ls/registry.py`).
-3. Slice-C intake integrity confirmation (no owner-bypass/forked-lane intent).
-
-Expected result:
-
-- Maintainers can reproduce quickly and route the issue without back-and-forth.
-
-## What happens after you submit
-
-1. Maintainer triages labels (`type`, `area`, `priority`).
-2. Issue is added to the Project board.
-3. Work proceeds in a scoped PR with verification evidence.
-4. Changelog/docs parity is updated in the same change set.
-5. Issue closes only after validated behavior and evidence.
-
-## Good bug reports include
-
-- Expected vs actual behavior
 - Deterministic repro steps
-- Relevant logs/output
-- Clear impact statement
-- Scope path and branch
+- Expected vs actual behavior
+- Relevant logs (redacted)
+- Scope area (`esphome`, `packages`, `custom_components`, `rp2040`, docs/tooling)
+- Commit/branch/version context
+- User impact
 
-## Copy/paste bug packet (recommended)
+### Extra fields for scheduler/metadata-bridge issues
+
+- Write-path lane (`scheduler`, `metadata_bridge`, or `not_applicable`)
+- Canonical owner surface (for this issue)
+- Owner-bypass confirmation (`no` expected)
+- Runtime/component parity expectation
+
+## Copy/paste bug packet
 
 - Repro steps:
 - Expected behavior:
 - Actual behavior:
-- Affected area (`esphome` / `packages` / `custom_components` / docs/tooling):
-- Version context (`branch`, `commit`, deployment timestamp):
-- Evidence attached (logs/config snippets/screenshots):
-- Impact + workaround (if any):
+- Affected area:
+- Version context (branch/commit/timestamp):
+- Evidence attached:
+- Impact + workaround:
 
-### Slice-C add-on fields (when scheduler/metadata bridge is involved)
+## What happens after submission
 
-- Write-path lane (`scheduler` / `metadata_bridge` / `not_applicable`):
-- Canonical owner file:
-- Owner-bypass confirmation (`no` expected):
-- Parity-anchor expectation (runtime + component):
+1. Maintainer triage (`type`, `area`, `priority`)
+2. Project board routing
+3. Scoped fix PR with proof
+4. Changelog/docs parity update
+5. Closure after behavior is verified
 
-See also: [Contributing Workflow](Contributing-Workflow) for PR-side `Slice-C write-path integrity` checklist expectations.
+For PR quality gates, use [Contributing Workflow](Contributing-Workflow).

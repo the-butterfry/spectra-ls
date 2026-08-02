@@ -1,8 +1,10 @@
-# Description: Spectra LS helpers (deprecated).
-# Version: 2026.03.28.1
-# Last updated: 2026-03-28
+# Description: Spectra LS helpers and operator toggles.
+# Version: 2026.08.01.2
+# Last updated: 2026-08-01
 # Update version/date whenever you change this file.
-#
-# NOTE:
-# This package is intentionally empty. It exists to preserve historical
-# documentation references and can be removed if no longer needed.
+
+input_boolean:
+  spectra_ls_component_diagnostics_enabled:
+    name: Spectra LS Component Diagnostics Enabled
+    icon: mdi:chart-timeline-variant
+    initial: false

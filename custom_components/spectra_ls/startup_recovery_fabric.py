@@ -1,6 +1,6 @@
 # Description: Startup-recovery fabric workflow for Spectra LS metadata boot-gate orchestration extracted from meta-fabric.
-# Version: 2026.06.22.2
-# Last updated: 2026-06-22
+# Version: 2026.08.01.4
+# Last updated: 2026-08-01
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -8,14 +8,14 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 import logging
+from time import monotonic
 from typing import Any
 from uuid import uuid4
 
 from homeassistant.helpers.event import async_call_later
 
 from .const import (
-    LEGACY_CONTROL_TARGETS,
-    LEGACY_MA_PLAYERS,
+    COMPONENT_CONTROL_TARGETS,
     WRITE_AUTH_COMPONENT,
 )
 
@@ -27,6 +27,9 @@ class StartupRecoveryFabricWorkflow:
 
     def __init__(self, coordinator: Any) -> None:
         self._coordinator = coordinator
+        self._last_wait_reason_key = ""
+        self._last_wait_publish_monotonic = 0.0
+        self._wait_publish_min_interval_s = 60.0
 
     async def async_schedule_startup_recovery(self) -> None:
         """Schedule bounded post-startup recovery for target/options and bridge alignment."""
@@ -60,14 +63,25 @@ class StartupRecoveryFabricWorkflow:
             reason_suffix = self.format_startup_boot_wait_reasons(boot_reasons)
 
             c.metadata_stack.set_last_metadata_bridge_attempt({
-                "status": "waiting_for_ma_boot",
+                "status": "waiting_for_startup_readiness",
                 "requested_at": datetime.now(UTC).isoformat(),
                 "completed_at": datetime.now(UTC).isoformat(),
                 "reason": f"{wait_reason}: {reason_suffix}",
                 "resolver_status": "never_attempted",
                 "trial_status": "never_attempted",
             })
-            c.async_set_updated_data(c.build_snapshot())
+
+            wait_reason_key = "|".join(sorted(str(item) for item in boot_reasons)) or "boot_wait_unknown"
+            now_mono = monotonic()
+            should_publish_wait = (
+                self._last_wait_reason_key != wait_reason_key
+                or self._last_wait_publish_monotonic <= 0.0
+                or (now_mono - self._last_wait_publish_monotonic) >= self._wait_publish_min_interval_s
+            )
+            if should_publish_wait:
+                c.async_set_updated_data(c.build_snapshot())
+                self._last_wait_reason_key = wait_reason_key
+                self._last_wait_publish_monotonic = now_mono
 
             if c._startup_recovery_wait_cycles <= c._startup_recovery_max_wait_cycles:
                 _LOGGER.info(
@@ -89,6 +103,8 @@ class StartupRecoveryFabricWorkflow:
             )
 
         c._startup_recovery_wait_cycles = 0
+        self._last_wait_reason_key = ""
+        self._last_wait_publish_monotonic = 0.0
         c._startup_recovery_attempt += 1
         attempt = c._startup_recovery_attempt
 
@@ -211,15 +227,37 @@ class StartupRecoveryFabricWorkflow:
         c = self._coordinator
         reasons: list[str] = []
 
-        ma_players_state = c.hass.states.get(LEGACY_MA_PLAYERS)
-        ma_players_ready = ma_players_state is not None and c._is_resolved_state(ma_players_state.state)
-        if not ma_players_ready:
-            reasons.append("ma_players_not_ready")
+        component_targets_state = c.hass.states.get(COMPONENT_CONTROL_TARGETS)
+        component_targets_count: float | None = None
+        if component_targets_state is not None and c._is_resolved_state(component_targets_state.state):
+            try:
+                component_targets_count = float(component_targets_state.state)
+            except (TypeError, ValueError):
+                component_targets_count = None
+        component_targets_ready = isinstance(component_targets_count, float) and component_targets_count > 0.0
 
-        control_targets_state = c.hass.states.get(LEGACY_CONTROL_TARGETS)
-        control_targets_ready = control_targets_state is not None and c._is_resolved_state(control_targets_state.state)
-        if not control_targets_ready:
-            reasons.append("control_targets_not_ready")
+        component_control_host_state = c.hass.states.get("sensor.component_control_host")
+        component_control_port_state = c.hass.states.get("sensor.component_control_port")
+        component_active_target_state = c.hass.states.get("sensor.component_active_target")
+        component_now_playing_entity_state = c.hass.states.get("sensor.component_now_playing_entity")
+
+        host_ready = bool(
+            component_control_host_state is not None
+            and c._is_resolved_state(component_control_host_state.state)
+        )
+        port_ready = bool(
+            component_control_port_state is not None
+            and c._is_resolved_state(component_control_port_state.state)
+        )
+        active_target_ready = bool(
+            component_active_target_state is not None
+            and c._is_resolved_state(component_active_target_state.state)
+        )
+        now_playing_entity_ready = bool(
+            component_now_playing_entity_state is not None
+            and c._is_resolved_state(component_now_playing_entity_state.state)
+        )
+        component_contract_live_ready = host_ready and port_ready and (active_target_ready or now_playing_entity_ready)
 
         target_options_plan = c._compute_component_target_options_plan()
         proposed_options = (
@@ -229,16 +267,22 @@ class StartupRecoveryFabricWorkflow:
         )
         non_none_options = [item for item in proposed_options if c._normalize_state(str(item or "")) != "none"]
         target_options_ready = len(non_none_options) > 0
+
+        strict_boot_ready = component_targets_ready and target_options_ready
+        if not component_targets_ready:
+            reasons.append("component_control_targets_not_ready")
         if not target_options_ready:
             reasons.append("active_target_options_not_ready")
 
-        boot_ready = ma_players_ready and control_targets_ready and target_options_ready
+        boot_ready = strict_boot_ready or component_contract_live_ready
+        if boot_ready and component_contract_live_ready:
+            reasons = []
         return boot_ready, reasons
 
     @staticmethod
     def startup_wait_reason_prefix(reasons: list[str]) -> str:
         """Return human-readable startup wait prefix aligned to the blocking phase."""
-        ma_boot_blockers = {"ma_players_not_ready", "control_targets_not_ready"}
+        ma_boot_blockers = {"component_control_targets_not_ready", "control_targets_not_ready"}
         if any(item in ma_boot_blockers for item in reasons):
             return "waiting for Music Assistant boot readiness"
         return "waiting for control contract readiness after Music Assistant boot"
@@ -250,7 +294,7 @@ class StartupRecoveryFabricWorkflow:
             return "Music Assistant startup signals are still initializing"
 
         reason_map = {
-            "ma_players_not_ready": "Music Assistant player list is not ready yet",
+            "component_control_targets_not_ready": "component control-target count is not ready yet",
             "control_targets_not_ready": "control target catalog is not ready yet",
             "active_target_helper_missing": "active-target helper is not available yet",
             "active_target_options_not_ready": "active-target options are still initializing",

@@ -1,6 +1,6 @@
 # Description: Registry scaffold helpers for Spectra LS Phase 2 read-only target normalization and deterministic payload parsing with helper/active-target fallback seeding hardening plus host-type capability/path classification safeguards.
-# Version: 2026.05.03.2
-# Last updated: 2026-05-03
+# Version: 2026.08.01.1
+# Last updated: 2026-08-01
 # PARITY DIRECTIVE (until full cutover): runtime-affecting contract behavior changed here must be mirrored/reconciled in `packages/` + `esphome/`
 # in the same slice, with explicit implemented/shim/defer two-track disposition and version-metadata review.
 
@@ -536,6 +536,14 @@ def build_registry_snapshot(
                 room_meta_by_target[target_id] = room_meta
             if isinstance(room, dict) and target_id not in room_entry_by_target:
                 room_entry_by_target[target_id] = room
+
+    # Component-only cutover fallback: if legacy template-derived target feeds are
+    # absent, discover media_player entities directly so registry remains usable.
+    if len(registry_targets) == 0:
+        for state_obj in hass.states.async_all("media_player"):
+            entity_id = str(getattr(state_obj, "entity_id", "") or "").strip()
+            if entity_id and entity_id.lower() not in INVALID_STATE_VALUES:
+                registry_targets.add(entity_id)
 
     unresolved_sources: list[str] = []
     if control_host_state is None:

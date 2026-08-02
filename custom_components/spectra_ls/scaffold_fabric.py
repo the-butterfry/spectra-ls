@@ -1,6 +1,6 @@
 # Description: Scaffold-fabric workflow for Spectra LS scaffold/inventory/backend assembly extracted from meta-fabric.
-# Version: 2026.06.22.1
-# Last updated: 2026-06-22
+# Version: 2026.08.01.2
+# Last updated: 2026-08-01
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -9,10 +9,10 @@ from __future__ import annotations
 from typing import Any
 
 from .const import (
+    COMPONENT_NOW_PLAYING_ENTITY,
     LEGACY_CONTROL_HOST,
     LEGACY_CONTROL_TARGETS,
     LEGACY_MA_API_URL,
-    LEGACY_META_DETECTED_ENTITY,
     LEGACY_META_OVERRIDE_ACTIVE,
     LEGACY_META_OVERRIDE_ENTITY,
     LEGACY_META_RESOLVER,
@@ -126,8 +126,8 @@ class ScaffoldFabricWorkflow:
                 best_score = 0
 
         detected_candidate = str(
-            c.hass.states.get(LEGACY_META_DETECTED_ENTITY).state
-            if c.hass.states.get(LEGACY_META_DETECTED_ENTITY) is not None
+            c.hass.states.get(COMPONENT_NOW_PLAYING_ENTITY).state
+            if c.hass.states.get(COMPONENT_NOW_PLAYING_ENTITY) is not None
             else ""
         ).strip()
         detected_candidate = detected_candidate if c._is_resolved_state(detected_candidate) else ""
@@ -165,7 +165,7 @@ class ScaffoldFabricWorkflow:
                 "current_override_active": override_active,
                 "current_override_entity": override_entity,
                 "meta_resolver_entity": LEGACY_META_RESOLVER,
-                "detected_meta_entity_source": LEGACY_META_DETECTED_ENTITY,
+                "detected_meta_entity_source": COMPONENT_NOW_PLAYING_ENTITY,
                 "best_candidate": best_candidate,
                 "best_score": best_score,
                 "detected_candidate": detected_candidate,
@@ -263,12 +263,30 @@ class ScaffoldFabricWorkflow:
         if api_url_state is not None:
             api_url = str(api_url_state.state or "").strip()
 
+        selected_url_fallback = ""
+        if not c._is_resolved_state(selected_url):
+            internal_url = str(getattr(c.hass.config, "internal_url", "") or "").strip()
+            external_url = str(getattr(c.hass.config, "external_url", "") or "").strip()
+            selected_url_fallback = internal_url or external_url
+            if c._is_resolved_state(selected_url_fallback):
+                selected_url = selected_url_fallback.rstrip("/")
+
+        if not c._is_resolved_state(api_url) and c._is_resolved_state(selected_url):
+            api_url = f"{selected_url.rstrip('/')}/api"
+
+        if not c._is_resolved_state(profile_value):
+            if c._is_resolved_state(selected_url):
+                profile_value = "component_discovered"
+            elif c._is_resolved_state(api_url):
+                profile_value = "api_only_discovered"
+
         return {
             "profile_entity": LEGACY_SERVER_PROFILE,
             "effective_entity": LEGACY_SERVER_PROFILE_EFFECTIVE,
             "api_url_entity": LEGACY_MA_API_URL,
             "profile": profile_value,
             "selected_url": selected_url,
+            "selected_url_fallback": selected_url_fallback,
             "api_url": api_url,
             "profile_resolved": c._is_resolved_state(profile_value),
             "selected_url_resolved": c._is_resolved_state(selected_url),

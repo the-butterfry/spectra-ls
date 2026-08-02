@@ -1,6 +1,6 @@
 # Description: Lighting controls package for Spectra LS System.
-# Version: 2026.07.04.1
-# Last updated: 2026-07-04
+# Version: 2026.07.31.1
+# Last updated: 2026-07-31
 # Update version/date whenever you change this file.
 
 binary_sensor:
@@ -195,6 +195,8 @@ sensor:
           if (selection_changed) {
             id(push_room_select_to_ha).execute();
             id(push_target_select_to_ha).execute();
+            ESP_LOGI("lighting", "selection changed room=%d target=%d (from room=%d target=%d); deferring brightness apply for route sync",
+                     id(selected_room), id(selected_target), prev_room, prev_target);
           }
           id(lighting_brightness) = clamped;
           id(brightness_active_until_ms) = now + ${ring_active_window_ms};
@@ -203,8 +205,13 @@ sensor:
             id(lighting_adjust_mode) = 3;
           }
           if (lighting_menu_active) {
-            id(lighting_brightness_pending) = false;
-            id(apply_lighting_brightness).execute();
+            if (selection_changed) {
+              id(lighting_brightness_pending) = false;
+              id(apply_lighting_brightness_deferred).execute();
+            } else {
+              id(lighting_brightness_pending) = false;
+              id(apply_lighting_brightness).execute();
+            }
           } else {
             id(lighting_return_to_audio_ms) = now + ${lighting_hold_ms};
             id(lighting_brightness_pending) = true;
@@ -784,6 +791,12 @@ script:
     mode: restart
     then:
       - script.execute: apply_lighting_common
+
+  - id: apply_lighting_brightness_deferred
+    mode: restart
+    then:
+      - delay: ${brightness_send_interval_ms}ms
+      - script.execute: apply_lighting_brightness
 
   - id: apply_lighting_brightness
     mode: restart

@@ -1,6 +1,6 @@
 # Description: Sensor entities for Spectra LS shadow parity routing surfaces with Phase 3 write-control, Phase 4 diagnostics attributes, and Phase 6/8 control-center settings/readiness/last-attempt visibility, including recorder-safe attribute payload sizing and shared MA authority-contract packet propagation.
-# Version: 2026.06.20.3
-# Last updated: 2026-06-20
+# Version: 2026.08.01.2
+# Last updated: 2026-08-01
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -157,10 +157,7 @@ def _component_meta_candidates_packet(entity: CoordinatorEntity) -> dict[str, An
 def _component_active_target(data: dict[str, Any]) -> str:
     route_trace = _dict_surface(data, "route_trace")
     target = str(route_trace.get("active_target", "") or "").strip()
-    if target:
-        return target
-    parity = _dict_surface(data, "parity")
-    return str(parity.get("active_target", "") or "").strip()
+    return target
 
 
 def _component_control_hosts(data: dict[str, Any]) -> str:
@@ -195,9 +192,7 @@ def _component_control_hosts(data: dict[str, Any]) -> str:
         selected_host = str(selected_target.get("host", "") or "").strip()
         if selected_host and selected_target_matches_active:
             return selected_host
-
-    parity = _dict_surface(data, "parity")
-    return str(parity.get("control_hosts", "") or "").strip()
+    return ""
 
 
 def _component_control_port(data: dict[str, Any]) -> str:
@@ -212,11 +207,6 @@ def _component_control_port(data: dict[str, Any]) -> str:
     has_host = bool(_component_control_hosts(data))
     if active_path == "linkplay_tcp" and has_host:
         return "8899"
-
-    parity = _dict_surface(data, "parity")
-    fallback = str(parity.get("control_port", "") or "").strip()
-    if fallback.isdigit():
-        return fallback
     return ""
 
 
@@ -351,6 +341,7 @@ class SpectraLsComponentActiveTargetSensor(CoordinatorEntity, SensorEntity):
     _attr_icon = "mdi:crosshairs-gps"
     _attr_name = "Component Active Target"
     _attr_unique_id = "spectra_ls_component_active_target"
+    _unrecorded_attributes = frozenset({"resolved_control_path", "route_decision", "route_reason"})
 
     @property
     def native_value(self):
@@ -364,7 +355,6 @@ class SpectraLsComponentActiveTargetSensor(CoordinatorEntity, SensorEntity):
             "resolved_control_path": route_trace.get("resolved_control_path", ""),
             "route_decision": route_trace.get("decision", ""),
             "route_reason": route_trace.get("reason", ""),
-            "captured_at": data.get("captured_at"),
         }
 
 
@@ -376,6 +366,7 @@ class SpectraLsComponentControlHostsSensor(CoordinatorEntity, SensorEntity):
     _attr_icon = "mdi:server-network"
     _attr_name = "Component Control Hosts"
     _attr_unique_id = "spectra_ls_component_control_hosts"
+    _unrecorded_attributes = frozenset({"authority_mode", "component_authoritative_candidate", "gate_status"})
 
     @property
     def native_value(self):
@@ -389,7 +380,6 @@ class SpectraLsComponentControlHostsSensor(CoordinatorEntity, SensorEntity):
             "authority_mode": host_cutover.get("authority_mode", "component"),
             "component_authoritative_candidate": host_cutover.get("component_authoritative_candidate", {}),
             "gate_status": host_cutover.get("status", "blocked"),
-            "captured_at": data.get("captured_at"),
         }
 
 
@@ -401,6 +391,7 @@ class SpectraLsComponentControlHostSensor(CoordinatorEntity, SensorEntity):
     _attr_icon = "mdi:router-network"
     _attr_name = "Component Control Host"
     _attr_unique_id = "spectra_ls_component_control_host"
+    _unrecorded_attributes = frozenset({"control_hosts"})
 
     @property
     def native_value(self):
@@ -414,7 +405,6 @@ class SpectraLsComponentControlHostSensor(CoordinatorEntity, SensorEntity):
         data = self.coordinator.data
         return {
             "control_hosts": _component_control_hosts(data),
-            "captured_at": data.get("captured_at"),
         }
 
 
@@ -426,6 +416,7 @@ class SpectraLsComponentControlTargetsSensor(CoordinatorEntity, SensorEntity):
     _attr_icon = "mdi:format-list-bulleted-square"
     _attr_name = "Component Control Targets"
     _attr_unique_id = "spectra_ls_component_control_targets"
+    _unrecorded_attributes = frozenset({"entities", "labels", "target_count"})
 
     @property
     def native_value(self):
@@ -463,7 +454,6 @@ class SpectraLsComponentControlTargetsSensor(CoordinatorEntity, SensorEntity):
             "entities": entities,
             "labels": labels,
             "target_count": len(entities),
-            "captured_at": data.get("captured_at"),
         }
 
 
@@ -475,6 +465,7 @@ class SpectraLsComponentControlPortSensor(CoordinatorEntity, SensorEntity):
     _attr_icon = "mdi:ethernet-cable"
     _attr_name = "Component Control Port"
     _attr_unique_id = "spectra_ls_component_control_port"
+    _unrecorded_attributes = frozenset({"resolved_control_path", "control_hosts"})
 
     @property
     def native_value(self):
@@ -492,7 +483,6 @@ class SpectraLsComponentControlPortSensor(CoordinatorEntity, SensorEntity):
         return {
             "resolved_control_path": active_path,
             "control_hosts": _component_control_hosts(data),
-            "captured_at": data.get("captured_at"),
         }
 
 
@@ -504,6 +494,15 @@ class SpectraLsComponentBackendProfileSensor(CoordinatorEntity, SensorEntity):
     _attr_icon = "mdi:server"
     _attr_name = "Component Backend Profile"
     _attr_unique_id = "spectra_ls_component_backend_profile"
+    _unrecorded_attributes = frozenset(
+        {
+            "profile_entity",
+            "effective_entity",
+            "selected_url",
+            "profile_resolved",
+            "selected_url_resolved",
+        }
+    )
 
     @property
     def native_value(self):
@@ -521,7 +520,6 @@ class SpectraLsComponentBackendProfileSensor(CoordinatorEntity, SensorEntity):
             "selected_url": packet.get("selected_url", ""),
             "profile_resolved": packet.get("profile_resolved", False),
             "selected_url_resolved": packet.get("selected_url_resolved", False),
-            "captured_at": data.get("captured_at"),
         }
 
 
@@ -533,6 +531,14 @@ class SpectraLsComponentApiUrlSensor(CoordinatorEntity, SensorEntity):
     _attr_icon = "mdi:api"
     _attr_name = "Component MA API URL"
     _attr_unique_id = "spectra_ls_component_ma_api_url"
+    _unrecorded_attributes = frozenset(
+        {
+            "api_url_entity",
+            "api_url_resolved",
+            "selected_url",
+            "selected_url_resolved",
+        }
+    )
 
     @property
     def native_value(self):
@@ -554,7 +560,6 @@ class SpectraLsComponentApiUrlSensor(CoordinatorEntity, SensorEntity):
             "api_url_resolved": packet.get("api_url_resolved", False),
             "selected_url": packet.get("selected_url", ""),
             "selected_url_resolved": packet.get("selected_url_resolved", False),
-            "captured_at": data.get("captured_at"),
         }
 
 
@@ -1067,6 +1072,9 @@ class SpectraLsShadowSensor(CoordinatorEntity, SensorEntity):
     # 16KB attribute warnings on high-volume nested payloads.
     _unrecorded_attributes = frozenset(
         {
+            "legacy_value",
+            "unresolved_sources",
+            "mismatches",
             "route_trace",
             "contract_validation",
             "selection_handoff_validation",
@@ -1098,7 +1106,6 @@ class SpectraLsShadowSensor(CoordinatorEntity, SensorEntity):
             "legacy_value": data["legacy"].get(self._key),
             "unresolved_sources": data.get("unresolved_sources", []),
             "mismatches": data.get("mismatches", []),
-            "captured_at": data.get("captured_at"),
         }
 
         # Keep non-primary shadow entities lightweight to avoid Recorder attribute-size drops.

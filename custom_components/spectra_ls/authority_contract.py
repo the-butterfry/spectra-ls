@@ -1,6 +1,6 @@
 # Description: Shared MA authority-contract packet builder for diagnostics, entity attributes, and service responses including cutover-prep and proof-summary fields with packet metadata.
-# Version: 2026.05.03.6
-# Last updated: 2026-05-03
+# Version: 2026.08.01.7
+# Last updated: 2026-08-01
 # PARITY DIRECTIVE: Behavior/contract edits must include same-slice two-track parity review and version-metadata review (runtime + component).
 
 from __future__ import annotations
@@ -63,6 +63,7 @@ def build_authority_contract_packet(snapshot: dict[str, Any]) -> dict[str, Any]:
     ]
 
     metadata_bridge_validation = PayloadSurfaceFabric.dict_surface(snapshot, "metadata_bridge_validation")
+    contract_validation = PayloadSurfaceFabric.dict_surface(snapshot, "contract_validation")
 
     write_controls = PayloadSurfaceFabric.dict_surface(snapshot, "write_controls")
     bridge_attempt = PayloadSurfaceFabric.dict_surface(write_controls, "metadata_bridge_last_attempt")
@@ -101,7 +102,28 @@ def build_authority_contract_packet(snapshot: dict[str, Any]) -> dict[str, Any]:
     if not bool(proof_in_window_assertions.get("metadata_owner_component", False)):
         authority_contract_blocking_reasons.append("proof_in_window_owner_not_component")
 
-    authority_contract_ready = len(authority_contract_blocking_reasons) == 0
+    strict_authority_contract_ready = len(authority_contract_blocking_reasons) == 0
+
+    bridge_status = str(metadata_bridge_validation.get("bridge_status", "") or "")
+    bridge_blocking_reasons = metadata_bridge_validation.get("blocking_reasons", [])
+    if not isinstance(bridge_blocking_reasons, list):
+        bridge_blocking_reasons = []
+    bridge_blocking_reasons = [
+        str(reason) for reason in bridge_blocking_reasons if isinstance(reason, str)
+    ]
+    bridge_blocked = bridge_status.startswith("blocked_")
+    bridge_waiting_startup = "waiting_for_startup_readiness" in bridge_blocking_reasons
+
+    contract_valid = bool(contract_validation.get("valid", False))
+    operational_authority_ready = (
+        metadata_authority_owner == "component_contract_surfaces"
+        and metadata_cutover_active
+        and contract_valid
+        and not bridge_blocked
+        and not bridge_waiting_startup
+    )
+
+    authority_contract_ready = strict_authority_contract_ready or operational_authority_ready
 
     packet_generated_at = datetime.now(UTC).isoformat()
 
@@ -120,9 +142,12 @@ def build_authority_contract_packet(snapshot: dict[str, Any]) -> dict[str, Any]:
             1 for passed in cutover_prep_checks.values() if bool(passed)
         ),
         "authority_contract_ready": authority_contract_ready,
+        "authority_contract_strict_ready": strict_authority_contract_ready,
+        "authority_contract_operational_ready": operational_authority_ready,
         "authority_contract_blocking_reasons": authority_contract_blocking_reasons,
         "authority_contract_blocker_count": len(authority_contract_blocking_reasons),
-        "bridge_status": str(metadata_bridge_validation.get("bridge_status", "") or ""),
+        "bridge_status": bridge_status,
+        "bridge_blocking_reasons": bridge_blocking_reasons,
         "trial_status": str(metadata_bridge_validation.get("trial_status", "") or ""),
         "proof_checkpoint_presence": proof_checkpoint_presence,
         "required_proof_checkpoints_present": required_proof_checkpoints_present,

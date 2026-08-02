@@ -1,12 +1,39 @@
 <!-- Description: Legacy codepath cleanup tracker for runtime/component/ESP retirement tasks during component-first migration. -->
-<!-- Version: 2026.06.22.1 -->
-<!-- Last updated: 2026-06-22 -->
+<!-- Version: 2026.08.01.3 -->
+<!-- Last updated: 2026-08-01 -->
 
 # Legacy Codepath Cleanup Tracker
 
 ## Purpose
 
 Track remaining legacy runtime/ESP/component dependencies so retirement work is explicit, scheduled, and verified instead of lingering as stale compatibility scaffolding.
+
+## Legacy reference retirement matrix (2026-08-01)
+
+Latest run update (2026-08-01, runtime execution-lane hard retirement sweep):
+
+- Retired active Home Assistant runtime loader participation for `packages/ma_control_hub/*` by disabling all includes in `packages/ma_control_hub.yaml`; package fragments remain as historical compatibility inventory only (not active execution lane).
+- Retired active ESP ambiguity dependency from `esphome/spectra_ls_system/packages/spectra-ls-audio-tcp.yaml` by removing `binary_sensor.ma_control_ambiguous` subscription and active gating usage.
+- Validation evidence captured: `bin/esphome_spectra_build_local.sh` success + OTA upload success (`INFO OTA successful`) to `192.168.10.40`.
+
+This matrix is the active source of truth for “strip/annotate legacy references” sequencing. It separates behavior-coupled references from diagnostics/history noise so cleanup can proceed safely.
+
+| Scope | File/group | Legacy reference class | Current role | Disposition |
+| --- | --- | --- | --- | --- |
+| component-active | `custom_components/spectra_ls/const.py` | `LEGACY_*` constants and `legacy_contract_surfaces` tokens | Compatibility contract inventory + bounded fallbacks for migration windows | keep (compatibility-shimmed), prune only dead/unreferenced constants in dedicated slices |
+| component-active | `custom_components/spectra_ls/{snapshot_fabric.py,validation_fabric.py,selection_fabric.py,metadata_stack.py,scaffold_fabric.py,coordinator.py,sensor.py,binary_sensor.py}` | `LEGACY_*`, `ma_players`, `ma_meta_*`, `ma_override_*` references | Active compatibility reads/telemetry and validator inventory under component-primary rollout | keep where behavior-coupled; retire lane-by-lane per LC-06/07/08 gates |
+| runtime-removed | `packages/ma_control_hub/template.inc` | `ma_players`, `ma_meta_stale_s`, `ma_meta_detected_entity`, `ma_override_active` | Legacy runtime compatibility/read-lane code | hard-deleted 2026-08-01 (external backup path: `/tmp/spectra_legacy_backup_2026-08-01/ma_control_hub/`) |
+| runtime-removed | `packages/ma_control_hub/{automation.inc,script.inc,input_*.inc,rest*.inc}` | legacy helper/script contracts | Legacy runtime compatibility implementation code | hard-deleted 2026-08-01 (external backup path: `/tmp/spectra_legacy_backup_2026-08-01/ma_control_hub/`) |
+| esp-active | `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md` | legacy helper references in copy/paste diagnostics | Diagnostics-only compatibility inventory | annotate as non-gating compatibility references (safe cleanup lane) |
+| docs-active | `docs/testing/DEVTOOLS-TEMPLATES.local.md` | legacy helper references | Diagnostics-only compatibility inventory and migration guidance | annotate as component-first/non-gating; do not treat as active dependency |
+| docs-active | `docs/testing/raw/*.jinja` (selected) | `legacy_*` wording and fallback checks | Validation/reporting semantics for migration tracking | keep where explicit migration evidence is required; retire once gates close |
+| historical | `esphome/spectra_ls_system/previous/**`, `esphome/control-py/previous/**` | legacy helper/entity strings | Archive/historical context only | keep as historical (non-active), exclude from active cleanup blockers |
+
+### Immediate safe cleanup lane (docs/diagnostics only)
+
+1. DevTools catalog wording: mark legacy helper checks as compatibility inventory (non-gating).
+2. Preserve raw validation templates that are gate artifacts (`CA-S06/07/08`, `component_cutover_full_validation`) until explicit retirement decision.
+3. Defer behavior-path removals in `packages/ma_control_hub/**` and active `custom_components/spectra_ls/**` until corresponding LC lane evidence is captured.
 
 ## Status legend
 
@@ -25,7 +52,7 @@ Track remaining legacy runtime/ESP/component dependencies so retirement work is 
 | LC-03 | ESP control port feed | `sensor.ma_control_port` | `packages/spectra-ls-audio-tcp.yaml`, substitutions | Add component-owned control-port surface fed by route packet and migrate substitution | Build + OTA + route control send tests pass using component port feed; reconnect guard behavior parity maintained | validated (2026-05-03, Slice-BH build+OTA) |
 | LC-04 | ESP active friendly label | `sensor.ma_active_friendly` | `packages/spectra-ls-audio-tcp.yaml` | Replace with component-native friendly context surface | Log/status output uses component friendly feed; no runtime friendly dependency remains | validated (2026-05-03, Slice-BG build+OTA) |
 | LC-05 | Component internal legacy scaffold constants | `LEGACY_*` resolver/helper constants | `custom_components/spectra_ls/*_fabric.py`, `coordinator.py` | Split constants into `compat_required` vs `retire_candidate`, remove dead legacy-only accesses | No unreachable legacy constants in active path; compatibility-only constants have explicit retirement gate IDs | validated (2026-05-04, Slice-BQ constant governance split + diagnostics exposure; no dead `LEGACY_*` constants detected in active component path inventory) |
-| LC-06 | Runtime package retirement staging | `packages/ma_control_hub/*` read/write compatibility surfaces | runtime templates/scripts/automations | Decompose runtime legacy surfaces into explicit retire lanes with contract replacements and parity gates | LC-06 runtime inventory lanes are mapped, each lane has replacement contract + gate + disposition, and non-required lanes are retired or blocked with rationale | active (2026-05-04 decomposition pass; lane execution pending) |
+| LC-06 | Runtime package retirement staging | `packages/ma_control_hub/*` read/write compatibility surfaces | runtime templates/scripts/automations | Decompose runtime legacy surfaces into explicit retire lanes with contract replacements and parity gates | Active package loader path retired and dormant runtime implementation hard-deleted after external backup | retired (2026-08-01 loader retirement + hard-delete complete) |
 | LC-07 | ESP control-route fallback retirement | `ha_ma_control_hosts_fallback`, `ha_ma_control_host_fallback`, `ha_ma_control_port_fallback` + runtime `sensor.ma_control_*` feeds | `esphome/spectra_ls_system/substitutions.yaml`, `packages/spectra-ls-audio-tcp.yaml`, `packages/spectra-ls-system.yaml` | Remove runtime feed fallbacks and fallback listeners after component route feed stability soak | 14-day reconnect soak with zero fallback-apply logs; component route feeds remain resolved across HA/ESP reconnect cycles; OTA+runtime proof captured | retired (2026-06-22 active-path fallback telemetry artifacts removed; component route/scaffold sources remain canonical) |
 | LC-08 | ESP metadata helper passthrough retirement staging | helper-backed metadata override passthrough read-lane | `esphome/spectra_ls_system/substitutions.yaml`, `packages/spectra-ls-audio-tcp.yaml`, `packages/spectra-ls-ui.yaml`, `custom_components/spectra_ls/{sensor.py,binary_sensor.py}` | Replace passthrough read-lane with component-owned metadata override status packet and retire helper passthrough dependency | ESP substitutions consume component metadata override entities; build+OTA+menu regression evidence captured; helper passthrough no longer required by active ESP lane | active (2026-05-04 component status entities + substitution cutover landed; validation/removal pending) |
 

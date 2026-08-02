@@ -1,6 +1,6 @@
 # Description: Home Assistant config for Plex now-playing via direct Plex sessions.
-# Version: 2026.06.22.2
-# Last updated: 2026-06-22
+# Version: 2026.08.01.3
+# Last updated: 2026-08-01
 # Update version/date whenever you change this file.
 input_text:
   plex_base_url:
@@ -14,13 +14,9 @@ input_text:
     initial: "all"
 
 rest:
-  - resource_template: >-
-      {% set base = states('input_text.plex_base_url') %}
-      {% set url = base if base not in ['unknown','unavailable',''] else '' %}
-      {{ url }}/status/sessions
+  - resource: !secret plex_sessions_url
     method: GET
     headers:
-      X-Plex-Token: !secret plex_token
       Accept: application/json
     scan_interval: 5
     timeout: 10

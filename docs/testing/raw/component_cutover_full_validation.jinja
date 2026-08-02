@@ -1,0 +1,205 @@
+{# Description: One-paste Home Assistant Dev Tools validator for Spectra LS component-only cutover integrity (authority, route, metadata, watcher surfaces, scheduler/selection attempts). #}
+{# Version: 2026.08.01.2 #}
+{# Last updated: 2026-08-01 #}
+
+{# =========================
+  Spectra LS Component-Only Cutover Full Validation
+  Usage:
+    1) Paste in Home Assistant -> Developer Tools -> Template
+    2) Run while component is active
+  Goal:
+    - Verify component-only lane is healthy end-to-end
+    - Detect legacy drift and unresolved contract blockers
+  ========================= #}
+
+{% set invalid = ['', 'none', 'unknown', 'unavailable', 'null', none] %}
+
+{% set shadow_primary = 'sensor.shadow_active_target' %}
+{% set shadow_fallback = 'sensor.spectra_ls_shadow_active_target' %}
+{% set use_shadow = shadow_primary if state_attr(shadow_primary, 'route_trace') is not none else shadow_fallback %}
+
+{% set route_trace = state_attr(use_shadow, 'route_trace') or {} %}
+{% set contract_validation = state_attr(use_shadow, 'contract_validation') or {} %}
+{% set selection_handoff = state_attr(use_shadow, 'selection_handoff_validation') or {} %}
+{% set route_safety = state_attr(use_shadow, 'route_safety_validation') or {} %}
+{% set metadata_prep = state_attr(use_shadow, 'metadata_prep_validation') or {} %}
+{% set scheduler_validation = state_attr(use_shadow, 'scheduler_validation') or {} %}
+{% set host_cutover = state_attr(use_shadow, 'host_control_cutover_gate') or {} %}
+{% set write_controls = state_attr(use_shadow, 'write_controls') or {} %}
+{% set control_center_validation = state_attr(use_shadow, 'control_center_validation') or {} %}
+
+{% if route_trace is not mapping %}{% set route_trace = {} %}{% endif %}
+{% if contract_validation is not mapping %}{% set contract_validation = {} %}{% endif %}
+{% if selection_handoff is not mapping %}{% set selection_handoff = {} %}{% endif %}
+{% if route_safety is not mapping %}{% set route_safety = {} %}{% endif %}
+{% if metadata_prep is not mapping %}{% set metadata_prep = {} %}{% endif %}
+{% if scheduler_validation is not mapping %}{% set scheduler_validation = {} %}{% endif %}
+{% if host_cutover is not mapping %}{% set host_cutover = {} %}{% endif %}
+{% if write_controls is not mapping %}{% set write_controls = {} %}{% endif %}
+{% if control_center_validation is not mapping %}{% set control_center_validation = {} %}{% endif %}
+
+{% set metadata_values = metadata_prep.values if metadata_prep.values is defined and metadata_prep.values is mapping else {} %}
+{% set metadata_checks = metadata_prep.checks if metadata_prep.checks is defined and metadata_prep.checks is mapping else {} %}
+
+{% set authority_mode = write_controls.authority_mode if write_controls.authority_mode is defined else states('sensor.spectra_ls_component_runtime_track_disposition') %}
+{% set route_decision = route_trace.decision if route_trace.decision is defined else '' %}
+{% set active_target = states('sensor.component_active_target') %}
+{% set control_targets_count = states('sensor.component_control_targets') %}
+{% set now_playing_entity = states('sensor.component_now_playing_entity') %}
+{% set metadata_override_active = states('binary_sensor.component_metadata_override_active') %}
+
+{% set control_host = states('sensor.component_control_host') %}
+{% set control_port = states('sensor.component_control_port') %}
+{% set now_playing_state = states('sensor.component_now_playing_state') %}
+{% set now_playing_title = states('sensor.component_now_playing_title') %}
+{% set now_playing_source = states('sensor.component_now_playing_source') %}
+{% set display_allowed = states('binary_sensor.component_now_playing_display_allowed') %}
+
+{% set host_gate_status = host_cutover.status if host_cutover.status is defined else states('sensor.spectra_ls_host_authority_cutover_gate') %}
+{% set host_gate_ready_bool = host_cutover.ready_for_cutover if host_cutover.ready_for_cutover is defined else (states('binary_sensor.spectra_ls_host_cutover_gate_ready') in ['on', 'true', '1']) %}
+{% set host_gate_ready = 'on' if host_gate_ready_bool else 'off' %}
+{% set rollback_safe = states('binary_sensor.component_rollback_safe_posture') %}
+
+{% set selector_winner = metadata_checks.component_now_playing_selection_winner_entity if metadata_checks.component_now_playing_selection_winner_entity is defined else metadata_values.component_now_playing_selection_winner_entity if metadata_values.component_now_playing_selection_winner_entity is defined else '' %}
+{% set selector_pool = metadata_checks.component_now_playing_selection_winner_pool if metadata_checks.component_now_playing_selection_winner_pool is defined else '' %}
+
+{% set scheduler_status = states('sensor.spectra_ls_scheduler_decision_status') %}
+{% set cc_last_attempt = states('sensor.spectra_ls_control_center_last_attempt_status') %}
+{% set cc_readiness = control_center_validation.readiness_state if control_center_validation.readiness_state is defined else states('sensor.spectra_ls_control_center_readiness') %}
+
+{% set component_ready = true %}
+{% set blockers = namespace(items=[]) %}
+
+{% if authority_mode not in ['component', 'component_primary', 'component_contract_surfaces'] %}
+  {% set component_ready = false %}
+  {% set blockers.items = blockers.items + ['authority_mode_not_component'] %}
+{% endif %}
+
+{% if route_decision not in ['route_linkplay_tcp'] %}
+  {% set component_ready = false %}
+  {% set blockers.items = blockers.items + ['route_decision_not_linkplay_tcp'] %}
+{% endif %}
+
+{% if contract_validation.valid is defined and not contract_validation.valid %}
+  {% set component_ready = false %}
+  {% set blockers.items = blockers.items + ['contract_validation_invalid'] %}
+{% endif %}
+
+{% if active_target in invalid %}
+  {% set component_ready = false %}
+  {% set blockers.items = blockers.items + ['component_active_target_unresolved'] %}
+{% endif %}
+
+{% if control_targets_count in invalid or (control_targets_count | int(0)) <= 0 %}
+  {% set component_ready = false %}
+  {% set blockers.items = blockers.items + ['component_control_targets_not_ready'] %}
+{% endif %}
+
+{% if now_playing_entity in invalid %}
+  {% set component_ready = false %}
+  {% set blockers.items = blockers.items + ['component_now_playing_entity_unresolved'] %}
+{% endif %}
+
+{% if metadata_override_active in ['on', 'true', '1'] %}
+  {% set blockers.items = blockers.items + ['metadata_override_active'] %}
+{% endif %}
+
+{% if host_gate_status not in ['ready'] %}
+  {% set component_ready = false %}
+  {% set blockers.items = blockers.items + ['host_cutover_gate_not_ready'] %}
+{% endif %}
+
+{% if not host_gate_ready_bool %}
+  {% set component_ready = false %}
+  {% set blockers.items = blockers.items + ['host_cutover_binary_not_ready'] %}
+{% endif %}
+
+{% if rollback_safe not in ['on', 'true', '1'] %}
+  {% set blockers.items = blockers.items + ['rollback_safe_posture_not_on'] %}
+{% endif %}
+
+{% if selection_handoff.status is defined and selection_handoff.status not in ['implemented', 'ready', 'valid'] %}
+  {% set blockers.items = blockers.items + ['selection_handoff_not_implemented'] %}
+{% endif %}
+
+{% if scheduler_status in ['never_attempted', 'write_error', 'blocked_authority_mode', 'blocked_no_selected_target'] %}
+  {% set blockers.items = blockers.items + ['scheduler_status_problematic'] %}
+{% endif %}
+
+{% if cc_readiness in ['needs_scene_binding', 'not_ready', 'unknown', 'unavailable'] %}
+  {% set blockers.items = blockers.items + ['control_center_readiness_not_ready'] %}
+{% endif %}
+
+{% set verdict = 'PASS' %}
+{% if not component_ready %}
+  {% set verdict = 'FAIL' %}
+{% elif (blockers.items | length) > 0 %}
+  {% set verdict = 'WARN' %}
+{% endif %}
+
+### Spectra LS Component-Only Cutover Full Validation
+- Result: **{{ verdict }}**
+- Timestamp: **{{ now() }}**
+- Shadow source: **{{ use_shadow }}**
+- Blocker count: **{{ blockers.items | length }}**
+
+### Core component-only authority + route
+- authority_mode: **{{ authority_mode }}**
+- route decision: **{{ route_decision if route_decision not in invalid else 'n/a' }}**
+- contract valid: **{{ contract_validation.valid if contract_validation.valid is defined else 'n/a' }}**
+- contract missing_required: **{{ contract_validation.missing_required | length if contract_validation.missing_required is defined and contract_validation.missing_required is iterable else 'n/a' }}**
+- host cutover gate status: **{{ host_gate_status if host_gate_status not in invalid else 'n/a' }}**
+- host cutover binary ready: **{{ host_gate_ready if host_gate_ready not in invalid else 'n/a' }}**
+- rollback safe posture: **{{ rollback_safe if rollback_safe not in invalid else 'n/a' }}**
+
+### Lifecycle watcher surface readiness (component-only)
+- `sensor.component_active_target`: **{{ active_target if active_target not in invalid else 'n/a' }}**
+- `sensor.component_control_targets`: **{{ control_targets_count if control_targets_count not in invalid else 'n/a' }}**
+- `sensor.component_now_playing_entity`: **{{ now_playing_entity if now_playing_entity not in invalid else 'n/a' }}**
+- `binary_sensor.component_metadata_override_active`: **{{ metadata_override_active if metadata_override_active not in invalid else 'n/a' }}**
+
+### Route/control projection
+- control host: **{{ control_host if control_host not in invalid else 'n/a' }}**
+- control port: **{{ control_port if control_port not in invalid else 'n/a' }}**
+- route safety status: **{{ route_safety.status if route_safety.status is defined else 'n/a' }}**
+- route safety blockers: **{{ route_safety.blockers if route_safety.blockers is defined else 'n/a' }}**
+
+### Metadata + selector health
+- metadata authority owner: **{{ metadata_prep.metadata_authority_owner if metadata_prep.metadata_authority_owner is defined else 'n/a' }}**
+- metadata cutover active: **{{ metadata_prep.metadata_cutover_active if metadata_prep.metadata_cutover_active is defined else 'n/a' }}**
+- metadata ready for handoff: **{{ metadata_prep.ready_for_metadata_handoff if metadata_prep.ready_for_metadata_handoff is defined else 'n/a' }}**
+- now playing state/title/source: **{{ now_playing_state if now_playing_state not in invalid else 'n/a' }} / {{ now_playing_title if now_playing_title not in invalid else 'n/a' }} / {{ now_playing_source if now_playing_source not in invalid else 'n/a' }}**
+- display allowed: **{{ display_allowed if display_allowed not in invalid else 'n/a' }}**
+- selector winner entity/pool: **{{ selector_winner if selector_winner not in invalid else 'n/a' }} / {{ selector_pool if selector_pool not in invalid else 'n/a' }}**
+- suppression reason: **{{ metadata_checks.now_playing_suppression_reason if metadata_checks.now_playing_suppression_reason is defined else 'n/a' }}**
+
+### Scheduler + control-center attempt health
+- scheduler status: **{{ scheduler_status if scheduler_status not in invalid else 'n/a' }}**
+- scheduler validation ready: **{{ scheduler_validation.ready if scheduler_validation.ready is defined else 'n/a' }}**
+- scheduler selected target: **{{ scheduler_validation.selected_target if scheduler_validation.selected_target is defined else 'n/a' }}**
+- control-center readiness: **{{ cc_readiness if cc_readiness not in invalid else 'n/a' }}**
+- control-center last attempt status: **{{ cc_last_attempt if cc_last_attempt not in invalid else 'n/a' }}**
+
+### Residual legacy drift sentinels (read-only compatibility checks)
+- `sensor.ma_players` (compat read path): **{{ states('sensor.ma_players') }}**
+- `sensor.ma_meta_detected_entity` (compat read path): **{{ states('sensor.ma_meta_detected_entity') }}**
+- `input_number.ma_meta_stale_s` (compat policy threshold): **{{ states('input_number.ma_meta_stale_s') }}**
+- `input_boolean.ma_override_active` (compat telemetry): **{{ states('input_boolean.ma_override_active') }}**
+
+### Blockers
+{% if (blockers.items | length) == 0 %}
+- none
+{% else %}
+{% for item in blockers.items %}
+- {{ item }}
+{% endfor %}
+{% endif %}
+
+### Deterministic next action
+{% if verdict == 'PASS' %}
+- Component-only lane looks healthy end-to-end. Run this again during active playback and one idle state to lock regression baseline.
+{% elif verdict == 'FAIL' %}
+- Fix FAIL blockers in order: authority mode -> route/contract gate -> watcher surfaces -> metadata owner/cutover -> scheduler/control-center.
+{% else %}
+- WARN-only posture: lane is mostly healthy; clear listed compatibility/operability blockers before declaring closure.
+{% endif %}

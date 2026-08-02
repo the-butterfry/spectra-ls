@@ -1,6 +1,6 @@
 # Description: Extracted metadata stack workflows for Spectra LS (metadata prep/bridge/cutover validation and metadata trial services).
-# Version: 2026.07.25.2
-# Last updated: 2026-07-25
+# Version: 2026.08.01.12
+# Last updated: 2026-08-01
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -23,12 +23,10 @@ from .const import (
 	LEGACY_ACTIVE_TARGET_HELPER,
 	LEGACY_META_CANDIDATES,
 	LEGACY_META_CONFIDENCE_MIN,
-	LEGACY_META_DETECTED_ENTITY,
 	LEGACY_META_OVERRIDE_ACTIVE,
 	LEGACY_META_OVERRIDE_ENTITY,
 	LEGACY_META_PAUSED_HIDE_S,
 	LEGACY_META_RESOLVER,
-	LEGACY_META_STALE_S,
 	LEGACY_NOW_PLAYING_DISPLAY_ALLOWED,
 	LEGACY_NOW_PLAYING_DURATION,
 	LEGACY_NOW_PLAYING_ENTITY,
@@ -68,6 +66,7 @@ class MetadataStackWorkflow:
 		"hdmi",
 		"arc",
 	)
+	PLAYING_STATIC_GRACE_MAX_S = 12.0
 
 	def __init__(self, coordinator: Any) -> None:
 		self._coordinator = coordinator
@@ -157,6 +156,19 @@ class MetadataStackWorkflow:
 	def set_last_metadata_bridge_attempt(self, payload: dict[str, Any]) -> None:
 		self._last_metadata_bridge_attempt = payload
 
+	@staticmethod
+	def _normalized_entity_id(value: str) -> str:
+		entity = str(value or "").strip().lower()
+		if entity in {"", "none", "unknown", "unavailable", "null"}:
+			return ""
+		return entity
+
+	@classmethod
+	def _entity_ids_match(cls, left: str, right: str) -> bool:
+		left_norm = cls._normalized_entity_id(left)
+		right_norm = cls._normalized_entity_id(right)
+		return left_norm != "" and right_norm != "" and left_norm == right_norm
+
 	def _entity_payload_meta(self, entity_id: str) -> tuple[str, str, str]:
 		"""Return normalized title/artist/album tuple for an entity."""
 		c = self._coordinator
@@ -199,6 +211,54 @@ class MetadataStackWorkflow:
 			richness += 5
 		return richness
 
+	def _component_override_state(self) -> dict[str, Any]:
+		c = self._coordinator
+		state = getattr(c, "_component_metadata_override_state", None)
+		if not isinstance(state, dict):
+			state = {
+				"active": False,
+				"entity": "",
+				"updated_at": None,
+				"source": "component_default_state",
+			}
+
+		active = bool(state.get("active", False))
+		entity = str(state.get("entity", "") or "").strip()
+		if not c._is_resolved_state(entity):
+			entity = ""
+
+		if not active and entity == "":
+			helper_active_state = c.hass.states.get(LEGACY_META_OVERRIDE_ACTIVE)
+			helper_entity_state = c.hass.states.get(LEGACY_META_OVERRIDE_ENTITY)
+			helper_active = c._normalize_state(
+				helper_active_state.state if helper_active_state is not None else ""
+			) == "on"
+			helper_entity = str(helper_entity_state.state if helper_entity_state is not None else "").strip()
+			if not c._is_resolved_state(helper_entity):
+				helper_entity = ""
+			if helper_active or helper_entity:
+				active = bool(helper_active)
+				entity = helper_entity
+				state["source"] = "legacy_helper_seed"
+
+		state["active"] = active
+		state["entity"] = entity
+		c._component_metadata_override_state = state
+		return state
+
+	def _persist_component_override_state(self, *, active: bool, entity: str, source: str) -> dict[str, Any]:
+		c = self._coordinator
+		state = self._component_override_state()
+		normalized_entity = str(entity or "").strip()
+		if not c._is_resolved_state(normalized_entity):
+			normalized_entity = ""
+		state["active"] = bool(active)
+		state["entity"] = normalized_entity
+		state["updated_at"] = datetime.now(UTC).isoformat()
+		state["source"] = str(source or "component_state_update")
+		c._component_metadata_override_state = state
+		return state
+
 	async def async_set_metadata_override(
 		self,
 		*,
@@ -215,16 +275,13 @@ class MetadataStackWorkflow:
 		requested_entity = (entity_id or "").strip()
 		reason_norm = (reason or "").strip()
 
+		override_state = self._component_override_state()
 		override_active_state = c.hass.states.get(LEGACY_META_OVERRIDE_ACTIVE)
 		override_entity_state = c.hass.states.get(LEGACY_META_OVERRIDE_ENTITY)
-		override_active_exists = override_active_state is not None
-		override_entity_exists = override_entity_state is not None
-		current_override_active = c._normalize_state(
-			override_active_state.state if override_active_state is not None else ""
-		) == "on"
-		current_override_entity = str(
-			override_entity_state.state if override_entity_state is not None else ""
-		).strip()
+		override_active_exists = True
+		override_entity_exists = True
+		current_override_active = bool(override_state.get("active", False))
+		current_override_entity = str(override_state.get("entity", "") or "").strip()
 
 		result: dict[str, Any] = {
 			"status": "pending",
@@ -252,9 +309,6 @@ class MetadataStackWorkflow:
 		elif enable and c.hass.states.get(requested_entity) is None:
 			result["status"] = "blocked_entity_not_found"
 			result["reason"] = "Requested metadata entity is not present in HA state registry"
-		elif not override_active_exists or not override_entity_exists:
-			result["status"] = "blocked_missing_override_helpers"
-			result["reason"] = "Metadata override helper entities are missing"
 		else:
 			WritePathFabric.apply_standard_write_guards(
 				c,
@@ -281,48 +335,17 @@ class MetadataStackWorkflow:
 		if result["status"] == "pending":
 			c._write_in_progress = True
 			try:
-				if enable:
-					await c.hass.services.async_call(
-						"input_text",
-						"set_value",
-						{
-							"entity_id": LEGACY_META_OVERRIDE_ENTITY,
-							"value": requested_entity,
-						},
-						blocking=True,
-					)
-					await c.hass.services.async_call(
-						"input_boolean",
-						"turn_on",
-						{
-							"entity_id": LEGACY_META_OVERRIDE_ACTIVE,
-						},
-						blocking=True,
-					)
-				else:
-					await c.hass.services.async_call(
-						"input_boolean",
-						"turn_off",
-						{
-							"entity_id": LEGACY_META_OVERRIDE_ACTIVE,
-						},
-						blocking=True,
-					)
-					await c.hass.services.async_call(
-						"input_text",
-						"set_value",
-						{
-							"entity_id": LEGACY_META_OVERRIDE_ENTITY,
-							"value": "",
-						},
-						blocking=True,
-					)
+				self._persist_component_override_state(
+					active=bool(enable),
+					entity=desired_entity,
+					source="set_metadata_override",
+				)
 
 				result["status"] = "write_applied"
-				result["reason"] = "Metadata override helper state updated successfully"
+				result["reason"] = "Metadata override state updated in component store"
 			except Exception as err:  # pragma: no cover - defensive runtime guard
 				result["status"] = "write_error"
-				result["reason"] = "Service call failed while applying metadata override state"
+				result["reason"] = "Component metadata override state update failed"
 				result["error"] = str(err)
 			finally:
 				c._write_in_progress = False
@@ -406,6 +429,23 @@ class MetadataStackWorkflow:
 		resolver_status = str(resolver_attempt.get("status", "never_attempted") or "never_attempted")
 		trial_status = str(trial_attempt.get("status", "never_attempted") or "never_attempted")
 		bridge_status = str(bridge_attempt.get("status", "never_attempted") or "never_attempted")
+		stale_wait_statuses = {"waiting_for_startup_readiness", "waiting_for_ma_boot"}
+		if ma_boot_ready and bridge_status in stale_wait_statuses:
+			recovered_now_iso = datetime.now(UTC).isoformat()
+			bridge_status = "startup_readiness_recovered_pending_bridge_attempt"
+			updated_bridge_attempt = dict(bridge_attempt)
+			updated_bridge_attempt["status"] = bridge_status
+			updated_bridge_attempt["completed_at"] = recovered_now_iso
+			updated_bridge_attempt["recovered_from_status"] = str(
+				bridge_attempt.get("status", "waiting_for_startup_readiness") or "waiting_for_startup_readiness"
+			)
+			updated_bridge_attempt["startup_readiness_recovered"] = True
+			if not str(updated_bridge_attempt.get("reason", "") or "").strip():
+				updated_bridge_attempt["reason"] = (
+					"Startup readiness is now satisfied; bridge wait posture was recovered to pending bridge attempt"
+				)
+			bridge_attempt = updated_bridge_attempt
+			self._last_metadata_bridge_attempt = updated_bridge_attempt
 		bridge_stages = bridge_attempt.get("stages", {}) if isinstance(bridge_attempt.get("stages", {}), dict) else {}
 		bridge_trial_stage = (
 			bridge_stages.get("metadata_trial", {})
@@ -476,7 +516,7 @@ class MetadataStackWorkflow:
 
 		blocking_reasons: list[str] = []
 		if not ma_boot_ready:
-			blocking_reasons.append("waiting_for_ma_boot")
+			blocking_reasons.append("waiting_for_startup_readiness")
 		if not metadata_prep_ready:
 			blocking_reasons.append("metadata_prep_not_ready")
 		if not resolver_candidate_present:
@@ -498,6 +538,7 @@ class MetadataStackWorkflow:
 			"trial_status": trial_status,
 			"bridge_status": bridge_status,
 			"last_bridge_attempt": bridge_attempt,
+			"waiting_for_startup_readiness": not ma_boot_ready,
 			"waiting_for_ma_boot": not ma_boot_ready,
 			"ma_boot_wait_reasons": ma_boot_reasons,
 			"ma_boot_wait_reason": ma_boot_wait_reason,
@@ -688,11 +729,7 @@ class MetadataStackWorkflow:
 			pos_age_s = c._timestamp_age_seconds(state.last_changed)
 			pos_age_source = "last_changed" if pos_age_s is not None else "missing"
 
-		meta_stale_s_state = c.hass.states.get(LEGACY_META_STALE_S)
-		meta_stale_s = _safe_float(meta_stale_s_state.state, float(META_POLICY_DEFAULTS["meta_stale_s"])) if (
-			meta_stale_s_state is not None
-			and meta_stale_s_state.state not in ("", "unknown", "unavailable")
-		) else float(META_POLICY_DEFAULTS["meta_stale_s"])
+		meta_stale_s = float(META_POLICY_DEFAULTS["meta_stale_s"])
 		paused_hide_s_state = c.hass.states.get(LEGACY_META_PAUSED_HIDE_S)
 		paused_hide_s = _safe_float(paused_hide_s_state.state, float(META_POLICY_DEFAULTS["paused_hide_s"])) if (
 			paused_hide_s_state is not None
@@ -705,6 +742,10 @@ class MetadataStackWorkflow:
 
 		media_position = state.attributes.get("media_position")
 		media_duration = state.attributes.get("media_duration")
+		media_title = str(state.attributes.get("media_title", "") or "").strip()
+		media_artist = str(state.attributes.get("media_artist", "") or "").strip()
+		app_name = str(state.attributes.get("app_name", "") or "").strip()
+		source_text = str(state.attributes.get("source", "") or "").strip()
 		position_s = _coerce_number(media_position)
 		duration_s = _coerce_number(media_duration)
 		now_ts = datetime.now(UTC).timestamp()
@@ -746,11 +787,29 @@ class MetadataStackWorkflow:
 			and (pos_age_s is None or pos_age_s > 5.0)
 		)
 
+		playing_static_grace_s = max(3.0, min(self.PLAYING_STATIC_GRACE_MAX_S, meta_stale_s))
+		has_identity_or_context = bool(
+			media_title
+			or media_artist
+			or app_name
+			or source_text
+			or (isinstance(duration_s, float) and duration_s > 0.0)
+		)
+		playing_static_grace_active = (
+			playing_signal
+			and not playing_at_track_end_stuck
+			and recent_play_progress
+			and not position_change_recent
+			and has_identity_or_context
+			and isinstance(pos_age_s, float)
+			and pos_age_s <= playing_static_grace_s
+		)
+
 		playing_with_fresh_signal = (
 			playing_signal
 			and not playing_at_track_end_stuck
 			and recent_play_progress
-			and position_change_recent
+			and (position_change_recent or playing_static_grace_active)
 		)
 		playing_without_fresh_signal = (
 			playing_signal
@@ -758,7 +817,12 @@ class MetadataStackWorkflow:
 				playing_at_track_end_stuck
 				or (not has_progress_clock)
 				or (has_progress_clock and not recent_play_progress)
-				or (has_progress_clock and recent_play_progress and not position_change_recent)
+				or (
+					has_progress_clock
+					and recent_play_progress
+					and not position_change_recent
+					and not playing_static_grace_active
+				)
 			)
 		)
 		fresh_play_signal = playing_with_fresh_signal or (paused_signal and recent_paused_progress)
@@ -790,6 +854,8 @@ class MetadataStackWorkflow:
 			"recent_play_progress": recent_play_progress,
 			"recent_paused_progress": recent_paused_progress,
 			"position_change_recent": position_change_recent,
+			"playing_static_grace_active": playing_static_grace_active,
+			"playing_static_grace_s": playing_static_grace_s,
 			"playing_at_track_end_stuck": playing_at_track_end_stuck,
 			"fresh_play_signal": fresh_play_signal,
 			"playing_without_fresh_signal": playing_without_fresh_signal,
@@ -938,6 +1004,11 @@ class MetadataStackWorkflow:
 			app_id = str(attrs.get("app_id", "") or "").strip().lower()
 			app_name = str(attrs.get("app_name", "") or "").strip().lower()
 			source = str(attrs.get("source", "") or "").strip().lower()
+			has_explicit_ma_queue_marker = (
+				"music assistant queue" in source
+				or "ma queue" in source
+				or "music_assistant_queue" in source
+			)
 			return (
 				entity_norm.endswith("_ma")
 				or "_ma_" in entity_norm
@@ -946,7 +1017,7 @@ class MetadataStackWorkflow:
 				or "music_assistant" in app_id
 				or "music assistant" in app_name
 				or "music assistant" in source
-				or "queue" in source
+				or has_explicit_ma_queue_marker
 			)
 
 		def _is_sparse_transport_meta(entity_id: str) -> bool:
@@ -1469,8 +1540,9 @@ class MetadataStackWorkflow:
 			if self._is_non_meta_source(source) and not (app_name or app_id):
 				continue
 
-			updated_ts = c._timestamp_to_datetime(state_obj.last_updated)
-			age_s = (now_ts_local - updated_ts.timestamp()) if updated_ts is not None else 1_000_000.0
+			age_s = c._timestamp_age_seconds(state_obj.last_updated)
+			if age_s is None:
+				age_s = 1_000_000.0
 			if state_norm == "playing" and age_s > 1800.0:
 				continue
 			if state_norm in {"paused", "buffering"} and age_s > 7200.0:
@@ -1530,6 +1602,7 @@ class MetadataStackWorkflow:
 		contract_validation: dict[str, Any],
 	) -> dict[str, Any]:
 		c = self._coordinator
+		component_mode_active = c._write_authority_mode == WRITE_AUTH_COMPONENT
 		required_entities = {
 			"active_meta_entity": LEGACY_ACTIVE_META_ENTITY,
 			"now_playing_entity": LEGACY_NOW_PLAYING_ENTITY,
@@ -1546,6 +1619,7 @@ class MetadataStackWorkflow:
 		missing_required = [
 			key for key, entity_id in required_entities.items() if c.hass.states.get(entity_id) is None
 		]
+		effective_missing_required = [] if component_mode_active else list(missing_required)
 
 		scaffolds = c._build_component_scaffolds()
 		resolver_plan = (
@@ -1620,9 +1694,54 @@ class MetadataStackWorkflow:
 		passthrough_upstream_meta_entity = ""
 		passthrough_upstream_meta_reason = ""
 		passthrough_upstream_meta_score: float | None = None
+		global_active_metadata_rescue_used = False
 		progress_clock_cache_reused = False
 		progress_clock_cache_cross_entity_reused = False
 		progress_clock_cache_age_s: float | None = None
+
+		selected_state_norm_initial = (
+			c._normalize_state(str(selected_state_obj.state or ""))
+			if selected_state_obj is not None
+			else ""
+		)
+		selection_winner_pool = str(
+			component_now_playing_selection.get("winner_pool", "")
+			if isinstance(component_now_playing_selection, dict)
+			else ""
+		)
+		should_consider_global_metadata_rescue = (
+			component_mode_active
+			and not c._is_resolved_state(now_playing_title)
+			and selected_state_norm_initial in {"", "idle", "off", "standby", "unknown", "unavailable"}
+			and selection_winner_pool in {"idle_expected", "fallback_any", "none", ""}
+		)
+		if should_consider_global_metadata_rescue:
+			(
+				fallback_entity,
+				fallback_title,
+				fallback_artist,
+				fallback_app,
+				fallback_reason,
+				fallback_score,
+			) = self._discover_passthrough_upstream_meta_candidate(
+				now_playing_entity=now_playing_entity,
+				route_active_target=route_active_target,
+				route_active_source_continuity=route_active_source_continuity,
+			)
+			if c._is_resolved_state(fallback_entity) and c._is_resolved_state(fallback_title):
+				fallback_state = c.hass.states.get(fallback_entity)
+				if fallback_state is not None:
+					now_playing_entity = fallback_entity
+					component_now_playing_entity_source = "global_active_metadata_rescue"
+					selected_state_obj = fallback_state
+					now_playing_title = fallback_title
+					now_playing_artist = fallback_artist
+					if c._is_resolved_state(fallback_app):
+						now_playing_app = fallback_app
+					global_active_metadata_rescue_used = True
+					passthrough_upstream_meta_entity = fallback_entity
+					passthrough_upstream_meta_reason = fallback_reason or "global_active_metadata_rescue"
+					passthrough_upstream_meta_score = fallback_score
 		if passthrough_source_detected:
 			selected_title = (
 				str(selected_state_obj.attributes.get("media_title", "") or "").strip()
@@ -1824,7 +1943,34 @@ class MetadataStackWorkflow:
 			now_playing_display_allowed_raw.state if now_playing_display_allowed_raw is not None else "missing"
 		)
 
-		active_meta_entity_resolved = c._is_resolved_state(active_meta_entity)
+		component_selection_winner_entity = str(
+			component_now_playing_selection.get("winner_entity", "")
+			if isinstance(component_now_playing_selection, dict)
+			else ""
+		).strip()
+		component_selection_winner_source = str(
+			component_now_playing_selection.get("winner_source", "")
+			if isinstance(component_now_playing_selection, dict)
+			else ""
+		).strip()
+		active_meta_entity_effective = active_meta_entity
+		active_meta_entity_source = "legacy_active_meta_entity"
+		if not c._is_resolved_state(active_meta_entity_effective):
+			component_meta_candidates = [
+				(resolver_selected_meta_entity, "resolver_selected_meta_entity"),
+				(resolver_best_candidate, "resolver_best_candidate"),
+				(resolver_detected_candidate, "resolver_detected_candidate"),
+				(component_selection_winner_entity, f"component_selection_winner:{component_selection_winner_source}"),
+				(component_now_playing_entity, "component_now_playing_entity"),
+			]
+			for candidate_entity, candidate_source in component_meta_candidates:
+				candidate_norm = str(candidate_entity or "").strip()
+				if c._is_resolved_state(candidate_norm):
+					active_meta_entity_effective = candidate_norm
+					active_meta_entity_source = candidate_source
+					break
+
+		active_meta_entity_resolved = c._is_resolved_state(active_meta_entity_effective)
 		now_playing_entity_resolved = c._is_resolved_state(now_playing_entity)
 		now_playing_state_resolved = c._is_resolved_state(now_playing_state)
 		now_playing_title_resolved = c._is_resolved_state(now_playing_title)
@@ -1845,6 +1991,11 @@ class MetadataStackWorkflow:
 		}
 
 		now_playing_display_allowed_value = now_playing_display_allowed in {"on", "true", "1", "yes"}
+		if component_mode_active:
+			if not now_playing_media_class_resolved:
+				now_playing_media_class_resolved = True
+			if not now_playing_display_allowed_resolved:
+				now_playing_display_allowed_resolved = True
 		now_playing_preview_age_s = c._timestamp_age_seconds(
 			now_playing_preview_key_raw.last_changed if now_playing_preview_key_raw is not None else None
 		)
@@ -1864,7 +2015,19 @@ class MetadataStackWorkflow:
 		now_playing_duration_v = _to_float(now_playing_duration)
 		ma_active_duration_v = _to_float(ma_active_duration)
 
-		candidate_payload_ready = self._metadata_candidate_payload_ready()
+		legacy_candidate_payload_ready = self._metadata_candidate_payload_ready()
+		component_candidate_payload_ready = (
+			(
+				isinstance(component_now_playing_selection, dict)
+				and int(component_now_playing_selection.get("candidate_count", 0) or 0) > 0
+			)
+			or c._is_resolved_state(resolver_selected_meta_entity)
+			or c._is_resolved_state(resolver_best_candidate)
+			or c._is_resolved_state(resolver_detected_candidate)
+		)
+		candidate_payload_ready = legacy_candidate_payload_ready or (
+			component_mode_active and component_candidate_payload_ready
+		)
 		now_playing_signal = self._build_now_playing_signal(now_playing_entity)
 		active_playback_signal = c._normalize_state(now_playing_state) == "playing" or bool(
 			now_playing_signal.get("fresh_play_signal", False)
@@ -2033,12 +2196,28 @@ class MetadataStackWorkflow:
 			and isinstance(passthrough_signal_age_s, float)
 			and passthrough_signal_age_s <= passthrough_pause_window_s
 		)
+		passthrough_title_keepalive_ready = (
+			passthrough_source_detected
+			and now_playing_state_norm in {"playing", "paused", "buffering"}
+			and now_playing_title_signal_ready
+			and now_playing_identity_meta_present
+		)
+		component_playback_keepalive_ready = (
+			component_mode_active
+			and now_playing_state_norm in {"playing", "paused", "buffering"}
+			and now_playing_title_signal_ready
+			and now_playing_identity_meta_present
+		)
 		display_force_off_idle_no_meta = (
 			now_playing_state_norm in {"idle", "off", "stopped", "standby", "unknown", "unavailable"}
 			and not now_playing_identity_meta_present
 			and not passthrough_display_contract_ready
 		)
-		if passthrough_display_contract_ready:
+		if (
+			passthrough_display_contract_ready
+			or passthrough_title_keepalive_ready
+			or component_playback_keepalive_ready
+		):
 			now_playing_display_allowed_value = True
 			if now_playing_media_class in {"", "none", "unknown", "unavailable"}:
 				now_playing_media_class = "music"
@@ -2070,11 +2249,8 @@ class MetadataStackWorkflow:
 				and active_meta_entity_resolved
 				and now_playing_entity_resolved
 				and now_playing_state_resolved
-				and now_playing_title_signal_ready
 				and candidate_payload_ready
 				and route_trace_present
-				and freshness_gate_satisfied
-				and not playing_with_missing_duration_contract
 			),
 			resolver_selected=resolver_selected,
 		)
@@ -2106,12 +2282,12 @@ class MetadataStackWorkflow:
 		control_target_vs_now_playing_mismatch = (
 			c._is_resolved_state(canonical_control_target)
 			and c._is_resolved_state(now_playing_entity)
-			and canonical_control_target != now_playing_entity
+			and not self._entity_ids_match(canonical_control_target, now_playing_entity)
 		)
 		meta_target_vs_now_playing_mismatch = (
 			c._is_resolved_state(canonical_meta_target)
 			and c._is_resolved_state(now_playing_entity)
-			and canonical_meta_target != now_playing_entity
+			and not self._entity_ids_match(canonical_meta_target, now_playing_entity)
 		)
 		intentional_control_metadata_divergence = (
 			control_target_vs_now_playing_mismatch
@@ -2182,12 +2358,15 @@ class MetadataStackWorkflow:
 			and not now_playing_title_signal_ready
 			and not freshness_gate_satisfied
 		)
+		component_authority_contract_healthy = (
+			no_authority_expansion
+			and authority_gate_results["ma_api_reachable"]
+			and authority_gate_results["ma_payload_shape_valid"]
+			and authority_gate_results["ma_identity_confidence"]
+		)
 		authority_mode = (
 			FABRIC_AUTH_MODE_PRIMARY
-			if (
-				all(bool(value) for value in authority_gate_results.values())
-				or expected_component_idle_authority_posture
-			)
+			if (component_authority_contract_healthy or expected_component_idle_authority_posture)
 			else FABRIC_AUTH_MODE_DEGRADED_FALLBACK
 		)
 		authority_reasons: list[str] = []
@@ -2197,16 +2376,20 @@ class MetadataStackWorkflow:
 				authority_reasons.append(FABRIC_AUTH_REASON_API_UNREACHABLE)
 			if not authority_gate_results["ma_payload_shape_valid"]:
 				authority_reasons.append(FABRIC_AUTH_REASON_PAYLOAD_SHAPE_INVALID)
-			if not authority_gate_results["ma_payload_fresh"]:
+			if not authority_gate_results["ma_payload_fresh"] and not component_authority_contract_healthy:
 				authority_reasons.append(FABRIC_AUTH_REASON_PAYLOAD_STALE)
 
 		gate_checks: dict[str, bool] = {
 			"contract_valid": contract_valid,
 			"active_meta_entity_resolved": active_meta_entity_resolved,
+			"active_meta_entity_effective_resolved": c._is_resolved_state(active_meta_entity_effective),
+			"active_meta_entity_component_sourced": active_meta_entity_source != "legacy_active_meta_entity",
 			"now_playing_entity_resolved": now_playing_entity_resolved,
 			"now_playing_state_resolved": now_playing_state_resolved,
 			"now_playing_title_signal_ready": now_playing_title_signal_ready,
 			"candidate_payload_ready": candidate_payload_ready,
+			"legacy_candidate_payload_ready": legacy_candidate_payload_ready,
+			"component_candidate_payload_ready": component_candidate_payload_ready,
 			"route_trace_present": route_trace_present,
 			"no_authority_expansion": no_authority_expansion,
 			"now_playing_fresh_play_signal": freshness_gate_satisfied,
@@ -2218,7 +2401,7 @@ class MetadataStackWorkflow:
 		blocking_reasons: list[str] = []
 		if not contract_valid:
 			blocking_reasons.append("contract_invalid")
-		if len(missing_required) > 0:
+		if len(effective_missing_required) > 0:
 			blocking_reasons.append("missing_required_metadata_entities")
 		if not active_meta_entity_resolved:
 			blocking_reasons.append("active_meta_entity_unresolved")
@@ -2230,7 +2413,7 @@ class MetadataStackWorkflow:
 			blocking_reasons.append("now_playing_position_unresolved")
 		if not now_playing_duration_resolved:
 			blocking_reasons.append("now_playing_duration_unresolved")
-		if not ma_active_duration_resolved:
+		if not component_mode_active and not ma_active_duration_resolved:
 			blocking_reasons.append("ma_active_duration_unresolved")
 		if not now_playing_title_signal_ready:
 			blocking_reasons.append("now_playing_title_unresolved")
@@ -2266,7 +2449,7 @@ class MetadataStackWorkflow:
 				blocking_reasons.append(token)
 
 		verdict = "PASS"
-		if len(missing_required) > 0 or not contract_valid:
+		if len(effective_missing_required) > 0 or not contract_valid:
 			verdict = "FAIL"
 		elif (
 			not active_meta_entity_resolved
@@ -2309,7 +2492,7 @@ class MetadataStackWorkflow:
 				"cause_hint": canonical_cause_hint,
 			},
 			"required_entities": required_entities,
-			"missing_required": missing_required,
+			"missing_required": effective_missing_required,
 			"contract_valid": contract_valid,
 			"route_decision": route_decision,
 			"gate_score": gate_score,
@@ -2335,6 +2518,9 @@ class MetadataStackWorkflow:
 				"now_playing_display_contract_consistent": media_contract_consistent,
 				"now_playing_display_force_off_idle_no_meta": display_force_off_idle_no_meta,
 				"passthrough_display_contract_ready": passthrough_display_contract_ready,
+				"passthrough_title_keepalive_ready": passthrough_title_keepalive_ready,
+				"component_playback_keepalive_ready": component_playback_keepalive_ready,
+				"global_active_metadata_rescue_used": global_active_metadata_rescue_used,
 				"candidate_payload_ready": candidate_payload_ready,
 				"route_trace_present": route_trace_present,
 				"no_authority_expansion": no_authority_expansion,
@@ -2447,6 +2633,8 @@ class MetadataStackWorkflow:
 			},
 			"values": {
 				"active_meta_entity": active_meta_entity,
+				"active_meta_entity_effective": active_meta_entity_effective,
+				"active_meta_entity_source": active_meta_entity_source,
 				"legacy_now_playing_entity": legacy_now_playing_entity,
 				"component_now_playing_entity_source": component_now_playing_entity_source,
 				"component_now_playing_selection": component_now_playing_selection,
@@ -2485,6 +2673,7 @@ class MetadataStackWorkflow:
 				"passthrough_metadata_candidate_position_fallback_used": passthrough_metadata_candidate_position_fallback_used,
 				"passthrough_metadata_candidate_duration_fallback_used": passthrough_metadata_candidate_duration_fallback_used,
 				"passthrough_upstream_meta_fallback_used": passthrough_upstream_meta_fallback_used,
+				"global_active_metadata_rescue_used": global_active_metadata_rescue_used,
 				"passthrough_upstream_meta_entity": passthrough_upstream_meta_entity,
 				"passthrough_upstream_meta_reason": passthrough_upstream_meta_reason,
 				"passthrough_upstream_meta_score": passthrough_upstream_meta_score,
@@ -2528,6 +2717,7 @@ class MetadataStackWorkflow:
 				"now_playing_display_allowed": now_playing_display_allowed_value,
 				"now_playing_display_force_off_idle_no_meta": display_force_off_idle_no_meta,
 				"passthrough_display_contract_ready": passthrough_display_contract_ready,
+				"passthrough_title_keepalive_ready": passthrough_title_keepalive_ready,
 				"now_playing_preview_age_s": round(now_playing_preview_age_s, 1)
 				if isinstance(now_playing_preview_age_s, float)
 				else None,
@@ -2565,13 +2755,12 @@ class MetadataStackWorkflow:
 		override_active_entity = str(plan.get("override_active_entity", LEGACY_META_OVERRIDE_ACTIVE) or LEGACY_META_OVERRIDE_ACTIVE)
 		override_entity_helper = str(plan.get("override_entity_helper", LEGACY_META_OVERRIDE_ENTITY) or LEGACY_META_OVERRIDE_ENTITY)
 
-		override_active_state = c.hass.states.get(override_active_entity)
-		override_entity_state = c.hass.states.get(override_entity_helper)
-		override_active_exists = override_active_state is not None
-		override_entity_exists = override_entity_state is not None
+		override_state = self._component_override_state()
+		override_active_exists = True
+		override_entity_exists = True
 
-		current_override_active = c._normalize_state(override_active_state.state if override_active_state is not None else "") == "on"
-		current_override_entity = str(override_entity_state.state if override_entity_state is not None else "").strip()
+		current_override_active = bool(override_state.get("active", False))
+		current_override_entity = str(override_state.get("entity", "") or "").strip()
 
 		result: dict[str, Any] = {
 			"status": "pending",
@@ -2601,9 +2790,6 @@ class MetadataStackWorkflow:
 		elif c.hass.states.get(selected_meta_entity) is None:
 			result["status"] = "blocked_missing_selected_entity"
 			result["reason"] = "Selected metadata entity is not currently present in HA state registry"
-		elif not override_active_exists or not override_entity_exists:
-			result["status"] = "blocked_missing_override_helpers"
-			result["reason"] = "Metadata override helpers are missing"
 		else:
 			WritePathFabric.apply_standard_write_guards(
 				c,
@@ -2625,28 +2811,16 @@ class MetadataStackWorkflow:
 		if result["status"] == "pending":
 			c._write_in_progress = True
 			try:
-				await c.hass.services.async_call(
-					"input_text",
-					"set_value",
-					{
-						"entity_id": override_entity_helper,
-						"value": selected_meta_entity,
-					},
-					blocking=True,
-				)
-				await c.hass.services.async_call(
-					"input_boolean",
-					"turn_on",
-					{
-						"entity_id": override_active_entity,
-					},
-					blocking=True,
+				self._persist_component_override_state(
+					active=True,
+					entity=selected_meta_entity,
+					source="run_metadata_resolver_scaffold",
 				)
 				result["status"] = "write_applied"
-				result["reason"] = "Metadata-resolver scaffold applied override helper state successfully"
+				result["reason"] = "Metadata-resolver scaffold applied component override state successfully"
 			except Exception as err:  # pragma: no cover - defensive runtime guard
 				result["status"] = "write_error"
-				result["reason"] = "Service call failed during metadata-resolver scaffold apply"
+				result["reason"] = "Component override-state update failed during metadata-resolver scaffold apply"
 				result["error"] = str(err)
 			finally:
 				c._write_in_progress = False
@@ -2916,10 +3090,9 @@ class MetadataStackWorkflow:
 			else {}
 		)
 		scaffold_meta_entity = str(resolver_plan.get("selected_meta_entity", "") or "").strip()
-		override_active_state = c.hass.states.get(LEGACY_META_OVERRIDE_ACTIVE)
-		override_active = c._normalize_state(override_active_state.state if override_active_state is not None else "") == "on"
-		override_entity_state = c.hass.states.get(LEGACY_META_OVERRIDE_ENTITY)
-		override_entity = str(override_entity_state.state if override_entity_state is not None else "").strip()
+		override_state = self._component_override_state()
+		override_active = bool(override_state.get("active", False))
+		override_entity = str(override_state.get("entity", "") or "").strip()
 
 		result: dict[str, Any] = {
 			"requested_at": requested_at,

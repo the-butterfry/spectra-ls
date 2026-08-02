@@ -1,11 +1,17 @@
 <!-- Description: Copy/paste Home Assistant Dev Tools template diagnostics for Spectra LS System. -->
-<!-- Version: 2026.05.05.3 -->
-<!-- Last updated: 2026-05-05 -->
+<!-- Version: 2026.08.01.1 -->
+<!-- Last updated: 2026-08-01 -->
 
 # Spectra LS System — Dev Tools Template Validation
 
 > Tracked diagnostics guide for repeatable Spectra LS system validation.  
 > Use each template by copying into **Home Assistant → Developer Tools → Template**.
+
+## Legacy reference interpretation (component-first)
+
+- Legacy helper references (`ma_*`, `LEGACY_*`) in this diagnostics catalog are compatibility inventory by default.
+- Treat component packet/contract surfaces as primary truth sources for pass/fail decisions.
+- Use legacy checks as non-gating observability unless a specific retirement gate explicitly marks them required.
 
 ## Copy/Paste Quick Path (Raw Templates)
 

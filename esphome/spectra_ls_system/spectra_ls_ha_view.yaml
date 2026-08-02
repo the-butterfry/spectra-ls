@@ -1,6 +1,6 @@
 # Description: Local Lovelace view fixture used for Spectra LS HA layout testing.
-# Version: 2026.06.21.1
-# Last updated: 2026-06-21
+# Version: 2026.08.01.1
+# Last updated: 2026-08-01
 
 views:
   - path: default_view
@@ -483,7 +483,7 @@ views:
         cards:
           - type: conditional
             conditions:
-              - entity: input_select.ma_active_target
+              - entity: sensor.component_active_target
                 state: media_player.spectra_ls_2
             card:
               type: custom:mini-media-player
@@ -500,9 +500,9 @@ views:
           - type: entities
             title: Audio
             entities:
-              - entity: select.ma_active_target_friendly
+              - entity: sensor.component_active_target
                 name: Player (Active Target)
-              - entity: sensor.ma_active_friendly
+              - entity: sensor.component_now_playing_friendly
                 name: Player Name
               - entity: number.control_board_v2_arylic_volume_set
                 name: Volume (Master)
@@ -587,7 +587,7 @@ views:
           - type: entities
             title: Routing / Targets
             entities:
-              - entity: input_select.ma_active_target
+              - entity: sensor.component_active_target
                 name: Active Target
           - type: entities
             title: Audio Internals

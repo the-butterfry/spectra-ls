@@ -1,6 +1,6 @@
 # Description: Constants for Spectra LS custom integration shadow parity, Phase 3 guarded routing write-path controls, Phase 4 diagnostics scaffolding (F4-S01/F4-S03), Phase 5 metadata trial contract service, and Phase 6/8 control-center settings and fast-remap preset contracts including startup MA-readiness gating constants and selection-ownership migration services.
-# Version: 2026.07.17.2
-# Last updated: 2026-07-17
+# Version: 2026.08.01.5
+# Last updated: 2026-08-01
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -90,15 +90,12 @@ FABRIC_AUTH_REASON_API_UNREACHABLE = "ma_api_unreachable"
 LEGACY_ACTIVE_TARGET = "sensor.ma_active_target"
 LEGACY_ACTIVE_CONTROL_PATH = "sensor.ma_active_control_path"
 LEGACY_ACTIVE_CONTROL_CAPABLE = "binary_sensor.ma_active_control_capable"
-LEGACY_CONTROL_AMBIGUOUS = "binary_sensor.ma_control_ambiguous"
-LEGACY_NO_CONTROL_CAPABLE_HOSTS = "binary_sensor.ma_no_control_capable_hosts"
 LEGACY_ACTIVE_TARGET_HELPER = "input_select.ma_active_target"
 LEGACY_ACTIVE_META_ENTITY = "sensor.ma_active_meta_entity"
 LEGACY_META_RESOLVER = "sensor.ma_meta_resolver"
 LEGACY_META_DETECTED_ENTITY = "sensor.ma_meta_detected_entity"
 LEGACY_META_OVERRIDE_ACTIVE = "input_boolean.ma_meta_override_active"
 LEGACY_META_OVERRIDE_ENTITY = "input_text.ma_meta_override_entity"
-LEGACY_META_STALE = "binary_sensor.ma_meta_stale"
 LEGACY_META_PAUSED_HIDE_S = "input_number.ma_meta_paused_hide_s"
 LEGACY_META_STALE_S = "input_number.ma_meta_stale_s"
 LEGACY_META_CONFIDENCE_MIN = "input_number.ma_meta_confidence_min"
@@ -152,64 +149,10 @@ LEGACY_MA_API_URL = "sensor.ma_api_url"
 LEGACY_ROOMS_JSON = "sensor.spectra_ls_rooms_json"
 LEGACY_ROOMS_RAW = "sensor.spectra_ls_rooms_raw"
 
-# Legacy scaffold governance split (LC-05):
-# - compat_required: still consumed by active component/runtime compatibility paths
-# - retire_candidate: intentionally retained legacy scaffolds with explicit retirement gates
-LEGACY_RETIRE_GATE_LC_05 = "LC-05"
-LEGACY_RETIRE_GATE_LC_06 = "LC-06"
-
-LEGACY_COMPAT_REQUIRED_CONSTANTS: dict[str, str] = {
-    "LEGACY_ACTIVE_TARGET": LEGACY_ACTIVE_TARGET,
-    "LEGACY_ACTIVE_CONTROL_PATH": LEGACY_ACTIVE_CONTROL_PATH,
-    "LEGACY_ACTIVE_CONTROL_CAPABLE": LEGACY_ACTIVE_CONTROL_CAPABLE,
-    "LEGACY_ACTIVE_TARGET_HELPER": LEGACY_ACTIVE_TARGET_HELPER,
-    "LEGACY_ACTIVE_META_ENTITY": LEGACY_ACTIVE_META_ENTITY,
-    "LEGACY_META_RESOLVER": LEGACY_META_RESOLVER,
-    "LEGACY_META_DETECTED_ENTITY": LEGACY_META_DETECTED_ENTITY,
-    "LEGACY_META_OVERRIDE_ACTIVE": LEGACY_META_OVERRIDE_ACTIVE,
-    "LEGACY_META_OVERRIDE_ENTITY": LEGACY_META_OVERRIDE_ENTITY,
-    "LEGACY_META_STALE": LEGACY_META_STALE,
-    "LEGACY_META_PAUSED_HIDE_S": LEGACY_META_PAUSED_HIDE_S,
-    "LEGACY_META_STALE_S": LEGACY_META_STALE_S,
-    "LEGACY_META_CONFIDENCE_MIN": LEGACY_META_CONFIDENCE_MIN,
-    "LEGACY_META_CANDIDATES": LEGACY_META_CANDIDATES,
-    "LEGACY_MA_PLAYERS": LEGACY_MA_PLAYERS,
-    "LEGACY_CONTROL_HOST": LEGACY_CONTROL_HOST,
-    "LEGACY_CONTROL_HOSTS": LEGACY_CONTROL_HOSTS,
-    "LEGACY_CONTROL_TARGETS": LEGACY_CONTROL_TARGETS,
-    "LEGACY_ROOMS_JSON": LEGACY_ROOMS_JSON,
-    "LEGACY_ROOMS_RAW": LEGACY_ROOMS_RAW,
-}
-
-LEGACY_RETIRE_CANDIDATE_CONSTANTS: dict[str, str] = {
-    "LEGACY_CONTROL_AMBIGUOUS": LEGACY_CONTROL_AMBIGUOUS,
-    "LEGACY_NO_CONTROL_CAPABLE_HOSTS": LEGACY_NO_CONTROL_CAPABLE_HOSTS,
-    "LEGACY_OVERRIDE_ACTIVE": LEGACY_OVERRIDE_ACTIVE,
-    "LEGACY_LAST_VALID_TARGET": LEGACY_LAST_VALID_TARGET,
-    "LEGACY_NOW_PLAYING_ENTITY": LEGACY_NOW_PLAYING_ENTITY,
-    "LEGACY_NOW_PLAYING_STATE": LEGACY_NOW_PLAYING_STATE,
-    "LEGACY_NOW_PLAYING_TITLE": LEGACY_NOW_PLAYING_TITLE,
-    "LEGACY_NOW_PLAYING_POSITION": LEGACY_NOW_PLAYING_POSITION,
-    "LEGACY_NOW_PLAYING_DURATION": LEGACY_NOW_PLAYING_DURATION,
-    "LEGACY_NOW_PLAYING_MEDIA_CLASS": LEGACY_NOW_PLAYING_MEDIA_CLASS,
-    "LEGACY_NOW_PLAYING_PREVIEW_KEY": LEGACY_NOW_PLAYING_PREVIEW_KEY,
-    "LEGACY_NOW_PLAYING_DISPLAY_ALLOWED": LEGACY_NOW_PLAYING_DISPLAY_ALLOWED,
-    "LEGACY_ACTIVE_DURATION": LEGACY_ACTIVE_DURATION,
-    "LEGACY_SERVER_PROFILE": LEGACY_SERVER_PROFILE,
-    "LEGACY_SERVER_PROFILE_EFFECTIVE": LEGACY_SERVER_PROFILE_EFFECTIVE,
-    "LEGACY_MA_API_URL": LEGACY_MA_API_URL,
-    "LEGACY_META_PROVIDER_LAST_STATUS": LEGACY_META_PROVIDER_LAST_STATUS,
-    "LEGACY_META_PROVIDER_LAST_RESPONSE": LEGACY_META_PROVIDER_LAST_RESPONSE,
-    "LEGACY_META_PROVIDER_LAST_PROVIDERS": LEGACY_META_PROVIDER_LAST_PROVIDERS,
-    "LEGACY_META_PROVIDER_LAST_ITEM_URI": LEGACY_META_PROVIDER_LAST_ITEM_URI,
-    "LEGACY_META_PROVIDER_LAST_REASON": LEGACY_META_PROVIDER_LAST_REASON,
-    "LEGACY_META_PROVIDER_LAST_UPDATED_AT": LEGACY_META_PROVIDER_LAST_UPDATED_AT,
-}
-
-LEGACY_RETIREMENT_GATES: dict[str, str] = {
-    **{key: LEGACY_RETIRE_GATE_LC_06 for key in LEGACY_RETIRE_CANDIDATE_CONSTANTS},
-    **{key: LEGACY_RETIRE_GATE_LC_05 for key in LEGACY_COMPAT_REQUIRED_CONSTANTS},
-}
+COMPONENT_ACTIVE_TARGET = "sensor.component_active_target"
+COMPONENT_CONTROL_TARGETS = "sensor.component_control_targets"
+COMPONENT_NOW_PLAYING_ENTITY = "sensor.component_now_playing_entity"
+COMPONENT_METADATA_OVERRIDE_ACTIVE = "binary_sensor.component_metadata_override_active"
 
 LEGACY_SURFACES: dict[str, str] = {
     "active_target": LEGACY_ACTIVE_TARGET,

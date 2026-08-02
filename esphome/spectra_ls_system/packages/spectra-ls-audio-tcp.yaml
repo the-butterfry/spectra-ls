@@ -1,6 +1,6 @@
 # Description: Audio controls package for Spectra LS System (TCP-only) with host-resolved control routing.
-# Version: 2026.06.22.1
-# Last updated: 2026-06-22
+# Version: 2026.08.01.2
+# Last updated: 2026-08-01
 # PARITY DIRECTIVE: Behavior/contract edits require same-slice runtime+component parity review and version-metadata review.
 # Update version/date whenever you change this file.
 
@@ -64,7 +64,7 @@ binary_sensor:
       - script.execute: focus_audio
       - script.execute: show_source_context_popup
       - homeassistant.service:
-          service: script.ma_cycle_target
+          service: spectra_ls.cycle_active_target
   - platform: rp2040_uart
     rp2040_uart_id: rp2040_uart_hub
     button_id: ${meta_select_button_id}
@@ -91,16 +91,6 @@ binary_sensor:
     internal: true
     lambda: |-
       return id(arylic_playing_state);
-  - platform: homeassistant
-    id: ma_control_ambiguous
-    entity_id: binary_sensor.ma_control_ambiguous
-    internal: true
-    on_state:
-      - lambda: |-
-          const uint32_t now = millis();
-          if (x) {
-            id(audio_wake_until_ms) = now + ${audio_wake_hold_ms};
-          }
   - platform: homeassistant
     id: ha_audio_display_allowed
     entity_id: ${ha_ma_active_display_allowed}
@@ -1453,8 +1443,6 @@ script:
                        low.find("arc") != std::string::npos;
               };
 
-              const bool ambiguous = id(ma_control_ambiguous).has_state() && id(ma_control_ambiguous).state;
-              if (ambiguous) return false;
               if (id(control_target_force_until_ms) > now) return false;
 
               const std::string active_target = id(ma_active_target).has_state() ? id(ma_active_target).state.c_str() : "";
@@ -1475,7 +1463,7 @@ script:
                   target: !lambda |-
                     return id(ha_now_playing_entity).state.c_str();
             - homeassistant.service:
-                service: script.ma_update_target_options
+                service: spectra_ls.build_target_options_scaffold
             - lambda: |-
                 const uint32_t now = millis();
                 id(control_target_force_until_ms) = now + 2000;
@@ -1721,7 +1709,7 @@ script:
           id(control_target_popup_active) = false;
           ESP_LOGI("meta", "cycle target (MA)");
       - homeassistant.service:
-          service: script.ma_cycle_target
+          service: spectra_ls.cycle_active_target
       - delay: ${meta_override_settle_ms}ms
       - lambda: |-
           if (id(ma_active_friendly).has_state() && !id(ma_active_friendly).state.empty()) {
@@ -1771,13 +1759,12 @@ script:
             static uint32_t last_log_ms = 0;
             if (now - last_log_ms < (uint32_t) ${audio_gate_log_interval_ms}) return;
             last_log_ms = now;
-            const bool ambiguous = id(ma_control_ambiguous).has_state() && id(ma_control_ambiguous).state;
             ESP_LOGW("audio_gate", "set_volume blocked (%s) needs_prompt=%d hosts='%s' host='%s' amb=%d",
                      reason,
                      needs_prompt ? 1 : 0,
                      id(arylic_control_hosts).c_str(),
                      id(arylic_control_host).c_str(),
-                     ambiguous ? 1 : 0);
+                     0);
           };
           const std::string hosts = pick_hosts();
           bool playing = id(arylic_playing).has_state() && id(arylic_playing).state;
@@ -1900,14 +1887,13 @@ script:
             static uint32_t last_log_ms = 0;
             if (now - last_log_ms < (uint32_t) ${audio_gate_log_interval_ms}) return;
             last_log_ms = now;
-            const bool ambiguous = id(ma_control_ambiguous).has_state() && id(ma_control_ambiguous).state;
             ESP_LOGW("audio_gate", "%s blocked (%s) needs_prompt=%d hosts='%s' host='%s' amb=%d",
                      channel_name,
                      reason,
                      needs_prompt ? 1 : 0,
                      id(arylic_control_hosts).c_str(),
                      id(arylic_control_host).c_str(),
-                     ambiguous ? 1 : 0);
+                     0);
           };
           const std::string hosts = pick_hosts();
           bool playing = id(arylic_playing).has_state() && id(arylic_playing).state;
@@ -2160,13 +2146,12 @@ script:
             static uint32_t last_log_ms = 0;
             if (now - last_log_ms < (uint32_t) ${audio_gate_log_interval_ms}) return;
             last_log_ms = now;
-            const bool ambiguous = id(ma_control_ambiguous).has_state() && id(ma_control_ambiguous).state;
             ESP_LOGW("audio_gate", "vol_delta blocked (%s) needs_prompt=%d hosts='%s' host='%s' amb=%d",
                      reason,
                      needs_prompt ? 1 : 0,
                      id(arylic_control_hosts).c_str(),
                      id(arylic_control_host).c_str(),
-                     ambiguous ? 1 : 0);
+                     0);
           };
           const std::string hosts = pick_hosts();
           bool playing = id(arylic_playing).has_state() && id(arylic_playing).state;

@@ -1,6 +1,6 @@
 <!-- Description: End-user overview for the Spectra L/S Home Assistant + ESPHome system. -->
-<!-- Version: 2026.07.04.1 -->
-<!-- Last updated: 2026-07-04 -->
+<!-- Version: 2026.08.01.5 -->
+<!-- Last updated: 2026-08-01 -->
 
 # Spectra L/S
 
@@ -18,6 +18,9 @@ Current operating posture:
 
 - The legacy runtime path (`packages/` + `esphome/`) is treated as a **rollback-safe compatibility baseline**.
 - The custom integration (`custom_components/spectra_ls`) is the **primary path for net-new control-plane and feature growth**.
+- Active ESP runtime cycle actions now call component service `spectra_ls.cycle_active_target` (legacy `script.ma_cycle_target` cycle invocations removed from active runtime flow).
+- Component selection and metadata override mutation lanes now use component-owned state stores as the active write path (legacy helper writes retired from active component mutation flow).
+- Legacy runtime `ma_control_hub` implementation was physically removed (`packages/ma_control_hub/*.inc` hard-deleted after backup); `packages/ma_control_hub.yaml` remains as an archived stub and component contracts are the active authority path for startup/selection/metadata readiness.
 - New install-specific hardcoded entity IDs/private host literals are now CI-blocked in active product logic paths via the Phase-0 hardcode guard workflow.
 - Active target/host authority runs in **component-primary non-hybrid mode** during normal operation (legacy writer lanes are authority-gated and remain rollback-safe fallback semantics).
 - Authority mode is now **component-pinned** in active operation (legacy authority-mode selection is disabled), and component auto-select keeps current valid target by default unless explicitly forced.

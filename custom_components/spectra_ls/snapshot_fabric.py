@@ -1,6 +1,6 @@
 # Description: Snapshot-fabric workflow for Spectra LS coordinator snapshot and write-controls packet assembly extracted from coordinator.
-# Version: 2026.06.22.3
-# Last updated: 2026-06-22
+# Version: 2026.08.01.1
+# Last updated: 2026-07-31
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -85,12 +85,85 @@ class SnapshotFabricWorkflow:
             "source": source or "component_service_packet",
         }
 
+    def _derive_component_route_authority(self, registry: dict[str, Any]) -> tuple[str, str, str]:
+        """Choose active target/control-path from component-owned registry + entity state only."""
+        c = self._coordinator
+        entries = registry.get("entries", {}) if isinstance(registry.get("entries", {}), dict) else {}
+
+        prior_target_state = c.hass.states.get("sensor.component_active_target")
+        prior_target = str(prior_target_state.state if prior_target_state is not None else "").strip()
+
+        def _availability_points(raw_quality: Any) -> int:
+            quality = str(raw_quality or "").strip().lower()
+            if quality == "fresh":
+                return 50
+            if quality == "warm":
+                return 30
+            if quality == "stale":
+                return 10
+            return 0
+
+        ranked: list[tuple[int, str, str]] = []
+        for target, entry in entries.items():
+            if not isinstance(entry, dict):
+                continue
+
+            target_id = str(target or "").strip()
+            if not target_id:
+                continue
+
+            host = str(entry.get("host", "") or "").strip()
+            control_path = str(entry.get("control_path", "") or "").strip().lower()
+            control_capable = bool(entry.get("control_capable", False))
+            if not (control_capable and host and control_path == "linkplay_tcp"):
+                continue
+
+            entity_state = c.hass.states.get(target_id)
+            state_norm = c._normalize_state(entity_state.state if entity_state is not None else "")
+
+            state_points = 0
+            if state_norm == "playing":
+                state_points = 1000
+            elif state_norm == "paused":
+                state_points = 850
+            elif state_norm == "buffering":
+                state_points = 700
+            elif state_norm in {"on", "idle"}:
+                state_points = 250
+
+            feature_profile = entry.get("feature_profile", {}) if isinstance(entry.get("feature_profile", {}), dict) else {}
+            availability_points = _availability_points(feature_profile.get("availability_quality", ""))
+            sticky_points = 200 if prior_target and target_id == prior_target else 0
+
+            ranked.append((state_points + availability_points + sticky_points, target_id, control_path))
+
+        if not ranked:
+            return "", "", "component_no_control_capable_candidate"
+
+        ranked.sort(key=lambda item: (-item[0], item[1]))
+        selected_target = ranked[0][1]
+        selected_path = ranked[0][2]
+
+        if prior_target and selected_target == prior_target:
+            return selected_target, selected_path, "component_sticky_ranked_candidate"
+        return selected_target, selected_path, "component_ranked_candidate"
+
     def build_write_controls(self) -> dict[str, Any]:
         """Build write-controls packet from coordinator and meta-fabric surfaces."""
         c = self._coordinator
         meta_policy = c._meta_fabric.build_meta_policy_surface()
         metadata_surfaces = c._meta_fabric.build_write_controls_metadata_surfaces()
         metadata_provider_last = self._build_metadata_provider_packet()
+        component_selection_state = (
+            dict(c._component_selection_state)
+            if isinstance(getattr(c, "_component_selection_state", {}), dict)
+            else {}
+        )
+        component_metadata_override_state = (
+            dict(c._component_metadata_override_state)
+            if isinstance(getattr(c, "_component_metadata_override_state", {}), dict)
+            else {}
+        )
 
         return {
             "authority_mode": c._write_authority_mode,
@@ -98,6 +171,8 @@ class SnapshotFabricWorkflow:
             "debounce_s": c._write_debounce_s,
             "in_progress": c._write_in_progress,
             "last_attempt": c._last_write_attempt,
+            "component_selection_state": component_selection_state,
+            "component_metadata_override_state": component_metadata_override_state,
             **metadata_surfaces,
             "metadata_provider_last": metadata_provider_last,
             "scheduler_last_decision": c._last_scheduler_decision,
@@ -165,11 +240,16 @@ class SnapshotFabricWorkflow:
             legacy_active_target_entity=LEGACY_SURFACES["active_target"],
         )
 
+        component_active_target, component_active_control_path, authority_source = self._derive_component_route_authority(
+            registry
+        )
+
         route_trace = build_route_trace(
-            active_target=str(parity.get("active_target", "") or ""),
-            active_control_path=str(parity.get("active_control_path", "") or ""),
+            active_target=component_active_target,
+            active_control_path=component_active_control_path,
             registry=registry,
         )
+        route_trace["authority_source"] = authority_source
 
         selected_target = (
             route_trace.get("selected_target", {})
@@ -206,17 +286,12 @@ class SnapshotFabricWorkflow:
 
         selected_host = _clean_text(selected_target.get("host", ""))
         component_host = _clean_text(c.hass.states.get("sensor.component_control_host").state if c.hass.states.get("sensor.component_control_host") is not None else "")
-        runtime_host = _clean_text(c.hass.states.get(LEGACY_CONTROL_HOST).state if c.hass.states.get(LEGACY_CONTROL_HOST) is not None else "")
-        parity_hosts = _clean_text(parity.get("control_hosts", ""))
-        if "," in parity_hosts:
-            parity_hosts = _clean_text(parity_hosts.split(",", 1)[0])
 
         selected_port = _clean_port(selected_target.get("port", ""))
         component_port = _clean_port(c.hass.states.get("sensor.component_control_port").state if c.hass.states.get("sensor.component_control_port") is not None else "")
-        runtime_port = _clean_port(c.hass.states.get("sensor.ma_control_port").state if c.hass.states.get("sensor.ma_control_port") is not None else "")
 
-        resolved_route_host = route_host or selected_host or component_host or runtime_host or parity_hosts
-        resolved_route_port = route_port or selected_port or component_port or runtime_port
+        resolved_route_host = route_host or selected_host or component_host
+        resolved_route_port = route_port or selected_port or component_port
 
         route_trace = {
             **route_trace,

@@ -1,6 +1,6 @@
 {# Description: Raw copy/paste Developer Tools template to validate OLED, control target, and meta target alignment (including SRC fallback causes). #}
-{# Version: 2026.07.25.4 #}
-{# Last updated: 2026-07-25 #}
+{# Version: 2026.08.01.5 #}
+{# Last updated: 2026-08-01 #}
 
 {# =========================
   OLED + Control Target + Meta Target Validation
@@ -49,7 +49,7 @@
 {% set packet_now_playing_app = metadata_values.now_playing_app if metadata_values.now_playing_app is defined else 'unknown' %}
 {% set packet_now_playing_source = metadata_values.now_playing_source if metadata_values.now_playing_source is defined else 'unknown' %}
 {% set packet_resolver_selected_meta_entity = metadata_values.resolver_selected_meta_entity if metadata_values.resolver_selected_meta_entity is defined else 'unknown' %}
-{% set packet_component_entity_source = metadata_values.component_now_playing_entity_source if metadata_values.component_now_playing_entity_source is defined else 'unknown' %}
+{% set packet_component_entity_source = metadata_values.component_now_playing_entity_source if metadata_values.component_now_playing_entity_source is defined else (metadata_checks.component_now_playing_entity_source if metadata_checks.component_now_playing_entity_source is defined else 'unknown') %}
 {% set packet_passthrough_album_suppressed = metadata_values.passthrough_album_suppressed if metadata_values.passthrough_album_suppressed is defined else 'unknown' %}
 {% set packet_passthrough_cache_reused = metadata_values.passthrough_metadata_cache_reused if metadata_values.passthrough_metadata_cache_reused is defined else 'unknown' %}
 {% set packet_passthrough_cache_age_s = metadata_values.passthrough_metadata_cache_age_s if metadata_values.passthrough_metadata_cache_age_s is defined else 'unknown' %}
@@ -57,6 +57,8 @@
 {% set packet_passthrough_upstream_meta_entity = metadata_values.passthrough_upstream_meta_entity if metadata_values.passthrough_upstream_meta_entity is defined else 'unknown' %}
 {% set packet_passthrough_upstream_meta_reason = metadata_values.passthrough_upstream_meta_reason if metadata_values.passthrough_upstream_meta_reason is defined else 'unknown' %}
 {% set packet_passthrough_upstream_meta_score = metadata_values.passthrough_upstream_meta_score if metadata_values.passthrough_upstream_meta_score is defined else 'unknown' %}
+{% set packet_component_playback_keepalive_ready = metadata_checks.component_playback_keepalive_ready if metadata_checks.component_playback_keepalive_ready is defined else (metadata_values.component_playback_keepalive_ready if metadata_values.component_playback_keepalive_ready is defined else 'unknown') %}
+{% set packet_global_active_metadata_rescue_used = metadata_checks.global_active_metadata_rescue_used if metadata_checks.global_active_metadata_rescue_used is defined else (metadata_values.global_active_metadata_rescue_used if metadata_values.global_active_metadata_rescue_used is defined else 'unknown') %}
 {% set packet_selector_raw = metadata_values.component_now_playing_selection if metadata_values.component_now_playing_selection is defined else {} %}
 {% set packet_selector = packet_selector_raw if packet_selector_raw is mapping else ((packet_selector_raw | from_json) if (packet_selector_raw is string and (packet_selector_raw | trim).startswith('{')) else {}) %}
 {% set packet_selector_winner_entity_raw = metadata_checks.component_now_playing_selection_winner_entity if metadata_checks.component_now_playing_selection_winner_entity is defined else (metadata_values.component_now_playing_selection_winner_entity if metadata_values.component_now_playing_selection_winner_entity is defined else (packet_selector.winner_entity if packet_selector.winner_entity is defined else 'unknown')) %}
@@ -453,6 +455,8 @@
 - upstream global playback hint (fallback): **{{ upstream_global.entity }} / {{ upstream_global.state }} / {{ upstream_global.app }}{{ ' (' ~ upstream_global.app_id ~ ')' if upstream_global.app_id not in ['n/a', '', none] else '' }} / {{ upstream_global.source }} / {{ upstream_global.title }}**
 - passthrough source detected (optical/line-in/etc): **{{ passthrough_source_detected }}**
 - packet now-playing entity source: **{{ packet_component_entity_source if packet_component_entity_source not in invalid else 'n/a' }}**
+- component playback keepalive gate ready: **{{ packet_component_playback_keepalive_ready if packet_component_playback_keepalive_ready not in invalid else 'n/a' }}**
+- global active metadata rescue used: **{{ packet_global_active_metadata_rescue_used if packet_global_active_metadata_rescue_used not in invalid else 'n/a' }}**
 - passthrough stale-album suppression applied: **{{ packet_passthrough_album_suppressed if packet_passthrough_album_suppressed not in invalid else 'n/a' }}**
 - passthrough metadata cache reused/age_s: **{{ packet_passthrough_cache_reused if packet_passthrough_cache_reused not in invalid else 'n/a' }} / {{ packet_passthrough_cache_age_s if packet_passthrough_cache_age_s not in invalid else 'n/a' }}**
 - passthrough upstream meta fallback used: **{{ packet_passthrough_upstream_meta_fallback_used if packet_passthrough_upstream_meta_fallback_used not in invalid else 'n/a' }}**

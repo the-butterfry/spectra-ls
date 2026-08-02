@@ -1,6 +1,6 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.07.04.1 -->
-<!-- Last updated: 2026-07-04 -->
+<!-- Version: 2026.08.01.9 -->
+<!-- Last updated: 2026-08-01 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
 
@@ -44,7 +44,92 @@ Apply this handler set in every remaining phase slice where literals/hardcodes a
 - No new install-specific literals in active product logic or active operator defaults.
 - No silent exception lanes; bounded exceptions must be documented with rationale in the same change set.
 
+Latest run update (2026-08-01, reboot-loop stabilization + LC-06 compatibility retirement wave):
+
+Latest run update (2026-08-01, runtime execution-lane hard retirement sweep):
+
+- Runtime package legacy implementation retirement executed: dormant `packages/ma_control_hub/*.inc` helper/template/script surfaces were physically removed after external backup, and `packages/ma_control_hub.yaml` is now an archived stub.
+- Active ESP ambiguity dependency retired from `esphome/spectra_ls_system/packages/spectra-ls-audio-tcp.yaml` by removing `binary_sensor.ma_control_ambiguous` ingestion and active gate checks.
+- Control-board HA fixture alignment completed in `esphome/spectra_ls_system/spectra_ls_ha_view.yaml` using component-primary entities for active target/friendly display.
+- Runtime track disposition: implemented (legacy execution-lane retirement completed in touched runtime assembly paths).
+- Component track disposition: implemented (component-primary surfaces remain sole authority lane in touched paths).
+- Version parity review: runtime `updated`; component `not-applicable` (no component behavior file mutation in this slice).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment beyond established component-primary model; residual execution-lane retirement and operator-surface alignment only.
+
+Latest run update (2026-08-01, component authority/candidate gate false-blocker correction):
+
+- Corrected component metadata-prep gate semantics so component-only posture does not require legacy-only metadata surfaces for authority readiness classification.
+- Active-meta authority resolution now accepts component resolver/selection winners when legacy active-meta entity is intentionally unavailable.
+- Candidate payload readiness now accepts component-side candidate evidence (`component_now_playing_selection` and resolver-selected entity) when legacy candidate payload surfaces are intentionally retired.
+- Live validation posture after fix: OLED validation remains `PASS`; legacy full-stack audit still reports real remaining cutover/proof blockers (not false legacy-owner fallback), preserving fail-closed governance visibility.
+- Runtime track disposition: compatibility-shimmed (runtime package/esphome behavior unchanged).
+- Component track disposition: implemented (component gate truthfulness hardening).
+- Version parity review: runtime `not-applicable`; component `updated`.
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; false blocker removal and component-contract alignment only.
+
+- Stabilized active component lifecycle/event-recovery callback pressure with no-op state-change suppression, per-entity cooldown/in-flight coalescing, and temporary suspension of global `state_changed` fan-in during incident recovery.
+- Executed LC-06 compatibility retirement sequence in active component lanes touched this slice:
+  - removed dead legacy constants (`LEGACY_CONTROL_AMBIGUOUS`, `LEGACY_NO_CONTROL_CAPABLE_HOSTS`, `LEGACY_META_STALE`),
+  - retired active reads from `LEGACY_MA_PLAYERS`, `LEGACY_META_DETECTED_ENTITY`, `LEGACY_META_STALE_S`, and `LEGACY_OVERRIDE_ACTIVE`.
+- Validation posture: HA API recovered and reports core `RUNNING`; full component cutover validator executes and now surfaces remaining host-cutover/control-center readiness blockers as explicit follow-up governance items.
+- Runtime track disposition: compatibility-shimmed (runtime package/esphome behavior unchanged in this wave).
+- Component track disposition: implemented (stability hardening + compatibility read-lane retirement in component path).
+- Version parity review: runtime `not-applicable`; component `updated`.
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; incident stabilization + compatibility-retirement progression only.
+
 Latest run update (2026-05-17, Slice-CW control-host active-target guard slip fix):
+
+Latest run update (2026-08-01, component-only template-retirement cutover execution):
+
+Latest run update (2026-08-01, precise cutover checklist kickoff + step-1 execution):
+
+- Added a precise staged cutover checklist for legacy retirement safety and execution order:
+  1) runtime legacy cycle callsite retirement,
+  2) helper-backed selection-write retirement,
+  3) helper-backed metadata override-write retirement,
+  4) legacy lifecycle watcher retirement,
+  5) dormant legacy artifact closure/removal validation.
+- Executed Step-1 in this slice: active ESP runtime cycle actions now call `spectra_ls.cycle_active_target` instead of `script.ma_cycle_target`.
+- Runtime track disposition: implemented (cycle callsites switched to component service contract).
+- Component track disposition: implemented (existing service contract now consumed directly by runtime actions).
+- Version parity review: runtime `updated`; component `not-applicable` (service contract unchanged, consumer migration only).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; bounded callsite retirement and cutover progression only.
+
+Latest run update (2026-08-01, precise cutover checklist step-2/step-3 execution):
+
+- Executed Step-2 (selection helper-write retirement) and Step-3 (metadata override helper-write retirement) in active component mutation lanes.
+- Selection and metadata override mutation services now apply to component-owned state stores; helper writes are no longer the active component write-path mechanism.
+- Route-trace and write-controls/validation consumers were aligned to component state ownership for these lanes.
+- Runtime track disposition: compatibility-shimmed (legacy helper surfaces retained as compatibility observability/fallback context only).
+- Component track disposition: implemented (component-owned selection/override write-state contract active).
+- Version parity review: runtime `not-applicable` (no runtime behavior-file mutation in this slice); component `updated`.
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment beyond planned component-primary cutover progression; deterministic helper-write retirement and ownership hardening only.
+
+Latest run update (2026-08-01, precise cutover checklist step-4/step-5 execution):
+
+- Executed Step-4 by retiring active legacy lifecycle watcher dependencies and binding lifecycle watchers to component contract entities (`sensor.component_control_targets`, `sensor.component_now_playing_entity`, `sensor.component_active_target`, `binary_sensor.component_metadata_override_active`).
+- Executed Step-5 by closing dormant legacy lifecycle branches from active execution (legacy ambiguity/stale/no-control watcher codepaths remain bounded compatibility no-op surfaces only).
+- Runtime track disposition: compatibility-shimmed (legacy entities remain available as compatibility surfaces but no longer drive active lifecycle watcher execution).
+- Component track disposition: implemented (component contract entities now own active lifecycle watcher/recovery trigger path).
+- Version parity review: runtime `not-applicable` (no runtime behavior-file mutation in this slice); component `updated`.
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment beyond planned component-primary cutover progression; deterministic watcher retirement and dormant-legacy closure hardening only.
+
+Latest run update (2026-08-01, component-only watcher hardening + surgical dead-chain cleanup):
+
+- Hardened component-only watcher/recovery execution with stricter event payload and plan-shape guards and readiness fallback robustness.
+- Removed the dormant legacy no-op callback/timer chain end-to-end (`coordinator.py` -> `meta_fabric.py` -> `event_recovery_fabric.py`) after retirement validation.
+- Runtime track disposition: compatibility-shimmed (no runtime behavior-file mutation in this follow-up slice).
+- Component track disposition: implemented (component-only watcher path hardened; legacy dead chain removed).
+- Version parity review: runtime `not-applicable`; component `updated`.
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; fragility reduction and deterministic cleanup only.
+
+- Completed component-only cutover execution by hardening startup/metadata/validation contracts to avoid active dependence on legacy template surfaces.
+- Startup readiness now requires positive MA player count; metadata selector MA-hinting and freshness behavior are normalized for component-only authority windows; strict host/target mismatch checks use normalized comparisons.
+- Active runtime package include `template: !include ma_control_hub/template.inc` was retired after component validation readiness guards were shifted to component-primary optional-legacy posture.
+- Runtime track disposition: implemented (legacy template include retired; runtime remains rollback-safe compatibility baseline).
+- Component track disposition: implemented (component authority/readiness contracts operate without legacy template as required prerequisite).
+- Version parity review: runtime `updated`, component `updated`.
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment beyond planned component-primary posture; dependency retirement and cutover-hardening only.
 
 Latest run update (2026-06-22, Phase-Setup-1 HA setup-flow foundation):
 

@@ -1,6 +1,6 @@
 # Description: Validation/control fabric workflow for Spectra LS snapshot validation assembly extracted from meta-fabric.
-# Version: 2026.06.20.2
-# Last updated: 2026-06-20
+# Version: 2026.08.01.5
+# Last updated: 2026-08-01
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -16,7 +16,6 @@ from .const import (
     LEGACY_META_OVERRIDE_ACTIVE,
     LEGACY_META_OVERRIDE_ENTITY,
     LEGACY_META_PAUSED_HIDE_S,
-    LEGACY_META_STALE_S,
     METADATA_AUTH_OWNER_COMPONENT,
     LEGACY_ROOMS_JSON,
     LEGACY_ROOMS_RAW,
@@ -35,6 +34,36 @@ class ValidationFabricWorkflow:
     def __init__(self, coordinator: Any, selection_fabric: SelectionFabricWorkflow) -> None:
         self._coordinator = coordinator
         self._selection_fabric = selection_fabric
+
+    @staticmethod
+    def _normalize_entity_id(value: Any) -> str:
+        entity = str(value or "").strip().lower()
+        if entity in {"", "none", "unknown", "unavailable", "null"}:
+            return ""
+        return entity
+
+    @staticmethod
+    def _normalize_host(value: Any) -> str:
+        host = str(value or "").strip().lower()
+        if host in {"", "none", "unknown", "unavailable", "null"}:
+            return ""
+        if ":" in host and host.count(":") == 1:
+            candidate_host, candidate_port = host.rsplit(":", 1)
+            if candidate_host and candidate_port.isdigit():
+                host = candidate_host.strip().lower()
+        return host
+
+    @classmethod
+    def _entity_ids_match(cls, left: Any, right: Any) -> bool:
+        left_norm = cls._normalize_entity_id(left)
+        right_norm = cls._normalize_entity_id(right)
+        return left_norm != "" and right_norm != "" and left_norm == right_norm
+
+    @classmethod
+    def _hosts_match(cls, left: Any, right: Any) -> bool:
+        left_norm = cls._normalize_host(left)
+        right_norm = cls._normalize_host(right)
+        return left_norm != "" and right_norm != "" and left_norm == right_norm
 
     def build_metadata_validation_bundle(
         self,
@@ -90,17 +119,31 @@ class ValidationFabricWorkflow:
     def build_write_controls_metadata_surfaces(self) -> dict[str, Any]:
         """Build metadata-related write-control surfaces for coordinator snapshot payload."""
         c = self._coordinator
-        override_active_state = c.hass.states.get(LEGACY_META_OVERRIDE_ACTIVE)
-        override_entity_state = c.hass.states.get(LEGACY_META_OVERRIDE_ENTITY)
-
-        override_active_norm = c._normalize_state(
-            override_active_state.state if override_active_state is not None else ""
+        override_state = getattr(c, "_component_metadata_override_state", {})
+        override_active = bool(override_state.get("active", False)) if isinstance(override_state, dict) else False
+        override_entity = (
+            str(override_state.get("entity", "") or "").strip()
+            if isinstance(override_state, dict)
+            else ""
         )
-        override_active = override_active_norm in {"on", "true", "1"}
-
-        override_entity = str(override_entity_state.state if override_entity_state is not None else "").strip()
-        if override_entity.lower() in {"", "none", "unknown", "unavailable", "null"}:
+        if not c._is_resolved_state(override_entity):
             override_entity = ""
+
+        # Compatibility fallback for cold-start windows before component store is seeded.
+        if not override_active and override_entity == "":
+            override_active_state = c.hass.states.get(LEGACY_META_OVERRIDE_ACTIVE)
+            override_entity_state = c.hass.states.get(LEGACY_META_OVERRIDE_ENTITY)
+            helper_override_active = c._normalize_state(
+                override_active_state.state if override_active_state is not None else ""
+            ) in {"on", "true", "1"}
+            helper_override_entity = str(
+                override_entity_state.state if override_entity_state is not None else ""
+            ).strip()
+            if not c._is_resolved_state(helper_override_entity):
+                helper_override_entity = ""
+            if helper_override_active or helper_override_entity:
+                override_active = helper_override_active
+                override_entity = helper_override_entity
 
         last_override_attempt = c.metadata_stack.last_metadata_override_attempt
 
@@ -126,10 +169,7 @@ class ValidationFabricWorkflow:
         c = self._coordinator
         return {
             "mode": str(META_POLICY_DEFAULTS.get("mode", "auto")),
-            "meta_stale_s": c._read_float_helper(
-                LEGACY_META_STALE_S,
-                float(META_POLICY_DEFAULTS.get("meta_stale_s", 45.0)),
-            ),
+            "meta_stale_s": float(META_POLICY_DEFAULTS.get("meta_stale_s", 45.0)),
             "paused_hide_s": c._read_float_helper(
                 LEGACY_META_PAUSED_HIDE_S,
                 float(META_POLICY_DEFAULTS.get("paused_hide_s", 600.0)),
@@ -308,7 +348,7 @@ class ValidationFabricWorkflow:
         if not checks["route_trace_present"]:
             blocking_reasons.append("route_trace_missing")
         if not checks["ma_boot_ready"]:
-            blocking_reasons.append("waiting_for_ma_boot")
+            blocking_reasons.append("waiting_for_startup_readiness")
         if checks["ma_boot_ready"] and not checks["contract_valid"]:
             blocking_reasons.append("contract_invalid")
         if checks["ma_boot_ready"] and not checks["registry_present"]:
@@ -334,15 +374,21 @@ class ValidationFabricWorkflow:
     def build_contract_validation(self) -> dict[str, Any]:
         """Build required/soft contract validation payload for routing surfaces."""
         c = self._coordinator
+        # Component-only cutover posture: component diagnostics surfaces are
+        # required for active readiness while legacy template entities are
+        # compatibility-only and must not fail the contract gate when missing.
         required_entities = {
+            "component_active_target": "sensor.component_active_target",
+            "component_control_hosts": "sensor.component_control_hosts",
+            "component_control_targets": "sensor.component_control_targets",
+        }
+        soft_required_entities = {
             "active_target": LEGACY_SURFACES["active_target"],
             "active_control_path": LEGACY_SURFACES["active_control_path"],
             "active_control_capable": LEGACY_SURFACES["active_control_capable"],
             "control_targets": LEGACY_CONTROL_TARGETS,
             "rooms_json": LEGACY_ROOMS_JSON,
             "rooms_raw": LEGACY_ROOMS_RAW,
-        }
-        soft_required_entities = {
             "control_hosts": LEGACY_SURFACES["control_hosts"],
             "control_host": LEGACY_CONTROL_HOST,
         }
@@ -400,13 +446,25 @@ class ValidationFabricWorkflow:
         c = self._coordinator
         helper_state = c.hass.states.get(LEGACY_ACTIVE_TARGET_HELPER)
         helper_exists = helper_state is not None
-        helper_options = WritePathFabric.normalize_options(
-            helper_state.attributes.get("options", []) if helper_state is not None else []
+        component_selection = getattr(c, "_component_selection_state", {})
+        component_options = (
+            list(component_selection.get("options", []))
+            if isinstance(component_selection, dict) and isinstance(component_selection.get("options", []), list)
+            else []
         )
+        helper_options = WritePathFabric.normalize_options(component_options)
+        if len(helper_options) == 0 and helper_state is not None:
+            helper_options = WritePathFabric.normalize_options(
+                helper_state.attributes.get("options", []) if helper_state is not None else []
+            )
 
         active_target = str(parity.get("active_target", "") or "").strip()
         active_target_resolved = active_target.lower() not in {"", "none", "unknown", "unavailable"}
-        target_in_helper_options = active_target_resolved and active_target in helper_options
+        target_in_helper_options = (
+            helper_exists
+            and active_target_resolved
+            and any(self._entity_ids_match(active_target, option) for option in helper_options)
+        )
 
         component_services = [
             "spectra_ls.apply_scheduler_choice",
@@ -422,9 +480,9 @@ class ValidationFabricWorkflow:
         contract_valid = bool(contract_validation.get("valid", False))
 
         verdict = "PASS"
-        if not helper_exists or not active_target_resolved or not route_ready or not contract_valid:
+        if not active_target_resolved or not route_ready or not contract_valid:
             verdict = "FAIL"
-        elif not helper_options or not target_in_helper_options:
+        elif helper_exists and helper_options and not target_in_helper_options:
             verdict = "WARN"
 
         return {
@@ -467,10 +525,9 @@ class ValidationFabricWorkflow:
         control_hosts_resolved = c._is_resolved_state(control_hosts)
         selected_target_matches_active = (
             active_target_resolved
-            and c._is_resolved_state(selected_target_id)
-            and selected_target_id == active_target
+            and self._entity_ids_match(selected_target_id, active_target)
         )
-        selected_target_host_resolved = c._is_resolved_state(selected_target_host)
+        selected_target_host_resolved = self._normalize_host(selected_target_host) != ""
 
         blocking_reasons: list[str] = []
         if active_target_resolved and not selected_target_matches_active:
@@ -519,7 +576,9 @@ class ValidationFabricWorkflow:
         c = self._coordinator
         entries = registry.get("entries", {}) if isinstance(registry.get("entries", {}), dict) else {}
 
-        active_target = str(parity.get("active_target", "") or "").strip()
+        route_active_target = str(route_trace.get("active_target", "") or "").strip()
+        parity_active_target = str(parity.get("active_target", "") or "").strip()
+        active_target = route_active_target if c._is_resolved_state(route_active_target) else parity_active_target
         selected_entry = entries.get(active_target)
 
         component_candidate_host = (
@@ -563,18 +622,20 @@ class ValidationFabricWorkflow:
             "candidate_control_capable": bool(component_candidate_capable),
             "route_decision_supported": route_decision == "route_linkplay_tcp",
             "resolved_control_path_supported": resolved_control_path == "linkplay_tcp",
-            "legacy_active_control_capable_true": bool(parity.get("active_control_capable", False)),
+            "legacy_active_control_capable_signal": bool(parity.get("active_control_capable", False)),
             "legacy_control_host_consistent": True,
             "legacy_control_hosts_first_consistent": True,
         }
 
         if legacy_control_host:
-            checks["legacy_control_host_consistent"] = (
-                component_candidate_host.lower() == legacy_control_host.lower()
+            checks["legacy_control_host_consistent"] = self._hosts_match(
+                component_candidate_host,
+                legacy_control_host,
             )
         if legacy_first_host:
-            checks["legacy_control_hosts_first_consistent"] = (
-                component_candidate_host.lower() == legacy_first_host.lower()
+            checks["legacy_control_hosts_first_consistent"] = self._hosts_match(
+                component_candidate_host,
+                legacy_first_host,
             )
 
         gate_blockers: list[str] = []
@@ -592,8 +653,6 @@ class ValidationFabricWorkflow:
             gate_blockers.append(
                 f"resolved_control_path_not_supported:{resolved_control_path or 'missing'}"
             )
-        if not checks["legacy_active_control_capable_true"]:
-            gate_blockers.append("legacy_active_control_capable_false")
         if not checks["legacy_control_host_consistent"]:
             gate_blockers.append("legacy_control_host_mismatch")
         if not checks["legacy_control_hosts_first_consistent"]:

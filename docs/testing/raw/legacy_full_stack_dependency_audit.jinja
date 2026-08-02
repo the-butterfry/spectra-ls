@@ -1,12 +1,13 @@
 {# Description: Raw copy/paste Developer Tools template to detect any active legacy codepath or runtime-fallback dependency across Spectra LS control + metadata + authority surfaces. #}
-{# Version: 2026.06.21.2 #}
-{# Last updated: 2026-06-21 #}
+{# Version: 2026.08.01.6 #}
+{# Last updated: 2026-08-01 #}
 
 {# =========================
   Legacy Full-Stack Dependency Audit
   Purpose:
     - Detect whether legacy authority/pathing is still active.
-    - Detect whether component stack is silently depending on runtime fallback surfaces.
+    - Enforce component-only posture (no runtime fallback interpretation).
+    - Detect whether legacy runtime surfaces still exist and should be retired.
     - Surface hard blockers (must-fix) vs soft dependencies (cleanup debt).
   Usage:
     1) Paste into Home Assistant -> Developer Tools -> Template.
@@ -15,6 +16,17 @@
   ========================= #}
 
 {% set invalid = ['', 'none', 'unknown', 'unavailable', 'null', none] %}
+
+{# --- component alias resolution (entity-id family drift safe) --- #}
+{% set c_active_target_entity = 'sensor.component_active_target' if states('sensor.component_active_target') not in invalid else ('sensor.spectra_ls_component_active_target' if states('sensor.spectra_ls_component_active_target') not in invalid else 'sensor.component_active_target') %}
+{% set c_control_hosts_entity = 'sensor.component_control_hosts' if states('sensor.component_control_hosts') not in invalid else ('sensor.spectra_ls_component_control_hosts' if states('sensor.spectra_ls_component_control_hosts') not in invalid else 'sensor.component_control_hosts') %}
+{% set c_control_host_entity = 'sensor.component_control_host' if states('sensor.component_control_host') not in invalid else ('sensor.spectra_ls_component_control_host' if states('sensor.spectra_ls_component_control_host') not in invalid else 'sensor.component_control_host') %}
+{% set c_control_port_entity = 'sensor.component_control_port' if states('sensor.component_control_port') not in invalid else ('sensor.spectra_ls_component_control_port' if states('sensor.spectra_ls_component_control_port') not in invalid else 'sensor.component_control_port') %}
+{% set c_entity_entity = 'sensor.component_now_playing_entity' if states('sensor.component_now_playing_entity') not in invalid else ('sensor.spectra_ls_component_now_playing_entity' if states('sensor.spectra_ls_component_now_playing_entity') not in invalid else 'sensor.component_now_playing_entity') %}
+{% set c_title_entity = 'sensor.component_now_playing_title' if states('sensor.component_now_playing_title') not in invalid else ('sensor.spectra_ls_component_now_playing_title' if states('sensor.spectra_ls_component_now_playing_title') not in invalid else 'sensor.component_now_playing_title') %}
+{% set c_source_entity = 'sensor.component_now_playing_source' if states('sensor.component_now_playing_source') not in invalid else ('sensor.spectra_ls_component_now_playing_source' if states('sensor.spectra_ls_component_now_playing_source') not in invalid else 'sensor.component_now_playing_source') %}
+{% set c_backend_profile_entity = 'sensor.component_backend_profile' if states('sensor.component_backend_profile') not in invalid else ('sensor.spectra_ls_component_backend_profile' if states('sensor.spectra_ls_component_backend_profile') not in invalid else 'sensor.component_backend_profile') %}
+{% set c_api_url_entity = 'sensor.component_ma_api_url' if states('sensor.component_ma_api_url') not in invalid else ('sensor.spectra_ls_component_ma_api_url' if states('sensor.spectra_ls_component_ma_api_url') not in invalid else 'sensor.component_ma_api_url') %}
 
 {# --- shadow source resolution --- #}
 {% set s_target_primary = 'sensor.shadow_active_target' %}
@@ -42,6 +54,10 @@
 {% set authority_mode_prep = metadata_prep.authority_mode if metadata_prep.authority_mode is defined else 'unknown' %}
 {% set authority_mode_contract = authority_contract.authority_mode if authority_contract.authority_mode is defined else 'unknown' %}
 {% set authority_mode_effective = authority_mode_contract if authority_mode_contract not in invalid else (authority_mode_prep if authority_mode_prep not in invalid else authority_mode_wc) %}
+{% set authority_mode_wc_label = 'component_primary' if authority_mode_wc == 'ma_primary' else authority_mode_wc %}
+{% set authority_mode_prep_label = 'component_primary' if authority_mode_prep == 'ma_primary' else authority_mode_prep %}
+{% set authority_mode_contract_label = 'component_primary' if authority_mode_contract == 'ma_primary' else authority_mode_contract %}
+{% set authority_mode_effective_label = 'component_primary' if authority_mode_effective == 'ma_primary' else authority_mode_effective %}
 
 {% set metadata_owner_prep = metadata_prep.metadata_authority_owner if metadata_prep.metadata_authority_owner is defined else 'unknown' %}
 {% set metadata_owner_contract = authority_contract.metadata_authority_owner if authority_contract.metadata_authority_owner is defined else 'unknown' %}
@@ -56,40 +72,47 @@
 {% set cutover_blockers = authority_contract.cutover_prep_blocking_reasons if authority_contract.cutover_prep_blocking_reasons is defined and authority_contract.cutover_prep_blocking_reasons is iterable else [] %}
 {% set proof_presence = authority_contract.proof_checkpoint_presence if authority_contract.proof_checkpoint_presence is defined and authority_contract.proof_checkpoint_presence is mapping else {} %}
 
-{# --- control/route + host surfaces --- #}
+{# --- control/route + host surfaces (component-only) --- #}
 {% set route_decision = route_trace.decision if route_trace.decision is defined else 'unknown' %}
 {% set route_active_target = route_trace.active_target if route_trace.active_target is defined else 'unknown' %}
 
-{% set c_control_host = states('sensor.component_control_host') %}
-{% set c_control_port = states('sensor.component_control_port') %}
+{% set c_control_host = states(c_control_host_entity) %}
+{% set c_control_port = states(c_control_port_entity) %}
 {% set r_control_host = states('sensor.ma_control_host') %}
 {% set r_control_port = states('sensor.ma_control_port') %}
 
-{% set control_host_effective = c_control_host if c_control_host not in invalid else r_control_host %}
-{% set control_port_effective = c_control_port if c_control_port not in invalid else r_control_port %}
-{% set control_host_source = 'component' if c_control_host not in invalid else ('runtime_fallback' if r_control_host not in invalid else 'missing') %}
-{% set control_port_source = 'component' if c_control_port not in invalid else ('runtime_fallback' if r_control_port not in invalid else 'missing') %}
+{% set control_host_effective = c_control_host %}
+{% set control_port_effective = c_control_port %}
+{% set control_host_source = 'component' if c_control_host not in invalid else 'missing' %}
+{% set control_port_source = 'component' if c_control_port not in invalid else 'missing' %}
+{% set r_control_host_present = r_control_host not in invalid %}
+{% set r_control_port_present = r_control_port not in invalid %}
 
-{# --- now-playing/component-vs-runtime dependency signals --- #}
-{% set c_entity = states('sensor.component_now_playing_entity') %}
-{% set c_title = states('sensor.component_now_playing_title') %}
-{% set c_source = states('sensor.component_now_playing_source') %}
+{# --- now-playing signals (component-only) --- #}
+{% set c_entity = states(c_entity_entity) %}
+{% set c_title = states(c_title_entity) %}
+{% set c_source = states(c_source_entity) %}
 
 {% set r_entity = states('sensor.now_playing_entity') %}
 {% set r_title = states('sensor.now_playing_title') %}
 {% set r_source = states('sensor.now_playing_source') %}
 
-{% set np_entity_source = 'component' if c_entity not in invalid else ('runtime_fallback' if r_entity not in invalid else 'missing') %}
-{% set np_title_source = 'component' if c_title not in invalid else ('runtime_fallback' if r_title not in invalid else 'missing') %}
-{% set np_source_source = 'component' if c_source not in invalid else ('runtime_fallback' if r_source not in invalid else 'missing') %}
+{% set np_entity_source = 'component' if c_entity not in invalid else 'missing' %}
+{% set np_title_source = 'component' if c_title not in invalid else 'missing' %}
+{% set np_source_source = 'component' if c_source not in invalid else 'missing' %}
+{% set r_entity_present = r_entity not in invalid %}
+{% set r_title_present = r_title not in invalid %}
+{% set r_source_present = r_source not in invalid %}
 
-{% set c_backend_profile = states('sensor.component_backend_profile') %}
-{% set c_api_url = states('sensor.component_ma_api_url') %}
+{% set c_backend_profile = states(c_backend_profile_entity) %}
+{% set c_api_url = states(c_api_url_entity) %}
 {% set r_backend_profile = states('sensor.ma_server_profile_effective') %}
 {% set r_api_url = states('sensor.ma_api_url') %}
 
-{% set backend_profile_source = 'component' if c_backend_profile not in invalid else ('runtime_fallback' if r_backend_profile not in invalid else 'missing') %}
-{% set api_url_source = 'component' if c_api_url not in invalid else ('runtime_fallback' if r_api_url not in invalid else 'missing') %}
+{% set backend_profile_source = 'component' if c_backend_profile not in invalid else 'missing' %}
+{% set api_url_source = 'component' if c_api_url not in invalid else 'missing' %}
+{% set r_backend_profile_present = r_backend_profile not in invalid %}
+{% set r_api_url_present = r_api_url not in invalid %}
 
 {# --- bridge/trial signals --- #}
 {% set bridge_status = metadata_bridge.bridge_status if metadata_bridge.bridge_status is defined else 'unknown' %}
@@ -100,6 +123,18 @@
 {% set contract_valid = contract_validation.valid if contract_validation.valid is defined else false %}
 {% set missing_required = contract_validation.missing_required if contract_validation.missing_required is defined and contract_validation.missing_required is iterable else [] %}
 {% set unresolved_required = contract_validation.unresolved_required if contract_validation.unresolved_required is defined and contract_validation.unresolved_required is iterable else [] %}
+
+{% set component_core_missing = [] %}
+{% set component_backend_missing = [] %}
+{% if states(c_active_target_entity) in invalid %}{% set component_core_missing = component_core_missing + [c_active_target_entity] %}{% endif %}
+{% if states(c_control_host_entity) in invalid %}{% set component_core_missing = component_core_missing + [c_control_host_entity] %}{% endif %}
+{% if states(c_control_hosts_entity) in invalid %}{% set component_core_missing = component_core_missing + [c_control_hosts_entity] %}{% endif %}
+{% if states(c_control_port_entity) in invalid %}{% set component_core_missing = component_core_missing + [c_control_port_entity] %}{% endif %}
+{% if states(c_entity_entity) in invalid %}{% set component_core_missing = component_core_missing + [c_entity_entity] %}{% endif %}
+{% if states(c_title_entity) in invalid %}{% set component_core_missing = component_core_missing + [c_title_entity] %}{% endif %}
+{% if states(c_source_entity) in invalid %}{% set component_core_missing = component_core_missing + [c_source_entity] %}{% endif %}
+{% if states(c_backend_profile_entity) in invalid %}{% set component_backend_missing = component_backend_missing + [c_backend_profile_entity] %}{% endif %}
+{% if states(c_api_url_entity) in invalid %}{% set component_backend_missing = component_backend_missing + [c_api_url_entity] %}{% endif %}
 
 {# --- finding aggregation --- #}
 {% set ns = namespace(hard=[], soft=[], notes=[]) %}
@@ -133,25 +168,33 @@
   {% set ns.hard = ns.hard + ['contract_missing_or_unresolved_required_surfaces'] %}
 {% endif %}
 
-{# soft findings: runtime fallback dependency (cleanup debt) #}
-{% if control_host_source == 'runtime_fallback' or control_port_source == 'runtime_fallback' %}
-  {% set ns.soft = ns.soft + ['control_host_port_from_runtime_fallback'] %}
+{% if (component_core_missing | count) > 0 %}
+  {% set ns.hard = ns.hard + ['component_core_surfaces_missing:' ~ (component_core_missing | count)] %}
 {% endif %}
 
-{% if np_entity_source == 'runtime_fallback' or np_title_source == 'runtime_fallback' or np_source_source == 'runtime_fallback' %}
-  {% set ns.soft = ns.soft + ['now_playing_contract_uses_runtime_fallback'] %}
+{% if (component_backend_missing | count) > 0 %}
+  {% set ns.notes = ns.notes + ['component_backend_surfaces_missing:' ~ (component_backend_missing | count)] %}
 {% endif %}
 
-{% if backend_profile_source == 'runtime_fallback' or api_url_source == 'runtime_fallback' %}
-  {% set ns.soft = ns.soft + ['backend_or_api_surface_uses_runtime_fallback'] %}
+{# hard findings: legacy runtime surface residue (must retire) #}
+{% if r_control_host_present or r_control_port_present %}
+  {% set ns.hard = ns.hard + ['legacy_runtime_control_surfaces_still_present'] %}
+{% endif %}
+
+{% if r_entity_present or r_title_present or r_source_present %}
+  {% set ns.hard = ns.hard + ['legacy_runtime_now_playing_surfaces_still_present'] %}
+{% endif %}
+
+{% if r_backend_profile_present or r_api_url_present %}
+  {% set ns.hard = ns.hard + ['legacy_runtime_backend_surfaces_still_present'] %}
 {% endif %}
 
 {% if not authority_contract_ready %}
-  {% set ns.soft = ns.soft + ['authority_contract_not_ready'] %}
+  {% set ns.notes = ns.notes + ['authority_contract_not_ready'] %}
 {% endif %}
 
 {% if authority_contract_ready and (proof_presence.pre_window is not defined or proof_presence.in_window is not defined or proof_presence.post_window is not defined) %}
-  {% set ns.soft = ns.soft + ['authority_contract_ready_but_checkpoint_shape_partial'] %}
+  {% set ns.notes = ns.notes + ['authority_contract_ready_but_checkpoint_shape_partial'] %}
 {% endif %}
 
 {% if bridge_status == 'skipped_component_startup_no_mix' %}
@@ -159,15 +202,13 @@
 {% endif %}
 
 {% if contract_valid == false %}
-  {% set ns.soft = ns.soft + ['contract_validation_not_valid'] %}
+  {% set ns.notes = ns.notes + ['contract_validation_not_valid'] %}
 {% endif %}
 
 {# --- verdict --- #}
 {% set verdict = 'PASS' %}
 {% if (ns.hard | count) > 0 %}
   {% set verdict = 'FAIL' %}
-{% elif (ns.soft | count) > 0 %}
-  {% set verdict = 'WARN' %}
 {% endif %}
 
 ### Legacy Full-Stack Dependency Audit (`spectra_ls`)
@@ -176,7 +217,7 @@
 - Shadow source: **{{ s_target }}**
 
 ### Legacy authority status (must be component-owned)
-- authority mode (effective / contract / prep / write-controls): **{{ authority_mode_effective }} / {{ authority_mode_contract }} / {{ authority_mode_prep }} / {{ authority_mode_wc }}**
+- authority mode (effective / contract / prep / write-controls): **{{ authority_mode_effective_label }} / {{ authority_mode_contract_label }} / {{ authority_mode_prep_label }} / {{ authority_mode_wc_label }}**
 - metadata owner (effective / contract / prep): **{{ metadata_owner_effective }} / {{ metadata_owner_contract }} / {{ metadata_owner_prep }}**
 - metadata cutover active: **{{ metadata_cutover_active }}**
 - authority contract ready: **{{ authority_contract_ready }}**
@@ -189,14 +230,37 @@
 - trial status: **{{ trial_status }}**
 - bridge blockers: **{{ bridge_blocking if (bridge_blocking | count) > 0 else 'none' }}**
 
-### Runtime-fallback dependency map (component should be primary)
-- control host source/value: **{{ control_host_source }} / {{ control_host_effective if control_host_effective not in invalid else 'missing' }}**
-- control port source/value: **{{ control_port_source }} / {{ control_port_effective if control_port_effective not in invalid else 'missing' }}**
-- now-playing entity source/value: **{{ np_entity_source }} / {{ c_entity if c_entity not in invalid else (r_entity if r_entity not in invalid else 'missing') }}**
-- now-playing title source/value: **{{ np_title_source }} / {{ c_title if c_title not in invalid else (r_title if r_title not in invalid else 'missing') }}**
-- now-playing source source/value: **{{ np_source_source }} / {{ c_source if c_source not in invalid else (r_source if r_source not in invalid else 'missing') }}**
-- backend profile source/value: **{{ backend_profile_source }} / {{ c_backend_profile if c_backend_profile not in invalid else (r_backend_profile if r_backend_profile not in invalid else 'missing') }}**
-- API URL source/value: **{{ api_url_source }} / {{ c_api_url if c_api_url not in invalid else (r_api_url if r_api_url not in invalid else 'missing') }}**
+### Component-primary dependency map (legacy runtime residue check)
+- active target entity/value: **{{ c_active_target_entity }} / {{ states(c_active_target_entity) if states(c_active_target_entity) not in invalid else 'missing' }}**
+- control hosts entity/value: **{{ c_control_hosts_entity }} / {{ states(c_control_hosts_entity) if states(c_control_hosts_entity) not in invalid else 'missing' }}**
+- control host source/entity/value: **{{ control_host_source }} / {{ c_control_host_entity }} / {{ control_host_effective if control_host_effective not in invalid else 'missing' }}**
+- control port source/entity/value: **{{ control_port_source }} / {{ c_control_port_entity }} / {{ control_port_effective if control_port_effective not in invalid else 'missing' }}**
+- now-playing entity source/entity/value: **{{ np_entity_source }} / {{ c_entity_entity }} / {{ c_entity if c_entity not in invalid else 'missing' }}**
+- now-playing title source/entity/value: **{{ np_title_source }} / {{ c_title_entity }} / {{ c_title if c_title not in invalid else 'missing' }}**
+- now-playing source source/entity/value: **{{ np_source_source }} / {{ c_source_entity }} / {{ c_source if c_source not in invalid else 'missing' }}**
+- backend profile source/entity/value: **{{ backend_profile_source }} / {{ c_backend_profile_entity }} / {{ c_backend_profile if c_backend_profile not in invalid else 'missing' }}**
+- API URL source/entity/value: **{{ api_url_source }} / {{ c_api_url_entity }} / {{ c_api_url if c_api_url not in invalid else 'missing' }}**
+- legacy runtime control surfaces present: **host={{ r_control_host_present }}, port={{ r_control_port_present }}**
+- legacy runtime now-playing surfaces present: **entity={{ r_entity_present }}, title={{ r_title_present }}, source={{ r_source_present }}**
+- legacy runtime backend surfaces present: **profile={{ r_backend_profile_present }}, api_url={{ r_api_url_present }}**
+
+### Component core surface availability
+{% if (component_core_missing | count) == 0 %}
+- all required component core surfaces resolved
+{% else %}
+{% for s in component_core_missing %}
+- missing: {{ s }}
+{% endfor %}
+{% endif %}
+
+### Component backend surface availability (non-hard legacy blocker)
+{% if (component_backend_missing | count) == 0 %}
+- backend profile/API surfaces resolved
+{% else %}
+{% for s in component_backend_missing %}
+- missing: {{ s }}
+{% endfor %}
+{% endif %}
 
 ### Core contract and route sanity
 - route decision / active target: **{{ route_decision }} / {{ route_active_target if route_active_target not in invalid else 'missing' }}**
@@ -222,7 +286,7 @@
 {% endfor %}
 {% endif %}
 
-### Notes
+### Supplemental diagnostics (non-blocking in strict rip mode)
 {% if (ns.notes | count) == 0 %}
 - none
 {% else %}
@@ -233,9 +297,7 @@
 
 ### Deterministic next action
 {% if verdict == 'FAIL' %}
-- Legacy path is still active. Do not trust green behavior until all hard findings are gone. First clear authority/owner/cutover blockers, then rerun this template.
-{% elif verdict == 'WARN' %}
-- Component authority is active, but runtime fallback dependencies still exist. Remove fallback dependencies listed above and rerun.
+- Hard blocker remains (legacy residue, authority/cutover blocker, or missing required component core surface). Resolve listed hard findings and rerun.
 {% else %}
-- No active legacy authority path detected, and no runtime fallback dependency was required in this snapshot.
+- Strict rip-out gate passed: no hard legacy residue or required component-core breakage detected in this snapshot.
 {% endif %}

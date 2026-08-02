@@ -1,19 +1,10 @@
 ## MUSIC ASSISTANT CONTROL HUB PACKAGE (split)
 # Description: Control hub and meta resolver split into focused package files.
-# Version: 2026.06.22.1
-# Last updated: 2026-06-22
+# Version: 2026.08.01.3
+# Last updated: 2026-08-01
 
-input_select: !include ma_control_hub/input_select.inc
-input_boolean: !include ma_control_hub/input_boolean.inc
-input_number: !include ma_control_hub/input_number.inc
-input_text: !include ma_control_hub/input_text.inc
-
-rest: !include ma_control_hub/rest.inc
-rest_command: !include ma_control_hub/rest_command.inc
-
-# Component-only cutover: legacy runtime script/automation execution lanes are retired.
-# Keep helper/template surfaces loaded for bounded compatibility consumers.
-# script: !include ma_control_hub/script.inc
-# automation: !include ma_control_hub/automation.inc
-
-template: !include ma_control_hub/template.inc
+# ARCHIVED STUB (strict legacy rip-out mode)
+# The legacy ma_control_hub runtime lane has been physically removed.
+# Backup snapshot (outside repo): /tmp/spectra_legacy_backup_2026-08-01/ma_control_hub/
+# Restore command:
+#   cp -a /tmp/spectra_legacy_backup_2026-08-01/ma_control_hub/. /mnt/homeassistant/packages/ma_control_hub/

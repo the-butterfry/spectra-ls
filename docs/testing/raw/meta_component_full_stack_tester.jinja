@@ -1,6 +1,6 @@
 {# Description: Full-stack one-screen Spectra LS component validation template for HA Developer Tools. #}
-{# Version: 2026.07.07.1 #}
-{# Last updated: 2026-07-07 #}
+{# Version: 2026.08.01.1 #}
+{# Last updated: 2026-08-01 #}
 
 {% set invalid = ['','none','unknown','unavailable','null'] %}
 
@@ -9,12 +9,20 @@
 {% set shadow_state = states(shadow_entity) if shadow_exists else 'missing' %}
 {% set shadow_attrs = states[shadow_entity].attributes if shadow_exists and states[shadow_entity] is not none else {} %}
 {% set captured_at = shadow_attrs.captured_at if shadow_attrs.captured_at is defined else none %}
+{% set shadow_last_updated = states[shadow_entity].last_updated if shadow_exists and states[shadow_entity] is not none else none %}
 
 {% set age_s = none %}
 {% if captured_at is string and captured_at|trim not in invalid %}
   {% set cap_ts = as_timestamp(captured_at, none) %}
   {% if cap_ts is not none %}
     {% set age_s = as_timestamp(now()) - cap_ts %}
+  {% endif %}
+{% endif %}
+
+{% if age_s is none and shadow_last_updated is not none %}
+  {% set shadow_ts = as_timestamp(shadow_last_updated, none) %}
+  {% if shadow_ts is not none %}
+    {% set age_s = as_timestamp(now()) - shadow_ts %}
   {% endif %}
 {% endif %}
 
@@ -40,10 +48,23 @@
 {% set active_target = route_trace.active_target if route_trace.active_target is defined else 'unknown' %}
 {% set active_path = route_trace.active_path if route_trace.active_path is defined else (route_trace.active_control_path if route_trace.active_control_path is defined else 'unknown') %}
 
+{% set esp_handoff_entity = 'sensor.spectra_ls_system_esp_control_handoff_status' if states['sensor.spectra_ls_system_esp_control_handoff_status'] is not none else '' %}
+{% set esp_oled_entity = 'sensor.spectra_ls_system_esp_oled_status' if states['sensor.spectra_ls_system_esp_oled_status'] is not none else '' %}
+{% set esp_handoff_state = states(esp_handoff_entity) if esp_handoff_entity != '' else 'missing' %}
+{% set esp_oled_state = states(esp_oled_entity) if esp_oled_entity != '' else 'missing' %}
+{% set esp_runtime_visible = esp_handoff_entity != '' and esp_oled_entity != '' %}
+{% set esp_mode_prefix = (esp_oled_state.split('|', 1)[0] if esp_oled_state is string and '|' in esp_oled_state else '') %}
+{% set esp_oled_payload = (esp_oled_state.split('oled:', 1)[1] if esp_oled_state is string and 'oled:' in esp_oled_state else '') %}
+{% set esp_lighting_blank_ok = esp_mode_prefix == 'lighting' and (esp_oled_payload | trim) in ['-', ''] %}
+{% set esp_oled_ready = esp_oled_state not in invalid or esp_lighting_blank_ok %}
+{% set esp_runtime_ready = esp_runtime_visible and esp_handoff_state not in invalid and esp_oled_ready %}
+
 {% set helper_target = states('input_select.ma_active_target') %}
 {% set helper_options = state_attr('input_select.ma_active_target','options') or [] %}
 {% set helper_target_state = states(helper_target) if helper_target is string and helper_target|trim not in invalid else 'unknown' %}
-{% set helper_target_valid = helper_target is string and helper_target|trim not in invalid and '.' in helper_target and helper_target in helper_options and helper_target_state not in invalid %}
+{% set helper_target_valid_legacy = helper_target is string and helper_target|trim not in invalid and '.' in helper_target and helper_target in helper_options and helper_target_state not in invalid %}
+{% set helper_target_valid_component = active_target is string and active_target|trim not in invalid and '.' in active_target and states(active_target) not in invalid %}
+{% set helper_target_valid = helper_target_valid_legacy or helper_target_valid_component %}
 
 {% set now_playing_entity = states('sensor.now_playing_entity') %}
 {% set now_playing_state = states('sensor.now_playing_state') %}
@@ -117,17 +138,6 @@
   {% set oled_cause = 'audio_blank_unclassified' %}
 {% endif %}
 
-{% set esp_handoff_entity = 'sensor.spectra_ls_system_esp_control_handoff_status' if states['sensor.spectra_ls_system_esp_control_handoff_status'] is not none else '' %}
-{% set esp_oled_entity = 'sensor.spectra_ls_system_esp_oled_status' if states['sensor.spectra_ls_system_esp_oled_status'] is not none else '' %}
-{% set esp_handoff_state = states(esp_handoff_entity) if esp_handoff_entity != '' else 'missing' %}
-{% set esp_oled_state = states(esp_oled_entity) if esp_oled_entity != '' else 'missing' %}
-{% set esp_runtime_visible = esp_handoff_entity != '' and esp_oled_entity != '' %}
-{% set esp_mode_prefix = (esp_oled_state.split('|', 1)[0] if esp_oled_state is string and '|' in esp_oled_state else '') %}
-{% set esp_oled_payload = (esp_oled_state.split('oled:', 1)[1] if esp_oled_state is string and 'oled:' in esp_oled_state else '') %}
-{% set esp_lighting_blank_ok = esp_mode_prefix == 'lighting' and (esp_oled_payload | trim) in ['-', ''] %}
-{% set esp_oled_ready = esp_oled_state not in invalid or esp_lighting_blank_ok %}
-{% set esp_runtime_ready = esp_runtime_visible and esp_handoff_state not in invalid and esp_oled_ready %}
-
 {% set host_sensor = states('sensor.ma_control_host') %}
 {% set hosts_sensor = states('sensor.ma_control_hosts') %}
 {% set component_backend_profile = states('sensor.component_backend_profile') %}
@@ -138,7 +148,7 @@
 {% set effective_api_url = component_api_url if component_api_url not in invalid else helper_api_url %}
 {% set backend_source = 'component_primary' if component_backend_profile not in invalid else 'runtime_helper_fallback' %}
 {% set api_source = 'component_primary' if component_api_url not in invalid else 'runtime_helper_fallback' %}
-{% set backend_profile_ready = (effective_backend_profile | lower) in ['beta','stable','manual'] %}
+{% set backend_profile_ready = (effective_backend_profile | lower) in ['beta','stable','manual','component_discovered'] %}
 {% set backend_api_ready = effective_api_url not in invalid and (effective_api_url | lower).startswith('http') %}
 {% set backend_api_contract_ready = backend_profile_ready and backend_api_ready %}
 
@@ -261,7 +271,7 @@
 {% elif not shadow_exists %}
 - Trigger refresh sequence first (`spectra_ls.rebuild_registry`, `spectra_ls.validate_contracts`, `spectra_ls.dump_route_trace`) and rerun.
 {% elif not helper_target_valid %}
-- Repair helper target/options first (`input_select.ma_active_target` + `script.ma_update_target_options`), then rerun.
+- In component-primary mode, verify `route_trace.active_target` is resolved and playable; if legacy helper mode is intentionally active, repair `input_select.ma_active_target` + `script.ma_update_target_options`, then rerun.
 {% elif route_decision != 'route_linkplay_tcp' %}
 - Resolve route eligibility before further trials; inspect `route_trace.reason` and active-target registry capability mapping.
 {% elif not (contract_ready and contract_valid) %}

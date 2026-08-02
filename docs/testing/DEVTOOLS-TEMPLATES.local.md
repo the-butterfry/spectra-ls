@@ -1,17 +1,29 @@
 <!-- Description: Copy/paste Home Assistant Dev Tools template diagnostics for Spectra LS System. -->
-<!-- Version: 2026.05.03.3 -->
-<!-- Last updated: 2026-05-03 -->
+<!-- Version: 2026.08.01.2 -->
+<!-- Last updated: 2026-08-01 -->
 
 # Spectra LS System — Dev Tools Template Validation
 
 > Tracked diagnostics guide for repeatable Spectra LS system validation.  
 > Use each template by copying into **Home Assistant → Developer Tools → Template**.
 
+## Legacy reference interpretation (component-first)
+
+- Any `ma_*`/`LEGACY_*` helper references in this document are diagnostics compatibility inventory unless explicitly labeled as an active gate.
+- Component-owned surfaces (`sensor.component_*`, shadow packets, contract-validation attributes) are the primary validation sources.
+- Legacy helper/state checks are non-gating context for migration safety and rollback visibility.
+
 ## 0) Scheduler Apply Deterministic Validation (Component)
 
 Raw copy/paste path (no markdown fences):
 
 - `docs/testing/raw/scheduler_apply_deterministic_validation.jinja`
+
+## 0E) Component-Only Cutover Full Validation (One-Paste)
+
+- `docs/testing/raw/component_cutover_full_validation.jinja`
+
+Use this one-paste validator to verify component-only cutover integrity end-to-end: authority mode, route/contract gates, watcher-surface readiness, metadata owner/cutover posture, scheduler/control-center attempt health, and compatibility drift sentinels.
 
 ## 0A) Meta Stack End-to-End Validation Checklist (Rolling)
 

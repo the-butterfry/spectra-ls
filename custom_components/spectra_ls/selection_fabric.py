@@ -1,6 +1,6 @@
 # Description: Selection-fabric workflow for Spectra LS scheduler, target-options, and helper write orchestration extracted from meta-fabric.
-# Version: 2026.07.17.3
-# Last updated: 2026-07-17
+# Version: 2026.08.01.5
+# Last updated: 2026-08-01
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -11,11 +11,9 @@ from typing import Any
 from uuid import uuid4
 
 from .const import (
+    COMPONENT_METADATA_OVERRIDE_ACTIVE,
     LEGACY_ACTIVE_TARGET_HELPER,
     LEGACY_LAST_VALID_TARGET,
-    LEGACY_MA_PLAYERS,
-    LEGACY_META_DETECTED_ENTITY,
-    LEGACY_OVERRIDE_ACTIVE,
     LEGACY_ROOMS_JSON,
     WRITE_AUTH_COMPONENT,
 )
@@ -76,19 +74,85 @@ class SelectionFabricWorkflow:
             authority_block_reason=authority_block_reason,
         )
 
+    def _selection_state(self) -> dict[str, Any]:
+        c = self._coordinator
+        state = getattr(c, "_component_selection_state", None)
+        if not isinstance(state, dict):
+            state = {
+                "active_target": "",
+                "last_valid_target": "",
+                "options": [],
+                "updated_at": None,
+                "source": "component_default_state",
+            }
+            c._component_selection_state = state
+
+        helper_state = c.hass.states.get(LEGACY_ACTIVE_TARGET_HELPER)
+        if (not isinstance(state.get("options", []), list) or len(state.get("options", [])) == 0) and helper_state is not None:
+            state["options"] = WritePathFabric.normalize_options(helper_state.attributes.get("options", []))
+
+        active_target = str(state.get("active_target", "") or "").strip()
+        if not c._is_resolved_state(active_target) and helper_state is not None:
+            helper_current = str(helper_state.state or "").strip()
+            if c._is_resolved_state(helper_current):
+                state["active_target"] = helper_current
+
+        last_valid = str(state.get("last_valid_target", "") or "").strip()
+        if not c._is_resolved_state(last_valid):
+            last_valid_state = c.hass.states.get(LEGACY_LAST_VALID_TARGET)
+            helper_last_valid = str(last_valid_state.state if last_valid_state is not None else "").strip()
+            if c._is_resolved_state(helper_last_valid):
+                state["last_valid_target"] = helper_last_valid
+
+        c._component_selection_state = state
+        return state
+
+    def _persist_selection_state(
+        self,
+        *,
+        active_target: str | None = None,
+        last_valid_target: str | None = None,
+        options: list[str] | None = None,
+        source: str,
+    ) -> dict[str, Any]:
+        state = self._selection_state()
+        c = self._coordinator
+
+        if active_target is not None:
+            normalized_active = str(active_target or "").strip()
+            state["active_target"] = normalized_active if c._is_resolved_state(normalized_active) else ""
+
+        if last_valid_target is not None:
+            normalized_last_valid = str(last_valid_target or "").strip()
+            state["last_valid_target"] = normalized_last_valid if c._is_resolved_state(normalized_last_valid) else ""
+
+        if options is not None:
+            normalized_options = WritePathFabric.normalize_options(options)
+            state["options"] = normalized_options
+
+        state["source"] = str(source or "component_state_update")
+        state["updated_at"] = datetime.now(UTC).isoformat()
+        c._component_selection_state = state
+        return state
+
     def compute_component_target_options_plan(self) -> dict[str, Any]:
         """Compute deterministic component target-options plan from helpers/registry/runtime surfaces."""
         c = self._coordinator
+        selection_state = self._selection_state()
         helper_entity = LEGACY_ACTIVE_TARGET_HELPER
         helper_state = c.hass.states.get(helper_entity)
-        helper_options: list[str] = []
-        helper_current = ""
+        helper_options = list(selection_state.get("options", [])) if isinstance(selection_state.get("options", []), list) else []
+        helper_current = str(selection_state.get("active_target", "") or "").strip()
         if helper_state is not None:
-            helper_current = str(helper_state.state or "").strip()
-            helper_options = WritePathFabric.normalize_options(helper_state.attributes.get("options", []))
+            if not c._is_resolved_state(helper_current):
+                helper_current = str(helper_state.state or "").strip()
+            if len(helper_options) == 0:
+                helper_options = WritePathFabric.normalize_options(helper_state.attributes.get("options", []))
 
         last_valid_state = c.hass.states.get(LEGACY_LAST_VALID_TARGET)
-        last_valid = str(last_valid_state.state if last_valid_state is not None else "").strip()
+        last_valid = str(selection_state.get("last_valid_target", "") or "").strip()
+        if not c._is_resolved_state(last_valid):
+            last_valid = str(last_valid_state.state if last_valid_state is not None else "").strip()
 
         known_targets: list[str] = []
         known_seen: set[str] = set()
@@ -108,23 +172,6 @@ class SelectionFabricWorkflow:
             self._append_unique(known_targets, known_seen, ent)
 
         discovered_targets: list[str] = []
-        discovered_seen: set[str] = set()
-        ma_players_state = c.hass.states.get(LEGACY_MA_PLAYERS)
-        ma_players_raw = ma_players_state.attributes.get("result", []) if ma_players_state is not None else []
-        players_list = c.utility_fabric.extract_payload_list(ma_players_raw, ("result", "players"))
-        for player in players_list:
-            if not isinstance(player, dict):
-                continue
-            ent = str(player.get("entity_id", "") or "").strip()
-            if not c._is_resolved_state(ent) or not ent.startswith("media_player."):
-                continue
-            entity_state = c.hass.states.get(ent)
-            if entity_state is None:
-                continue
-            ip = str(entity_state.attributes.get("ip_address", "") or player.get("ip_address", "") or "").strip()
-            if not c._is_resolved_state(ip):
-                continue
-            self._append_unique(discovered_targets, discovered_seen, ent)
 
         discovered_live_targets: list[str] = []
         discovered_live_seen: set[str] = set()
@@ -494,6 +541,7 @@ class SelectionFabricWorkflow:
 
         selected_target = str(decision.get("selected_target", "") or "").strip()
         helper_state = c.hass.states.get(LEGACY_ACTIVE_TARGET_HELPER)
+        selection_state = self._selection_state()
 
         result: dict[str, Any] = self._new_write_result(
             requested_at=requested_at,
@@ -525,15 +573,14 @@ class SelectionFabricWorkflow:
             authority_block_reason="Component-only authority required; scheduler apply is blocked",
         )
 
-        if result["status"] == "pending" and helper_state is None:
-            result["status"] = "blocked_missing_target_helper"
-            result["reason"] = "Target helper entity is missing"
-
         helper_options: list[str] = []
-        helper_current = ""
+        helper_current = str(selection_state.get("active_target", "") or "").strip()
+        helper_options = list(selection_state.get("options", [])) if isinstance(selection_state.get("options", []), list) else []
         if helper_state is not None:
-            helper_current = str(helper_state.state or "").strip()
-            helper_options = WritePathFabric.normalize_options(helper_state.attributes.get("options", []))
+            if len(helper_options) == 0:
+                helper_options = WritePathFabric.normalize_options(helper_state.attributes.get("options", []))
+            if not c._is_resolved_state(helper_current):
+                helper_current = str(helper_state.state or "").strip()
 
         if result["status"] == "pending" and helper_options and selected_target not in helper_options:
             result["status"] = "blocked_option_mismatch"
@@ -551,20 +598,15 @@ class SelectionFabricWorkflow:
         if result["status"] == "pending":
             c._write_in_progress = True
             try:
-                await c.hass.services.async_call(
-                    "input_select",
-                    "select_option",
-                    {
-                        "entity_id": LEGACY_ACTIVE_TARGET_HELPER,
-                        "option": selected_target,
-                    },
-                    blocking=True,
+                self._persist_selection_state(
+                    active_target=selected_target,
+                    source="scheduler_apply_choice",
                 )
                 result["status"] = "write_applied"
-                result["reason"] = "Scheduler-selected target applied to helper successfully"
+                result["reason"] = "Scheduler-selected target applied to component selection state"
             except Exception as err:  # pragma: no cover - defensive runtime guard
                 result["status"] = "write_error"
-                result["reason"] = "Service call failed during scheduler apply"
+                result["reason"] = "Component selection-state update failed during scheduler apply"
                 result["error"] = str(err)
             finally:
                 c._write_in_progress = False
@@ -612,6 +654,7 @@ class SelectionFabricWorkflow:
         )
         helper_entity = str(plan.get("helper_entity", LEGACY_ACTIVE_TARGET_HELPER) or LEGACY_ACTIVE_TARGET_HELPER)
         helper_state = c.hass.states.get(helper_entity)
+        selection_state = self._selection_state()
 
         candidates = plan.get("candidates", []) if isinstance(plan.get("candidates", []), list) else []
         candidates = [str(item).strip() for item in candidates if isinstance(item, str) and str(item).strip()]
@@ -637,9 +680,6 @@ class SelectionFabricWorkflow:
             },
         )
 
-        if helper_state is None:
-            result["status"] = "blocked_missing_target_helper"
-            result["reason"] = "Target helper entity is missing"
         self._apply_component_write_guards(
             result=result,
             force=force,
@@ -650,7 +690,9 @@ class SelectionFabricWorkflow:
         if result["status"] == "pending" and dry_run:
             result["status"] = "dry_run_ok"
             result["reason"] = "Target-options scaffold computed successfully (dry run)"
-            helper_current = str(helper_state.state or "").strip() if helper_state is not None else ""
+            helper_current = str(selection_state.get("active_target", "") or "").strip()
+            if not c._is_resolved_state(helper_current):
+                helper_current = str(helper_state.state or "").strip() if helper_state is not None else ""
             current_ok = c._is_resolved_state(helper_current) and helper_current in proposed_options
             default_option = str(result.get("default_option", "none") or "none")
             result["would_select_default"] = (not current_ok) and default_option in proposed_options
@@ -658,35 +700,25 @@ class SelectionFabricWorkflow:
         if result["status"] == "pending":
             c._write_in_progress = True
             try:
-                helper_current = str(helper_state.state or "").strip() if helper_state is not None else ""
+                helper_current = str(selection_state.get("active_target", "") or "").strip()
+                if not c._is_resolved_state(helper_current):
+                    helper_current = str(helper_state.state or "").strip() if helper_state is not None else ""
                 current_ok = c._is_resolved_state(helper_current) and helper_current in proposed_options
                 default_option = str(result.get("default_option", "none") or "none")
-                await c.hass.services.async_call(
-                    "input_select",
-                    "set_options",
-                    {
-                        "entity_id": helper_entity,
-                        "options": proposed_options,
-                    },
-                    blocking=True,
+                next_active = helper_current if current_ok else (default_option if default_option in proposed_options else "")
+                self._persist_selection_state(
+                    active_target=next_active,
+                    options=proposed_options,
+                    source="build_target_options_scaffold",
                 )
                 result["status"] = "options_applied"
-                result["reason"] = "Target-options scaffold applied to helper successfully"
+                result["reason"] = "Target-options scaffold applied to component selection state"
                 result["applied_options"] = proposed_options
                 if (not current_ok) and default_option in proposed_options:
-                    await c.hass.services.async_call(
-                        "input_select",
-                        "select_option",
-                        {
-                            "entity_id": helper_entity,
-                            "option": default_option,
-                        },
-                        blocking=True,
-                    )
                     result["selected_default_option"] = default_option
             except Exception as err:  # pragma: no cover - defensive runtime guard
                 result["status"] = "write_error"
-                result["reason"] = "Service call failed during target-options scaffold apply"
+                result["reason"] = "Component selection-state update failed during target-options scaffold apply"
                 result["error"] = str(err)
             finally:
                 c._write_in_progress = False
@@ -736,14 +768,17 @@ class SelectionFabricWorkflow:
             target_options_plan.get("helper_entity", LEGACY_ACTIVE_TARGET_HELPER) or LEGACY_ACTIVE_TARGET_HELPER
         )
         helper_state = c.hass.states.get(helper_entity)
+        selection_state = self._selection_state()
         selected_target = str(auto_select_plan.get("selected_target", "") or "").strip()
         selection_reason = str(auto_select_plan.get("selection_reason", "no_candidate") or "no_candidate")
 
-        helper_options: list[str] = []
-        helper_current = ""
+        helper_options = list(selection_state.get("options", [])) if isinstance(selection_state.get("options", []), list) else []
+        helper_current = str(selection_state.get("active_target", "") or "").strip()
         if helper_state is not None:
-            helper_current = str(helper_state.state or "").strip()
-            helper_options = WritePathFabric.normalize_options(helper_state.attributes.get("options", []))
+            if len(helper_options) == 0:
+                helper_options = WritePathFabric.normalize_options(helper_state.attributes.get("options", []))
+            if not c._is_resolved_state(helper_current):
+                helper_current = str(helper_state.state or "").strip()
 
         helper_current_resolved = c._is_resolved_state(helper_current)
         helper_current_in_options = helper_current_resolved and helper_current in helper_options
@@ -761,22 +796,9 @@ class SelectionFabricWorkflow:
                 selected_target_state_norm = c._normalize_state(str(selected_target_state.state or ""))
 
         component_now_playing_state = c.hass.states.get("sensor.component_now_playing_entity")
-        component_now_playing_candidate = str(
+        now_playing_candidate = str(
             component_now_playing_state.state if component_now_playing_state is not None else ""
         ).strip()
-        now_playing_state = c.hass.states.get("sensor.now_playing_entity")
-        standard_now_playing_candidate = str(
-            now_playing_state.state if now_playing_state is not None else ""
-        ).strip()
-
-        component_candidate_selectable = (
-            c._is_resolved_state(component_now_playing_candidate)
-            and component_now_playing_candidate in helper_options
-        )
-        if component_candidate_selectable:
-            now_playing_candidate = component_now_playing_candidate
-        else:
-            now_playing_candidate = standard_now_playing_candidate
 
         now_playing_candidate_valid = (
             c._is_resolved_state(now_playing_candidate)
@@ -847,9 +869,6 @@ class SelectionFabricWorkflow:
         if selected_target == "":
             result["status"] = "blocked_no_candidate"
             result["reason"] = "Auto-select scaffold has no selected target candidate"
-        elif helper_state is None:
-            result["status"] = "blocked_missing_target_helper"
-            result["reason"] = "Target helper entity is missing"
         effective_force = bool(force or detected_active_override)
         self._apply_component_write_guards(
             result=result,
@@ -864,14 +883,9 @@ class SelectionFabricWorkflow:
                 result["planned_options_count"] = len(planned_options)
             elif sync_options_if_missing and len(planned_options) > 0:
                 try:
-                    await c.hass.services.async_call(
-                        "input_select",
-                        "set_options",
-                        {
-                            "entity_id": helper_entity,
-                            "options": planned_options,
-                        },
-                        blocking=True,
+                    self._persist_selection_state(
+                        options=planned_options,
+                        source="run_auto_select_scaffold_options_sync",
                     )
                     helper_options = planned_options
                     result["helper_options_count"] = len(helper_options)
@@ -895,20 +909,15 @@ class SelectionFabricWorkflow:
         if result["status"] == "pending":
             c._write_in_progress = True
             try:
-                await c.hass.services.async_call(
-                    "input_select",
-                    "select_option",
-                    {
-                        "entity_id": helper_entity,
-                        "option": selected_target,
-                    },
-                    blocking=True,
+                self._persist_selection_state(
+                    active_target=selected_target,
+                    source="run_auto_select_scaffold",
                 )
                 result["status"] = "write_applied"
-                result["reason"] = "Auto-select scaffold applied selected target successfully"
+                result["reason"] = "Auto-select scaffold applied selected target to component selection state"
             except Exception as err:  # pragma: no cover - defensive runtime guard
                 result["status"] = "write_error"
-                result["reason"] = "Service call failed during auto-select scaffold apply"
+                result["reason"] = "Component selection-state update failed during auto-select scaffold apply"
                 result["error"] = str(err)
             finally:
                 c._write_in_progress = False
@@ -943,7 +952,10 @@ class SelectionFabricWorkflow:
 
         helper_state = c.hass.states.get(LEGACY_ACTIVE_TARGET_HELPER)
         last_valid_state = c.hass.states.get(LEGACY_LAST_VALID_TARGET)
-        helper_current = str(helper_state.state if helper_state is not None else "").strip()
+        selection_state = self._selection_state()
+        helper_current = str(selection_state.get("active_target", "") or "").strip()
+        if not c._is_resolved_state(helper_current):
+            helper_current = str(helper_state.state if helper_state is not None else "").strip()
 
         result: dict[str, Any] = self._new_write_result(
             requested_at=requested_at,
@@ -958,13 +970,7 @@ class SelectionFabricWorkflow:
             },
         )
 
-        if helper_state is None:
-            result["status"] = "blocked_missing_target_helper"
-            result["reason"] = "Target helper entity is missing"
-        elif last_valid_state is None:
-            result["status"] = "blocked_missing_last_valid_helper"
-            result["reason"] = "Last-valid target helper is missing"
-        elif not c._is_resolved_state(helper_current):
+        if not c._is_resolved_state(helper_current):
             result["status"] = "blocked_unresolved_target"
             result["reason"] = "Current helper target is unresolved and cannot be tracked"
         self._apply_component_write_guards(
@@ -975,7 +981,9 @@ class SelectionFabricWorkflow:
         )
 
         if result["status"] == "pending":
-            current_last_valid = str(last_valid_state.state if last_valid_state is not None else "").strip()
+            current_last_valid = str(selection_state.get("last_valid_target", "") or "").strip()
+            if not c._is_resolved_state(current_last_valid):
+                current_last_valid = str(last_valid_state.state if last_valid_state is not None else "").strip()
             if current_last_valid == helper_current:
                 result["status"] = "noop_already_tracked"
                 result["reason"] = "Last-valid helper already matches current active target"
@@ -987,20 +995,15 @@ class SelectionFabricWorkflow:
         if result["status"] == "pending":
             c._write_in_progress = True
             try:
-                await c.hass.services.async_call(
-                    "input_text",
-                    "set_value",
-                    {
-                        "entity_id": LEGACY_LAST_VALID_TARGET,
-                        "value": helper_current,
-                    },
-                    blocking=True,
+                self._persist_selection_state(
+                    last_valid_target=helper_current,
+                    source=source,
                 )
                 result["status"] = "write_applied"
-                result["reason"] = "Last-valid target updated from current helper selection"
+                result["reason"] = "Last-valid target updated in component selection state"
             except Exception as err:  # pragma: no cover - defensive runtime guard
                 result["status"] = "write_error"
-                result["reason"] = "Service call failed during last-valid tracking"
+                result["reason"] = "Component selection-state update failed during last-valid tracking"
                 result["error"] = str(err)
             finally:
                 c._write_in_progress = False
@@ -1034,11 +1037,17 @@ class SelectionFabricWorkflow:
 
         helper_state = c.hass.states.get(LEGACY_ACTIVE_TARGET_HELPER)
         last_valid_state = c.hass.states.get(LEGACY_LAST_VALID_TARGET)
+        selection_state = self._selection_state()
 
-        helper_current = str(helper_state.state if helper_state is not None else "").strip()
-        last_valid_target = str(last_valid_state.state if last_valid_state is not None else "").strip()
+        helper_current = str(selection_state.get("active_target", "") or "").strip()
+        if not c._is_resolved_state(helper_current):
+            helper_current = str(helper_state.state if helper_state is not None else "").strip()
+        last_valid_target = str(selection_state.get("last_valid_target", "") or "").strip()
+        if not c._is_resolved_state(last_valid_target):
+            last_valid_target = str(last_valid_state.state if last_valid_state is not None else "").strip()
         helper_options: list[str] = []
-        if helper_state is not None:
+        helper_options = list(selection_state.get("options", [])) if isinstance(selection_state.get("options", []), list) else []
+        if helper_state is not None and len(helper_options) == 0:
             helper_options = WritePathFabric.normalize_options(helper_state.attributes.get("options", []))
 
         current_resolved = c._is_resolved_state(helper_current)
@@ -1061,13 +1070,7 @@ class SelectionFabricWorkflow:
             },
         )
 
-        if helper_state is None:
-            result["status"] = "blocked_missing_target_helper"
-            result["reason"] = "Target helper entity is missing"
-        elif last_valid_state is None:
-            result["status"] = "blocked_missing_last_valid_helper"
-            result["reason"] = "Last-valid target helper is missing"
-        elif current_resolved and not force:
+        if current_resolved and not force:
             result["status"] = "noop_current_target_resolved"
             result["reason"] = "Current helper target is already resolved; restore is not required"
         elif restore_candidate == "":
@@ -1091,20 +1094,15 @@ class SelectionFabricWorkflow:
         if result["status"] == "pending":
             c._write_in_progress = True
             try:
-                await c.hass.services.async_call(
-                    "input_select",
-                    "select_option",
-                    {
-                        "entity_id": LEGACY_ACTIVE_TARGET_HELPER,
-                        "option": restore_candidate,
-                    },
-                    blocking=True,
+                self._persist_selection_state(
+                    active_target=restore_candidate,
+                    source="restore_last_valid_target",
                 )
                 result["status"] = "write_applied"
-                result["reason"] = "Restored helper selection from last-valid target"
+                result["reason"] = "Restored component selection state from last-valid target"
             except Exception as err:  # pragma: no cover - defensive runtime guard
                 result["status"] = "write_error"
-                result["reason"] = "Service call failed during restore-last-valid apply"
+                result["reason"] = "Component selection-state update failed during restore-last-valid apply"
                 result["error"] = str(err)
             finally:
                 c._write_in_progress = False
@@ -1144,11 +1142,25 @@ class SelectionFabricWorkflow:
         corr = (correlation_id or "").strip() or f"cycle-target-{uuid4().hex[:12]}"
 
         helper_state = c.hass.states.get(LEGACY_ACTIVE_TARGET_HELPER)
-        override_state = c.hass.states.get(LEGACY_OVERRIDE_ACTIVE)
+        component_override_state = getattr(c, "_component_metadata_override_state", {})
+        override_active = False
+        if isinstance(component_override_state, dict):
+            override_active = bool(component_override_state.get("active", False))
+        if not override_active:
+            override_state = c.hass.states.get(COMPONENT_METADATA_OVERRIDE_ACTIVE)
+            override_active = c._normalize_state(override_state.state if override_state is not None else "") in {
+                "on",
+                "true",
+                "1",
+            }
+        selection_state = self._selection_state()
 
-        helper_current = str(helper_state.state if helper_state is not None else "").strip()
+        helper_current = str(selection_state.get("active_target", "") or "").strip()
+        if not c._is_resolved_state(helper_current):
+            helper_current = str(helper_state.state if helper_state is not None else "").strip()
         helper_options: list[str] = []
-        if helper_state is not None:
+        helper_options = list(selection_state.get("options", [])) if isinstance(selection_state.get("options", []), list) else []
+        if helper_state is not None and len(helper_options) == 0:
             helper_options = WritePathFabric.normalize_options(helper_state.attributes.get("options", []))
 
         cycle_options = list(helper_options)
@@ -1171,7 +1183,7 @@ class SelectionFabricWorkflow:
             extra={
                 "include_none": bool(include_none),
                 "helper_entity": LEGACY_ACTIVE_TARGET_HELPER,
-                "override_entity": LEGACY_OVERRIDE_ACTIVE,
+                "override_entity": COMPONENT_METADATA_OVERRIDE_ACTIVE,
                 "helper_current": helper_current,
                 "helper_options_count": len(helper_options),
                 "cycle_options_count": len(cycle_options),
@@ -1179,10 +1191,7 @@ class SelectionFabricWorkflow:
             },
         )
 
-        if helper_state is None:
-            result["status"] = "blocked_missing_target_helper"
-            result["reason"] = "Target helper entity is missing"
-        elif len(cycle_options) == 0:
+        if len(cycle_options) == 0:
             result["status"] = "blocked_no_cycle_options"
             result["reason"] = "No cycle candidates are available in target helper options"
         elif next_target == "":
@@ -1202,33 +1211,17 @@ class SelectionFabricWorkflow:
         if result["status"] == "pending" and dry_run:
             result["status"] = "dry_run_ok"
             result["reason"] = "Cycle-target guards passed (dry run)"
-            result["would_enable_override"] = (
-                override_state is not None and c._normalize_state(override_state.state) != "on"
-            )
+            result["would_enable_override"] = not override_active
 
         if result["status"] == "pending":
             c._write_in_progress = True
             try:
-                if override_state is not None and c._normalize_state(override_state.state) != "on":
-                    await c.hass.services.async_call(
-                        "input_boolean",
-                        "turn_on",
-                        {
-                            "entity_id": LEGACY_OVERRIDE_ACTIVE,
-                        },
-                        blocking=True,
-                    )
-                await c.hass.services.async_call(
-                    "input_select",
-                    "select_option",
-                    {
-                        "entity_id": LEGACY_ACTIVE_TARGET_HELPER,
-                        "option": next_target,
-                    },
-                    blocking=True,
+                self._persist_selection_state(
+                    active_target=next_target,
+                    source="cycle_active_target",
                 )
                 result["status"] = "write_applied"
-                result["reason"] = "Cycle-target selection applied successfully"
+                result["reason"] = "Cycle-target selection applied to component selection state"
 
                 if c._is_resolved_state(next_target):
                     await self.async_track_last_valid_target(
@@ -1239,7 +1232,7 @@ class SelectionFabricWorkflow:
                     )
             except Exception as err:  # pragma: no cover - defensive runtime guard
                 result["status"] = "write_error"
-                result["reason"] = "Service call failed during cycle-target apply"
+                result["reason"] = "Component selection-state update failed during cycle-target apply"
                 result["error"] = str(err)
             finally:
                 c._write_in_progress = False
@@ -1275,9 +1268,13 @@ class SelectionFabricWorkflow:
 
         requested_target = str(target or "").strip()
         helper_state = c.hass.states.get(LEGACY_ACTIVE_TARGET_HELPER)
-        helper_current = str(helper_state.state if helper_state is not None else "").strip()
+        selection_state = self._selection_state()
+        helper_current = str(selection_state.get("active_target", "") or "").strip()
+        if not c._is_resolved_state(helper_current):
+            helper_current = str(helper_state.state if helper_state is not None else "").strip()
         helper_options: list[str] = []
-        if helper_state is not None:
+        helper_options = list(selection_state.get("options", [])) if isinstance(selection_state.get("options", []), list) else []
+        if helper_state is not None and len(helper_options) == 0:
             helper_options = WritePathFabric.normalize_options(helper_state.attributes.get("options", []))
 
         result: dict[str, Any] = self._new_write_result(
@@ -1302,9 +1299,6 @@ class SelectionFabricWorkflow:
         elif c._normalize_state(requested_target) == "none":
             result["status"] = "blocked_invalid_target"
             result["reason"] = "Requested target cannot be none"
-        elif helper_state is None:
-            result["status"] = "blocked_missing_target_helper"
-            result["reason"] = "Target helper entity is missing"
 
         self._apply_component_write_guards(
             result=result,
@@ -1333,14 +1327,9 @@ class SelectionFabricWorkflow:
                 ]
                 if requested_target in planned_options:
                     try:
-                        await c.hass.services.async_call(
-                            "input_select",
-                            "set_options",
-                            {
-                                "entity_id": LEGACY_ACTIVE_TARGET_HELPER,
-                                "options": planned_options,
-                            },
-                            blocking=True,
+                        self._persist_selection_state(
+                            options=planned_options,
+                            source="set_active_target_options_sync",
                         )
                         helper_options = planned_options
                         result["options_synced"] = True
@@ -1367,17 +1356,12 @@ class SelectionFabricWorkflow:
         if result["status"] == "pending":
             c._write_in_progress = True
             try:
-                await c.hass.services.async_call(
-                    "input_select",
-                    "select_option",
-                    {
-                        "entity_id": LEGACY_ACTIVE_TARGET_HELPER,
-                        "option": requested_target,
-                    },
-                    blocking=True,
+                self._persist_selection_state(
+                    active_target=requested_target,
+                    source="set_active_target",
                 )
                 result["status"] = "write_applied"
-                result["reason"] = "Requested target applied successfully"
+                result["reason"] = "Requested target applied to component selection state"
 
                 await self.async_track_last_valid_target(
                     dry_run=False,
@@ -1387,7 +1371,7 @@ class SelectionFabricWorkflow:
                 )
             except Exception as err:  # pragma: no cover - defensive runtime guard
                 result["status"] = "write_error"
-                result["reason"] = "Service call failed during explicit target set"
+                result["reason"] = "Component selection-state update failed during explicit target set"
                 result["error"] = str(err)
             finally:
                 c._write_in_progress = False

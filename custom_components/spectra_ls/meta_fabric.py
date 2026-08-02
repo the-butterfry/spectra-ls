@@ -1,6 +1,6 @@
 # Description: Meta fabric startup-orchestration workflow for Spectra LS metadata recovery and MA boot-gate readiness semantics.
-# Version: 2026.05.04.1
-# Last updated: 2026-05-04
+# Version: 2026.08.01.1
+# Last updated: 2026-08-01
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -414,38 +414,6 @@ class MetaFabricWorkflow:
     async def async_run_component_players_change_refresh(self, *, source: str) -> None:
         """Mirror legacy players-change sequencing: refresh options, then auto-select."""
         await self._event_recovery_fabric.async_run_component_players_change_refresh(source=source)
-
-    async def async_apply_ambiguity_lock(self, *, source: str) -> None:
-        """Mirror legacy lock-on-ambiguous-select behavior for component authority windows."""
-        await self._event_recovery_fabric.async_apply_ambiguity_lock(source=source)
-
-    async def async_apply_stale_unlock(self, *, source: str) -> None:
-        """Mirror legacy stale-meta unlock behavior with bounded auto-select follow-up."""
-        await self._event_recovery_fabric.async_apply_stale_unlock(source=source)
-
-    def handle_meta_stale_unlock_timer(self, _now) -> None:
-        """Handle delayed stale unlock hold callback."""
-        self._event_recovery_fabric.handle_meta_stale_unlock_timer(_now)
-
-    async def async_dismiss_no_control_feedback_notification(self) -> None:
-        """Dismiss no-control feedback notification if present."""
-        await self._event_recovery_fabric.async_dismiss_no_control_feedback_notification()
-
-    def handle_no_control_feedback_hold_timer(self, _now) -> None:
-        """Start self-heal sequence after no-control feedback hold timer."""
-        self._event_recovery_fabric.handle_no_control_feedback_hold_timer(_now)
-
-    async def async_run_no_control_feedback_self_heal(self) -> None:
-        """Run bounded self-heal sequence for no-control-capable-hosts state."""
-        await self._event_recovery_fabric.async_run_no_control_feedback_self_heal()
-
-    def handle_no_control_feedback_post_heal_timer(self, _now) -> None:
-        """Handle post-heal delay timer before creating notification."""
-        self._event_recovery_fabric.handle_no_control_feedback_post_heal_timer(_now)
-
-    async def async_finalize_no_control_feedback_notification(self) -> None:
-        """Create final no-control feedback notification when state persists after self-heal."""
-        await self._event_recovery_fabric.async_finalize_no_control_feedback_notification()
 
     def handle_global_state_change(self, event) -> None:
         """Mirror legacy event-based auto-select trigger for watched target entities."""

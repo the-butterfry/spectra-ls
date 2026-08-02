@@ -1,6 +1,6 @@
 // Description: RP2040 UART packet hub component for Spectra button/analog/encoder feeds.
-// Version: 2026.06.22.1
-// Last updated: 2026-06-22
+// Version: 2026.07.31.1
+// Last updated: 2026-07-31
 
 #pragma once
 
@@ -140,7 +140,7 @@ class Rp2040UartHub : public Component, public uart::UARTDevice {
 				break;
 			}
 			default:
-				ESP_LOGW("rp2040_uart", "unknown type=%u id=%u raw=%u ts=%u", type, id, raw_value, ts);
+				ESP_LOGW("rp2040_uart", "unknown type=%u id=%u raw=%u ts=%lu", type, id, raw_value, (unsigned long) ts);
 				break;
 		}
 	}

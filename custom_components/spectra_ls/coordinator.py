@@ -1,6 +1,6 @@
 # Description: Data coordinator for Spectra LS parity diagnostics, Phase 3 guarded routing write-path controls, Phase 4 diagnostics scaffolding (F4-S01/F4-S03), Phase 5 metadata trial contract auditing, and Phase 6/8 control-center settings, fast-remap, execution visibility, startup auto-recovery orchestration (latency-hardened cadence), and selection-lock lifecycle parity migration (ambiguity lock, stale unlock, auto-select loop).
-# Version: 2026.06.22.1
-# Last updated: 2026-06-22
+# Version: 2026.08.02.9
+# Last updated: 2026-08-02
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -8,7 +8,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from datetime import timedelta
+import json
 import logging
+from time import monotonic
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -26,21 +29,14 @@ from .const import (
     FABRIC_AUTH_REASON_PAYLOAD_STALE,
     LEGACY_ACTIVE_META_ENTITY,
     LEGACY_LAST_VALID_TARGET,
-    LEGACY_META_DETECTED_ENTITY,
     LEGACY_META_OVERRIDE_ACTIVE,
     LEGACY_META_OVERRIDE_ENTITY,
     LEGACY_META_PAUSED_HIDE_S,
     LEGACY_META_RESOLVER,
-    LEGACY_META_STALE_S,
     LEGACY_META_CONFIDENCE_MIN,
     LEGACY_CONTROL_HOST,
     LEGACY_CONTROL_TARGETS,
     LEGACY_META_CANDIDATES,
-    LEGACY_META_STALE,
-    LEGACY_CONTROL_AMBIGUOUS,
-    LEGACY_NO_CONTROL_CAPABLE_HOSTS,
-    LEGACY_MA_PLAYERS,
-    LEGACY_OVERRIDE_ACTIVE,
     LEGACY_SERVER_PROFILE,
     LEGACY_SERVER_PROFILE_EFFECTIVE,
     LEGACY_ACTIVE_TARGET_HELPER,
@@ -98,11 +94,11 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             hass=hass,
             logger=_LOGGER,
             name=f"{DOMAIN}_shadow_parity",
+            update_interval=timedelta(seconds=30),
         )
         self._entry = entry
         self._unsub_state_events = None
         self._unsub_global_state_events = None
-        self._meta_stale_unlock_unsub = None
         self._write_authority_mode = self._normalize_write_authority(
             str(entry.options.get(OPT_DEFAULT_WRITE_AUTHORITY_MODE, WRITE_AUTH_COMPONENT) or "")
         )
@@ -124,7 +120,7 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "timestamp": None,
             "reason": "No write attempts yet",
         }
-        self._snapshot_refresh_min_interval_s = 0.75
+        self._snapshot_refresh_min_interval_s = 20.0
         self._last_snapshot_refresh_monotonic = 0.0
         self._deferred_snapshot_refresh_unsub = None
         self._last_scheduler_decision: dict[str, Any] = {
@@ -195,6 +191,19 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "reason": "No component explicit active-target set attempts requested yet",
             "selected_target": "",
         }
+        self._component_selection_state: dict[str, Any] = {
+            "active_target": "",
+            "last_valid_target": "",
+            "options": [],
+            "updated_at": None,
+            "source": "component_default_state",
+        }
+        self._component_metadata_override_state: dict[str, Any] = {
+            "active": False,
+            "entity": "",
+            "updated_at": None,
+            "source": "component_default_state",
+        }
         self._last_metadata_provider_packet: dict[str, Any] = {
             "status": "never_attempted",
             "response": "",
@@ -212,9 +221,6 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._startup_recovery_retry_delay_s = 8.0
         self._startup_recovery_wait_cycles = 0
         self._startup_recovery_max_wait_cycles = 20
-        self._no_control_feedback_hold_unsub = None
-        self._no_control_feedback_post_heal_unsub = None
-        self._no_control_feedback_notification_id = "spectra_ls_no_control_capable_hosts"
         self._metadata_stack: Any = MetadataStackWorkflow(self)
         self._meta_fabric: Any = MetaFabricWorkflow(self)
         self._snapshot_fabric: Any = SnapshotFabricWorkflow(self)
@@ -222,6 +228,171 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._lifecycle_fabric: Any = LifecycleFabricWorkflow(self)
         self._refresh_validation_fabric: Any = RefreshValidationFabricWorkflow(self)
         self._utility_fabric: Any = UtilityFabricWorkflow(self)
+        self._publish_signature_last = ""
+        self._publish_monotonic_last = 0.0
+        self._publish_min_interval_enabled_s = 15.0
+        self._publish_min_interval_disabled_active_s = 10.0
+        self._publish_min_interval_disabled_s = 60.0
+        self._publish_heartbeat_disabled_active_s = 10.0
+        self._publish_heartbeat_disabled_s = 180.0
+        self._diagnostics_toggle_helper_entity = "input_boolean.spectra_ls_component_diagnostics_enabled"
+        self._operational_fingerprint_last = ""
+
+    def _diagnostics_refresh_enabled(self) -> bool:
+        state = self.hass.states.get(self._diagnostics_toggle_helper_entity)
+        if state is None:
+            # Default fail-closed posture for churn control: diagnostics high-frequency
+            # cadence is enabled only when operator explicitly opts in.
+            return False
+        normalized = self._normalize_state(getattr(state, "state", ""))
+        return normalized in {"on", "true", "1"}
+
+    def _stable_payload_signature(self, payload: Any) -> str:
+        volatile_keys = {
+            "captured_at",
+            "updated_at",
+            "requested_at",
+            "completed_at",
+            "timestamp",
+            "last_changed",
+            "last_updated",
+        }
+
+        def _strip(value: Any) -> Any:
+            if isinstance(value, dict):
+                out: dict[str, Any] = {}
+                for key, item in value.items():
+                    key_text = str(key)
+                    lowered = key_text.lower()
+                    if lowered in volatile_keys:
+                        continue
+                    if lowered.endswith("_age_s") or lowered.endswith("_age_ms"):
+                        continue
+                    out[key_text] = _strip(item)
+                return out
+            if isinstance(value, list):
+                return [_strip(item) for item in value]
+            return value
+
+        try:
+            return json.dumps(_strip(payload), sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+        except TypeError:
+            return repr(_strip(payload))
+
+    def _operational_fingerprint(self, data: dict[str, Any]) -> str:
+        """Return compact fingerprint of behavior-relevant contract surfaces.
+
+        Used when diagnostics cadence is disabled/off to avoid publishes for
+        non-operational metadata churn.
+        """
+        route_trace = data.get("route_trace", {}) if isinstance(data.get("route_trace", {}), dict) else {}
+        parity = data.get("parity", {}) if isinstance(data.get("parity", {}), dict) else {}
+        metadata_prep = (
+            data.get("metadata_prep_validation", {})
+            if isinstance(data.get("metadata_prep_validation", {}), dict)
+            else {}
+        )
+        values = metadata_prep.get("values", {}) if isinstance(metadata_prep.get("values", {}), dict) else {}
+
+        payload = {
+            "parity": {
+                "active_target": parity.get("active_target"),
+                "active_control_path": parity.get("active_control_path"),
+                "control_hosts": parity.get("control_hosts"),
+                "active_control_capable": parity.get("active_control_capable"),
+            },
+            "route": {
+                "decision": route_trace.get("decision"),
+                "active_target": route_trace.get("active_target"),
+                "resolved_control_path": route_trace.get("resolved_control_path"),
+                "control_host": route_trace.get("control_host"),
+                "control_port": route_trace.get("control_port"),
+            },
+            "now_playing": {
+                "entity": values.get("now_playing_entity"),
+                "state": values.get("now_playing_state"),
+                "title": values.get("now_playing_title"),
+                "source": values.get("now_playing_source"),
+                "preview_key": values.get("now_playing_preview_key"),
+                "display_allowed": values.get("now_playing_display_allowed"),
+            },
+        }
+
+        try:
+            return json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+        except TypeError:
+            return repr(payload)
+
+    def _is_payload_playback_active(self, data: dict[str, Any]) -> bool:
+        """Return True when payload indicates active playback context."""
+        metadata_prep = data.get("metadata_prep_validation", {})
+        values = metadata_prep.get("values", {}) if isinstance(metadata_prep, dict) else {}
+        now_playing_state = str(values.get("now_playing_state", "") or "").strip().lower()
+        if now_playing_state in {"playing", "buffering"}:
+            return True
+
+        route_trace = data.get("route_trace", {}) if isinstance(data.get("route_trace", {}), dict) else {}
+        active_target = str(route_trace.get("active_target", "") or "").strip()
+        if self._normalize_state(active_target) in {"", "none", "unknown", "unavailable", "null"}:
+            return False
+
+        state_obj = self.hass.states.get(active_target)
+        normalized_state = self._normalize_state(state_obj.state if state_obj is not None else "")
+        return normalized_state in {"playing", "buffering"}
+
+    def async_set_updated_data(self, data: dict[str, Any]) -> None:
+        """Publish data with coordinator-wide anti-churn gating.
+
+        Applies to all call sites (poll refresh, service-triggered refresh, and
+        event/recovery paths), ensuring a single suppression choke point.
+        """
+        signature = self._stable_payload_signature(data)
+        operational_fingerprint = self._operational_fingerprint(data)
+        now_mono = monotonic()
+        diagnostics_enabled = self._diagnostics_refresh_enabled()
+        playback_active = self._is_payload_playback_active(data)
+        min_interval = (
+            self._publish_min_interval_enabled_s
+            if diagnostics_enabled
+            else (
+                self._publish_min_interval_disabled_active_s
+                if playback_active
+                else self._publish_min_interval_disabled_s
+            )
+        )
+
+        active_heartbeat_s = self._publish_heartbeat_disabled_active_s if playback_active else self._publish_heartbeat_disabled_s
+
+        if self._publish_signature_last and signature == self._publish_signature_last:
+            if (
+                not diagnostics_enabled
+                and playback_active
+                and self._publish_monotonic_last > 0
+                and (now_mono - self._publish_monotonic_last) >= active_heartbeat_s
+            ):
+                pass
+            else:
+                return
+
+        if (
+            self._publish_monotonic_last > 0
+            and (now_mono - self._publish_monotonic_last) < min_interval
+        ):
+            return
+
+        if not diagnostics_enabled:
+            if self._operational_fingerprint_last and operational_fingerprint == self._operational_fingerprint_last:
+                # Heartbeat only: keep occasional samples while suppressing idle churn.
+                if (
+                    self._publish_monotonic_last > 0
+                    and (now_mono - self._publish_monotonic_last) < active_heartbeat_s
+                ):
+                    return
+
+        super().async_set_updated_data(data)
+        self._publish_signature_last = signature
+        self._operational_fingerprint_last = operational_fingerprint
+        self._publish_monotonic_last = now_mono
 
     @property
     def metadata_stack(self) -> Any:
@@ -727,35 +898,6 @@ class SpectraLsShadowCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     async def async_run_component_players_change_refresh(self, *, source: str) -> None:
         """Mirror legacy players-change sequencing: refresh options, then auto-select."""
         await self._meta_fabric.async_run_component_players_change_refresh(source=source)
-
-    async def async_apply_ambiguity_lock(self, *, source: str) -> None:
-        """Mirror legacy lock-on-ambiguous-select behavior for component authority windows."""
-        await self._meta_fabric.async_apply_ambiguity_lock(source=source)
-
-    async def async_apply_stale_unlock(self, *, source: str) -> None:
-        """Mirror legacy stale-meta unlock behavior with bounded auto-select follow-up."""
-        await self._meta_fabric.async_apply_stale_unlock(source=source)
-
-    @callback
-    def _handle_meta_stale_unlock_timer(self, _now) -> None:
-        self._meta_fabric.handle_meta_stale_unlock_timer(_now)
-
-    async def _async_dismiss_no_control_feedback_notification(self) -> None:
-        await self._meta_fabric.async_dismiss_no_control_feedback_notification()
-
-    @callback
-    def _handle_no_control_feedback_hold_timer(self, _now) -> None:
-        self._meta_fabric.handle_no_control_feedback_hold_timer(_now)
-
-    async def _async_run_no_control_feedback_self_heal(self) -> None:
-        await self._meta_fabric.async_run_no_control_feedback_self_heal()
-
-    @callback
-    def _handle_no_control_feedback_post_heal_timer(self, _now) -> None:
-        self._meta_fabric.handle_no_control_feedback_post_heal_timer(_now)
-
-    async def _async_finalize_no_control_feedback_notification(self) -> None:
-        await self._meta_fabric.async_finalize_no_control_feedback_notification()
 
     @callback
     def _handle_global_state_change(self, event) -> None:

@@ -1,6 +1,6 @@
 # Description: Validation/control fabric workflow for Spectra LS snapshot validation assembly extracted from meta-fabric.
-# Version: 2026.08.01.5
-# Last updated: 2026-08-01
+# Version: 2026.08.14.2
+# Last updated: 2026-08-14
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -458,8 +458,18 @@ class ValidationFabricWorkflow:
                 helper_state.attributes.get("options", []) if helper_state is not None else []
             )
 
-        active_target = str(parity.get("active_target", "") or "").strip()
-        active_target_resolved = active_target.lower() not in {"", "none", "unknown", "unavailable"}
+        active_target_parity = str(parity.get("active_target", "") or "").strip()
+        route_active_target = str(route_trace.get("active_target", "") or "").strip()
+        active_target = (
+            active_target_parity
+            if c._is_resolved_state(active_target_parity)
+            else route_active_target
+        )
+        active_target_resolved = c._is_resolved_state(active_target)
+        parity_target_fallback_used = (
+            c._is_resolved_state(route_active_target)
+            and not c._is_resolved_state(active_target_parity)
+        )
         target_in_helper_options = (
             helper_exists
             and active_target_resolved
@@ -478,17 +488,25 @@ class ValidationFabricWorkflow:
         route_decision = str(route_trace.get("decision", "") or "")
         route_ready = route_decision == "route_linkplay_tcp"
         contract_valid = bool(contract_validation.get("valid", False))
+        component_mode_active = c._write_authority_mode == WRITE_AUTH_COMPONENT
+        helper_option_alignment_warning = (
+            helper_exists
+            and helper_options
+            and not target_in_helper_options
+        )
 
         verdict = "PASS"
         if not active_target_resolved or not route_ready or not contract_valid:
             verdict = "FAIL"
-        elif helper_exists and helper_options and not target_in_helper_options:
+        elif helper_option_alignment_warning and not component_mode_active:
             verdict = "WARN"
 
         return {
             "verdict": verdict,
             "ready_for_handoff": verdict == "PASS",
             "active_target": active_target,
+            "active_target_parity": active_target_parity,
+            "active_target_route_trace": route_active_target,
             "route_decision": route_decision,
             "contract_valid": contract_valid,
             "helper": {
@@ -496,6 +514,11 @@ class ValidationFabricWorkflow:
                 "exists": helper_exists,
                 "options_count": len(helper_options),
                 "target_in_options": target_in_helper_options,
+                "parity_target_fallback_used": parity_target_fallback_used,
+                "option_alignment_warning": helper_option_alignment_warning,
+                "option_alignment_advisory_only": (
+                    helper_option_alignment_warning and component_mode_active
+                ),
             },
             "compatibility": {
                 "runtime_scripts_required": False,

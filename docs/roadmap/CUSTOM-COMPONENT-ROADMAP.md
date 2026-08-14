@@ -1,6 +1,6 @@
 <!-- Description: Integration roadmap for Spectra L/S Home Assistant component. -->
-<!-- Version: 2026.08.01.1 -->
-<!-- Last updated: 2026-08-01 -->
+<!-- Version: 2026.08.14.4 -->
+<!-- Last updated: 2026-08-14 -->
 
 # Spectra L/S Home Assistant Integration Roadmap
 
@@ -37,6 +37,9 @@ Deliver all active behavior through `custom_components/spectra_ls` with runtime 
 - Integration control plane is active and primary.
 - Runtime observers and consumers are aligned to integration contract surfaces in active paths.
 - Documentation surfaces were reset to forward-only baseline for this roadmap.
+- Metadata-priority hardening slice active: component now-playing selection is being tightened to prefer metadata-rich winners before passthrough source-only fallback in active playback windows.
+- Diagnostics gate normalization active: component-authority mode now treats legacy parity fields as compatibility-only in top-line drift scoring to avoid false WARN/FAIL when OLED/metadata contracts are healthy.
+- Selection-handoff gate normalization active: helper options alignment remains visible for operator insight but is advisory-only in component-authority mode when route + contract gates pass.
 
 ### Disposition
 

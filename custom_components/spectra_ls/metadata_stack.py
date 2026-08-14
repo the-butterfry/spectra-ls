@@ -1,6 +1,6 @@
 # Description: Extracted metadata stack workflows for Spectra LS (metadata prep/bridge/cutover validation and metadata trial services).
-# Version: 2026.08.01.12
-# Last updated: 2026-08-01
+# Version: 2026.08.14.2
+# Last updated: 2026-08-14
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -185,6 +185,10 @@ class MetadataStackWorkflow:
 	def _entity_has_payload_meta(self, entity_id: str) -> bool:
 		title, artist, album = self._entity_payload_meta(entity_id)
 		return bool(title or artist or album)
+
+	def _entity_has_track_identity_meta(self, entity_id: str) -> bool:
+		title, artist, _album = self._entity_payload_meta(entity_id)
+		return bool(title or artist)
 
 	def _entity_meta_richness(self, entity_id: str) -> int:
 		c = self._coordinator
@@ -1233,7 +1237,13 @@ class MetadataStackWorkflow:
 			if playing_without_fresh and not has_meta:
 				reasons.append("playing_without_fresh_no_meta")
 
-			is_ma_rich = ma_hint and has_meta and richness >= 70 and state_norm in {"playing", "paused"}
+			has_track_identity_meta = self._entity_has_track_identity_meta(entity_id)
+			is_ma_rich = (
+				ma_hint
+				and has_track_identity_meta
+				and richness >= 70
+				and state_norm in {"playing", "paused"}
+			)
 			if is_ma_rich and (fresh or recent_play_progress):
 				ma_rich_active_exists = True
 
@@ -1258,7 +1268,7 @@ class MetadataStackWorkflow:
 				pool = "fallback_meta"
 				pool_rank = 4
 
-			if passthrough_source_detected and has_meta and state_norm in {"playing", "paused"}:
+			if passthrough_source_detected and has_track_identity_meta and state_norm in {"playing", "paused"}:
 				pool = "passthrough_meta_lock"
 				pool_rank = -1
 
@@ -1273,6 +1283,7 @@ class MetadataStackWorkflow:
 				"fresh": fresh,
 				"recent_play_progress": recent_play_progress,
 				"has_meta": has_meta,
+				"has_track_identity_meta": has_track_identity_meta,
 				"meta_richness": richness,
 				"ma_hint": ma_hint,
 				"sparse_transport": sparse_transport,
@@ -1305,6 +1316,7 @@ class MetadataStackWorkflow:
 				source = str(row.get("source", "") or "")
 				pool_rank = int(row.get("pool_rank", 99) or 99)
 				fresh_rank = 0 if bool(row.get("fresh", False)) else 1
+				track_identity_rank = 0 if bool(row.get("has_track_identity_meta", False)) else 1
 				has_meta_rank = 0 if bool(row.get("has_meta", False)) else 1
 				recent_rank = 0 if bool(row.get("recent_play_progress", False)) else 1
 				ma_rank = 0 if bool(row.get("ma_hint", False)) else 1
@@ -1314,6 +1326,7 @@ class MetadataStackWorkflow:
 				return (
 					pool_rank,
 					fresh_rank,
+					track_identity_rank,
 					has_meta_rank,
 					recent_rank,
 					ma_rank,
@@ -1324,6 +1337,19 @@ class MetadataStackWorkflow:
 				)
 
 			best_row = sorted(eligible_rows, key=_rank_tuple)[0]
+			if passthrough_source_detected and not bool(best_row.get("has_track_identity_meta", False)):
+				track_rows = [
+					row
+					for row in eligible_rows
+					if bool(row.get("has_track_identity_meta", False))
+					and str(row.get("state", "") or "") in {"playing", "paused", "buffering"}
+				]
+				if len(track_rows) > 0:
+					best_row = sorted(track_rows, key=_rank_tuple)[0]
+					best_row = {
+						**best_row,
+						"source": "passthrough_track_identity_preferred",
+					}
 			winner = str(best_row.get("entity", "") or "")
 			winner_source = str(best_row.get("source", "") or "")
 			winner_pool = str(best_row.get("pool", "") or "")
@@ -1691,6 +1717,7 @@ class MetadataStackWorkflow:
 		passthrough_metadata_candidate_position_fallback_used = False
 		passthrough_metadata_candidate_duration_fallback_used = False
 		passthrough_upstream_meta_fallback_used = False
+		passthrough_no_track_source_continuity_preferred = False
 		passthrough_upstream_meta_entity = ""
 		passthrough_upstream_meta_reason = ""
 		passthrough_upstream_meta_score: float | None = None
@@ -1810,12 +1837,30 @@ class MetadataStackWorkflow:
 			if passthrough_source_detected:
 				# In passthrough posture, prevent app-name dominance (e.g. "YouTube")
 				# when metadata/app context is sourced from upstream carriers.
-				# Prefer route-target friendly identity first; if route-target is
-				# unresolved, fall back to selected entity friendly/source label.
+				# When no live track metadata exists, prefer source continuity labels
+				# over room/device friendly names so OLED does not regress to labels
+				# like "Kitchen Speakers" during passthrough source-only windows.
+				has_track_identity_meta = bool(now_playing_title or now_playing_artist)
 				preferred_device_label = route_active_target_friendly or selected_friendly
-				if preferred_device_label:
-					if not now_playing_source or not self._is_non_meta_source(now_playing_source):
-						now_playing_source = preferred_device_label
+				if not has_track_identity_meta:
+					preferred_source_label = (
+						route_active_source_continuity
+						if c._is_resolved_state(route_active_source_continuity)
+						else now_playing_source
+					)
+					if not c._is_resolved_state(preferred_source_label):
+						preferred_source_label = preferred_device_label
+					if c._is_resolved_state(preferred_source_label):
+						now_playing_source = preferred_source_label
+						now_playing_app = preferred_source_label
+						passthrough_source_label_fallback_preferred = True
+						passthrough_no_track_source_continuity_preferred = True
+						passthrough_device_label_preferred = (
+							preferred_source_label == preferred_device_label
+							and bool(preferred_device_label)
+						)
+						passthrough_route_target_label_preferred = False
+				elif preferred_device_label:
 					now_playing_app = preferred_device_label
 					passthrough_device_label_preferred = True
 					passthrough_route_target_label_preferred = bool(route_active_target_friendly)
@@ -2163,9 +2208,11 @@ class MetadataStackWorkflow:
 		long_idle_stale_hidden = bool(now_playing_signal.get("long_idle_stale_hidden", False))
 		playing_at_track_end_stuck = bool(now_playing_signal.get("playing_at_track_end_stuck", False))
 		now_playing_fresh_play_signal = bool(now_playing_signal.get("fresh_play_signal", False))
-		now_playing_title_signal_ready = now_playing_title_resolved or (
-			now_playing_fresh_play_signal and active_meta_entity_resolved
+		now_playing_identity_meta_present = bool(
+			c._is_resolved_state(now_playing_title) or c._is_resolved_state(now_playing_artist)
 		)
+		now_playing_title_signal_ready = now_playing_identity_meta_present
+		now_playing_track_metadata_ready = now_playing_identity_meta_present
 		if (not now_playing_title_signal_ready) and (playing_without_fresh_signal or long_idle_stale_hidden):
 			now_playing_state = "idle"
 			active_playback_signal = False
@@ -2199,13 +2246,13 @@ class MetadataStackWorkflow:
 		passthrough_title_keepalive_ready = (
 			passthrough_source_detected
 			and now_playing_state_norm in {"playing", "paused", "buffering"}
-			and now_playing_title_signal_ready
+			and now_playing_track_metadata_ready
 			and now_playing_identity_meta_present
 		)
 		component_playback_keepalive_ready = (
 			component_mode_active
 			and now_playing_state_norm in {"playing", "paused", "buffering"}
-			and now_playing_title_signal_ready
+			and now_playing_track_metadata_ready
 			and now_playing_identity_meta_present
 		)
 		display_force_off_idle_no_meta = (
@@ -2308,7 +2355,7 @@ class MetadataStackWorkflow:
 
 		if display_force_off_idle_no_meta or not now_playing_display_allowed_value:
 			canonical_oled_posture = "display_policy_suppressed"
-		elif now_playing_title_signal_ready:
+		elif now_playing_track_metadata_ready:
 			canonical_oled_posture = "title_ready"
 		elif passthrough_source_detected and (
 			now_playing_state_norm in {"playing", "paused"}
@@ -2321,7 +2368,7 @@ class MetadataStackWorkflow:
 			canonical_oled_posture = "no_viable_payload"
 
 		canonical_oled_payload_ready = bool(
-			now_playing_title_signal_ready and now_playing_display_allowed_value and not display_force_off_idle_no_meta
+			now_playing_track_metadata_ready and now_playing_display_allowed_value and not display_force_off_idle_no_meta
 		)
 		if intentional_control_metadata_divergence:
 			canonical_cause_hint = "intentional_control_target_metadata_divergence_component_owner"
@@ -2512,6 +2559,7 @@ class MetadataStackWorkflow:
 				"now_playing_duration_resolved": now_playing_duration_resolved,
 				"ma_active_duration_resolved": ma_active_duration_resolved,
 				"now_playing_title_signal_ready": now_playing_title_signal_ready,
+				"now_playing_track_metadata_ready": now_playing_track_metadata_ready,
 				"now_playing_media_class_resolved": now_playing_media_class_resolved,
 				"now_playing_preview_key_resolved": now_playing_preview_key_resolved,
 				"now_playing_display_allowed_resolved": now_playing_display_allowed_resolved,
@@ -2600,6 +2648,7 @@ class MetadataStackWorkflow:
 				"passthrough_device_label_preferred": passthrough_device_label_preferred,
 				"passthrough_route_target_label_preferred": passthrough_route_target_label_preferred,
 				"passthrough_source_label_fallback_preferred": passthrough_source_label_fallback_preferred,
+				"passthrough_no_track_source_continuity_preferred": passthrough_no_track_source_continuity_preferred,
 				"passthrough_album_suppressed": passthrough_album_suppressed,
 				"passthrough_route_target_position_fallback_used": passthrough_route_target_position_fallback_used,
 				"passthrough_route_target_duration_fallback_used": passthrough_route_target_duration_fallback_used,
@@ -2667,6 +2716,7 @@ class MetadataStackWorkflow:
 				"passthrough_device_label_preferred": passthrough_device_label_preferred,
 				"passthrough_route_target_label_preferred": passthrough_route_target_label_preferred,
 				"passthrough_source_label_fallback_preferred": passthrough_source_label_fallback_preferred,
+				"passthrough_no_track_source_continuity_preferred": passthrough_no_track_source_continuity_preferred,
 				"passthrough_album_suppressed": passthrough_album_suppressed,
 				"passthrough_route_target_position_fallback_used": passthrough_route_target_position_fallback_used,
 				"passthrough_route_target_duration_fallback_used": passthrough_route_target_duration_fallback_used,
@@ -2715,6 +2765,7 @@ class MetadataStackWorkflow:
 				"now_playing_media_class": now_playing_media_class,
 				"now_playing_preview_key": now_playing_preview_key,
 				"now_playing_display_allowed": now_playing_display_allowed_value,
+				"now_playing_track_metadata_ready": now_playing_track_metadata_ready,
 				"now_playing_display_force_off_idle_no_meta": display_force_off_idle_no_meta,
 				"passthrough_display_contract_ready": passthrough_display_contract_ready,
 				"passthrough_title_keepalive_ready": passthrough_title_keepalive_ready,

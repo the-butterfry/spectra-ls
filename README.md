@@ -1,10 +1,10 @@
 <!-- Description: End-user overview for the Spectra L/S Home Assistant + ESPHome system. -->
-<!-- Version: 2026.08.01.6 -->
-<!-- Last updated: 2026-08-01 -->
+<!-- Version: 2026.08.14.4 -->
+<!-- Last updated: 2026-08-14 -->
 
 # Spectra L/S
 
-**⚠️ State of project (reviewed 2026-08-01): Public beta. It works today, but it still changes quickly. If you want "set it once and never touch it," wait for a stable milestone.**
+**⚠️ State of project (reviewed 2026-08-14): Public beta. It works today, but it still changes quickly. If you want "set it once and never touch it," wait for a stable milestone.**
 
 ## What is Spectra L/S?
 
@@ -80,6 +80,7 @@ Inspired by premium physical control products like [Condesa Electronics — Carm
 ## What’s being built now
 
 - A polished in-app Home Assistant control center
+- Metadata-first now-playing contract hardening so OLED prioritizes true title/artist payloads before source-only passthrough fallback labels
 - Better onboarding/setup flow for real homes with different device layouts
 - Stronger playback and metadata reliability across mixed audio ecosystems
 - Faster and cleaner input-to-action response from physical controls

@@ -1,6 +1,6 @@
 {# Description: Full-stack one-screen Spectra LS component validation template for HA Developer Tools. #}
-{# Version: 2026.08.01.2 #}
-{# Last updated: 2026-08-01 #}
+{# Version: 2026.08.14.1 #}
+{# Last updated: 2026-08-14 #}
 
 {% set invalid = ['','none','unknown','unavailable','null'] %}
 
@@ -100,6 +100,8 @@
 {% set selector_winner_reason = metadata_checks.component_now_playing_selection_winner_reason if metadata_checks.component_now_playing_selection_winner_reason is defined else (selector.winner_reason if selector.winner_reason is defined else 'unknown') %}
 {% set selector_candidate_count = metadata_checks.component_now_playing_selection_candidate_count if metadata_checks.component_now_playing_selection_candidate_count is defined else (selector.candidate_count if selector.candidate_count is defined else 'unknown') %}
 {% set selector_eligible_count = metadata_checks.component_now_playing_selection_eligible_count if metadata_checks.component_now_playing_selection_eligible_count is defined else (selector.eligible_count if selector.eligible_count is defined else 'unknown') %}
+{% set track_metadata_ready = metadata_checks.now_playing_track_metadata_ready if metadata_checks.now_playing_track_metadata_ready is defined else (metadata_values.now_playing_track_metadata_ready if metadata_values.now_playing_track_metadata_ready is defined else 'unknown') %}
+{% set no_track_source_continuity_preferred = metadata_checks.passthrough_no_track_source_continuity_preferred if metadata_checks.passthrough_no_track_source_continuity_preferred is defined else (metadata_values.passthrough_no_track_source_continuity_preferred if metadata_values.passthrough_no_track_source_continuity_preferred is defined else false) %}
 
 {% set control_meta_entity_mismatch = active_target not in invalid and effective_now_playing_entity not in invalid and active_target != effective_now_playing_entity %}
 {% set source_hint = effective_now_playing_source | lower if effective_now_playing_source not in invalid else '' %}
@@ -228,6 +230,8 @@
 - Selector winner (pool/reason): **{{ selector_winner_pool if selector_winner_pool not in invalid else 'missing' }} / {{ selector_winner_reason if selector_winner_reason not in invalid else 'missing' }}**
 - Selector candidate/eligible counts: **{{ selector_candidate_count if selector_candidate_count not in invalid else 'missing' }} / {{ selector_eligible_count if selector_eligible_count not in invalid else 'missing' }}**
 - Selector partial telemetry: **{{ selector_partial_telemetry }}**
+- Track metadata ready (component): **{{ track_metadata_ready }}**
+- Passthrough no-track source continuity preferred: **{{ no_track_source_continuity_preferred }}**
 
 ### Contract + parity
 - contract ready/valid: **{{ contract_ready }} / {{ contract_valid }}**

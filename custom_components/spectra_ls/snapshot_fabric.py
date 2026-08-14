@@ -1,6 +1,6 @@
 # Description: Snapshot-fabric workflow for Spectra LS coordinator snapshot and write-controls packet assembly extracted from coordinator.
-# Version: 2026.08.01.1
-# Last updated: 2026-07-31
+# Version: 2026.08.14.1
+# Last updated: 2026-08-14
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -16,6 +16,7 @@ from .const import (
     LEGACY_ROOMS_RAW,
     LEGACY_SURFACES,
     WRITE_AUTH_ALLOWED,
+    WRITE_AUTH_COMPONENT,
 )
 from .payload_surface_fabric import PayloadSurfaceFabric
 from .registry import build_registry_snapshot
@@ -229,6 +230,8 @@ class SnapshotFabricWorkflow:
             for key in ("active_target", "active_control_path", "control_hosts", "active_control_capable")
             if parity[key] != legacy[key]
         ]
+        legacy_parity_unresolved_sources = list(unresolved_sources)
+        legacy_parity_mismatches = list(mismatches)
 
         registry = build_registry_snapshot(
             hass=c.hass,
@@ -321,6 +324,20 @@ class SnapshotFabricWorkflow:
         scheduler_validation = self._dict_surface(validation_packet, "scheduler_validation")
         control_center_validation = self._dict_surface(validation_packet, "control_center_validation")
 
+        if c._write_authority_mode == WRITE_AUTH_COMPONENT:
+            legacy_compat_parity_keys = {
+                "active_target",
+                "active_control_path",
+                "control_hosts",
+                "active_control_capable",
+            }
+            unresolved_sources = [
+                key for key in unresolved_sources if key not in legacy_compat_parity_keys
+            ]
+            mismatches = [
+                key for key in mismatches if key not in legacy_compat_parity_keys
+            ]
+
         ma_backend_profile = c._build_ma_backend_profile()
 
         return {
@@ -328,6 +345,8 @@ class SnapshotFabricWorkflow:
             "parity": parity,
             "unresolved_sources": unresolved_sources,
             "mismatches": mismatches,
+            "legacy_parity_unresolved_sources": legacy_parity_unresolved_sources,
+            "legacy_parity_mismatches": legacy_parity_mismatches,
             "registry": registry,
             "route_trace": route_trace,
             "host_control_cutover_gate": host_control_cutover_gate,

@@ -1,6 +1,6 @@
 <!-- Description: Active implementation notes for Spectra L/S integration-first execution. -->
-<!-- Version: 2026.08.01.1 -->
-<!-- Last updated: 2026-08-01 -->
+<!-- Version: 2026.08.14.4 -->
+<!-- Last updated: 2026-08-14 -->
 
 # v-next Notes
 
@@ -30,7 +30,19 @@
 - Rewired active hardware status observer to integration now-playing entities.
 - Replaced long historical narrative with forward-only execution notes.
 
-### Disposition
+### Disposition (2026-08-14)
 
 - Runtime track: implemented
+- Integration track: implemented
+
+## Latest update (2026-08-14)
+
+- Initiated component-first now-playing metadata-priority correction slice to restore OLED-first contract: show true title/artist when available; passthrough source label remains bounded fallback only.
+- Scope narrowed to `custom_components/spectra_ls/metadata_stack.py` selection + metadata prep semantics so runtime remains a contract consumer in this slice.
+- Normalized validation gates so component-authority operation no longer emits false parity/handoff WARN states when legacy parity fields are unresolved but component route/metadata contracts are healthy.
+- Finalized selection-handoff scoring to treat helper option-alignment mismatches as advisory-only in component-authority mode while preserving strict WARN behavior outside component mode.
+
+### Disposition
+
+- Runtime track: compatibility-shimmed
 - Integration track: implemented

@@ -342,13 +342,11 @@ sensor:
     internal: true
     pin_a:
       number: ${encoder_pin_a}
-      allow_other_uses: true
       mode:
         input: true
         pullup: true
     pin_b:
       number: ${encoder_pin_b}
-      allow_other_uses: true
       mode:
         input: true
         pullup: true

@@ -1,5 +1,5 @@
 {# Description: Full-stack one-screen Spectra LS component validation template for HA Developer Tools. #}
-{# Version: 2026.08.14.1 #}
+{# Version: 2026.08.14.2 #}
 {# Last updated: 2026-08-14 #}
 
 {% set invalid = ['','none','unknown','unavailable','null'] %}
@@ -58,6 +58,8 @@
 {% set esp_lighting_blank_ok = esp_mode_prefix == 'lighting' and (esp_oled_payload | trim) in ['-', ''] %}
 {% set esp_oled_ready = esp_oled_state not in invalid or esp_lighting_blank_ok %}
 {% set esp_runtime_ready = esp_runtime_visible and esp_handoff_state not in invalid and esp_oled_ready %}
+{% set esp_oled_last_updated = states[esp_oled_entity].last_updated if esp_oled_entity != '' and states[esp_oled_entity] is not none else none %}
+{% set esp_oled_age_s = (as_timestamp(now()) - as_timestamp(esp_oled_last_updated)) if esp_oled_last_updated is not none else none %}
 
 {% set helper_target = active_target %}
 {% set helper_target_valid = active_target is string and active_target|trim not in invalid and '.' in active_target and states(active_target) not in invalid %}
@@ -112,6 +114,20 @@
 {% set display_not_allowed = effective_now_playing_display_allowed in ['off', 'false', '0'] %}
 {% set oled_audio_blank = esp_mode_prefix == 'audio' and (esp_oled_payload | trim) in ['', '-'] %}
 {% set selector_partial_telemetry = selector_winner_entity in invalid and selector_winner_pool not in ['unknown', 'none', ''] %}
+{% set oled_payload_trim = esp_oled_payload | trim %}
+{% set oled_payload_lower = oled_payload_trim | lower if oled_payload_trim not in invalid else '' %}
+{% set effective_title_trim = effective_now_playing_title | trim if effective_now_playing_title not in invalid else '' %}
+{% set effective_source_trim = effective_now_playing_source | trim if effective_now_playing_source not in invalid else '' %}
+{% set effective_app_trim = effective_now_playing_app | trim if effective_now_playing_app not in invalid else '' %}
+{% set effective_title_lower = effective_title_trim | lower if effective_title_trim != '' else '' %}
+{% set effective_source_lower = effective_source_trim | lower if effective_source_trim != '' else '' %}
+{% set effective_app_lower = effective_app_trim | lower if effective_app_trim != '' else '' %}
+{% set oled_matches_title_prefix = effective_title_lower != '' and oled_payload_lower != '' and (effective_title_lower.startswith(oled_payload_lower) or oled_payload_lower.startswith(effective_title_lower)) %}
+{% set oled_matches_source = effective_source_lower != '' and oled_payload_lower == effective_source_lower %}
+{% set oled_matches_app = effective_app_lower != '' and oled_payload_lower == effective_app_lower %}
+{% set oled_payload_contract_match = oled_matches_title_prefix or oled_matches_source or oled_matches_app %}
+{% set oled_payload_contract_mismatch = esp_mode_prefix == 'audio' and oled_payload_trim not in invalid and track_metadata_ready == true and effective_title_trim != '' and not oled_payload_contract_match %}
+{% set oled_status_stale_vs_title = esp_oled_age_s is not none and esp_oled_age_s > 90 and effective_now_playing_freshness_age is not none and effective_now_playing_freshness_age <= 20 %}
 
 {% set oled_cause = 'healthy_or_non_blank_case' %}
 {% if esp_oled_state in invalid %}
@@ -128,6 +144,10 @@
   {% set oled_cause = 'passthrough_no_track_metadata' %}
 {% elif oled_audio_blank and selector_partial_telemetry %}
   {% set oled_cause = 'selector_telemetry_partial' %}
+{% elif oled_payload_contract_mismatch %}
+  {% set oled_cause = 'oled_payload_contract_mismatch' %}
+{% elif oled_status_stale_vs_title %}
+  {% set oled_cause = 'oled_status_stale_vs_component_title' %}
 {% elif oled_audio_blank and control_meta_entity_mismatch and effective_now_playing_state in ['playing', 'paused'] %}
   {% set oled_cause = 'control_metadata_entity_divergence' %}
 {% elif oled_audio_blank and effective_now_playing_title in invalid and effective_now_playing_source not in invalid %}
@@ -232,6 +252,9 @@
 - Selector partial telemetry: **{{ selector_partial_telemetry }}**
 - Track metadata ready (component): **{{ track_metadata_ready }}**
 - Passthrough no-track source continuity preferred: **{{ no_track_source_continuity_preferred }}**
+- OLED payload contract match (title/source/app): **{{ oled_payload_contract_match }}**
+- OLED payload contract mismatch: **{{ oled_payload_contract_mismatch }}**
+- OLED status stale vs fresh component title: **{{ oled_status_stale_vs_title }}**{% if esp_oled_age_s is not none %} (oled_age={{ esp_oled_age_s | round(1) }}s){% endif %}
 
 ### Contract + parity
 - contract ready/valid: **{{ contract_ready }} / {{ contract_valid }}**
@@ -286,6 +309,10 @@
 - Passthrough source is active and title is missing; verify upstream metadata availability and compare component vs runtime now-playing surfaces in this packet.
 {% elif oled_cause == 'selector_telemetry_partial' %}
 - Selector winner pool is present but winner entity telemetry is partial. Capture a fresh packet after `spectra_ls.dump_route_trace` and inspect `component_now_playing_selection_*` checks/values.
+{% elif oled_cause == 'oled_payload_contract_mismatch' %}
+- OLED payload does not match component title/source/app contract. Refresh `sensor.spectra_ls_system_esp_oled_status`, confirm display mode, and compare payload vs effective title/source/app in this packet.
+{% elif oled_cause == 'oled_status_stale_vs_component_title' %}
+- OLED status feed appears stale while component title is fresh. Refresh ESP status entities and capture two packets ~10s apart to confirm status clock movement.
 {% elif not backend_api_contract_ready %}
 - Backend/API read lane is degraded. Refresh `sensor.component_backend_profile` + `sensor.component_ma_api_url`, then rerun.
 {% elif not esp_runtime_ready %}

@@ -1,5 +1,5 @@
 <!-- Description: Repository changelog for Spectra L/S integration-first development. -->
-<!-- Version: 2026.08.14.4 -->
+<!-- Version: 2026.08.14.5 -->
 <!-- Last updated: 2026-08-14 -->
 
 # Changelog
@@ -15,6 +15,7 @@
   - passthrough no-live-metadata correction: when title/artist are unavailable, component now-playing fallback now prefers passthrough source continuity labels (for example `Optical In`) and avoids room-friendly label dominance (for example `Kitchen Speakers`) on OLED consumers.
   - diagnostics gate correction: selection-handoff and parity drift warnings now avoid false FAIL/WARN in component-authority mode when runtime behavior is intentionally component-owned and legacy parity fields are compatibility-only.
   - selection-handoff final normalization: helper option-alignment mismatches remain visible as advisory telemetry in component-authority mode and no longer force top-line WARN when route/contract readiness is PASS.
+  - full-stack tester hardening: `docs/testing/raw/meta_component_full_stack_tester.jinja` now emits explicit OLED payload contract diagnostics (title/source/app match, mismatch flag, and stale-status flag) to surface cases where top-line PASS can mask display/feed divergence.
 
 - Docs parity update for this behavior slice:
   - synchronized `README.md`, `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`, and `docs/roadmap/v-next-NOTES.md` to reflect metadata-priority contract posture.

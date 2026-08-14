@@ -1,5 +1,5 @@
 # Description: Standalone ESPHome config for Spectra LS Remote tabletop control box (encoder + transport buttons + battery telemetry).
-# Version: 2026.08.14.3
+# Version: 2026.08.14.4
 # Last updated: 2026-08-14
 # Notes:
 # - BLE transport removed; control lane is direct Wi-Fi/TCP.
@@ -113,14 +113,11 @@ wifi:
 
 deep_sleep:
   id: remote_sleep_ctrl
-  wakeup_pin:
-    number: ${next_button_pin}
-    allow_other_uses: true
-    mode:
-      input: true
-      pullup: true
-    inverted: true
-  wakeup_pin_mode: KEEP_AWAKE
+  esp32_ext1_wakeup:
+    pins:
+      - number: ${encoder_press_pin}
+        allow_other_uses: true
+    mode: ANY_LOW
 
 time:
   - platform: homeassistant
@@ -473,6 +470,7 @@ binary_sensor:
     internal: true
     pin:
       number: ${encoder_press_pin}
+      allow_other_uses: true
       mode:
         input: true
         pullup: true

@@ -509,6 +509,7 @@ binary_sensor:
     name: "Remote Next Track Button"
     pin:
       number: ${next_button_pin}
+      allow_other_uses: true
       mode:
         input: true
         pullup: true
@@ -557,7 +558,7 @@ script:
   - id: remote_flush_encoder_turn
     mode: restart
     then:
-      - delay: 15ms
+      - delay: ${remote_encoder_flush_delay_ms}ms
       - lambda: |-
           const int pending = id(remote_pending_encoder_delta);
           if (pending == 0) return;

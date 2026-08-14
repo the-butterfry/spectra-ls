@@ -1,6 +1,6 @@
 # Description: Main ESPHome config for Spectra LS System main ESPHome config (ESP32-S3 + RP2040 UART + Arylic TCP).
-# Version: 2026.08.11.1
-# Last updated: 2026-08-11
+# Version: 2026.08.14.1
+# Last updated: 2026-08-14
 # Update version/date whenever you change this file.
 #
 # Setup checklist:

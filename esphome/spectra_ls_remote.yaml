@@ -501,7 +501,6 @@ binary_sensor:
     name: "Remote Next Track Button"
     pin:
       number: ${next_button_pin}
-      allow_other_uses: true
       mode:
         input: true
         pullup: true

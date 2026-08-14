@@ -470,7 +470,6 @@ binary_sensor:
     internal: true
     pin:
       number: ${encoder_press_pin}
-      allow_other_uses: true
       mode:
         input: true
         pullup: true

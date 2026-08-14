@@ -113,11 +113,14 @@ wifi:
 
 deep_sleep:
   id: remote_sleep_ctrl
-  esp32_ext1_wakeup:
-    pins:
-      - number: ${next_button_pin}
-        allow_other_uses: true
-    mode: ANY_LOW
+  wakeup_pin:
+    number: ${next_button_pin}
+    allow_other_uses: true
+    mode:
+      input: true
+      pullup: true
+    inverted: true
+  wakeup_pin_mode: KEEP_AWAKE
 
 time:
   - platform: homeassistant

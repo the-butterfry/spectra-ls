@@ -1,5 +1,5 @@
 # Description: Standalone ESPHome config for Spectra LS Remote tabletop control box (encoder + transport buttons + battery telemetry).
-# Version: 2026.08.14.1
+# Version: 2026.08.14.2
 # Last updated: 2026-08-14
 # Notes:
 # - BLE transport removed; control lane is direct Wi-Fi/TCP.
@@ -115,10 +115,6 @@ deep_sleep:
   id: remote_sleep_ctrl
   esp32_ext1_wakeup:
     pins:
-      - number: ${encoder_pin_a}
-        allow_other_uses: true
-      - number: ${encoder_pin_b}
-        allow_other_uses: true
       - number: ${encoder_press_pin}
         allow_other_uses: true
       - number: ${next_button_pin}
@@ -1090,15 +1086,15 @@ interval:
 
               const uint32_t tick = millis();
 
-              const uint32_t last_encoder_interaction =
-                  id(remote_last_encoder_interaction_ms) == 0
-                      ? id(remote_last_input_ms)
-                      : id(remote_last_encoder_interaction_ms);
-              const uint32_t idle = tick - last_encoder_interaction;
+              const uint32_t last_activity_ms =
+                  id(remote_last_encoder_interaction_ms) > id(remote_last_input_ms)
+                      ? id(remote_last_encoder_interaction_ms)
+                      : id(remote_last_input_ms);
+              const uint32_t idle = tick - last_activity_ms;
               return idle >= (uint32_t) ${remote_idle_sleep_ms};
           then:
             - logger.log:
                 level: INFO
-                format: "Remote entering deep sleep after 60s encoder idle"
+                format: "Remote entering deep sleep after 60s user idle"
             - deep_sleep.enter: remote_sleep_ctrl
 

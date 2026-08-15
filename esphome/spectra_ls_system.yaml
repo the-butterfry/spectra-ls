@@ -1,5 +1,5 @@
 # Description: Main ESPHome config for Spectra LS System main ESPHome config (ESP32-S3 + RP2040 UART + Arylic TCP).
-# Version: 2026.08.14.9
+# Version: 2026.08.14.23
 # Last updated: 2026-08-14
 # Update version/date whenever you change this file.
 #
@@ -113,14 +113,15 @@ psram:
   speed: 80MHz
 
 logger:
-  level: INFO
+  level: DEBUG
   logs:
     sensor: WARN
     text_sensor: WARN
     number: WARN
     select: WARN
     homeassistant: WARN
-    rp2040_uart: INFO
+    rp2040_uart: DEBUG
+    arylic_tcp: DEBUG
     cpu_usage: INFO
 
 api:

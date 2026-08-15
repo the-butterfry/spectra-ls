@@ -1,6 +1,6 @@
 # Description: Standalone ESPHome config for Spectra LS Remote tabletop control box (encoder + transport buttons + battery telemetry).
-# Version: 2026.08.14.4
-# Last updated: 2026-08-14
+# Version: 2026.08.15.1
+# Last updated: 2026-08-15
 # Notes:
 # - BLE transport removed; control lane is direct Wi-Fi/TCP.
 
@@ -114,8 +114,13 @@ wifi:
 deep_sleep:
   id: remote_sleep_ctrl
   esp32_ext1_wakeup:
+    # Wake policy: keep explicit encoder-press wake and add one rotary phase
+    # so any physical knob turn can wake the remote with lower wake-noise
+    # exposure than enabling both quadrature phases.
     pins:
       - number: ${encoder_press_pin}
+        allow_other_uses: true
+      - number: ${encoder_pin_a}
         allow_other_uses: true
     mode: ANY_LOW
 
@@ -340,6 +345,7 @@ sensor:
     internal: true
     pin_a:
       number: ${encoder_pin_a}
+      allow_other_uses: true
       mode:
         input: true
         pullup: true

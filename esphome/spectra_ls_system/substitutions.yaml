@@ -1,6 +1,6 @@
 # Description: Spectra LS System substitutions for ESPHome main config and packages.
-# Version: 2026.08.01.1
-# Last updated: 2026-08-01
+# Version: 2026.08.15.1
+# Last updated: 2026-08-15
 # Spectra LS substitutions scoped to spectra_ls_system.
 # Use absolute paths for assets so this file can move with spectra_ls_system.
 
@@ -32,9 +32,9 @@ dns2_ip: !secret spectra_dns2_ip
 # - send_interval: minimum send spacing under motion.
 # - settle_ms: defer window to absorb jitter/micro-movements.
 # - jump_steps: large moves bypass defer path for immediate response.
-volume_pot_send_interval_ms: "25"
-volume_pot_settle_ms: "50"
-volume_pot_jump_steps: "3"
+volume_pot_send_interval_ms: "14"
+volume_pot_settle_ms: "16"
+volume_pot_jump_steps: "2"
 # Physical volume pot orientation.
 # true  => counter-clockwise end maps to 0% (off) for reversed orientation.
 # false => clockwise increases volume for current wiring.
@@ -50,8 +50,8 @@ eq_max: "10"
 # Gain: tune per-network stability without editing C++.
 # Risk: very low pacing can flood weak links; very high pacing can feel sluggish.
 arylic_tcp_timeout_ms: "1200"
-arylic_tcp_min_interval_ms: "45"
-arylic_tcp_dup_suppress_ms: "45"
+arylic_tcp_min_interval_ms: "20"
+arylic_tcp_dup_suppress_ms: "20"
 arylic_tcp_backoff_ms: "220"
 # Purpose: burst safety gate during rapid sweeps.
 # Gain: protects target/player from sustained command storms.
@@ -133,6 +133,7 @@ ha_ma_active_position: sensor.component_now_playing_position
 ha_ma_active_volume: sensor.component_now_playing_volume
 ha_ma_active_media_class: sensor.component_now_playing_media_class
 ha_ma_active_display_allowed: binary_sensor.component_now_playing_display_allowed
+ha_ma_active_oled_blank: binary_sensor.component_now_playing_oled_blank
 ha_ma_now_playing_entity: sensor.component_now_playing_entity
 ha_ma_now_playing_friendly: sensor.component_now_playing_friendly
 ha_ma_active_friendly: sensor.component_now_playing_friendly

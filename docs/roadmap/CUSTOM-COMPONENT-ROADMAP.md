@@ -1,47 +1,3330 @@
-<!-- Description: Integration roadmap for Spectra L/S Home Assistant component. -->
+<!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
 <!-- Version: 2026.08.14.4 -->
 <!-- Last updated: 2026-08-14 -->
 
-# Spectra L/S Home Assistant Integration Roadmap
+# Spectra LS Custom Component — Specification + Roadmap
 
-## Goal
+## Purpose
 
-Deliver all active behavior through `custom_components/spectra_ls` with runtime consumers bound to integration contract outputs.
+Define a production-grade `custom_components/spectra_ls` program that runs **in parallel** with the existing HA package + ESPHome runtime, then incrementally migrates ownership without breaking deployed contracts.
 
-## Operating rules
+Execution playbook reference: `docs/program/PARALLEL-PROGRAM-PLAYBOOK.md`.
 
-- Integration-first for all net-new behavior.
-- Runtime updates are allowed when required for stability, observability, or consumer binding.
-- Discovery-first adaptation and capability-mapped routing remain mandatory.
-- No install-specific hardcoding in tracked product logic.
+## Product Principles (non-negotiable)
 
-## Near-term roadmap
+- Spectra is anonymized and user-portable by default.
+- Discovery-first adaptation to each user’s HA entity topology.
+- Capability-mapped routing and behavior gating.
+- Minimal hardcoded install-specific entity IDs.
+- Backward-compatible migration before replacement.
+- Audio and lighting are first-class depth domains, while input primitives remain mappable for broader Home Assistant control domains.
 
-### R1 — Contract stability
+## Universal residual exposure handlers (phase continuity requirement)
 
-- Harden component outputs used by ESP/runtime consumers.
-- Keep now-playing, target, and host contract payloads deterministic.
+Apply this handler set in every remaining phase slice where literals/hardcodes are reviewed.
 
-### R2 — Execution stability
+- **Classification contract**
 
-- Keep startup/reconnect behavior consistent and fail-closed.
-- Eliminate drift between integration packet outputs and runtime consumers.
+- `acceptable historical/reference`: archived evidence artifacts and explicitly local operator notes that are not active product logic.
+- `sanitize now`: active roadmap/runbook/governance docs and portable examples/defaults.
 
-### R3 — Operator trust
+- **Sanitization contract**
 
-- Keep one-source diagnostics for readiness and health.
-- Keep release notes and runbooks aligned to implemented behavior.
+- Replace install-specific hosts/IPs with placeholders (`<ha_host>`, `<device_ip>`, `<wled_host_or_ip>`).
+- Replace install-specific entity examples/defaults with contract-safe placeholders (`light.<target_light>`, `media_player.<target_player>`).
+- Preserve behavior and contract semantics; sanitize literals only.
 
-## Current status
+- **Two-track disposition + version parity review (mandatory)**
 
-- Integration control plane is active and primary.
-- Runtime observers and consumers are aligned to integration contract surfaces in active paths.
-- Documentation surfaces were reset to forward-only baseline for this roadmap.
+- Record runtime track disposition and component track disposition in `docs/CHANGELOG.md` in the same slice.
+- Include explicit version-parity review status (`updated` or `not-applicable with rationale`) for both tracks when behavior/contract surfaces are touched.
+
+- **No-go contract**
+
+- No new install-specific literals in active product logic or active operator defaults.
+- No silent exception lanes; bounded exceptions must be documented with rationale in the same change set.
+
+Latest run update (2026-08-14, metadata-priority hardening + diagnostics normalization):
+
 - Metadata-priority hardening slice active: component now-playing selection is being tightened to prefer metadata-rich winners before passthrough source-only fallback in active playback windows.
 - Diagnostics gate normalization active: component-authority mode now treats legacy parity fields as compatibility-only in top-line drift scoring to avoid false WARN/FAIL when OLED/metadata contracts are healthy.
 - Selection-handoff gate normalization active: helper options alignment remains visible for operator insight but is advisory-only in component-authority mode when route + contract gates pass.
+- Runtime track disposition: compatibility-shimmed.
+- Component track disposition: implemented.
 
-### Disposition
+Latest run update (2026-08-01, reboot-loop stabilization + LC-06 compatibility retirement wave):
 
-- Runtime track: implemented
-- Integration track: implemented
+Latest run update (2026-08-01, runtime execution-lane hard retirement sweep):
+
+- Runtime package legacy implementation retirement executed: dormant `packages/ma_control_hub/*.inc` helper/template/script surfaces were physically removed after external backup, and `packages/ma_control_hub.yaml` is now an archived stub.
+- Active ESP ambiguity dependency retired from `esphome/spectra_ls_system/packages/spectra-ls-audio-tcp.yaml` by removing `binary_sensor.ma_control_ambiguous` ingestion and active gate checks.
+- Control-board HA fixture alignment completed in `esphome/spectra_ls_system/spectra_ls_ha_view.yaml` using component-primary entities for active target/friendly display.
+- Runtime track disposition: implemented (legacy execution-lane retirement completed in touched runtime assembly paths).
+- Component track disposition: implemented (component-primary surfaces remain sole authority lane in touched paths).
+- Version parity review: runtime `updated`; component `not-applicable` (no component behavior file mutation in this slice).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment beyond established component-primary model; residual execution-lane retirement and operator-surface alignment only.
+
+Latest run update (2026-08-01, component authority/candidate gate false-blocker correction):
+
+- Corrected component metadata-prep gate semantics so component-only posture does not require legacy-only metadata surfaces for authority readiness classification.
+- Active-meta authority resolution now accepts component resolver/selection winners when legacy active-meta entity is intentionally unavailable.
+- Candidate payload readiness now accepts component-side candidate evidence (`component_now_playing_selection` and resolver-selected entity) when legacy candidate payload surfaces are intentionally retired.
+- Live validation posture after fix: OLED validation remains `PASS`; legacy full-stack audit still reports real remaining cutover/proof blockers (not false legacy-owner fallback), preserving fail-closed governance visibility.
+- Runtime track disposition: compatibility-shimmed (runtime package/esphome behavior unchanged).
+- Component track disposition: implemented (component gate truthfulness hardening).
+- Version parity review: runtime `not-applicable`; component `updated`.
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; false blocker removal and component-contract alignment only.
+
+- Stabilized active component lifecycle/event-recovery callback pressure with no-op state-change suppression, per-entity cooldown/in-flight coalescing, and temporary suspension of global `state_changed` fan-in during incident recovery.
+- Executed LC-06 compatibility retirement sequence in active component lanes touched this slice:
+  - removed dead legacy constants (`LEGACY_CONTROL_AMBIGUOUS`, `LEGACY_NO_CONTROL_CAPABLE_HOSTS`, `LEGACY_META_STALE`),
+  - retired active reads from `LEGACY_MA_PLAYERS`, `LEGACY_META_DETECTED_ENTITY`, `LEGACY_META_STALE_S`, and `LEGACY_OVERRIDE_ACTIVE`.
+- Validation posture: HA API recovered and reports core `RUNNING`; full component cutover validator executes and now surfaces remaining host-cutover/control-center readiness blockers as explicit follow-up governance items.
+- Runtime track disposition: compatibility-shimmed (runtime package/esphome behavior unchanged in this wave).
+- Component track disposition: implemented (stability hardening + compatibility read-lane retirement in component path).
+- Version parity review: runtime `not-applicable`; component `updated`.
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; incident stabilization + compatibility-retirement progression only.
+
+Latest run update (2026-05-17, Slice-CW control-host active-target guard slip fix):
+
+Latest run update (2026-08-01, component-only template-retirement cutover execution):
+
+Latest run update (2026-08-01, precise cutover checklist kickoff + step-1 execution):
+
+- Added a precise staged cutover checklist for legacy retirement safety and execution order:
+  1) runtime legacy cycle callsite retirement,
+  2) helper-backed selection-write retirement,
+  3) helper-backed metadata override-write retirement,
+  4) legacy lifecycle watcher retirement,
+  5) dormant legacy artifact closure/removal validation.
+- Executed Step-1 in this slice: active ESP runtime cycle actions now call `spectra_ls.cycle_active_target` instead of `script.ma_cycle_target`.
+- Runtime track disposition: implemented (cycle callsites switched to component service contract).
+- Component track disposition: implemented (existing service contract now consumed directly by runtime actions).
+- Version parity review: runtime `updated`; component `not-applicable` (service contract unchanged, consumer migration only).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; bounded callsite retirement and cutover progression only.
+
+Latest run update (2026-08-01, precise cutover checklist step-2/step-3 execution):
+
+- Executed Step-2 (selection helper-write retirement) and Step-3 (metadata override helper-write retirement) in active component mutation lanes.
+- Selection and metadata override mutation services now apply to component-owned state stores; helper writes are no longer the active component write-path mechanism.
+- Route-trace and write-controls/validation consumers were aligned to component state ownership for these lanes.
+- Runtime track disposition: compatibility-shimmed (legacy helper surfaces retained as compatibility observability/fallback context only).
+- Component track disposition: implemented (component-owned selection/override write-state contract active).
+- Version parity review: runtime `not-applicable` (no runtime behavior-file mutation in this slice); component `updated`.
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment beyond planned component-primary cutover progression; deterministic helper-write retirement and ownership hardening only.
+
+Latest run update (2026-08-01, precise cutover checklist step-4/step-5 execution):
+
+- Executed Step-4 by retiring active legacy lifecycle watcher dependencies and binding lifecycle watchers to component contract entities (`sensor.component_control_targets`, `sensor.component_now_playing_entity`, `sensor.component_active_target`, `binary_sensor.component_metadata_override_active`).
+- Executed Step-5 by closing dormant legacy lifecycle branches from active execution (legacy ambiguity/stale/no-control watcher codepaths remain bounded compatibility no-op surfaces only).
+- Runtime track disposition: compatibility-shimmed (legacy entities remain available as compatibility surfaces but no longer drive active lifecycle watcher execution).
+- Component track disposition: implemented (component contract entities now own active lifecycle watcher/recovery trigger path).
+- Version parity review: runtime `not-applicable` (no runtime behavior-file mutation in this slice); component `updated`.
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment beyond planned component-primary cutover progression; deterministic watcher retirement and dormant-legacy closure hardening only.
+
+Latest run update (2026-08-01, component-only watcher hardening + surgical dead-chain cleanup):
+
+- Hardened component-only watcher/recovery execution with stricter event payload and plan-shape guards and readiness fallback robustness.
+- Removed the dormant legacy no-op callback/timer chain end-to-end (`coordinator.py` -> `meta_fabric.py` -> `event_recovery_fabric.py`) after retirement validation.
+- Runtime track disposition: compatibility-shimmed (no runtime behavior-file mutation in this follow-up slice).
+- Component track disposition: implemented (component-only watcher path hardened; legacy dead chain removed).
+- Version parity review: runtime `not-applicable`; component `updated`.
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; fragility reduction and deterministic cleanup only.
+
+- Completed component-only cutover execution by hardening startup/metadata/validation contracts to avoid active dependence on legacy template surfaces.
+- Startup readiness now requires positive MA player count; metadata selector MA-hinting and freshness behavior are normalized for component-only authority windows; strict host/target mismatch checks use normalized comparisons.
+- Active runtime package include `template: !include ma_control_hub/template.inc` was retired after component validation readiness guards were shifted to component-primary optional-legacy posture.
+- Runtime track disposition: implemented (legacy template include retired; runtime remains rollback-safe compatibility baseline).
+- Component track disposition: implemented (component authority/readiness contracts operate without legacy template as required prerequisite).
+- Version parity review: runtime `updated`, component `updated`.
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment beyond planned component-primary posture; dependency retirement and cutover-hardening only.
+
+Latest run update (2026-06-22, Phase-Setup-1 HA setup-flow foundation):
+
+Latest run update (2026-06-22, legacy helper read-lane retirement + ESP fallback telemetry artifact removal):
+
+- Retired active component reads that depended on `input_select.ma_active_target` by switching touched flows to component-native route/scaffold surfaces (control-center volume target resolution, event/recovery active-target handling, startup boot-readiness checks).
+- Retired stale active-path ESP fallback telemetry artifact exports/backing globals (`esp_control_fallback_*`) from `esphome/spectra_ls_system/packages/spectra-ls-system.yaml`.
+- Runtime track disposition: implemented (fallback telemetry artifact surfaces removed from active runtime path).
+- Component track disposition: implemented (legacy helper read-coupling removed from touched component flows).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; helper-coupling/artifact retirement hardening only.
+
+- Added guided setup-policy capture fields to integration options flow for entity include/exclude curation (`routing` + `metadata` lists), with normalized component persistence and write-controls visibility for later behavior-lane wiring.
+- Runtime track disposition: compatibility-shimmed (runtime behavior/contracts unchanged; component-lane framework seed only).
+- Component track disposition: implemented (setup-flow capture + normalized policy packet exposure).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; onboarding framework foundation only.
+
+Latest run update (2026-06-21, canonical contract ownership ledger publication):
+
+- Published canonical ownership ledger `docs/architecture/CONTRACT-OWNERSHIP-LEDGER.md` capturing active runtime/component contract surfaces with explicit owner, writer, readers, authority mode, fallback posture, and retirement disposition.
+- Synchronized parity references in roadmap/v-next/README/docs index so the ledger is discoverable as the single table-of-record for contract ownership.
+- Runtime track disposition: compatibility-shimmed (docs-only; runtime behavior unchanged).
+- Component track disposition: compatibility-shimmed (docs-only; component behavior unchanged).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; governance clarity and migration-audit ergonomics hardening only.
+
+Latest run update (2026-06-05, passthrough-source metadata fallback preference):
+
+- Added non-meta-capable source detection for passthrough inputs (`optical`, `line in`, `line-in`, `aux`, `coax`, `hdmi`, `arc`) in `custom_components/spectra_ls/metadata_stack.py`.
+- For passthrough-active control targets, now-playing entity selection prefers resolved resolver-selected metadata providers before route-target fallback.
+- Runtime track disposition: compatibility-shimmed (runtime behavior unchanged; equivalent failure mode reviewed).
+- Component track disposition: implemented (source-aware metadata-provider preference added).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; metadata quality hardening for passthrough paths only.
+
+- Runtime + component host selectors now require candidate-target alignment with active target (or unresolved active-target posture) and `ready` gate status before consuming host-cutover candidate hosts.
+- Runtime track disposition: implemented.
+- Component track disposition: implemented.
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; host/target coherence correctness hardening only.
+
+Latest run update (2026-05-05, CA-S02A resolver determinism scoring matrix + acceptance packet fields):
+
+Latest run update (2026-05-05, Slice-CU LC6-L05 template/read-lane consumer bridge):
+
+- Runtime profile/read lane in `packages/ma_control_hub/template.inc` now resolves `sensor.ma_server_profile_effective` from `sensor.component_backend_profile` first with bounded helper fallback.
+- Full-stack validation surface `docs/testing/raw/meta_component_full_stack_tester.jinja` now emits backend/API read-lane readiness from component-first surfaces (`sensor.component_backend_profile`, `sensor.component_ma_api_url`) with fallback visibility.
+- Wiki/deploy docs parity updated in-slice (`docs/wiki/User-Setup-Deploy-and-HA-Integration.md`, `docs/setup/SPECTRA-HA-CONFIG-PLACEHOLDERS.md`) for operator guidance consistency.
+- Runtime track disposition: compatibility-shimmed (helper-backed profile/url contracts retained as rollback-safe fallback).
+- Component track disposition: implemented (component backend/API bridge entities remain primary runtime/read consumer surfaces).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; LC6-L05 read-lane dependency reduction and docs parity hardening only.
+- Immediate execution slice pointer: continue LC6-L05 helper-stack retirement progression and maintain LC6-L06 deferred-tail evidence lanes.
+
+Latest run update (2026-05-05, Slice-CT LC6-L05 runtime REST consumer bridge tightening):
+
+- Runtime MA REST consumers in `packages/ma_control_hub/rest.inc` and `packages/ma_control_hub/rest_command.inc` now resolve endpoint URL from component bridge entity `sensor.component_ma_api_url` first with bounded runtime helper fallback `sensor.ma_api_url`.
+- Runtime track disposition: compatibility-shimmed (legacy helper/API URL remains rollback-safe fallback lane).
+- Component track disposition: implemented (component endpoint bridge entity is now primary runtime REST consumer source).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; LC6-L05 consumer-lane dependency reduction and retirement-readiness hardening only.
+- Immediate execution slice pointer: continue LC6-L05 helper-stack retirement progression and LC6-L06 deferred non-override resolver-tail closure evidence.
+
+Latest run update (2026-05-05, Slice-CS meta-stack validation optimization + contract hardening):
+
+- Removed runtime detected-candidate option-clobber branch in `script.ma_update_target_options` to preserve full target-option sets during candidate merges.
+- Hardened runtime host/port contract behavior in `packages/ma_control_hub/template.inc` (host-vs-host:port normalization + component-first control-port resolution with bounded fallback default).
+- Tightened component route-safety verdict/readiness semantics in `custom_components/spectra_ls/validation_fabric.py` for unresolved control-host posture.
+- Updated P3 candidate payload parity template semantics to component-appropriate count invariant checks and reduced false warning noise.
+- Runtime track disposition: compatibility-shimmed (fallback retained; correctness/determinism hardening only).
+- Component track disposition: implemented (component contracts remain primary with improved validator alignment).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; determinism/diagnostics quality hardening only.
+- Immediate execution slice pointer: continue LC6-L06 non-override resolver-tail parity closure and defer-evidence capture.
+
+Latest run update (2026-05-05, Slice-CR legacy-active participation dormant-by-default gate):
+
+- Runtime legacy-active control-hub automations/scripts now require explicit fallback-enable gating (`input_boolean.ma_control_fallback_enabled`) in addition to non-component authority, making legacy participation dormant by default.
+- ESP compatibility fallback listener apply lanes now no-op unless fallback-enable helper is explicitly on.
+- Runtime track disposition: compatibility-shimmed (fallback retained but default-dormant; no active legacy writer/listener participation in component mode).
+- Component track disposition: implemented (component contracts remain sole default active participant).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; active-participation suppression and rollback-safe fallback gating only.
+- Immediate execution slice pointer: continue LC6-L06 non-override resolver-tail migration/defer evidence while keeping dormant-by-default posture.
+
+Latest run update (2026-05-05, Slice-CQ LC6-L06 non-override candidate consumer bridge):
+
+- Started deferred non-override LC6-L06 tail execution by migrating candidate-focused P3 validator consumers to component-first candidate surfaces with bounded legacy fallback.
+- `docs/testing/raw/p3_s03_metadata_prep_validation.jinja` and `docs/testing/raw/p3_candidate_payload_parity_validation.jinja` now prefer `sensor.component_meta_candidates` (plus component low-confidence semantics) before `sensor.ma_meta_candidates` compatibility reads.
+- Runtime track disposition: compatibility-shimmed (legacy `sensor.ma_meta_candidates` retained as bounded fallback continuity lane).
+- Component track disposition: implemented (component candidate diagnostics contract primary for validator consumers).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; non-override diagnostics consumer-lane determinism hardening only.
+- Immediate execution slice pointer: continue remaining LC6-L06 non-override `sensor.ma_meta_*` resolver tails and capture component-equivalent/defer evidence per lane.
+
+Latest run update (2026-05-05, Slice-CP LC6-L06 override-consumer campaign closeout + deferred remainder seal):
+
+- Closed override-focused LC6-L06 consumer migration scope as component-first across runtime template + diagnostics/devtools validators and checklists.
+- Recorded explicit `deferred with rationale` disposition for remaining non-override runtime resolver tails pending broader component packet-family parity expansion.
+- Runtime track disposition: compatibility-shimmed (bounded compatibility/deferred tails explicitly ledgered).
+- Component track disposition: implemented (component metadata override diagnostics entities remain primary consumer contract).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; closeout ledger clarity and deferred-tail governance hardening only.
+- Immediate execution slice pointer: continue non-override LC-06 tails and LC-07/LC-08 retirement evidence gates.
+
+Latest run update (2026-05-05, Slice-CN + Slice-CO LC6-L06 checklist/validator override-gate hardening):
+
+- Updated operator checklist language and CA-S06 validator gating to enforce explicit component metadata override diagnostics visibility before retirement-readiness scoring.
+- Runtime track disposition: compatibility-shimmed (legacy helper storage remains bounded compatibility evidence lane).
+- Component track disposition: implemented (component diagnostics entities remain primary metadata override read contract).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; checklist/validator gate determinism hardening only.
+- Immediate execution slice pointer: continue LC-06 runtime-tail closure evidence and fallback-retirement gating.
+
+Latest run update (2026-05-05, Slice-CL + Slice-CM LC6-L06 package-loader/retirement-validator consumer bridge):
+
+- Updated package-loader diagnostics and CA-S06 wave-2 validator consumers to prioritize component metadata override diagnostics entities while preserving legacy helper presence as bounded compatibility telemetry.
+- Runtime track disposition: compatibility-shimmed (legacy helper storage remains bounded compatibility source).
+- Component track disposition: implemented (component diagnostics entities remain primary metadata override read contract).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; validation/devtools consumer read-lane determinism hardening only.
+- Immediate execution slice pointer: continue LC-06 runtime-tail consumer cleanup and fallback-retirement evidence progression.
+
+Latest run update (2026-05-05, Slice-CJ + Slice-CK LC6-L06 validation/devtools metadata override consumer bridge):
+
+- Migrated active Step-3 validation gate and DevTools comprehensive health-check metadata override consumer expectations to component diagnostics entities first.
+- Runtime track disposition: compatibility-shimmed (legacy helper storage remains bounded compatibility source).
+- Component track disposition: implemented (component metadata override diagnostics entities remain primary read contract).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; validation/devtools consumer read-lane determinism hardening only.
+- Immediate execution slice pointer: continue LC-06 runtime-tail validation/devtools cleanup and fallback retirement evidence progression.
+
+Latest run update (2026-05-05, Slice-CI LC6-L06 runtime metadata override consumer bridge):
+
+- Bridged runtime metadata override consumer reads in `packages/ma_control_hub/template.inc` to component diagnostics entities first, with bounded helper fallback for compatibility windows.
+- Runtime track disposition: compatibility-shimmed (legacy helper storage remains bounded compatibility lane).
+- Component track disposition: implemented (component metadata override diagnostics lane remains primary).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; runtime consumer migration/read determinism hardening only.
+- Immediate execution slice pointer: continue LC-06 runtime-tail consumer migration and evidence progression.
+
+Latest run update (2026-05-05, Slice-CH LC6-L06 metadata override diagnostics consumer cleanup):
+
+- Enforced component packet-only diagnostics reads for metadata override state from `write_controls.metadata_override` and removed direct legacy-helper fallback coupling in active component consumers.
+- Runtime track disposition: compatibility-shimmed (legacy helper storage remains bounded compatibility lane).
+- Component track disposition: implemented (override diagnostics consumer lane now packet-only).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; diagnostics read determinism hardening only.
+- Immediate execution slice pointer: continue LC-06 runtime-tail consumer cleanup and evidence lanes.
+
+Latest run update (2026-05-05, Slice-CG LC-08 metadata override packet-first surface hardening):
+
+- Added component write-controls metadata override packet contracts for deterministic diagnostics read-lane consumption (`metadata_override`, `metadata_override_last_attempt`).
+- Rewired component metadata override active/entity diagnostics entities to packet-first consumption with bounded helper fallback for unresolved packet values.
+- Runtime track disposition: compatibility-shimmed (helper storage remains bounded compatibility lane; no ownership/path reassignment).
+- Component track disposition: implemented (LC-08 diagnostics consumer coupling shifted to component packet surfaces).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; diagnostics contract-read determinism hardening only.
+- Immediate execution slice pointer: continue active LC-06/LC-08 implementation lanes.
+
+Latest run update (2026-05-05, CA-S08 closeout board-state validation seal):
+
+- Promoted canonical execution board state for `CA-S08` from `Active` to `Validated` after closeout evidence maintenance and ledger wording normalization.
+- Sealed immediate execution pointer posture to no-further-activation baseline unless explicit plan delta reopens scope.
+- Runtime track disposition: compatibility-shimmed (rollback-safe baseline remains intentionally bounded).
+- Component track disposition: implemented (component-first closeout packet ownership remains canonical).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; governance-state consistency hardening only.
+- Immediate execution slice pointer: CA program closeout maintenance complete; hold validated baseline unless explicit plan delta reopens scope.
+
+Latest run update (2026-05-05, CA-S08 domain closeout packet + rollback-safe seal + retirement ledger closure):
+
+- Published `docs/program/CA-S08-DOMAIN-CLOSEOUT-ROLLBACK-SEAL-CHECKLIST.md` as normative final-seal closeout checklist for LC-06/07/08 domain closure.
+- Published `docs/testing/raw/ca_s08_domain_closeout_rollback_seal_validation.jinja` for one-screen final disposition + rollback posture + ledger consistency validation.
+- Synced CA-S08 contract in `docs/architecture/COMPONENT-DATA-FABRIC-ARCHITECTURE.md`, closure baseline note in `docs/roadmap/LEGACY-CODEPATH-CLEANUP-TRACKER.md`, and docs index discoverability in `docs/README.md`.
+- Runtime track disposition: compatibility-shimmed (runtime rollback-safe compatibility baseline remains explicit and bounded).
+- Component track disposition: implemented (component-first closure packet contract now explicit for final seal validation).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; final closure governance and rollback-safety proofing hardening only.
+- Immediate execution slice pointer: CA program closeout evidence maintenance complete (no additional CA lane activation required absent plan delta).
+
+Latest run update (2026-05-05, CA-S07 legacy diagnostics/template fallback strip + cleanup verification):
+
+- Published `docs/program/CA-S07-LEGACY-DIAGNOSTICS-TEMPLATE-FALLBACK-CLEANUP-CHECKLIST.md` as normative LC-08 cleanup checklist with deterministic fallback cleanup assertions.
+- Published `docs/testing/raw/ca_s07_legacy_diagnostics_template_fallback_cleanup_validation.jinja` for one-screen component-surface readiness + fallback inventory validation.
+- Synced CA-S07 contract in `docs/architecture/COMPONENT-DATA-FABRIC-ARCHITECTURE.md`, LC-08 tracker baseline in `docs/roadmap/LEGACY-CODEPATH-CLEANUP-TRACKER.md`, and docs index discoverability in `docs/README.md`.
+- Runtime track disposition: compatibility-shimmed (legacy diagnostics/template fallback references remain bounded pending closure evidence).
+- Component track disposition: implemented (component-first diagnostics/template contract readiness now explicit and measurable).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; LC-08 closure-governance and cleanup verification hardening only.
+- Immediate execution slice pointer: `CA-S08` completed; proceed with closeout evidence maintenance only if plan delta requires updates.
+
+Latest run update (2026-05-05, CA-S06 runtime write/helper retirement wave-2 tails):
+
+- Published `docs/program/CA-S06-RUNTIME-WRITE-HELPER-RETIREMENT-WAVE2-CHECKLIST.md` as normative wave-2 retirement checklist for remaining LC-06 tail lanes.
+- Published `docs/testing/raw/ca_s06_runtime_write_helper_retirement_wave2_validation.jinja` for one-screen lane disposition and blocker evidence capture.
+- Synced CA-S06 contract in `docs/architecture/COMPONENT-DATA-FABRIC-ARCHITECTURE.md`, LC-06 tracker baseline in `docs/roadmap/LEGACY-CODEPATH-CLEANUP-TRACKER.md`, and docs index discoverability in `docs/README.md`.
+- Runtime track disposition: compatibility-shimmed (runtime tails remain bounded pending lane-level closure evidence).
+- Component track disposition: implemented (replacement component contract lanes now explicitly represented in CA-S06 artifacts).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; LC-06 wave-2 retirement-readiness governance hardening only.
+- Immediate execution slice pointer: `CA-S07` next (legacy diagnostics/template fallback strip + cleanup verification).
+
+Latest run update (2026-05-05, CA-S05 ESP fallback-listener soak evidence + fail-closed retirement gates):
+
+- Published `docs/program/CA-S05-ESP-FALLBACK-LISTENER-SOAK-CHECKLIST.md` as normative LC-07 soak/retirement-gate artifact with deterministic packet fields and blocker taxonomy.
+- Published validator template `docs/testing/raw/ca_s05_esp_fallback_listener_soak_validation.jinja` for one-screen fallback-listener readiness evidence capture.
+- Synced CA-S05 contract language in `docs/architecture/COMPONENT-DATA-FABRIC-ARCHITECTURE.md`, LC-07 tracker alignment in `docs/roadmap/LEGACY-CODEPATH-CLEANUP-TRACKER.md`, and docs index discoverability in `docs/README.md`.
+- Runtime track disposition: compatibility-shimmed (fallback listeners remain bounded compatibility lane pending clean soak evidence windows).
+- Component track disposition: implemented (component-first route feed + fallback telemetry interpretation contract now explicit and consumable).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; LC-07 retirement-readiness governance hardening only.
+- Immediate execution slice pointer: `CA-S06` next (runtime write/helper retirement wave-2 tails).
+
+Latest run update (2026-05-05, CA-S04 runtime write-lane retirement wave-1 baseline):
+
+- Published `docs/program/CA-S04-RUNTIME-WRITE-LANE-RETIREMENT-CHECKLIST.md` as normative wave-1 retirement checklist + sample evidence packet for runtime write/helper lanes.
+- Published validator template `docs/testing/raw/ca_s04_runtime_write_lane_retirement_validation.jinja` for deterministic lane-readiness and blocker evidence capture.
+- Synced CA-S04 contract language in `docs/architecture/COMPONENT-DATA-FABRIC-ARCHITECTURE.md` and LC-06 tracker alignment note in `docs/roadmap/LEGACY-CODEPATH-CLEANUP-TRACKER.md`.
+- Runtime track disposition: compatibility-shimmed (runtime write lanes remain bounded pending readiness closure evidence).
+- Component track disposition: implemented (authority/readiness evidence contract now explicit and consumable).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; runtime write-lane retirement readiness hardening only.
+- Immediate execution slice pointer: `CA-S05` next (ESP fallback-listener soak evidence + fail-closed retirement gates).
+
+Latest run update (2026-05-05, CA-S02A resolver determinism scoring matrix + acceptance packet fields):
+
+Latest run update (2026-05-05, CA-S03 component-first consumer projection cutover baseline):
+
+- Published `docs/program/CA-S03-CONSUMER-PROJECTION-CUTOVER-CHECKLIST.md` as normative CA-S03 projection-cutover checklist + deterministic sample evidence packet.
+- Updated active scheduler consumer template `docs/testing/raw/scheduler_apply_deterministic_validation.jinja` with CA-S03 projection telemetry/readiness output (effective source lanes, runtime fallback counters, component surface availability counters, and deterministic cutover-ready blocker packet).
+- Added CA-S03 contract section in `docs/architecture/COMPONENT-DATA-FABRIC-ARCHITECTURE.md` and docs index discoverability in `docs/README.md`.
+- Runtime track disposition: compatibility-shimmed (runtime fallback read surfaces retained as compatibility lane only).
+- Component track disposition: implemented (component-first projection observability and cutover-readiness packet now explicit in active diagnostics consumer output).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; projection-consumer migration hardening only.
+- Immediate execution slice pointer: `CA-S04` next (runtime write-lane retirement wave 1).
+
+Latest run update (2026-05-05, CA-S02A resolver determinism scoring matrix + acceptance packet fields):
+
+Latest run update (2026-05-05, CA-S02B resolver replay validation checklist + deterministic sample packet publication):
+
+- Published `docs/program/CA-S02B-RESOLVER-REPLAY-CHECKLIST.md` as normative replay-validation artifact with deterministic checklist, replay pass/warn/fail policy, no-go conditions, and canonical sample acceptance packet.
+- Added CA-S02B replay contract section in `docs/architecture/COMPONENT-DATA-FABRIC-ARCHITECTURE.md` and docs index discoverability link in `docs/README.md`.
+- Runtime track disposition: compatibility-shimmed (runtime compatibility/rollback lanes unchanged; replay proof remains governance/evidence lane).
+- Component track disposition: implemented (replay-validation contract + sample packet now explicit and auditable).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; CA-S02 replay-governance determinism hardening only.
+- Immediate execution slice pointer: `CA-S03` next (component-first consumer projection cutover).
+
+Latest run update (2026-05-05, CA-S02A resolver determinism scoring matrix + acceptance packet fields):
+
+- Published normative resolver determinism scoring matrix, tie-break order, and required acceptance packet schema fields in `docs/architecture/COMPONENT-DATA-FABRIC-ARCHITECTURE.md`.
+- Runtime track disposition: compatibility-shimmed (runtime compatibility/rollback lanes unchanged).
+- Component track disposition: implemented (resolver scoring + acceptance evidence contract now explicit and auditable).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; CA-S02 resolver-governance determinism hardening only.
+- Immediate execution slice pointer: `CA-S02B` next (resolver replay validation checklist + deterministic sample packet publication).
+
+Latest run update (2026-05-05, CA-S01D proof-packet checklist + closure rubric publication):
+
+- Published `docs/program/CA-S01D-PROOF-PACKET-CHECKLIST.md` as normative CA-S01 closure artifact with required packet sections, deterministic gates (`G1..G7`), and closure scoring policy (`PASS/WARN/FAIL`) plus no-go conditions.
+- Updated docs index (`docs/README.md`) so operators/developers can discover the closure artifact directly from governance entry points.
+- Runtime track disposition: compatibility-shimmed (runtime lane unchanged; rollback/evidence lane retained).
+- Component track disposition: implemented (CA-S01 closure governance now explicit and auditable).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; closure-governance determinism hardening only.
+- Immediate execution slice pointer at time of slice: `CA-S02A` (now completed in subsequent updates).
+
+Latest run update (2026-05-05, CA-S01C metadata-prep key-safe template access sweep):
+
+- Hardened `docs/testing/raw/p3_s03_metadata_prep_validation.jinja` to use explicit key-safe indexing for metadata-prep payload map fields (`metadata/checks/values`) to avoid template-engine ambiguity from mapping dot-access.
+- Runtime track disposition: compatibility-shimmed (runtime compatibility read surfaces unchanged).
+- Component track disposition: implemented (component metadata payload consumers in active diagnostics template now deterministic/key-safe).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; diagnostics-read contract determinism hardening only.
+- Immediate execution slice pointer at time of slice: `CA-S01D` (now completed in subsequent updates).
+
+Latest run update (2026-05-05, CA-S01B authority-token + resolver-invariant contract table publication):
+
+- Published normative CA-S01 contract tables in `docs/architecture/COMPONENT-DATA-FABRIC-ARCHITECTURE.md` for authority tokens and resolver invariants, including required degraded tokens and blocker mappings for stage-required vs stage-skipped bridge/trial semantics.
+- Runtime track disposition: compatibility-shimmed (runtime compatibility lane unchanged).
+- Component track disposition: implemented (canonical CA-S01 contract table now explicit and auditable).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; contract-audit determinism hardening only.
+
+Latest run update (2026-05-05, CA-S01A metadata-values key-safe diagnostics hardening):
+
+- Hardened `docs/testing/raw/scheduler_apply_deterministic_validation.jinja` metadata values extraction to explicit key-safe access (`metadata_prep_validation['values']`) to eliminate dict-method collision ambiguity from `.values` lookups.
+- Component-first now-playing/source diagnostics preference remains unchanged; only payload-key determinism was hardened.
+- Runtime track disposition: compatibility-shimmed (runtime fallback read surfaces retained during compatibility windows).
+- Component track disposition: implemented (component metadata packet diagnostics lane remains primary and deterministic).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; CA-S01 contract determinism hardening only.
+- Immediate execution slice pointer at time of slice: `CA-S01B` (now completed in subsequent updates).
+
+Latest run update (2026-05-05, CA roadmap codification + CA-S01 activation):
+
+- Codified the accepted canonical execution board as `CA-S01..CA-S08` and activated `CA-S01` as the current slice baseline.
+- Lane model adopted as working system-of-record: `CORE` (contracts/resolver truth), `PROJ` (consumer cutovers), `COMPAT` (legacy retirement waves), `OPS` (closeout + rollback-safe seal).
+- LC retirement mapping formalized in-board: `LC-06 -> CA-S04/CA-S06`, `LC-07 -> CA-S05`, `LC-08 -> CA-S03/CA-S07`.
+- Runtime track disposition: compatibility-shimmed (rollback-safe baseline retained; no ownership expansion in codification slice).
+- Component track disposition: implemented (canonical program published and active).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; governance/sequence hardening only.
+
+## Canonical Architecture execution board (active)
+
+| Slice | Lane | Objective | Legacy mapping | Status |
+| --- | --- | --- | --- | --- |
+| CA-S01 | CORE | Canonical contract freeze + authority boundary lock + consumer proof packet | Foundation for LC-06/07/08 retirement safety | Validated |
+| CA-S02 | CORE | Resolver determinism/provenance scoring hardening | Supports LC-08 diagnostics retirement | Validated |
+| CA-S03 | PROJ | Component-first consumer projection cutover | LC-08 primary lane | Validated |
+| CA-S04 | COMPAT | Runtime write/helper retirement wave 1 | LC-06 wave 1 | Validated |
+| CA-S05 | COMPAT | ESP fallback listener retirement evidence + fail-closed gates | LC-07 | Validated |
+| CA-S06 | COMPAT | Runtime write/helper retirement wave 2 | LC-06 wave 2 | Validated |
+| CA-S07 | PROJ | Legacy diagnostics/template fallback strip + cleanup verification | LC-08 closure | Validated |
+| CA-S08 | OPS | Domain closeout packet + rollback-safe seal + retirement ledger closure | LC-06/07/08 final seal | Validated |
+
+Required CA slice gate (anti-fluff):
+
+- deliver consumer-usable output in-slice (no scaffolding-only closure),
+- publish explicit two-track disposition (`implemented`, `compatibility-shimmed`, or `deferred with rationale`),
+- include closure proof packet + rollback posture evidence.
+
+Latest run update (2026-05-05, Slice-CE resolver-authority component activation):
+
+- Implemented resolver-authority readiness semantics in `custom_components/spectra_ls/metadata_stack.py` so component no-mix startup posture can satisfy bridge readiness when metadata prep/cutover/component now-playing authority are healthy.
+- Updated handoff inventory status logic in `custom_components/spectra_ls/validation_fabric.py` + `custom_components/spectra_ls/scaffold_fabric.py` to classify metadata resolver lane as `implemented` from active component authority readiness, not only explicit write-attempt telemetry.
+- Runtime track disposition: compatibility-shimmed (legacy resolver surfaces retained as fallback-only compatibility lane).
+- Component track disposition: implemented (resolver-authority status and readiness now derive from active component authority state).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; resolver-authority activation reliability and migration-status truthfulness hardening only.
+- README/wiki parity: no material operator workflow contract change.
+
+Latest run update (2026-05-05, Slice-CD scheduler diagnostics rewire to component now-playing sensors):
+
+- Rewired `docs/testing/raw/scheduler_apply_deterministic_validation.jinja` to consume component now-playing sensors first (`sensor.component_now_playing_entity/state/title/artist/album/source`) instead of relying primarily on nested shadow metadata attributes.
+- Retained metadata-prep values and runtime sensors as explicit compatibility fallback lanes only.
+- Runtime track disposition: compatibility-shimmed (runtime now-playing/source surfaces retained as diagnostics fallback).
+- Component track disposition: implemented (component sensor truth surfaces now drive scheduler diagnostics lane).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; diagnostics read-lane reliability hardening only.
+- README/wiki parity: no material operator workflow contract change.
+
+Latest run update (2026-05-05, Slice-CC scheduler template component-first now-playing consumer cleanup):
+
+- Updated `docs/testing/raw/scheduler_apply_deterministic_validation.jinja` to read now-playing entity/state/title/artist/album from component metadata-prep values first, with legacy runtime `sensor.now_playing_*` surfaces as compatibility fallback.
+- Expanded `custom_components/spectra_ls/metadata_stack.py` metadata-prep values payload with selected winner context fields (`now_playing_artist`, `now_playing_album`, `now_playing_source`) so component diagnostics consumers can stay on component lane.
+- Clarified all-green deterministic-next-action wording so bridge satisfaction is treated as `PASS` or intentional `skipped_component_startup_no_mix` posture.
+- Runtime track disposition: compatibility-shimmed (runtime now-playing surfaces retained only as diagnostics fallback lane).
+- Component track disposition: implemented (scheduler diagnostics template now consumes component-selected now-playing lane first).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; diagnostics consumer-lane migration and wording precision hardening only.
+- README/wiki parity: no material operator workflow contract change.
+
+Latest run update (2026-05-05, Slice-CB component now-playing winner truthfulness fix):
+
+- Implemented component-side now-playing winner selection in `custom_components/spectra_ls/metadata_stack.py` so component diagnostics prefer fresh route-active target and active-meta candidates before legacy now-playing fallback.
+- Component metadata prep now derives now-playing state/title/position/duration from the selected component winner entity.
+- Runtime track disposition: compatibility-shimmed (runtime legacy selectors intentionally unchanged in this slice).
+- Component track disposition: implemented (winner selection and published now-playing values are now component-decided).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; component diagnostics correctness hardening only.
+- README/wiki parity: no material operator workflow contract change.
+
+Latest run update (2026-05-05, Slice-CA LC6-L05 phase-2 consumer cutover):
+
+- Migrated active diagnostics/operator consumer templates to component-first backend/API reads (`sensor.component_backend_profile`, `sensor.component_ma_api_url`) while retaining runtime helper/API fallback surfaces for compatibility validation windows.
+- Runtime track disposition: compatibility-shimmed (helper/API surfaces intentionally retained for fallback + parity evidence).
+- Component track disposition: implemented (bridge entities are now the primary consumer read lane for LC6-L05 validation packets).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; phase-2 consumer-lane migration progression only.
+- README/wiki parity: wiki setup guidance updated to reflect phase-2 preference order; README parity unchanged (no material end-user workflow contract change).
+
+Latest run update (2026-05-04, Slice-BP LC-01 component entity namespace binding remap):
+
+- Verified live HA component entities are exposed as `sensor.component_*` / `binary_sensor.component_*` in this environment; runtime substitution consumers were remapped accordingly.
+- Runtime track disposition: implemented (ESP substitution binding correction only).
+- Component track disposition: compatibility-shimmed (component contracts/services unchanged).
+- P1/P2/P3 impact check: no source-of-truth ownership change; environment-binding correctness hardening only.
+- README/wiki parity: no material operator workflow change.
+
+Latest run update (2026-05-04, Slice-BQ LC-05 legacy scaffold constant governance split):
+
+- Split component `LEGACY_*` internal scaffold constants into explicit governance buckets (`compat_required` vs `retire_candidate`) and added deterministic retirement gate IDs (`LC-05` / `LC-06`) in `custom_components/spectra_ls/const.py`.
+- Exported the same classification packet in config-entry diagnostics to keep retirement gating auditable from one surface.
+- Runtime track disposition: compatibility-shimmed (no runtime behavior mutation).
+- Component track disposition: implemented (constant governance split + diagnostics exposure).
+- P1/P2/P3 impact check: no source-of-truth ownership change; migration governance/retirement traceability hardening only.
+
+Latest run update (2026-05-04, Slice-BR ESP legacy rip-out inventory documentation):
+
+- Added explicit ESP compatibility-retirement inventory in `docs/roadmap/LEGACY-CODEPATH-CLEANUP-TRACKER.md` covering retained fallback host/port feeds, fallback listeners, metadata helper passthrough bindings, and dual-path devtools references.
+- Linked each retained ESP surface to bounded retirement gates (`LC-06` / `LC-07` / `LC-08`) with exit criteria so removal sequencing is concrete rather than open-ended.
+- Runtime track disposition: compatibility-shimmed (docs-only slice; no runtime behavior mutation).
+- Component track disposition: compatibility-shimmed (docs-only slice; no component behavior mutation).
+- P1/P2/P3 impact check: no source-of-truth ownership change; cleanup traceability and migration-governance completeness hardening only.
+
+Latest run update (2026-05-04, Slice-BS LC-06 runtime retirement decomposition):
+
+- Expanded LC-06 runtime retirement scope into explicit lane inventory for `packages/ma_control_hub/*` so implementation proceeds via bounded, verifiable slices instead of a monolithic retirement step.
+- Added lane-level replacement contract targets and recommended execution order in `docs/roadmap/LEGACY-CODEPATH-CLEANUP-TRACKER.md`; LC-06 is now `active` (decomposition complete, implementation pending).
+- Runtime track disposition: compatibility-shimmed (docs-only planning slice; no runtime behavior mutation).
+- Component track disposition: compatibility-shimmed (docs-only planning slice; no component behavior mutation).
+- P1/P2/P3 impact check: no source-of-truth ownership change; retirement-sequencing clarity and traceability hardening only.
+
+Latest run update (2026-05-04, Slice-BT LC-07/LC-08 execution sweep):
+
+- Added component metadata override status packet surfaces (`binary_sensor.component_metadata_override_active`, `sensor.component_metadata_override_entity`) and switched active ESP metadata override substitutions to component-owned entities.
+- Added ESP fallback telemetry counters/age/type surfaces (`esp_control_fallback_*`) to support evidence-first LC-07 fallback listener retirement decisions.
+- Runtime track disposition: implemented (ESP substitution + telemetry hardening; fallback listeners retained until soak gate closure).
+- Component track disposition: implemented (metadata override status packet published and consumed by active ESP read-lane).
+- P1/P2/P3 impact check: no source-of-truth ownership change; migration evidence depth and read-lane cutover hardening only.
+
+Latest run update (2026-05-04, Slice-BV Arylic HTTP connect-reset churn stabilization):
+
+- Runtime ESP transport lane hardened to reduce repeated connect-reset churn by escalating unknown-transport host failures to long backoff windows and suppressing scheme flips when no known-good HTTP status transport history is available.
+- Live verification captured in-session (build + OTA + runtime log sampling): handoff remains ready, fallback counters remain zero, and sustained reset bursts now enter max backoff behavior instead of rapid retry churn.
+- Runtime track disposition: implemented (poll/backoff stabilization only; ownership unchanged).
+- Component track disposition: compatibility-shimmed (component contracts unchanged; equivalent failure mode not applicable to component data path).
+- P1/P2/P3 impact check: no source-of-truth ownership change; LC-07 soak safety and runtime observability noise hardening only.
+
+Latest run update (2026-05-04, Slice-BW LC6-L04 provider telemetry helper-sink migration bridge):
+
+- Added component write-controls provider telemetry packet mirror (`metadata_provider_last`) and new diagnostics surface `sensor.component_metadata_provider_status` so consumers can read provider-refresh status from component contracts instead of direct helper entities.
+- Updated validation template consumers to component-first provider telemetry reads with bounded runtime helper fallback compatibility during staged retirement.
+- Runtime track disposition: compatibility-shimmed (helper sink retained temporarily as migration source).
+- Component track disposition: implemented (component provider telemetry packet + sensor surface now active).
+- P1/P2/P3 impact check: no source-of-truth ownership change; LC6-L04 consumer cutover bridge and retirement readiness hardening only.
+
+Latest run update (2026-05-04, Slice-BX LC6-L04 runtime provider sink retirement):
+
+- Added service contract `spectra_ls.set_metadata_provider_packet` and coordinator-backed component packet ownership for provider-refresh telemetry ingestion.
+- Runtime provider dispatch script now publishes telemetry to the component service in normal operation; helper sink writes are fallback-only for component-unavailable windows.
+- Runtime track disposition: implemented (active provider telemetry sink retired from helper writes).
+- Component track disposition: implemented (component telemetry service/state is authoritative for provider diagnostics).
+- P1/P2/P3 impact check: no source-of-truth ownership change; LC6-L04 execution hardening only.
+
+Latest run update (2026-05-04, Slice-BY LC6-L05 server-profile/API helper-stack migration bridge phase-1):
+
+- Extended component backend-profile packet with explicit MA API URL field capture and added component diagnostics bridge entities (`sensor.component_backend_profile`, `sensor.component_ma_api_url`) for endpoint contract parity checks.
+- Runtime track disposition: compatibility-shimmed (runtime helper stack still authoritative while bridge consumers migrate).
+- Component track disposition: implemented (component bridge surfaces now published for LC6-L05 lane validation).
+- P1/P2/P3 impact check: no source-of-truth ownership change; LC6-L05 bridge-readiness hardening only.
+
+Latest run update (2026-05-04, Slice-BZ scheduler deterministic guidance consistency hardening):
+
+- Hardened deterministic scheduler validation guidance to suppress bridge-run hints in component no-mix startup posture (`skipped_component_startup_no_mix`) and prioritize metadata-prep blockers.
+- Runtime track disposition: compatibility-shimmed (diagnostics template hardening only).
+- Component track disposition: implemented (operator guidance now matches component authority startup semantics).
+- P1/P2/P3 impact check: no source-of-truth ownership change; diagnostics actionability correctness only.
+
+## Scope
+
+### In scope
+
+- Home Assistant custom integration (`custom_components/spectra_ls`) for orchestration, discovery, routing, diagnostics, profiles, and migration tooling.
+- Parallel operation with current contracts in:
+  - `packages/ma_control_hub/*`
+  - `packages/spectra_ls_lighting_hub.yaml`
+  - `esphome/spectra_ls_system/packages/*`
+- Phase mapping and status alignment in `v-next-NOTES.md`.
+
+### Out of scope (initially)
+
+- Immediate removal of current template/package logic.
+- Breaking helper/entity ID renames.
+- Premature multi-repo split before maturity gates.
+
+## Current-state contract inventory (v.now)
+
+### Runtime control/routing surfaces in use today
+
+- Active target + route helpers (`ma_active_target`, `ma_control_hosts`, `ma_control_host`, `ma_active_control_path`, `ma_active_control_capable`).
+- Metadata resolution surfaces (`ma_meta_candidates`, `ma_meta_resolver`, `now_playing_*`).
+- Lighting selector/catalog surfaces (`control_board_room/target`, `control_board_*_options`, `control_board_target_entity_id`, room/target HS/on states).
+- ESPHome dependencies via substitutions and HA entity reads in:
+  - `spectra-ls-audio-tcp.yaml`
+  - `spectra-ls-lighting.yaml`
+  - `spectra-ls-ui.yaml`
+
+### Known constraints
+
+- Legacy runtime IDs (`control_board_*`) are still deployed contracts.
+- Parser compatibility must handle native object payloads + string JSON payloads.
+- Only supported direct routed control path now: `linkplay_tcp`.
+
+## Target architecture (component control plane)
+
+## Component domains
+
+1. **Registry domain**
+   - Discovery-first normalized target catalog.
+   - Per-target metadata: `hardware_family`, `control_path`, `control_capable`, `capabilities`.
+
+2. **Routing domain**
+   - Adapter-based dispatch per `control_path`.
+   - Unsupported paths visible for diagnostics, not direct-routed.
+
+3. **Mode/policy domain**
+   - Hardware-first mode semantics + fallback menu semantics.
+   - Selector/control-class policy contracts.
+
+4. **Profile domain**
+   - User-facing behavior bundles (lighting/audio sensitivity, routing preference, UX mode).
+
+5. **Diagnostics domain**
+   - Health states, contract parity checks, route traces, and explainability surfaces.
+
+6. **Migration domain**
+   - Schema-versioned config entries/options.
+   - Compatibility shims and deprecation gates.
+
+## Feature set
+
+### v.now (must support during migration)
+
+- Contract parity surfaces for current ESPHome + package expectations.
+- Discovery-first target enumeration and route classification.
+- Legacy helper/entity compatibility outputs.
+- Basic route diagnostics + parity validation services.
+- Dual-write guard rails to avoid loop flapping.
+
+### v.future (planned expansion)
+
+- Full programmable action catalog (arm/confirm/cooldown/safety/audit).
+- Profile system (room, target, UX, sensitivity policies).
+- Capability matrix routing (feature-level gating beyond boolean control-capable).
+- Multi-family adapter expansion beyond `linkplay_tcp`.
+- Crossfade/balance slider service layer:
+  - multi-room: room-to-room weighted balance
+  - single-room: L/R balance
+- Guided setup and onboarding UX in component flows.
+- Full HA sidebar control-center experience (setup/tuning/defaults/overrides/mapped-environment pages).
+- Generalized analog-control mappings for broader HA actions (scenes, scripts, climate routines, safety toggles, and domain-specific automations).
+
+## Product positioning contract (README + v-next parity)
+
+- Spectra L/S is the analog tactile control surface for Home Assistant.
+- Audio + lighting retain primary depth and optimization focus.
+- Physical controls are mappable primitives for broader Home Assistant actions beyond those two flagship domains.
+
+## Phased implementation roadmap
+
+### Phase status snapshot (2026-06-22)
+
+- Phase 0 (governance + charter + hardcode guard baseline): **implemented/closed**.
+- Phase 1 (`P1-S01` shadow parity): **implemented/validated** and retained as historical baseline.
+- Current execution queue is in later slices (post-P1), with Phase-1 artifacts kept for regression/reference.
+
+## Program status ledger
+
+| Slice | Phase | Runtime Track | Component Track | Parity | Risk | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| P0-S01 | 0 | Implemented (governance/runtime baseline retained) | Implemented (program charter + parity policy) | Implemented | Low | Implemented |
+| P1-S01 | 1 | Implemented (legacy source-of-truth retained) | Implemented (read-only shadow parity) | Implemented | Low | Implemented |
+| P2-S01 | 2 | Implemented (legacy route contracts retained) | Implemented (registry/router scaffold; read-only) | Implemented | Low | Implemented |
+| P2-S02 | 2 | Implemented (legacy route contracts retained) | Implemented (deterministic validation hardening + P2 diagnostics closure) | Implemented | Low | Implemented |
+
+Latest run update (2026-04-28, MA metadata-provider refresh dispatch):
+
+Latest run update (2026-05-04, Slice-AY.2 Arylic HTTP per-host scheme memory):
+
+Latest run update (2026-05-03, Slice-BF legacy codepath cleanup tracker activation):
+
+Latest run update (2026-05-03, Slice-BG legacy active-friendly feed cleanup (LC-04)):
+
+Latest run update (2026-05-03, Slice-BH legacy control-port feed cleanup (LC-03)):
+
+Latest run update (2026-05-03, Slice-BI now-playing freshness fallback clock fix):
+
+- Runtime freshness contract `sensor.now_playing_freshness_age_s` now falls back to `last_updated`/`last_changed` when `media_position_updated_at` is missing, preventing false stale-age `9999` posture in active metadata contexts.
+- Runtime track disposition: implemented (freshness-contract correctness hardening).
+- Component track disposition: compatibility-shimmed (component metadata stack already aligned to bounded fallback semantics).
+- P1/P2/P3 impact check: no source-of-truth ownership change; stale-freshness false-negative reduction only.
+
+Latest run update (2026-05-03, Slice-BJ LC-02 active-target read-lane cutover phase-1):
+
+- Migrated ESP active-target read binding to component contract surface (`sensor.spectra_ls_component_active_target`) via substitutions.
+- Runtime track disposition: compatibility-shimmed (helper write shim retained in UI prompt path pending explicit component select-target service/proxy).
+- Component track disposition: implemented (component active-target contract now powers runtime read lane).
+- P1/P2/P3 impact check: bounded read-path cleanup only; full LC-02 retirement still requires write-lane migration.
+
+Latest run update (2026-05-04, Slice-BK LC-02 active-target write-lane cutover phase-2):
+
+- Added explicit component active-target service contract `spectra_ls.set_active_target` with guarded helper apply semantics (`authority`, `debounce`, `reentrancy`, option-mismatch fail-closed) and integrated service documentation/wiring.
+- Migrated ESP UI control-target prompt commit lane to component service invocation, removing direct helper write from active UI path.
+- Runtime track disposition: implemented (UI prompt write lane now component-mediated).
+- Component track disposition: implemented (explicit write contract exposed and consumed by runtime lane).
+- P1/P2/P3 impact check: no source-of-truth ownership expansion; LC-02 write-lane retirement completed with compatibility storage helper retained behind component guards.
+
+Latest run update (2026-05-04, Slice-BL LC-01 metadata-candidates read-lane cutover phase-1):
+
+- Added component metadata read-contract entities `sensor.spectra_ls_component_meta_candidates` and `binary_sensor.spectra_ls_component_meta_low_confidence` for stable candidate/score/confidence ingest.
+- Switched ESP metadata candidate substitutions to component entities (`ha_ma_meta_candidates`, `ha_ma_meta_low_confidence`) in active path.
+- Runtime track disposition: compatibility-shimmed (override write helpers still required until explicit write-lane parity slice lands).
+- Component track disposition: implemented (component metadata candidate/low-confidence read surfaces are now active consumer contracts).
+- P1/P2/P3 impact check: read-lane cleanup only; metadata override write-lane retirement intentionally deferred.
+
+Latest run update (2026-05-04, Slice-BM LC-01 metadata override write-lane cutover phase-2):
+
+- Added explicit component metadata override write contract service `spectra_ls.set_metadata_override` with guarded apply/clear semantics and fail-closed input/authority checks.
+- Migrated ESP metadata override menu apply path to call the component service contract, removing direct runtime helper writes from active UI flow.
+- Runtime track disposition: implemented (metadata override write lane now component-mediated; helper entities remain compatibility storage under component control).
+- Component track disposition: implemented (metadata override service contract now owns active write-path entrypoint).
+- P1/P2/P3 impact check: no source-of-truth ownership expansion; LC-01 write-lane retirement completed with bounded helper-storage compatibility retained.
+
+Latest run update (2026-05-04, Slice-BN ESP handoff false-`no_target` guard + lighting OLED tester semantics):
+
+- Runtime handoff telemetry now uses active-friendly context as a fallback target-presence signal to reduce transient false `no_target` state during helper-timing churn.
+- One-screen validation template now interprets `lighting|oled:-` as expected lighting-mode posture, so blank OLED line is not misclassified as degradation outside audio mode.
+- Runtime track disposition: implemented (telemetry/validation semantics hardening only).
+- Component track disposition: compatibility-shimmed (component contracts unchanged).
+- P1/P2/P3 impact check: no source-of-truth ownership change; diagnostics interpretation and triage signal quality hardening only.
+
+Latest run update (2026-05-04, Slice-BO control-host fallback ingest + lighting OLED label hardening):
+
+- ESP control-host ingest now applies bounded compatibility fallbacks from runtime control-host surfaces (`sensor.ma_control_hosts`, `sensor.ma_control_host`, `sensor.ma_control_port`) only when component-native host feeds are transiently unresolved, reducing false `no_hosts` gating while preserving sustained-invalid fail-closed behavior.
+- ESP handoff status now treats resolved cached control-host state as readiness evidence, reducing false `no_target` posture during feed churn windows.
+- Lighting-mode OLED status telemetry now emits explicit `LIGHTING` label rather than blank placeholder text for clearer operator interpretation.
+- Runtime track disposition: implemented (runtime ingest/status/render hardening only).
+- Component track disposition: compatibility-shimmed (component contracts unchanged; equivalent failure mode reviewed).
+- P1/P2/P3 impact check: no source-of-truth ownership change; runtime host-gate correctness and telemetry clarity hardening only.
+
+- Added component-native control-port contract sensor and migrated active ESP control-port substitution binding to component surface.
+- Runtime track disposition: compatibility-shimmed (legacy runtime port sensor retained for rollback, not active ESP feed).
+- Component track disposition: implemented (component route packet now exports control-port feed for active runtime lane).
+- P1/P2/P3 impact check: read-path cleanup only; no operator workflow or write-authority change.
+
+- Completed LC-04 migration step: ESP active-friendly ingest lane now binds to component-friendly now-playing context surface through substitutions.
+- Runtime track disposition: compatibility-shimmed (legacy `sensor.ma_active_friendly` remains as compatibility artifact, not active ESP consumer dependency).
+- Component track disposition: implemented (component now-playing friendly surface now serves this consumer lane).
+- P1/P2/P3 impact check: read-path cleanup only; no write-path ownership or operator workflow changes.
+
+- Activated dedicated cleanup ledger `docs/roadmap/LEGACY-CODEPATH-CLEANUP-TRACKER.md` to track remaining legacy dependency retirement tasks across ESP/runtime/component paths.
+- Runtime track disposition: compatibility-shimmed (legacy dependencies retained under explicit task gates).
+- Component track disposition: implemented (task ownership, blockers, and retirement exit criteria are now documented and enforceable).
+- P1/P2/P3 impact check: no immediate source-of-truth retirement; cleanup accountability and sequencing rigor increased.
+
+Latest run update (2026-05-03, Slice-BE component-native now-playing volume consumer swap):
+
+- Added component-derived now-playing volume surface (`sensor.spectra_ls_component_now_playing_volume`) and switched ESP substitution consumer binding from runtime volume helper feed to component volume feed.
+- Runtime track disposition: compatibility-shimmed (legacy runtime volume contract retained as fallback).
+- Component track disposition: implemented (component volume surface now powers active ESP volume ingest lane).
+- P1/P2/P3 impact check: no source-of-truth retirement yet; component-native now-playing consumer coverage expanded to include volume.
+
+Latest run update (2026-05-03, Slice-BD component-native control-route feed swap):
+
+- ESP route-feed substitutions now bind component-native target/host entities (`sensor.spectra_ls_component_control_targets`, `sensor.spectra_ls_component_control_hosts`, `sensor.spectra_ls_component_control_host`) for active control-route ingest lanes.
+- Runtime track disposition: compatibility-shimmed (runtime route contracts retained and `sensor.ma_control_port` preserved as compatibility port feed).
+- Component track disposition: implemented (component route packet surfaces now supply active ESP target/host feeds).
+- P1/P2/P3 impact check: no source-of-truth retirement yet; component-native control-route read-path coverage expanded while preserving bounded port fallback semantics.
+
+Latest run update (2026-05-03, Slice-BC component-native now-playing context completion):
+
+- Component now publishes derived now-playing context surfaces (`friendly`, `artist`, `album`, `app`, `source`) and ESP substitutions now bind these component entities for active metadata context lanes.
+- Runtime track disposition: compatibility-shimmed (legacy runtime context contracts retained as rollback-safe compatibility).
+- Component track disposition: implemented (component now-playing context tuple is complete for ESP consumer lanes).
+- P1/P2/P3 impact check: no source-of-truth retirement yet; component-native read-path coverage expanded to full now-playing context tuple.
+
+Latest run update (2026-05-03, Slice-BB component-native now-playing consumer contract swap):
+
+- ESP consumer substitutions now bind component-native now-playing contract entities for entity/state/title/position/duration/media-class/preview-key/freshness-age + display-allowed policy lanes.
+- Runtime track disposition: compatibility-shimmed (legacy runtime now-playing contracts retained as rollback-safe compatibility surfaces).
+- Component track disposition: implemented (component now-playing contracts now drive active ESP metadata read-path lanes).
+- P1/P2/P3 impact check: no source-of-truth retirement yet; consumer path preference shifted to component-owned contract surfaces.
+
+Latest run update (2026-05-04, Slice-AY.7 idle-transition poll guard + input quiet window):
+
+- Runtime Arylic HTTP loop now suppresses polling in HA idle/off transition windows when Arylic is already known-playing, reducing transient idle-window request failures and interval blocking spikes.
+- Post-input poll quiet guard was extended to avoid immediate poll re-entry after dense knob bursts.
+- Runtime track disposition: implemented (ESP poll-loop guard hardening).
+- Component track disposition: compatibility-shimmed (component path does not own ESP HTTP poll loop; equivalent failure mode reviewed).
+- P1/P2/P3 impact check: no source-of-truth ownership change; runtime hitch-risk reduction only.
+
+Latest run update (2026-05-04, Slice-AY.6 timeout-budget correction):
+
+- Runtime Arylic HTTP poll defaults were corrected to a wider timeout budget with tuned poll/input-guard cadence to reduce false timeout churn under normal endpoint jitter.
+- Runtime track disposition: implemented (ESP transport resilience correction).
+- Component track disposition: compatibility-shimmed (component path does not own ESP HTTP poll loop; equivalent failure mode reviewed).
+- P1/P2/P3 impact check: no source-of-truth ownership change; runtime transport stability correction only.
+
+Latest run update (2026-05-04, Slice-AY.5 hard component pin):
+
+- Component authority is now pinned as the only active authority lane in normal operation; legacy authority mode is no longer accepted as active write mode.
+- Selection behavior is hardened to keep already-valid helper target unless explicit force is requested, reducing unsolicited target churn.
+- Runtime track disposition: implemented (legacy authority lane disabled in active flow).
+- Component track disposition: implemented (component authority + selection lanes pinned and sticky by default).
+- P1/P2/P3 impact check: source-of-truth for target/host write authority is component-only in active operation.
+
+Latest run update (2026-05-04, Slice-AY.4 non-hybrid authority cutover):
+
+- Runtime compatibility lane now authority-gates legacy helper writers and host derivation surfaces when component authority is active, consuming component cutover-gate candidate host as primary `ma_control_hosts` source in component mode.
+- Component authority lane remains canonical through existing surfaces (`write_controls.authority_mode`, `spectra_ls.cycle_active_target`, `sensor.spectra_ls_host_authority_cutover_gate`), and is now the normal-operation source for target/host ownership (non-hybrid) without adding new schema keys.
+- Runtime track disposition: implemented (legacy write lanes gated in component mode; authority fallback preserved).
+- Component track disposition: implemented (existing component authority/cycle/gate contracts now actively consumed by runtime ownership lanes).
+- P1/P2/P3 impact check: migration-bounded ownership retained, but active operation now component-primary for target/host selection planes.
+
+- Runtime Arylic HTTP preferred transport memory now preserves bounded per-host scheme/port slots (primary + alternate), avoiding repeated default-protocol restarts during active-target host churn when hosts have different HTTP/HTTPS support.
+- Runtime track disposition: implemented (active ESP runtime transport-selection stability hardening).
+- Component track disposition: compatibility-shimmed (component path does not own ESP HTTP polling lane; equivalent failure-mode posture reviewed).
+- P1/P2/P3 impact check: no source-of-truth ownership change; runtime transport-selection correctness hardening only.
+
+Latest run update (2026-05-04, Slice-AY.1 Arylic HTTP interaction-priority guard + timeout tightening):
+
+- Runtime Arylic HTTP poll lane now uses a tighter timeout budget and a short post-input poll guard window keyed from `last_input_ms`, skipping non-critical status polls immediately after user interaction to preserve tactile responsiveness under transport-fault windows.
+- Runtime track disposition: implemented (active ESP runtime poll-loop responsiveness hardening).
+- Component track disposition: compatibility-shimmed (component path does not own ESP HTTP polling lane; equivalent failure-mode posture reviewed).
+- P1/P2/P3 impact check: no source-of-truth ownership change; runtime interaction smoothness hardening only.
+
+Latest run update (2026-05-04, Slice-AY Arylic HTTP hitch stabilization under transport errors):
+
+- Runtime Arylic HTTP poll lane now applies tighter timeout + stronger fail-backoff defaults and requires sustained failures before fallback-scheme switching, reducing repeated error-window UI hitch/freeze pressure.
+- Runtime track disposition: implemented (active ESP runtime poll-loop stability hardening).
+- Component track disposition: compatibility-shimmed (component path does not own ESP HTTP polling lane; equivalent failure-mode posture reviewed).
+- P1/P2/P3 impact check: no source-of-truth ownership change; runtime transport resilience and interaction smoothness hardening only.
+
+Latest run update (2026-05-03, Slice-AX3+AX4 freshness-age + deterministic preview-key contract):
+
+- Runtime now-playing contract now emits deterministic `sensor.now_playing_preview_key` values (non-empty content-derived key) and a bounded freshness-age surface `sensor.now_playing_freshness_age_s` for consumer-side stale-suppression decisions.
+- ESP ingest now consumes freshness-age alongside preview-key/entity/friendly context and gates stale cached OLED metadata rescue on bounded freshness, reducing stale carryover during handoff churn while preserving HA policy authority.
+- Runtime track disposition: implemented (active HA+ESP consumer determinism/freshness hardening).
+- Component track disposition: compatibility-shimmed (component behavior unchanged; equivalent failure mode reviewed).
+- P1/P2/P3 impact check: no source-of-truth ownership change; consumer-side coherence and stale-window hardening only.
+
+Latest run update (2026-05-03, Slice-AW3 OLED metadata tuple coherency fix):
+
+- Aligned ESP substitutions to use a coherent now-playing metadata tuple for OLED (`sensor.now_playing_title`, `sensor.now_playing_artist`, `sensor.now_playing_album`) instead of mixed-family title/artist/album sources.
+- Eliminates stale album carryover from older MA-active metadata contexts while title/artist update from now-playing surfaces.
+- Runtime track disposition: implemented (runtime metadata contract alignment).
+- Component track disposition: compatibility-shimmed (component behavior unchanged; equivalent failure mode reviewed).
+- P1/P2/P3 impact check: no source-of-truth ownership change; OLED metadata coherence hardening only.
+
+Latest run update (2026-05-03, Slice-AW2 restart cutover persistence + active-target capability recovery hardening):
+
+- Persisted component write-authority default in config-entry options and restored coordinator startup authority mode from that persisted value so restart windows no longer silently fall back to legacy mode.
+- Updated service-mode defaults in `custom_components/spectra_ls/__init__.py` to follow persisted authority mode when a mode is omitted, reducing accidental legacy-mode drift in operational sequences.
+- Added constrained active-target host fallback in `custom_components/spectra_ls/registry.py` using current control-host surface when target discovery is transiently incomplete, reducing false `defer_not_capable` route posture during churn.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged; equivalent failure mode reviewed).
+- Component track disposition: implemented (authority persistence + route fallback hardening).
+- P1/P2/P3 impact check: no source-of-truth ownership change; restart and route-readiness reliability hardening only.
+
+- Runtime media-policy contract updated for explicit Music-Lite behavior: non-music preview window is 30s and preview visibility is suppressed when other active music context (playing/paused) is present, preserving deterministic “music always wins” display behavior.
+- Runtime track disposition: implemented (active now-playing display contract updated in `packages/ma_control_hub/template.inc`).
+- Component track disposition: implemented (component metadata-policy diagnostics now validate runtime media-contract surfaces and expected display semantics for parity drift visibility).
+- P1/P2/P3 impact check: no source-of-truth ownership change; bounded display-policy correctness hardening only.
+
+- Runtime track adds explicit provider-refresh handoff script (`ma_send_metadata_to_providers`) using MA command `metadata/update_metadata` through existing HA runtime MA API wrapper and resolved now-playing MA URI selection.
+- Runtime helper telemetry now persists latest provider-refresh API response details (`status`, `response`, `item_uri`, `reason`, `updated_at`) for deterministic diagnostics/template consumption.
+- Runtime helper telemetry now also persists compact provider result summaries (`input_text.ma_metadata_provider_last_providers`) so provider-level outcomes are visible in validation templates.
+- Provider-summary extraction now accepts mapping/list response shapes and stores bounded compact helper payloads to avoid overflow-style truncation ambiguity.
+- Component/runtime trigger inputs for provider refresh are now boolean-normalized to avoid accidental dispatch when templated callers pass string-like false values.
+- Registry host-type classification is now fail-closed for unsupported control paths (host observability retained, routing capability restricted to supported path mappings).
+- Runtime provider-refresh URI selection now includes MA active-player URI fallback before `media_content_id` fallback, improving dispatch eligibility under active playback where now-playing fields can lag.
+- Component track extends `validate_metadata_policy` service to optionally dispatch the runtime refresh script after policy diagnostics refresh, preserving compatibility-shim behavior when script surface is not present.
+- Runtime track disposition: implemented (provider-refresh handoff action).
+- Component track disposition: implemented (service parity trigger + fallback).
+- P1/P2/P3 impact check: no source-of-truth ownership change; metadata-provider refresh actionability hardening only.
+
+- Closed auto-select loop watcher parity gap (`GAP-20260426-auto-select-loop-watched-options-filter`) by removing component-side `media_player.*`-only watcher restriction and restoring legacy-equivalent watched-options membership semantics.
+- Runtime track disposition: implemented (legacy behavior unchanged).
+- Component track disposition: implemented (gap closure + useless-filter cleanup complete).
+
+Latest run update (2026-04-27, ghost-broadcaster healing + policy diagnostics):
+
+- Component metadata freshness classification now explicitly recognizes stale-progress `playing` entities (when progress clocks exist) as suppressible stale states instead of always-fresh play states.
+- Added first-class diagnostics exposure for canonical meta policy + suppression reason posture, including service-driven refresh support for deterministic triage workflows.
+- Runtime track disposition: implemented (matching template-side freshness hardening; no ownership change).
+- Component track disposition: implemented (suppression semantics + policy diagnostics exposure).
+- P1/P2/P3 impact check: no source-of-truth ownership change; parity/decision-correctness hardening only.
+
+Latest run update (2026-04-27, stale-window decoupling parity hardening):
+
+- Metadata freshness windows are now explicitly decoupled in parity logic: `ma_meta_stale_s` for `playing` freshness and `ma_meta_paused_hide_s` for paused hold/hide behavior.
+- Component diagnostics now publish dual-window signal posture (recent play vs recent paused) to keep stale-suppression analysis deterministic across runtime/component tracks.
+- Runtime track disposition: implemented (template winner gating uses dual thresholds).
+- Component track disposition: implemented (coordinator now-playing signal + metadata-prep diagnostics use and expose dual thresholds).
+- P1/P2/P3 impact check: no source-of-truth ownership change; stale-suppression correctness and parity hardening only.
+
+Latest run update (2026-04-27, metadata-stack rolling validation ledger activation):
+
+- Added a single metadata-stack closeout checklist artifact (`docs/testing/raw/meta_stack_end_to_end_validation_checklist.md`) and linked it in the DevTools template index for repeatable operator use.
+- Engineering-rigor contract now requires per-slice evidence packet capture (pre/in/post plus stale-root-cause and closeout proof lines) while metadata-stack implementation continues.
+- Runtime track disposition: compatibility-shimmed (governance/docs activation only; no runtime mutation).
+- Component track disposition: compatibility-shimmed (governance/docs activation only; no component mutation).
+- P1/P2/P3 impact check: no source-of-truth ownership change; validation discipline hardening only.
+| P3-S01 | 3 | Validated (legacy write authority retained behind switch) | Validated (guard framework + manual routing write trial services) | Validated | Medium | Validated |
+| P3-S02 | 3 | Validated (selection scripts/automations compatibility shim validation) | Validated (one-shot validation sequence + selection handoff diagnostics) | Validated (single-capable waiver) | High | Validated |
+| P3-S03 | 3 | Validated (metadata ownership explicitly deferred to legacy compatibility mode) | Validated (metadata prep diagnostics + one-shot sequence + listener-safe validation template) | Validated (diagnostics-only) | Medium | Validated |
+| F4-S01 | 4 | Validated (compatibility contracts retained; no ownership cutover) | Validated (capability matrix + profile schema diagnostics scaffolding) | Validated (diagnostics-only) | Medium | Validated |
+| F4-S02 | 4 | Validated (legacy action ownership retained; diagnostics-only) | Validated (programmable action-catalog safety skeleton + dry-run diagnostics) | Validated (diagnostics-only) | Medium | Validated |
+| F4-S03 | 4 | Validated (legacy crossfade/balance behavior remains authoritative) | Validated (crossfade/balance diagnostics scaffold + validation sequence) | Validated (diagnostics-only) | Medium | Validated |
+| P5-S01 | 5 | Validated (legacy retained as rollback authority path; post-window rollback proof captured) | Validated (routing-domain run-window execution with VERIFIED in-window proof) | Validated (in-window VERIFIED + post-window legacy rollback) | Medium | Validated |
+| P5-S02 | 5 | Validated (legacy metadata ownership retained; bounded closeout evidence accepted) | Validated (metadata-domain gate-prep/readiness validation execution completed with consolidated PASS evidence) | Validated (Run-1 + Run-2 closeout packet) | Medium | Validated |
+| P5-S03 | 5 | Validated (legacy lighting orchestration retained with safe post-window authority proof) | Validated (lighting-domain run-window checklist execution completed with PASS closeout evidence) | Validated (Run-1 pre/in/post packet) | Medium | Validated |
+| P5-S04 | 5 | Validated (phase-exit closeout governance completed; no runtime ownership expansion) | Validated (cross-slice evidence packet accepted + Phase-6 handoff gating complete) | Validated (PASS/READY 7/7 closeout packet) | Medium | Validated |
+| P6-S01 | 6 | Validated (legacy/runtime contracts preserved; no authority expansion) | Validated (HA sidebar control center foundation with read-only mapped-environment baseline proven) | Validated (PASS/READY 6/6 closeout packet) | Medium | Validated |
+| P6-S02 | 6 | Validated (legacy/runtime contracts preserved; no ownership cutover) | Validated (control-center settings contract via options flow, service path, and diagnostics visibility proven) | Validated (PASS/READY 4/4 settings packet) | Medium | Validated |
+| P6-S03 | 6 | Validated (legacy/runtime contracts preserved; no authority expansion) | Validated (control-input execution skeleton with dry-run-first safety + attempt diagnostics proven) | Validated (execution-lane dry-run proof accepted) | Medium | Validated |
+| P6-S04 | 6 | Validated (legacy/runtime contracts preserved; no ownership cutover) | Validated (execution-lane validation monitor/checklist with accepted closeout packet) | Validated (PASS/READY 5/5 dry-run-first packet) | Medium | Validated |
+| P7-S01 | 7 | Validated (legacy compatibility/rollback baseline confirmed at pre-flip gate) | Validated (component-first cutover-readiness gate accepted) | Validated (Run-2 PASS/READY 4/4) | High | Validated |
+| P7-S02 | 7 | Validated (legacy retained as bounded rollback authority with post-window rollback-safe proof accepted) | Validated (first bounded authority-flip execution lane complete) | Completed (Run-1 pre/in/post PASS) | High | Validated |
+| P7-S03 | 7 | Validated (legacy retained as rollback-safe metadata authority baseline with post-window proof accepted) | Validated (bounded metadata-domain authority-flip execution lane complete) | Completed (Run-1 pre/in PASS + Run-2 post PASS) | High | Validated |
+| P7-S04 | 7 | Validated (rollback-safe legacy authority baseline preserved at closeout capture) | Validated (phase-exit closeout packet completed and accepted) | Completed (Run-1 closeout PASS/READY 4/4) | High | Validated |
+| P8-S01 | 8 | Validated (legacy sealed baseline readiness gate completed with pre/in/post PASS packet) | Validated (post-cutover governance/readiness lane completed for starter gate) | Completed (Run-1/Run-2/Run-3 PASS; promoted) | High | Validated |
+
+Latest run update (2026-05-03, Slice-H host-cutover gate enforcement + binary readiness surface):
+
+Latest run update (2026-05-03, Slice-AS metadata prep freshness tolerance for resolved active playback):
+
+- Corrected component metadata-prep authority gating in `custom_components/spectra_ls/metadata_stack.py` so resolved active-playback contracts (state/title/position/duration) are not downgraded to deterministic false closeout failures solely because progress freshness clocks are stale.
+- Keeps fail-closed behavior for unresolved/invalid playback contracts while removing false-negative degraded-fallback posture in bounded contract-complete windows.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (metadata authority freshness false-negative path corrected).
+- P1/P2/P3 impact check: no source-of-truth ownership change; authority closeout reliability hardening only.
+
+Latest run update (2026-05-03, Slice-AR MA control-port parse guard + reconnect no-clear noise hardening):
+
+- Hardened runtime ESP HA ingest path in `esphome/spectra_ls_system/packages/spectra-ls-audio-tcp.yaml` so `sensor.ma_control_port` transient non-numeric payloads are parsed via guarded text semantics with fallback behavior instead of emitting conversion warnings.
+- Added reconnect-grace no-clear suppression for transient invalid `ma_control_hosts`/`ma_control_host` updates to reduce reconnect noise while preserving fail-closed behavior outside guarded windows.
+- Runtime track disposition: implemented (active runtime ingest/reconnect hardening).
+- Component track disposition: compatibility-shimmed (component behavior unchanged; equivalent failure mode reviewed).
+- P1/P2/P3 impact check: no source-of-truth ownership change; runtime ingest/observability hardening only.
+
+Latest run update (2026-05-03, Slice-AQ metadata trial audit completeness contract fix):
+
+- Corrected metadata trial preflight/status sequencing in `custom_components/spectra_ls/metadata_stack.py` so expected-meta matched trial windows continue through canonical status assignment (`dry_run_ok`/`noop_applied`) instead of falling through with no `status` field.
+- Removes false partial audit payloads (`missing_audit_fields=['status']`) that previously caused deterministic `cutover_prep_incomplete` blockers despite successful bridge/trial execution.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged; equivalent audit-surface failure mode reviewed).
+- Component track disposition: implemented (metadata trial audit status emission now deterministic on expected-meta matched paths).
+- P1/P2/P3 impact check: no source-of-truth ownership change; metadata trial audit-contract correctness hardening only.
+
+Latest run update (2026-05-03, Slice-AP metadata bridge expected-target stability guard):
+
+- Corrected metadata bridge scaffold preflight in `custom_components/spectra_ls/metadata_stack.py` so route-stable expected-target windows are preserved: if `expected_target` is provided and current route already matches that target on supported control path, bridge skips unnecessary auto-select recovery writes.
+- This prevents route flapping to non-control-capable metadata entities during bridge execution windows and removes a deterministic false-negative lane where metadata trial was blocked by route regression rather than authority contract semantics.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged; equivalent route-stability failure mode checked).
+- Component track disposition: implemented (expected-target stability guard added to bridge sequence).
+- P1/P2/P3 impact check: no source-of-truth ownership change; bounded cutover-window execution stability hardening only.
+
+Latest run update (2026-05-03, Slice-AO metadata bridge in-window authority proof alignment):
+
+- Corrected metadata bridge authority-stage sequencing in `custom_components/spectra_ls/metadata_stack.py` so in-window cutover proof reflects real active ownership: if component cutover is active after resolver stage, metadata trial now executes in component mode and preserves component in-window proof assertions.
+- Legacy trial authority is retained only for pre-cutover bridge windows where component cutover is not active, preserving migration-safe fallback posture.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged; equivalent failure mode checked).
+- Component track disposition: implemented (authority proof false-negative path removed from metadata bridge flow).
+- P1/P2/P3 impact check: no source-of-truth ownership change; authority packet closeout correctness hardening only.
+
+Latest run update (2026-05-03, Slice-AN registry capability-path alignment for WiiM host targets):
+
+- Corrected component registry route-capability inference in `custom_components/spectra_ls/registry.py` so host-resolved WiiM entries that satisfy current supported transport conditions are classified as control-capable Linkplay/TCP candidates instead of being locked to `unknown` control path.
+- This removes false `defer_not_capable` scheduler/gate posture for eligible host-resolved targets and restores deterministic candidate formation for cutover-readiness workflows.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (registry capability/path classification hardening).
+- P1/P2/P3 impact check: no source-of-truth ownership change; routing capability classification correctness hardening only.
+
+Latest run update (2026-05-03, Slice-AM meta full-stack tester schema+scoring correction):
+
+- Corrected `docs/testing/raw/meta_component_full_stack_tester.jinja` to match current shadow packet shape and list-valued validation fields: unresolved/mismatch sources now consume top-level packet attributes, contract/parity checks use list counts, and `contract_ready` falls back to valid+required-count logic when `ready` is not emitted.
+- Optional capability/action/crossfade lanes are now treated as informational `n/a_not_exposed` (non-blocking) when not present in current shadow attributes.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (validation tooling/scoring corrected for current component packet schema).
+- P1/P2/P3 impact check: no source-of-truth ownership change; diagnostics correctness and triage reliability hardening only.
+
+Latest run update (2026-05-03, Slice-AL runtime reconnect fail-closed guard hardening):
+
+- Hardened runtime ESP host-feed reconnect handling in `esphome/spectra_ls_system/packages/spectra-ls-audio-tcp.yaml` to retain cached `ma_control_hosts`/`ma_control_host` across transient reconnect invalid updates while keeping sustained-invalid fail-closed semantics.
+- Reduced reconnect-window warning churn without changing ownership/authority contracts.
+- Runtime track disposition: implemented (runtime reconnect resilience hardening).
+- Component track disposition: compatibility-shimmed (component lane checked for equivalent failure mode; no mutation required).
+- P1/P2/P3 impact check: no source-of-truth ownership change; reconnect resilience/observability hardening only.
+
+Latest run update (2026-05-03, Slice-AK coordinator async-import hardening):
+
+- Replaced dynamic `importlib.import_module` coordinator initialization path in `custom_components/spectra_ls/coordinator.py` with static workflow-class imports to remove HA blocking-call import warnings and improve startup compliance.
+- Preserved all behavior/contract surfaces; change is startup-path hardening only.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged; equivalent warning mode checked).
+- Component track disposition: implemented (coordinator startup import lane hardened).
+- P1/P2/P3 impact check: no source-of-truth ownership change; startup reliability/compliance hardening only.
+
+Latest run update (2026-05-03, Slice-AJ snapshot contract regression fix):
+
+- Fixed component snapshot/validation regression by replacing stale coordinator-private surface references (`_legacy_surfaces`, `_legacy_rooms_raw`) in `custom_components/spectra_ls/validation_fabric.py` with canonical constants-backed legacy contract surfaces.
+- Eliminates repeated `AttributeError` failures during `build_contract_validation()` and restores snapshot refresh stability on state-change and deferred-refresh paths.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged; equivalent failure mode checked).
+- Component track disposition: implemented (validation crash path corrected).
+- P1/P2/P3 impact check: no source-of-truth ownership change; regression correction and stability hardening only.
+
+Latest run update (2026-05-03, Slice-AI meta component full-stack Jinja tester):
+
+- Added a single raw validation template (`docs/testing/raw/meta_component_full_stack_tester.jinja`) for one-screen component-stack checks across authority/host gate, route/contract, scheduler/handoff, metadata prep, capability/action/crossfade, control-center, write-attempt telemetry, and parity/freshness rollup.
+- Added quick-path registration in `esphome/spectra_ls_system/DEVTOOLS-TEMPLATES.local.md` for deterministic copy/paste execution.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (full-stack validation tooling expanded).
+- P1/P2/P3 impact check: no source-of-truth ownership change; diagnostics/evidence workflow hardening only.
+
+Latest run update (2026-05-03, Slice-AH Pack D reuse + cache + hardening implementation):
+
+- Implemented Pack D by adding `payload_surface_fabric.py` for shared dict/list shape-safe extraction and rewiring snapshot/service summary paths (`snapshot_fabric.py`, `__init__.py`, and authority packet builder) to consume shared payload helpers.
+- Added bounded cache reuse and defensive hardening in hot paths: short-TTL snapshot publish micro-cache with lifecycle safeguards in `refresh_validation_fabric.py`, and bounded authority-contract packet cache keyed by snapshot capture timestamp in `authority_contract.py` for repeated read reuse.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (Pack D reuse/caching/hardening landed).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal reuse/caching and brittleness-hardening only.
+
+Latest run update (2026-05-03, Slice-AH Pack D reuse + cache + hardening activation):
+
+- Added docs-first activation for Pack D in `custom_components/spectra_ls`: introduce shared payload-surface extraction helpers for repeated dict/list shape checks, add safe bounded micro-caching for hot snapshot publish paths, and apply defensive cache/state-churn hardening while preserving behavior contracts.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: compatibility-shimmed (docs-first activation completed; implementation follows in the same macro cycle).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal reuse/caching/hardening workflow activation only.
+
+Latest run update (2026-05-03, Slice-AG Pack C optimization + reuse + hardening implementation):
+
+- Implemented Pack C by combining optimization, reuse, and hardening changes: reusable payload list extraction helper added to `utility_fabric.py`; selection aggregation in `selection_fabric.py` moved to set-backed linear de-duplication and constant-based helper references; event callback churn hardened in `event_recovery_fabric.py` with bounded coalescing cache pruning and in-flight target dedupe.
+- Added additional common-code reuse reductions across adjacent lanes: shared helper-state/options normalization usage in `control_execution_fabric.py`, `startup_recovery_fabric.py`, and `validation_fabric.py`; reusable dict-surface extraction helper in `snapshot_fabric.py`; and deduped snapshot publish flow in `refresh_validation_fabric.py` for safer repeated refresh paths.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (Pack C optimization/reuse/hardening landed in component internals).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal performance/reuse and defensive-hardening only.
+
+Latest run update (2026-05-03, Slice-AG Pack C optimization + reuse + hardening activation):
+
+- Added docs-first activation for Pack C macro cycle in `custom_components/spectra_ls`: optimize high-frequency paths (selection/event churn), introduce reusable helper abstractions for repeated parsing/extraction patterns, and apply defensive hardening to reduce brittle callback/write-path behavior under rapid state churn.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: compatibility-shimmed (docs-first activation completed; implementation follows in the same macro cycle).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal performance/reuse/hardening workflow activation only.
+
+Latest run update (2026-05-03, Slice-AF Pack A+B hardening implementation):
+
+- Implemented Pack A+B hardening by adding shared write-path utilities in `write_path_fabric.py` (helper-state/options parsing normalization, common authority/reentrancy/debounce guard checks, and standardized write-attempt bookkeeping) and rewiring high-churn write lanes in `selection_fabric.py` and `control_execution_fabric.py` to consume those helpers with unchanged behavior contracts.
+- Added bounded global state-change event coalescing + in-flight dedupe in `event_recovery_fabric.py` to reduce churn-driven callback task storms.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (Pack A+B hardening applied to component write and event-recovery lanes).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal reliability/performance hardening only.
+
+Latest run update (2026-05-03, Slice-AF Pack A+B hardening activation):
+
+- Added docs-first activation for Pack A+B hardening in `custom_components/spectra_ls`: introduce shared write-path helper/guard utilities for high-churn write lanes (helper-state packet parsing, common guard-chain checks, and write-attempt bookkeeping), then rewire those lanes to consume the shared helpers while preserving status/reason behavior contracts; add bounded global state-change event coalescing in event-recovery orchestration to reduce churn-driven task fan-out.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: compatibility-shimmed (docs-first activation completed; implementation follows in the same macro cycle).
+- P1/P2/P3 impact check: no source-of-truth ownership change; reliability/performance hardening workflow activation only.
+
+Latest run update (2026-05-03, Slice-AE coordinator endgame internals extraction implementation):
+
+- Moved remaining coordinator internals into workflow boundaries by extracting `_snapshot_for_entity` parsing semantics and write-authority mode normalization policy into `utility_fabric.py`, and `_async_update_data` refresh dispatch into `refresh_validation_fabric.py`.
+- Coordinator endgame helper methods now delegate through utility/refresh workflow boundaries via thin wrappers.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (endgame internals moved from inline coordinator monolith to dedicated workflow modules).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal architecture hardening only.
+
+Latest run update (2026-05-03, Slice-AE coordinator endgame internals extraction activation):
+
+- Added docs-first activation for extracting remaining coordinator internals (`_snapshot_for_entity` field parsing semantics, write-authority mode normalization policy, and `_async_update_data` refresh path dispatch) from `coordinator.py` into workflow boundaries, followed by same-slice delegation rewiring.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: compatibility-shimmed (docs-first activation completed; implementation follows in the same macro cycle).
+- P1/P2/P3 impact check: no source-of-truth ownership change; architecture-hardening execution progression only.
+
+Latest run update (2026-05-03, Slice-AD coordinator utility-helper final one-shot extraction implementation):
+
+- Added `utility_fabric.py` and moved remaining coordinator utility/helper seams out of `coordinator.py` into dedicated `UtilityFabricWorkflow` ownership (state normalization, JSON payload parsing, float-helper parsing, availability scoring, empirical bonus scoring, resolved-state checks, and timestamp age parsing).
+- Coordinator helper methods now delegate this lane through thin wrapper calls to the extracted utility workflow boundary.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (remaining utility/helper lane moved from inline coordinator monolith to dedicated workflow module).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal architecture hardening only.
+
+Latest run update (2026-05-03, Slice-AD coordinator utility-helper final one-shot extraction activation):
+
+- Added docs-first activation for extracting the remaining coordinator utility/helper seams (state normalization, JSON payload parsing, float-helper parsing, availability scoring, empirical bonus scoring, resolved-state checks, and timestamp age parsing) from `coordinator.py` into a dedicated workflow boundary module, followed by same-slice delegation rewiring.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: compatibility-shimmed (docs-first activation completed; implementation follows in the same macro cycle).
+- P1/P2/P3 impact check: no source-of-truth ownership change; architecture-hardening execution progression only.
+
+Latest run update (2026-05-03, Slice-AutoCoordinator coordinator refresh-validation super-chunk extraction implementation):
+
+- Added `refresh_validation_fabric.py` and moved coordinator refresh/validation service seams out of `coordinator.py` into dedicated `RefreshValidationFabricWorkflow` ownership (`_refresh_snapshot`, deferred refresh callback handling, `async_rebuild_registry`, `async_validate_contracts`, `async_dump_route_trace`, `async_validate_selection_handoff`, `async_validate_capability_profile`, `async_validate_action_catalog`, `async_validate_crossfade_balance`, and `async_validate_scheduler`).
+- Coordinator methods now delegate this lane through thin wrapper calls to the extracted refresh/validation workflow boundary.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (refresh/validation super-chunk lane moved from inline coordinator monolith to dedicated workflow module).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal architecture hardening only.
+
+Latest run update (2026-05-03, Slice-AutoCoordinator coordinator refresh-validation super-chunk extraction activation):
+
+- Added docs-first activation for extracting coordinator refresh/validation service seams (`_refresh_snapshot`, deferred refresh callback handling, `async_rebuild_registry`, `async_validate_contracts`, `async_dump_route_trace`, `async_validate_selection_handoff`, `async_validate_capability_profile`, `async_validate_action_catalog`, `async_validate_crossfade_balance`, and `async_validate_scheduler`) from `coordinator.py` into a dedicated workflow boundary module, followed by same-slice delegation rewiring.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: compatibility-shimmed (docs-first activation completed; implementation follows in the same macro cycle).
+- P1/P2/P3 impact check: no source-of-truth ownership change; architecture-hardening execution progression only.
+
+Latest run update (2026-05-03, Slice-AB coordinator lifecycle-listener lane extraction implementation):
+
+- Added `lifecycle_fabric.py` and moved coordinator lifecycle listener seams out of `coordinator.py` into dedicated `LifecycleFabricWorkflow` ownership (`async_setup` and `async_shutdown`).
+- Coordinator lifecycle methods now delegate this lane through thin wrapper calls to the extracted lifecycle workflow boundary.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (lifecycle listener lane moved from inline coordinator monolith to dedicated workflow module).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal architecture hardening only.
+
+Latest run update (2026-05-03, Slice-AB coordinator lifecycle-listener lane extraction activation):
+
+- Added docs-first activation for extracting coordinator lifecycle listener seams (`async_setup` and `async_shutdown`) from `coordinator.py` into a dedicated workflow boundary module, followed by same-slice delegation rewiring.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: compatibility-shimmed (docs-first activation completed; implementation follows in the same macro cycle).
+- P1/P2/P3 impact check: no source-of-truth ownership change; architecture-hardening execution progression only.
+
+Latest run update (2026-05-03, Slice-AA coordinator control-execution lane extraction implementation):
+
+- Added `control_execution_fabric.py` and moved coordinator control-execution service seams out of `coordinator.py` into dedicated `ControlExecutionFabricWorkflow` ownership (`async_apply_control_center_settings`, `async_execute_control_center_input`, `async_set_write_authority`, and `async_route_write_trial`).
+- Coordinator methods now delegate this lane through thin wrapper calls to the extracted control-execution workflow boundary.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (control-execution lane moved from inline coordinator monolith to dedicated workflow module).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal architecture hardening only.
+
+Latest run update (2026-05-03, Slice-AA coordinator control-execution lane extraction activation):
+
+- Added docs-first activation for extracting coordinator control-execution service seams (`async_apply_control_center_settings`, `async_execute_control_center_input`, `async_set_write_authority`, and `async_route_write_trial`) from `coordinator.py` into a dedicated workflow boundary module, followed by same-slice delegation rewiring.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: compatibility-shimmed (docs-first activation completed; implementation follows in the same macro cycle).
+- P1/P2/P3 impact check: no source-of-truth ownership change; architecture-hardening execution progression only.
+
+Latest run update (2026-05-03, Slice-Z coordinator snapshot-lane extraction implementation):
+
+- Added `snapshot_fabric.py` and moved coordinator snapshot-assembly seams out of `coordinator.py` into dedicated `SnapshotFabricWorkflow` ownership (`build_snapshot` packet assembly and `build_write_controls` packet packaging).
+- Coordinator methods `_build_snapshot` and `_build_write_controls` now delegate this lane through thin wrapper calls to the extracted snapshot workflow boundary.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (snapshot lane moved from inline coordinator assembly to dedicated workflow module).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal architecture hardening only.
+
+Latest run update (2026-05-03, Slice-Z coordinator snapshot-lane extraction activation):
+
+- Added docs-first activation for extracting coordinator snapshot-assembly seams (`_build_snapshot` packet assembly and write-controls snapshot packaging) from `coordinator.py` into a dedicated workflow boundary module, followed by same-slice delegation rewiring.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: compatibility-shimmed (docs-first activation completed; implementation follows in the same macro cycle).
+- P1/P2/P3 impact check: no source-of-truth ownership change; architecture-hardening execution progression only.
+
+Latest run update (2026-05-03, Slice-Y startup-recovery lane extraction implementation):
+
+- Added `startup_recovery_fabric.py` and moved startup-recovery orchestration seams out of `meta_fabric.py` into dedicated `StartupRecoveryFabricWorkflow` ownership (`async_schedule_startup_recovery`, timer callback dispatch, startup attempt engine, boot-readiness evaluation, and startup wait-reason formatting).
+- Meta-fabric methods now delegate this lane through thin wrapper calls to the extracted startup-recovery workflow boundary.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (startup-recovery lane moved from inline meta-fabric assembly to dedicated workflow module).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal architecture hardening only.
+
+Latest run update (2026-05-03, Slice-Y startup-recovery lane extraction activation):
+
+- Added docs-first activation for extracting the startup-recovery orchestration lane from `meta_fabric.py` into a dedicated workflow boundary module, followed by same-slice delegation rewiring.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: compatibility-shimmed (docs-first activation completed; implementation follows in the same macro cycle).
+- P1/P2/P3 impact check: no source-of-truth ownership change; architecture-hardening execution progression only.
+
+Latest run update (2026-05-03, Slice-X event-recovery lane extraction implementation):
+
+- Added `event_recovery_fabric.py` and moved event/recovery orchestration seams out of `meta_fabric.py` into dedicated `EventRecoveryFabricWorkflow` ownership (auto-select loop preflight/execution, players-change refresh, ambiguity lock, stale unlock/timer handling, no-control feedback hold/self-heal/post-heal notification lifecycle, and global/state callback orchestration).
+- Meta-fabric methods now delegate this lane through thin wrapper calls to the extracted event/recovery workflow boundary.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (event/recovery lane moved from inline meta-fabric assembly to dedicated workflow module).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal architecture hardening only.
+
+Latest run update (2026-05-03, Slice-X event-recovery lane extraction activation):
+
+- Added docs-first activation for extracting the event/recovery orchestration lane from `meta_fabric.py` into a dedicated workflow boundary module, followed by same-slice delegation rewiring.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: compatibility-shimmed (docs-first activation completed; implementation follows in the same macro cycle).
+- P1/P2/P3 impact check: no source-of-truth ownership change; architecture-hardening execution progression only.
+
+Latest run update (2026-05-03, Slice-W scaffold-backend lane extraction implementation):
+
+- Added `scaffold_fabric.py` and moved scaffold/backend assembly seams out of `meta_fabric.py` into dedicated `ScaffoldFabricWorkflow` ownership (`build_component_scaffolds`, `build_handoff_inventory`, `build_ma_backend_profile`).
+- Meta-fabric methods now delegate this lane through thin wrapper calls to the extracted scaffold workflow boundary.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (scaffold/backend lane moved from inline meta-fabric assembly to dedicated workflow module).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal architecture hardening only.
+
+Latest run update (2026-05-03, Slice-W scaffold-backend lane extraction activation):
+
+- Added docs-first activation for extracting the scaffold/backend assembly lane from `meta_fabric.py` into a dedicated workflow boundary module, followed by same-slice delegation rewiring.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: compatibility-shimmed (docs-first activation completed; implementation follows in the same macro cycle).
+- P1/P2/P3 impact check: no source-of-truth ownership change; architecture-hardening execution progression only.
+
+Latest run update (2026-05-03, Slice-V validation-control lane extraction implementation):
+
+- Added `validation_fabric.py` and moved the remaining validation/control assembly lane out of `meta_fabric.py` (metadata validation bundle/policy surfaces, handoff status/dependency map, scheduler/contract/selection/route safety builders, host cutover gate, control-center validation, F4 capability/action/crossfade validations, and snapshot validation packet assembly).
+- Meta-fabric now delegates this lane through thin wrappers to `ValidationFabricWorkflow`, preserving existing coordinator-facing contract shapes.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (validation/control lane moved from meta-fabric inline assembly to dedicated workflow boundary).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal architecture hardening only.
+
+Latest run update (2026-05-03, Slice-V validation-control lane extraction activation):
+
+- Activated the next super-macro extraction cycle to move the remaining validation/control assembly lane from `meta_fabric.py` into a dedicated workflow boundary module, then rewire meta-fabric methods to thin delegation wrappers.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: compatibility-shimmed (docs-first activation step completed; implementation/rewire verification follows in the same macro cycle).
+- P1/P2/P3 impact check: no source-of-truth ownership change; architecture-hardening execution progression only.
+
+Latest run update (2026-05-03, Slice-U selection-fabric lane extraction):
+
+- Added `selection_fabric.py` workflow module and moved the large scheduler/selection/write-orchestration lane out of `meta_fabric.py` (target-options planning, scheduler decision/choice/apply, target-options scaffold, auto-select scaffold, and track/restore/cycle helper services).
+- Meta-fabric now delegates this lane to the new boundary module through thin wrappers.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (meta-fabric monolith reduced via dedicated selection-fabric workflow ownership).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal architecture hardening only.
+- README parity: no material repo-state change.
+
+Latest run update (2026-05-03, Slice-T meta-fabric event-recovery orchestration extraction):
+
+- Added meta-fabric workflow methods for the remaining event/recovery orchestration lane: auto-select loop preflight/execution, players-change refresh sequencing, ambiguity lock, stale unlock/timer handling, no-control feedback self-heal/notification lifecycle, and state/global event callback orchestration.
+- Coordinator callback/service surfaces now delegate this lane to meta-fabric in the same slice.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (remaining event/recovery lane moved from coordinator into boundary-owned workflow methods).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal architecture hardening only.
+- README parity: no material repo-state change.
+
+Latest run update (2026-05-03, Slice-S meta-fabric write-orchestration super-macro):
+
+- Added meta-fabric methods for the async write-orchestration service lane: scheduler choice/apply, target-options scaffold, auto-select scaffold, track-last-valid, restore-last-valid, and cycle-target.
+- Coordinator service methods now delegate this lane to meta-fabric boundaries with same-slice rewiring.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (major async write-orchestration lane moved from coordinator into boundary-owned workflow methods).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal architecture hardening only.
+- README parity: no material repo-state change.
+
+Latest run update (2026-05-03, Slice-R meta-fabric compute-engine macro extraction):
+
+- Added meta-fabric compute helpers for target-options planning and scheduler decision/ranking.
+- Coordinator compute seams and dependent paths now delegate through meta-fabric in the same macro slice.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (core compute seams moved out of coordinator into boundary-owned helpers).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal architecture hardening only.
+- README parity: no material repo-state change.
+
+Latest run update (2026-05-03, Slice-Q meta-fabric scaffolds+inventory+backend macro rewire):
+
+- Added meta-fabric helpers for component scaffold planning assembly, handoff inventory packet assembly, and MA backend-profile assembly.
+- Coordinator now delegates these seams to meta-fabric boundaries in the same macro slice.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (coordinator orchestration surface narrowed for scaffolds/inventory/backend paths).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal architecture hardening only.
+- README parity: no material repo-state change.
+
+Latest run update (2026-05-03, Slice-P meta-fabric snapshot validation packetization):
+
+- Added a packetized meta-fabric snapshot-validation helper that assembles host-cutover, contract/selection/route safety, metadata bundle normalization, F4 capability/action/crossfade validations, scheduler validation, and control-center validation surfaces in one call.
+- Coordinator snapshot builder now consumes this packet and unwraps deterministic snapshot validation fields.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (snapshot validation orchestration narrowed via packetized meta-fabric boundary).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal architecture hardening only.
+- README parity: no material repo-state change.
+
+Latest run update (2026-05-03, Slice-O meta-fabric validation+gate macro rewire bundle):
+
+- Added macro meta-fabric helpers for host-cutover gate validation, control-center validation assembly, and F4 capability/action/crossfade validation builders.
+- Coordinator now delegates these validation and gate assembly builders through meta-fabric boundaries with same-slice rewiring.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (coordinator validation/gate assembly surface reduced via macro boundary delegation).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal architecture hardening only.
+- README parity: no material repo-state change.
+
+Latest run update (2026-05-03, Slice-N meta-fabric macro rewire bundle):
+
+- Added macro meta-fabric helpers for contract-validation, selection-handoff validation, route-safety validation, and scheduler-validation assembly paths.
+- Coordinator now delegates these validation builders through meta-fabric boundaries with same-slice rewiring.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (coordinator orchestration surface reduced via macro boundary delegation).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal architecture hardening only.
+- README parity: no material repo-state change.
+
+Latest run update (2026-05-03, Slice-M meta-fabric follow-on seam bundle):
+
+- Added follow-on meta-fabric helper seams for metadata-adjacent coordinator assembly paths: write-controls metadata surfaces, handoff metadata-status evaluation, and snapshot metadata-bundle normalization.
+- Coordinator now delegates these metadata-adjacent assembly seams through meta-fabric helpers while preserving snapshot/contract behavior.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (coordinator metadata assembly coupling reduced through bounded seam delegation).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal architecture hardening only.
+- README parity: no material repo-state change.
+
+Latest run update (2026-05-03, Slice-L meta-fabric metadata-validation bundle delegation):
+
+- Added a `meta_fabric.py` metadata-validation bundle helper for snapshot-time metadata prep/bridge/cutover assembly seams.
+- Coordinator now delegates metadata-prep/bridge/cutover validation bundling through the meta-fabric boundary, preserving behavior while reducing metadata-stack seam coupling in the coordinator monolith.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (metadata-prep/bridge-facing snapshot assembly seam extracted into meta-fabric boundary).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal architecture hardening only.
+- README parity: no material repo-state change.
+
+Latest run update (2026-05-03, Slice-K meta-fabric startup-orchestration extraction):
+
+- Added a dedicated `meta_fabric.py` workflow module and moved startup recovery boot-gate/orchestration logic out of `coordinator.py` into the new boundary.
+- Coordinator now delegates startup-recovery scheduling/timer execution and startup wait-reason helpers through the meta-fabric workflow, preserving behavior while reducing monolithic coupling.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (metadata startup orchestration extracted behind explicit workflow boundary).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal architecture hardening only.
+- README parity: no material repo-state change.
+
+Latest run update (2026-05-03, Slice-I+J host-cutover service contract + diagnostics highlights):
+
+- Added response-capable service `spectra_ls.get_host_cutover_gate` with optional fail-closed readiness and activation gates plus optional snapshot-summary envelope for automation consumers.
+- Added compact `host_cutover_gate_highlights` diagnostics export block so readiness and blocker posture is visible in one screen.
+- Runtime track disposition: compatibility-shimmed (legacy host helper/entity authority remains rollback baseline).
+- Component track disposition: implemented (host-cutover gate packet now has explicit service + diagnostics highlight contract).
+- P1/P2/P3 impact check: no source-of-truth ownership change; service-level evidence/actionability and observability hardening only.
+
+- Added `host_control_cutover_gate` binary diagnostics surface for one-glance cutover readiness in HA entity dashboards/alerts.
+- Added fail-closed scheduler-apply guard so component-authority helper writes require host-cutover gate readiness (with blocker details captured in attempt payload).
+- Runtime track disposition: compatibility-shimmed (legacy host helper/entity contracts remain rollback baseline authority).
+- Component track disposition: implemented (component write guardrails now enforce host-cutover readiness in component-authority apply paths).
+- P1/P2/P3 impact check: no source-of-truth ownership change; migration safety and diagnostics hardening only.
+
+Latest run update (2026-05-03, Slice-G host-control cutover gate + authoritative host surfaces):
+
+- Added deterministic coordinator packet `host_control_cutover_gate` with fail-closed blocker taxonomy for host-control cutover readiness (target/registry/host/capability/path/parity consistency checks).
+- Added explicit authority-mode-aware activation split (`ready_for_cutover` vs `ready_for_authoritative_activation`) and component authoritative host-candidate payload for operator diagnostics.
+- Added new diagnostic sensor surface `Host Authority Cutover Gate` and mirrored gate/candidate fields into host-resolution diagnostics attributes.
+- Runtime track disposition: compatibility-shimmed (legacy host helper/entity contracts remain rollback baseline authority during migration windows).
+- Component track disposition: implemented (component now publishes deterministic host-control authority readiness surfaces).
+- P1/P2/P3 impact check: no source-of-truth ownership change; migration gate visibility and cutover determinism hardening only.
+
+Latest run update (2026-05-03, Slice-F service coercion + lifecycle dedupe hardening):
+
+- Replaced raw `bool(...)` coercion in service handlers with explicit truthy/falsy normalization across scheduler/scaffold/trial/control-input paths.
+- Consolidated domain service registration/removal into shared lifecycle plumbing so setup/unload stays lock-step as service inventory evolves.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (input-safety + lifecycle-drift hardening only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal safety/maintainability hardening only.
+
+Latest run update (2026-05-03, Slice-E follow-up hardening: coordinator/workflow boundary + sequence runner cleanup):
+
+- Added a coordinator snapshot-refresh surface and routed metadata workflow refreshes through that public coordinator hook (rather than direct private snapshot-build calls).
+- Consolidated repeated integration service stage loops into a shared sequence runner with unchanged fail-closed stage diagnostics.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (internal maintainability/coupling hardening only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; internal robustness/readability hardening only.
+
+Latest run update (2026-05-03, Slice-E metadata-stack final extraction + service routing cleanup):
+
+- Completed metadata-stack ownership transfer by moving metadata trial/resolver/bridge attempt state into `MetadataStackWorkflow` and removing remaining coordinator-owned metadata attempt-state/wrapper layers.
+- Integration metadata services are now routed through `coordinator.metadata_stack` directly, preserving additive behavior while reducing coordinator coupling.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (metadata stack extracted to dedicated workflow ownership).
+- P1/P2/P3 impact check: no source-of-truth ownership change; component architecture/contract-boundary hardening only.
+
+Latest run update (2026-05-03, Slice-D authority-json-capture + three-slice hardening bundle):
+
+- Added operator JSON capture helper guidance so `slice_d_authority_contract_validation.jinja` can be fed directly from copied service response JSON via `input_text` helpers.
+- Expanded authority packet schema with readiness surfaces (`authority_contract_ready`, blocker list/count, required checkpoint presence) for deterministic downstream gating.
+- Hardened `get_authority_contract` service contract with explicit fail-closed options for readiness and minimum checkpoint count.
+- Extended diagnostics highlights to include authority readiness + blocker state.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (authority validation/triage ergonomics + fail-closed readiness signaling hardened).
+- P1/P2/P3 impact check: no source-of-truth ownership change; validation/actionability hardening only.
+
+Latest run update (2026-05-03, Slice-D authority-validator dual-input envelope support):
+
+- Extended `slice_d_authority_contract_validation.jinja` to validate packet-only JSON and full service-envelope JSON (`authority_contract` + optional `snapshot_summary`) from input-text capture entities, with automatic fallback to shadow-attribute packet surfaces.
+- Added source provenance fields in validator output (`source_mode`, `source_entity`, snapshot-summary presence) to reduce ambiguity during operator evidence capture.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (validation tooling envelope-awareness and operator ergonomics hardening).
+- P1/P2/P3 impact check: no source-of-truth ownership change; validation ergonomics hardening only.
+
+Latest run update (2026-05-03, Slice-D authority-contract three-slice bundle):
+
+- Expanded authority packet schema with deterministic metadata/proof counters (`schema_version`, `packet_generated_at`, prep check counts, proof checkpoint count) for compact closeout-consumption parity.
+- Hardened `spectra_ls.get_authority_contract` with optional strict fail-closed contract gating and optional snapshot-summary envelope for automation callers.
+- Extended diagnostics visibility with authority highlights and added raw validation template `docs/testing/raw/slice_d_authority_contract_validation.jinja` for deterministic packet checks.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (authority packet/service/diagnostics path hardened additively).
+- P1/P2/P3 impact check: no source-of-truth ownership change; meta-stack evidence/actionability hardening only.
+
+Latest run update (2026-05-03, Slice-D authority-contract packet expansion):
+
+- Expanded `spectra_ls.get_authority_contract` response packet with additive meta-stack closure fields: `cutover_prep_verdict`, prep blocker count/list, bridge/trial status echo, proof checkpoint presence (`pre_window|in_window|post_window`), and in-window owner/cutover assertions.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged).
+- Component track disposition: implemented (authority-contract response contract expanded for deterministic automation/evidence consumption).
+- P1/P2/P3 impact check: no source-of-truth ownership change; contract/actionability hardening only.
+
+Latest run update (2026-05-03, Slice-D strict endpoint closeout packet hardening):
+
+- Added strict endpoint-complete closeout packet example to the active P5-S02 run-window checklist with explicit fail-closed interpretation for endpoint incomplete/blocker/proof-missing outcomes.
+- Expanded rolling meta-stack evidence template with endpoint blocker count and explicit proof/assertion fields (`pre_window|in_window|post_window`, in-window cutover-active + owner-component assertion).
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged; docs/evidence schema hardening only).
+- Component track disposition: implemented (existing endpoint/proof contract now captured with stricter closeout evidence fields).
+- P1/P2/P3 impact check: no source-of-truth ownership change; closeout evidence precision hardening only.
+
+Latest run update (2026-05-03, Slice-D closeout endpoint evidence wiring):
+
+- Active P5 monitor/checklist artifacts now include explicit endpoint gate evidence fields: `cutover_prep_validation.cutover_prep_complete`, endpoint blocker count, and `cutover_proof` checkpoint presence (`pre_window|in_window|post_window`).
+- Rolling meta-stack evidence record template now includes endpoint completion/blocker fields for deterministic closeout packet capture.
+- Runtime track disposition: compatibility-shimmed (runtime contracts unchanged; evidence wiring only).
+- Component track disposition: implemented (endpoint/proof contract now consumable by operator closeout artifacts).
+- P1/P2/P3 impact check: no source-of-truth ownership change; closeout evidence determinism hardening only.
+
+Latest run update (2026-05-03, Slice-D metadata bridge cutover proof packet + endpoint gate):
+
+- Bridge scaffold payload now exposes explicit cutover proof checkpoints (`pre_window`, `in_window`, `post_window`) instead of relying on mixed stage-log inference.
+- Proof checkpoints include authority mode, metadata owner, metadata cutover-active, readiness, and cutover-block reason for deterministic closeout packets.
+- Snapshot now emits an explicit cutover endpoint gate at `cutover_prep_validation.cutover_prep_complete` with checklist and blocker reasons.
+- `get_authority_contract` response now includes `cutover_prep_complete` for one-glance cutover-prep readiness visibility.
+- Runtime track disposition: compatibility-shimmed (legacy metadata write surfaces retained as rollback-safe baseline).
+- Component track disposition: implemented (bridge evidence packet hardening + endpoint gate hardening).
+- P1/P2/P3 impact check: source-of-truth remains migration-bounded; auditability/validation determinism improved.
+
+Latest run update (2026-05-03, Slice-D metadata authority-satisfied trial contract):
+
+- Component metadata trial contract now treats authority as satisfied when either legacy authority is active or component metadata cutover is active.
+- Trial payloads now emit `metadata_authority_owner` and `metadata_cutover_active` for operator-facing validation and closeout evidence.
+- Shared authority contract packet now includes owner/cutover fields so service and diagnostics surfaces are aligned.
+- Runtime track disposition: compatibility-shimmed (legacy metadata write surfaces retained as rollback-safe baseline).
+- Component track disposition: implemented (authority-satisfied trial gate + authority packet enrichment).
+- P1/P2/P3 impact check: source-of-truth remains migration-bounded; cutover progression now follows explicit contract state instead of legacy-only trial assumptions.
+
+Latest run update (2026-05-02, Slice-D metadata authority rewrite kickoff):
+
+- Component coordinator now resolves `metadata_authority_owner` and `metadata_cutover_active` from explicit component authority mode + resolver-cutover readiness instead of hardcoded legacy lock.
+- Metadata bridge validation now accepts active component metadata cutover posture as authority-satisfied and suppresses legacy-trial-stage blockers when that cutover is active.
+- Runtime track disposition: compatibility-shimmed (legacy runtime metadata surfaces retained as rollback baseline).
+- Component track disposition: implemented (metadata authority diagnostics/cutover posture rewrite).
+- P1/P2/P3 impact check: source-of-truth ownership remains migration-bounded; component diagnostics now model real cutover progression instead of static legacy ownership.
+
+Latest run update (2026-05-02, Slice-D sub-slice 36: lean v2.7 test-scope signal):
+
+- parity_stamp: 2026-05-02 / Slice-D-36 / mode=lean_team / batch=9
+- Added explicit test-scope line (`full|targeted|minimal`) for verification-breadth visibility in lean packets.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; verification-breadth signaling hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 37: lean v2.7 contract-delta signal):
+
+- parity_stamp: 2026-05-02 / Slice-D-37 / mode=lean_team / batch=9
+- Added explicit contract-delta line (`none|minor|major`) for compact contract-impact visibility.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; contract-impact signaling hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 38: lean v2.7 communication-note signal):
+
+- parity_stamp: 2026-05-02 / Slice-D-38 / mode=lean_team / batch=9
+- Added communication-note reference line (`N/A` if none) for operational follow-through traceability.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; communication traceability hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 33: lean v2.6 validation-confidence signal):
+
+- parity_stamp: 2026-05-02 / Slice-D-33 / mode=lean_team / batch=8
+- Added explicit validation-confidence line (`high|medium|low`) for uncertainty visibility in lean packets.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; validation-confidence signaling hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 34: lean v2.6 rollback-posture signal):
+
+- parity_stamp: 2026-05-02 / Slice-D-34 / mode=lean_team / batch=8
+- Added explicit rollback-posture line (`safe|needs-attention`) for quick reversibility triage.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; rollback-readiness visibility hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 35: lean v2.6 handoff-note signal):
+
+- parity_stamp: 2026-05-02 / Slice-D-35 / mode=lean_team / batch=8
+- Added handoff-note reference line (`N/A` if none) for reviewer/operator continuity traceability.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; operational continuity signaling hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 30: lean v2.5 change-risk signal):
+
+- parity_stamp: 2026-05-02 / Slice-D-30 / mode=lean_team / batch=7
+- Added explicit change-risk line (`low|medium|high`) in lean core packet for reviewer depth triage.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; review-depth triage clarity hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 31: lean v2.5 follow-up need signal):
+
+- parity_stamp: 2026-05-02 / Slice-D-31 / mode=lean_team / batch=7
+- Added explicit follow-up needed line (`yes|no`) to distinguish ready-to-merge state from post-merge action needs.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; follow-up planning visibility hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 32: lean v2.5 follow-up reference signal):
+
+- parity_stamp: 2026-05-02 / Slice-D-32 / mode=lean_team / batch=7
+- Added follow-up tracking reference line (`N/A` if none) to keep follow-up declarations auditable and durable.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; follow-up traceability hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 27: lean v2.4 core coherence signal):
+
+- parity_stamp: 2026-05-02 / Slice-D-27 / mode=lean_team / batch=6
+- Added explicit core-packet coherence line (`coherent|needs-fix`) for fast packet consistency interpretation.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; packet consistency clarity hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 28: lean v2.4 evidence artifact reference):
+
+- parity_stamp: 2026-05-02 / Slice-D-28 / mode=lean_team / batch=6
+- Added explicit evidence artifact reference line (URL/path or `N/A`) for faster proof-source lookup during review.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; evidence lookup clarity hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 29: lean v2.4 blocker summary signal):
+
+- parity_stamp: 2026-05-02 / Slice-D-29 / mode=lean_team / batch=6
+- Added one-line blocker reason summary (`N/A` when ready) to keep blocked-state interpretation compact and explicit.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; blocker triage clarity hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 24: lean v2.3 blocker verdict signal):
+
+- parity_stamp: 2026-05-02 / Slice-D-24 / mode=lean_team / batch=5
+- Added explicit blocker verdict (`ready|blocked`) for quick merge-readiness interpretation.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; blocker-status clarity hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 25: lean v2.3 optional-section completion summary):
+
+- parity_stamp: 2026-05-02 / Slice-D-25 / mode=lean_team / batch=5
+- Added one-line optional-section completion summary (`A done`, `B done`, `A+B done`, or `none`) for lean reviewer scan.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; optional-section closure visibility hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 26: lean v2.3 reviewer timestamp signal):
+
+- parity_stamp: 2026-05-02 / Slice-D-26 / mode=lean_team / batch=5
+- Added reviewer timestamp (`UTC`) in fast-path attestation for compact recency evidence.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; attestation recency signaling hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 21: lean v2.2 core owner signal):
+
+- parity_stamp: 2026-05-02 / Slice-D-21 / mode=lean_team / batch=4
+- Added explicit core packet owner field to improve packet accountability and reviewer handoff clarity.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; accountability visibility hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 22: lean v2.2 scope summary line):
+
+- parity_stamp: 2026-05-02 / Slice-D-22 / mode=lean_team / batch=4
+- Added one-line scope summary (`A`, `B`, `A+B`, or `none`) to accelerate optional-section expectation checks.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; review scan efficiency hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 23: lean v2.2 evidence freshness hint):
+
+- parity_stamp: 2026-05-02 / Slice-D-23 / mode=lean_team / batch=4
+- Added evidence freshness hint (`fresh|stale`) alongside UTC timestamp for low-overhead recency signaling.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; evidence-readiness interpretation hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 18: lean v2.1 core packet status line):
+
+- parity_stamp: 2026-05-02 / Slice-D-18 / mode=lean_team / batch=3
+- Added explicit core packet status (`complete|incomplete`) for faster reviewer interpretation of packet closure state.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; review-loop signal clarity hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 19: lean v2.1 compact scope toggles):
+
+- parity_stamp: 2026-05-02 / Slice-D-19 / mode=lean_team / batch=3
+- Added compact scope toggles (`yes|no`) for scheduler/shared-contract/runtime-touch checks before optional sections.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; scope-disposition consistency hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 20: lean v2.1 evidence timestamp signal):
+
+- parity_stamp: 2026-05-02 / Slice-D-20 / mode=lean_team / batch=3
+- Added explicit UTC evidence timestamp capture and reviewer fast-path recency check.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; evidence-recency confidence hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 15: lean v2 one-screen core packet):
+
+- parity_stamp: 2026-05-02 / Slice-D-15 / mode=lean_team / batch=2
+- Reduced PR workflow to one-screen required packet while keeping declaration mismatch and evidence blockers strict.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; review throughput hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 16: optional blocks default-N/A):
+
+- parity_stamp: 2026-05-02 / Slice-D-16 / mode=lean_team / batch=2
+- Standardized optional sections to explicit `N/A (not in scope)` defaults unless scope-triggered.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; checklist completion friction reduction only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 17: reviewer fast-path attestation):
+
+- parity_stamp: 2026-05-02 / Slice-D-17 / mode=lean_team / batch=2
+- Added concise reviewer attestation path to confirm blockers/evidence without long-form review boilerplate.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; merge-readiness speedup only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 10: lean template trim):
+
+- parity_stamp: 2026-05-02 / Slice-D-10 / mode=lean_team / batch=1
+- Collapsed PR template to compact core packet with optional scope-driven sections.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; governance friction reduction only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 11: scope trigger matrix):
+
+- parity_stamp: 2026-05-02 / Slice-D-11 / mode=lean_team / batch=1
+- Added explicit skip/complete triggers for optional checklist sections.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; scope confidence hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 12: quick-fill evidence snippets):
+
+- parity_stamp: 2026-05-02 / Slice-D-12 / mode=lean_team / batch=1
+- Added standardized snippet examples for CI/manual declaration-gate evidence packets.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; packet formatting speedup only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 13: lean parity-stamp format):
+
+- parity_stamp: 2026-05-02 / Slice-D-13 / mode=lean_team / batch=1
+- Adopted concise run-note style for roadmap parity updates in lean windows.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; ledger maintenance reduction only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 14: two-person fast-start):
+
+- parity_stamp: 2026-05-02 / Slice-D-14 / mode=lean_team / batch=1
+- Added quick contributor startup path for opening compliant lean PRs with minimal ceremony.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; onboarding acceleration only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 6: lean-team mode activation):
+
+- Activated lean-team governance profile for current two-person execution context.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; throughput hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 7: core-gate minimum packet):
+
+- Established minimum required merge packet and made extended checklist sections conditional by scope.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; review-time reduction hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 8: docs-parity batching policy):
+
+- Added bounded parity batching allowance (up to 4 micro-slices) for lean-team mode.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; docs effort balancing only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 9: masterwork target non-blocking during lean execution):
+
+- Shifted masterwork controls to strategic non-blocking targets during lean execution while preserving blocker-critical controls.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; operational focus hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 5: manual-waiver tracking reference contract):
+
+- Added mandatory waiver-tracking reference evidence for `manual_enforced_now` gate posture in PR governance workflow.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; waiver traceability hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 4: manual-to-CI cutover target contract):
+
+- Added required transition-target-date evidence for `manual_enforced_now` gate posture in PR governance packet.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; governance transition accountability hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 3: CI verdict contract):
+
+- Added CI verdict and failed-run reason requirements for `ci_enforced` declaration-gate packets in PR governance workflow.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; CI governance clarity hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 2: manual-gate waiver expiry contract):
+
+- Added manual-gate waiver owner + expiry requirements for bounded exception accountability under `manual_enforced_now` mode.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; exception lifecycle accountability hardening only.
+
+Latest run update (2026-05-02, Slice-D sub-slice 1: CI evidence contract):
+
+- Added CI-evidence packet requirements for `ci_enforced` PR declaration-gate mode (workflow/job identity and run URL evidence).
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; PR enforcement evidence quality hardening only.
+
+Latest run update (2026-05-02, Slice-D kickoff: declaration gate mode contract):
+
+- Added explicit PR declaration-gate mode capture (`manual_enforced_now` or `ci_enforced`) to support a deterministic migration path from manual reviewer checks to CI-based enforcement.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; enforcement-mode traceability hardening only.
+
+Latest run update (2026-05-02, Slice-C declaration-vs-diff merge-blocker hardening):
+
+- Tightened component-only guardrail so runtime-file diffs are explicitly merge-blocking when issue declaration remains `component_only_declared`.
+- Added bounded exception evidence completion requirement to clear mismatch blockers during PR review.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; component-scope governance clarity hardening only.
+
+Latest run update (2026-05-02, Slice-C component-only declaration enforcement):
+
+- Added component-only declaration enforcement at intake and PR review so runtime-touch intent is explicit and reconciled against actual changed files.
+- Added mismatch handling requirement: declaration-vs-diff divergence must include bounded-exception rationale and tracking reference.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; component-first execution-scope integrity hardening only.
+
+Latest run update (2026-05-02, Slice-C component-target file evidence):
+
+- Added component-target file evidence requirements in issue/PR workflow to make component-first slice planning explicit and reviewer-checkable.
+- Added PR reconciliation fields for planned component files vs actual changed files with divergence rationale when mismatched.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; component-scope execution clarity hardening only.
+
+Latest run update (2026-05-02, Slice-C component-first merge-blocker enforcement):
+
+- Elevated component-first governance checks to merge-blocker policy when reconciliation/legacy-exception evidence is absent.
+- Added explicit legacy-exception tracking-reference evidence requirement across intake/PR workflow (`N/A` when not applicable).
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; enforcement auditability hardening only.
+
+Latest run update (2026-05-02, Slice-C component-first execution gate):
+
+- Added component-first execution gate language across issue/PR and governance workflow docs so new behavior/contract slices default to `custom_components/spectra_ls`.
+- Legacy/runtime touches are now explicitly exception-only with bounded rationale and reviewer acknowledgment requirements.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; component-first routing hardening only.
+
+Latest run update (2026-05-02, Slice-C reconciliation evidence + reviewer attestation):
+
+- Extended scheduler/metadata-bridge governance wording to require reviewer attestation that issue↔PR reconciliation evidence is verified before merge readiness.
+- Added issue intake routing pointer to PR reconciliation requirements to improve pre-PR enforcement visibility.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; reconciliation enforcement auditability hardening only.
+
+Latest run update (2026-05-02, Slice-C issue↔PR reconciliation governance closure):
+
+- Propagated mandatory issue↔PR lane/owner reconciliation wording through contributor/governance workflow docs to align intake and review contracts across templates + documentation.
+- Standardized required reconciliation packet: linked issue IDs, issue intake lane/owner, PR lane/owner, and mandatory mismatch rationale (`N/A` only when no mismatch).
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; governance consistency and enforcement clarity hardening only.
+
+Latest run update (2026-05-02, Slice-C issue↔PR lane-reclassification rationale enforcement):
+
+- Tightened bug/feature issue forms so scheduler/metadata-bridge lane and owner routing are recorded as intake baseline, explicitly feeding PR integrity review.
+- Added required PR checklist reconciliation block for linked issue lane/owner vs PR lane/owner, with mandatory mismatch rationale capture.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; issue-to-PR governance enforcement hardening only.
+
+Latest run update (2026-05-02, Slice-C wiki intake + workflow parity):
+
+- Updated wiki workflow pages so scheduler/metadata-bridge issue intake guidance and PR integrity expectations are aligned in one operator path.
+- Added explicit lane classification, canonical owner-file routing, and parity-anchor expectation notes to bug-intake and contributing flow pages.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; wiki/operator workflow parity hardening only.
+
+Latest run update (2026-05-02, Slice-C issue-intake integrity wiring):
+
+- Added scheduler/metadata-bridge lane classification and canonical owner-file routing prompts directly into bug/feature issue forms.
+- Linked issue intake routing to contributor workflow guidance so write-path integrity checks begin before coding and PR review.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; intake-stage governance hardening only.
+
+Latest run update (2026-05-02, Slice-C governance propagation pack):
+
+- Extended Slice-C enforcement into governance intake/execution standards by updating `CONTRIBUTING.md`, `.github/copilot-instructions.md`, and `docs/governance/GITHUB-MASTERWORK-BLUEPRINT.md`.
+- Scheduler/metadata-bridge integrity checks are now visible before coding, during implementation policy review, and at PR quality checkpoints.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; governance coverage hardening only.
+
+Latest run update (2026-05-02, Slice-C PR workflow wiring):
+
+- Integrated Slice-C scheduler/metadata-bridge enforcement checks directly into `.github/pull_request_template.md`.
+- PR flow now explicitly captures lane classification, canonical owner routing, parity-anchor status, no-go guard confirmation, and paired-review completion.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; workflow enforcement hardening only.
+
+Latest run update (2026-05-02, Slice-C enforcement micro-checklist activation):
+
+- Extended Slice C with a scheduler/metadata-bridge enforcement micro-checklist in `docs/notes/NOTES-engineering-rigor.md` to operationalize owner-matrix usage.
+- Checklist requires lane classification, canonical owner routing, paired-review confirmation, parity-anchor disposition, and no-go verification before merge.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; execution-discipline hardening only.
+
+Latest run update (2026-05-02, Slice-C owner quick-reference matrix kickoff):
+
+- Started Slice C with a compact scheduler/metadata-bridge owner quick-reference matrix in `docs/notes/NOTES-engineering-rigor.md` for fast canonical file routing.
+- Matrix captures `edit-here` owners, `do-not-fork` boundaries, and paired review requirements for behavior-visible write-path changes.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; anti-mispatch execution clarity hardening only.
+
+Latest run update (2026-05-02, Slice-B scheduler + metadata bridge ownership integrity map):
+
+- Extended Slice-A ownership-integrity guardrails with a compact service/write-path ownership map for scheduler and metadata bridge lanes in `docs/notes/NOTES-engineering-rigor.md`.
+- Added lane-specific canonical owner files, mutation boundaries, preflight anti-mispatch checks, and no-go conditions to reduce wrong-file behavior edits.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; write-path boundary integrity hardening only.
+
+Latest run update (2026-05-02, Slice-A fabric ownership integrity capture):
+
+- Published explicit data-fabric file ownership guardrails in `docs/notes/NOTES-engineering-rigor.md` to prevent wrong-file contract edits and local packet-shape forks.
+- Guardrails include canonical owner map, anti-mispatch pre-edit checks, no-go conditions, and required parity-anchor verification for runtime/component tracks.
+- Runtime track disposition: compatibility-shimmed (governance/docs-only).
+- Component track disposition: compatibility-shimmed (governance/docs-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; execution-discipline and file-boundary integrity hardening only.
+
+Plan Delta (2026-05-02, component-first canonical playback data-fabric direction):
+
+- Scope-discipline update: active file-level no-miss ledger is now tracked in `docs/notes/NOTES-engineering-rigor.md` under `Active scoped execution ledger (file-level, no-miss contract)` and must be updated in-slice whenever authority/naming contracts are touched in code.
+
+- Architecture governance contract is now formally anchored in `docs/architecture/COMPONENT-DATA-FABRIC-ARCHITECTURE.md` (placed after core design goals and before canonical model) with token-locked MA authority semantics: `health.authority_mode` = `ma_primary | ma_degraded_fallback`; degraded reasons include `ma_degraded_fallback_active`, `ma_payload_stale`, `ma_payload_shape_invalid`, and `ma_api_unreachable`.
+
+- Direction change recorded: next-step robustness work will prioritize component-owned canonical playback contract architecture over incremental legacy inline fallback growth.
+- New architecture spec published: `docs/architecture/COMPONENT-DATA-FABRIC-ARCHITECTURE.md`.
+- Execution slices queued under component lane:
+  - `CDF-S01`: canonical model + adapter scaffolding,
+  - `CDF-S02`: field-level resolver + provenance/confidence scoring,
+  - `CDF-S03`: compatibility projection + parity bridge,
+  - `CDF-S04`: cutover gate with rollback-safe authority controls.
+- Runtime track disposition: compatibility-shimmed (no ownership expansion in this plan-delta slice).
+- Component track disposition: implemented (architecture/system-design target published; execution queued by CDF slices).
+- P1/P2/P3 impact check: no source-of-truth ownership change in this slice; anti-collapse component architecture path formalized.
+
+- Runtime track now resolves progress duration with MA-authoritative multi-source augmentation (MA payload + MA-managed peer-entity fallback by track identity), addressing active-playback duration dropouts when selected renderer entities expose progress position but not duration.
+- Component track now exposes explicit metadata-prep diagnostics for active-playback progress contract readiness (`playing_with_missing_duration_contract`) so parity validation fails on real progress-contract gaps instead of masking them under generic freshness checks.
+- Runtime track disposition: implemented (progress contract hardening).
+- Component track disposition: implemented (diagnostics parity hardening).
+- P1/P2/P3 impact check: no source-of-truth ownership change; systemic progress-contract correctness hardening only.
+
+- Updated user/operator/contributor doc entry points with explicit path routing and completion checkpoints.
+- Added symptom-based runbook routing and stronger bug-intake prechecks for higher-quality issue packets.
+- Runtime track disposition: compatibility-shimmed (documentation-only).
+- Component track disposition: compatibility-shimmed (documentation-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; reader journey and workflow clarity hardening only.
+
+Latest run update (2026-04-29, docs parity sweep):
+
+- Completed README-through-wiki documentation currency pass and synchronized release/deploy guidance with active runtime/component status language.
+- Added explicit operator guidance for ESPHome 2026.4.x OTA platform schema and release-tag-based HACS publication cadence.
+- Runtime track disposition: compatibility-shimmed (documentation-only).
+- Component track disposition: compatibility-shimmed (documentation-only).
+- P1/P2/P3 impact check: no source-of-truth ownership change; documentation parity hardening only.
+
+Latest run update (2026-04-26, parity build-out slice):
+
+- Component migration now mirrors legacy selection lock lifecycle behaviors for active migration windows:
+  - ambiguous-select lock behavior,
+  - stale-meta unlock behavior (5-second hold semantics),
+  - guarded auto-select loop triggering on parity-relevant state transitions.
+- Runtime track disposition: compatibility-shimmed (legacy automation ownership remains rollback-safe baseline).
+- Component track disposition: implemented (coordinator-side parity behavior under guarded component authority).
+- Version-parity review: no metadata-version bump required on runtime helper contracts; component behavior surface expanded without contract rename.
+
+Latest run update (2026-04-26, no-control feedback lifecycle parity):
+
+- Closed parity gap for legacy `ma_feedback_no_control_capable_hosts` lifecycle by implementing component-side equivalent behavior in guarded migration windows.
+- Implemented component lifecycle semantics: 30s hold, one-shot self-heal via component target-options/auto-select scaffold paths, post-heal 10s persistence check, and persistent notification create/dismiss (`spectra_ls_no_control_capable_hosts`).
+- Runtime track disposition: compatibility-shimmed (legacy automation remains rollback-safe baseline).
+- Component track disposition: implemented (feedback lifecycle parity completed).
+- P1/P2/P3 impact check: no source-of-truth ownership change; bounded parity + operator feedback hardening only.
+
+Latest run update (2026-04-26, MA-players options-refresh parity):
+
+- Closed parity gap where component MA-player-change listener path did not guarantee target-options refresh ahead of auto-select.
+- Implemented additive sequencing: component now refreshes target-options scaffold first, then runs guarded auto-select loop on MA-player-change events in component-authority windows.
+- Extended candidate synthesis additively with capability-aware registry/profile inputs (`control_capable`, resolved host, supported control path, availability quality) to fit current component architecture without rewrite.
+- Runtime track disposition: compatibility-shimmed (legacy automation retained as rollback baseline).
+- Component track disposition: implemented (players-change sequencing parity + additive capability-aware candidate feed).
+- P1/P2/P3 impact check: no source-of-truth ownership change; bounded parity/options freshness hardening only.
+
+Latest run update (2026-04-26, runtime/ESP handoff-latency optimization):
+
+- Runtime automation cadence hardened with event-driven refresh triggers (`sensor.ma_detected_receiver_entity`, `sensor.now_playing_entity`) for target-options/auto-select flow so handoff does not wait for `/5` periodic timing windows.
+- ESP active-target ingest path now issues an optimistic control-host refresh push (`sensor.ma_control_targets`, `sensor.ma_control_hosts`, `sensor.ma_control_host`) immediately after target changes.
+- Runtime track disposition: implemented (handoff latency reduction in legacy authority lane).
+- Component track disposition: compatibility-shimmed (no component behavior/ownership change in this slice).
+- P1/P2/P3 impact check: no source-of-truth ownership change; runtime responsiveness hardening only.
+
+Latest run update (2026-04-27, component parity + ESP handoff/OLED visibility):
+
+- Component trigger parity expanded so detected-receiver and now-playing-entity state changes execute the same additive players-change refresh sequence used for MA-players parity (`target-options` scaffold refresh then guarded auto-select).
+- ESP exports explicit HA-visible diagnostics sensors for handoff status, control target, and OLED/UI state so operator templates can verify end-to-end handoff posture without log-only inspection.
+- Deterministic scheduler validation template now includes an ESP status section with resilient runtime fallback reporting when ESP telemetry entities are not yet exposed.
+- Runtime track disposition: implemented (ESP telemetry observability expansion).
+- Component track disposition: implemented (trigger parity expansion).
+- P1/P2/P3 impact check: no source-of-truth ownership change; parity/observability hardening only.
+
+Latest run update (2026-04-27, component startup no-mix + ESP diagnostics source/modality):
+
+- Startup recovery behavior in component-authority windows now executes component-only recovery sequencing (target-options scaffold + guarded auto-select scaffold) and skips legacy-trial bridge transitions to avoid mixed-authority boot windows.
+- Deterministic scheduler validation diagnostics now report source provenance and playback modality context in the ESP diagnostics block (source entity/value/reason, active playback player/modality classification, and available source options from control-host candidate surfaces).
+- Runtime track disposition: implemented (diagnostics visibility expansion via existing runtime contracts).
+- Component track disposition: implemented (component startup no-mix hardening + diagnostics parity expansion).
+- Version-parity review: runtime/version metadata unchanged for contract IDs; component diagnostics/boot behavior expanded without helper/entity rename.
+
+Latest run update (2026-04-27, HA-reboot-safe ESP forced-refresh guard hardening):
+
+- Runtime active-target handoff acceleration now uses HA API reconnect grace + template-feed readiness checks before ESP issues forced updates for `sensor.ma_control_targets`, `sensor.ma_control_hosts`, and `sensor.ma_control_host`.
+- This addresses reboot race conditions where HA restarted while ESP uptime remained high, causing unsafe template force-update timing.
+- Runtime track disposition: implemented (reconnect-safe forced-refresh guard hardening).
+- Component track disposition: checked/not-applicable (component path does not originate these ESP-side force-update calls).
+- P1/P2/P3 impact check: no source-of-truth ownership change; startup/reconnect race hardening only.
+
+Latest run update (2026-04-27, startup handoff deadspot reduction):
+
+- Runtime cadence in `packages/ma_control_hub/automation.inc` is tightened to reduce startup deadspots: startup refresh delay reduced to 15s, periodic refresh increased to 1-minute cadence (`/1`), and restore-last-valid now re-attempts on early MA/control-target feed state changes.
+- Component startup auto-recovery cadence in `custom_components/spectra_ls/coordinator.py` is tightened: initial delay reduced to 4s, retry interval reduced to 8s, and max wait cycles reduced to 20 for faster readiness retries.
+- Runtime track disposition: implemented (startup/handoff latency reduction).
+- Component track disposition: implemented (startup recovery cadence hardening).
+- P1/P2/P3 impact check: no source-of-truth ownership change; bounded startup latency/recovery responsiveness hardening only.
+
+## P1/P2 validation snapshot (2026-04-19)
+
+Validated now:
+
+- P2 verification template score observed at `8/8` with deterministic route decision and contract-valid diagnostics.
+- Component diagnostic surfaces now include `registry`, `route_trace`, `contract_validation`, and `captured_at` freshness gating.
+- Legacy source-of-truth surfaces remain in place (`sensor.ma_*` / `binary_sensor.ma_*`) and component remains read-only.
+
+Known evidence boundary (explicit):
+
+- Validation is strong for documented parity templates and code-surface audit, but live HA runtime can still drift due to environment timing/restart state.
+- Any Phase 3 write-path activation must re-run parity templates and include fresh proof artifacts in the same change set.
+
+Latest runtime proof artifact (2026-04-19):
+
+- P2 verification output: `PASS`, score `8/8`.
+- Route trace decision: `route_linkplay_tcp`.
+- Contract validation: `ready=true`, `valid=true`, `missing_required=0`.
+- Parity drift: `unresolved_sources=0`, `mismatches=0`.
+- Snapshot freshness: `true` (captured-at age within threshold).
+
+## Phase 0 — Charter + contract freeze
+
+- Publish this roadmap and baseline contract inventory.
+- Add required parallel-program policy in `.github/copilot-instructions.md`.
+- Add synchronized phase section in `v-next-NOTES.md`.
+
+### Phase 0 exit criteria
+
+- Policy, roadmap, and v-next phase map are all present and consistent.
+
+## Phase 1 — Skeleton + shadow mode (read-only)
+
+- Scaffold:
+  - `custom_components/spectra_ls/manifest.json`
+  - `__init__.py`, `const.py`, `config_flow.py`, `coordinator.py`, `diagnostics.py`
+- Implement read-only parity entities for route/meta/status outputs.
+- Add parity diagnostics (`legacy` vs `component`) with explicit mismatch reporting.
+
+### Phase 1 exit criteria
+
+- Shadow entities publish stable outputs with no control-path side effects.
+
+### Phase 1 Slice-01 (Draft) — Shadow parity for routing core
+
+#### Slice objective
+
+Implement the first read-only parity slice for routing core visibility without introducing any write-path behavior.
+
+#### Scope (in)
+
+- Scaffold component core files if missing:
+  - `custom_components/spectra_ls/manifest.json`
+  - `custom_components/spectra_ls/__init__.py`
+  - `custom_components/spectra_ls/const.py`
+  - `custom_components/spectra_ls/config_flow.py`
+  - `custom_components/spectra_ls/coordinator.py`
+  - `custom_components/spectra_ls/diagnostics.py`
+- Publish read-only parity sensors for these legacy surfaces:
+  - `sensor.ma_active_target`
+  - `sensor.ma_active_control_path`
+  - `binary_sensor.ma_active_control_capable`
+  - `sensor.ma_control_hosts`
+
+#### Scope (out)
+
+- No control writes/services changing active target or host route.
+- No helper/entity ID migrations.
+- No dual-write behavior in this slice.
+
+#### Runtime and component track disposition (required)
+
+- **Track A (current runtime):** `implemented` (existing package logic remains source of truth)
+- **Track B (custom component):** `implemented` as read-only shadows
+- **Parity note:** required before slice close (pass/fail + mismatch list)
+
+#### Acceptance criteria
+
+1. Component parity entities update within normal HA template cadence.
+2. Values match legacy semantics for non-error states.
+3. On unresolved source data, parity entities degrade with explicit diagnostics (not silent fallback writes).
+4. No side-effect service calls are emitted by the component in this slice.
+5. Existing dashboards/scripts that rely on legacy entities continue unchanged.
+
+#### Verification checklist
+
+- Compare legacy and component values for all four parity surfaces across:
+  - boot/reload,
+  - active playback,
+  - idle/no-target,
+  - transient ambiguity.
+- Confirm no `climate`/`media_player`/`light` write services are called by the component.
+- Capture one parity report artifact in diagnostics output.
+
+#### README parity decision template (required)
+
+- `README parity: required` when architecture/operator workflow meaningfully changes.
+- `README parity: no material repo-state change` when slice is read-only internal scaffolding.
+
+## Phase 2 — Registry + router foundation
+
+- Implement normalized target registry.
+- Implement adapter router with `linkplay_tcp` support only.
+- Add maintenance services:
+  - `spectra_ls.rebuild_registry`
+  - `spectra_ls.validate_contracts`
+  - `spectra_ls.dump_route_trace`
+
+### Phase 2 exit criteria
+
+- Registry and router are deterministic and discovery-first on clean installs.
+
+## Phase 3 — Controlled write path (dual-write)
+
+- Slice into explicit sub-phases to prevent blended ownership:
+  - **P3-S01 (Routing write path only):** target + host route writes behind a runtime authority switch.
+  - **P3-S02 (Selection handoff):** controlled handoff of target-selection orchestration with legacy compatibility shims.
+  - **P3-S03 (Metadata prep):** metadata ownership instrumentation and parity checks, no premature full metadata cutover.
+- Preserve existing helper/script endpoints expected by ESPHome and dashboards.
+- Add anti-loop safeguards (correlation IDs/debounce windows/reentrancy guards + single-writer guard).
+- Keep fallback policy explicit: no silent static-fallback enablement when fallback is configured off.
+
+### P3-S01 implementation status (2026-04-19)
+
+Implemented in component:
+
+- Single-writer authority mode control (`legacy` default, `component` opt-in) via service contract.
+- Guarded manual route-write trial service bound to route-trace decision eligibility.
+- Loop/flap protections: authority gate, debounce window, reentrancy guard, and correlation IDs.
+- Write-control diagnostics exposed in shadow entity attributes and coordinator snapshot.
+
+Closeout status (2026-04-20):
+
+- runtime trial and soak evidence captured under `component` authority mode,
+- no remaining P3-S01 parity/soak blockers,
+- slice sealed in final P3 closeout checkpoint below.
+
+### P3-S02 implementation checkpoint (2026-04-19)
+
+Implemented in component:
+
+- one-shot `run_p3_s02_sequence` orchestration for selection-handoff validation,
+- optional guarded write-trial execution inside the sequence (explicit operator toggle),
+- snapshot diagnostics payload `selection_handoff_validation` for helper/options + legacy compatibility shim checks,
+- raw operator template for S02 verdict checks (`docs/testing/raw/p3_s02_selection_handoff_validation.jinja`).
+
+Closeout decision (2026-04-19):
+
+- sustained runtime evidence captured with stable S01/S02 PASS behavior and clean compatibility/parity signals.
+- soak gate satisfied at baseline (3 PASS cycles across 5 attempts) with expected non-capable soft-skip behavior.
+- explicit single-capable-topology waiver applied for the distinct PASS-target gate.
+- future reruns should use `docs/testing/raw/p3_s01_s02_closure_gate_check.jinja` for deterministic repeatable closure evidence.
+
+Latest runtime proof artifact (2026-04-19):
+
+- Template verdict: `PASS` (`p3_s02_selection_handoff_validation.jinja`).
+- Authority/route: `component` + `route_linkplay_tcp`.
+- Contract validation: `ready=true`, `valid=true`.
+- Handoff diagnostics: `payload_ready=true`, `verdict=PASS`, `helper_exists=true`, `target_in_options=true`, `missing_scripts=0`, `missing_automation_ids=0`.
+
+Latest soak runtime artifact (2026-04-19):
+
+- Automated script result: `Spectra soak complete` from `script.spectra_p3_soak_one_shot`.
+- Soak evidence: `3` successful cycles in `5` attempts.
+- PASS-cycle diagnostics: `route=route_linkplay_tcp`, `contract_valid=True`, `handoff=PASS`.
+- Compatibility/parity maintained: `missing_scripts=0`, `missing_automation_ids=0`, `unresolved_sources=0`, `mismatches=0`.
+- Non-capable target behavior: soft-skips on `route=defer_not_capable` observed and tolerated by soak automation.
+- Closure gate note: baseline soak stability met; distinct PASS-target gate remains open unless explicitly waived for single-capable-topology operation.
+
+### Stage report snapshot — ownership + readiness (2026-04-19)
+
+- Current ownership boundary:
+  - **Legacy runtime (`packages/ma_control_hub/*.inc`) still owns** broad production selection/control orchestration.
+  - **Component track (`custom_components/spectra_ls`) owns** parity/diagnostics, S01/S02 one-shot orchestration, and guarded routing write-trial scaffolding.
+- Readiness call:
+  - **Closure-ready and sealed for P3-S02** with final soak evidence (`3/3` successful cycles in `4` attempts, `distinct_pass_targets=2`).
+  - Distinct PASS-target gate satisfied without waiver in the final run.
+
+### P3-S03 implementation checkpoint (2026-04-19)
+
+Implemented in component:
+
+- coordinator metadata-prep diagnostics payload (`metadata_prep_validation`) with deterministic readiness verdict,
+- explicit metadata contract checks (`sensor.ma_active_meta_entity`, `sensor.now_playing_entity`, `sensor.now_playing_state`, `sensor.now_playing_title`, `sensor.ma_meta_candidates`),
+- new services: `spectra_ls.validate_metadata_prep` and `spectra_ls.run_p3_s03_sequence`,
+- raw validation template for repeatable operator evidence: `docs/testing/raw/p3_s03_metadata_prep_validation.jinja`.
+
+Closeout decision (2026-04-19):
+
+- runtime S03 validation captured at `PASS` with full gate score (`7/7`) and `ready_for_metadata_handoff=true`,
+- metadata contract checks report zero missing required entities/keys,
+- explicit compatibility boundary retained: metadata ownership remains legacy/runtime (component remains diagnostics/validation lane),
+- runtime route/selection context outside the S03 target window can remain non-cutover (`defer_not_capable`, legacy authority, S02 FAIL) and is not a P3-S03 diagnostics blocker.
+
+Latest runtime proof artifact (2026-04-19):
+
+- Template verdict: `PASS` (`docs/testing/raw/p3_s03_metadata_prep_validation.jinja`).
+- Gate score: `7/7`.
+- Metadata-prep readiness: `true`.
+- Contract detail: `missing_required=0`, `missing_keys=[]`.
+
+Final runtime proof snapshot (2026-04-19 22:51 local):
+
+- Active target/path: `media_player.spectra_ls_2` / `linkplay_tcp`.
+- Metadata probes resolved in validation output (`active_meta_entity`, `now_playing_entity`, `now_playing_state`, `now_playing_title`).
+- All S03 gates true with `missing_required=0`.
+- Compatibility boundary retained by design: non-cutover route/selection context (`defer_not_capable`, legacy authority, S02 FAIL) does not block diagnostics-only S03 closeout.
+
+### P3-H1 second-pass hardening checkpoint (2026-04-19)
+
+Implemented reliability hardening with no authority expansion:
+
+- broader coordinator state-listener coverage for helper/metadata control surfaces,
+- stricter metadata-candidate readiness checks to reject empty/non-meaningful candidate payloads,
+- closure gate consistency guard for soak attempts versus pass cycles,
+- freshness gates added in P3 raw validation templates to avoid stale PASS interpretations.
+
+Track disposition:
+
+- Runtime track: implemented as compatibility-preserving hardening only.
+- Component track: implemented in diagnostics/validation lane.
+- Parity note: no contract rename/cutover; re-run P3 templates for refreshed runtime evidence on next validation cycle.
+
+### P3-H2 closure-gate soak parity checkpoint (2026-04-19)
+
+Closeout template correctness update:
+
+- add explicit soak-evidence input `observed_parity_ok` to closure gate,
+- use observed parity when `evaluation_mode=soak_evidence` while still exposing runtime parity as a diagnostic companion signal,
+- maintain `runtime` mode behavior unchanged for strict live validation.
+
+### P3-H3 closure-gate fail-closed checkpoint (2026-04-19)
+
+Closure integrity hardening:
+
+- default closure inputs changed to fail-closed values,
+- soak-evidence mode now requires explicit evidence provenance/freshness fields (source, reference, collected-at <=24h),
+- invalid/missing provenance now hard-fails closure to enforce evidence-backed sign-off quality.
+
+### P3 final closeout checkpoint (2026-04-20)
+
+Final sealing evidence captured:
+
+- Soak automation completion: `Spectra soak complete` with `3` successful cycles in `4` attempts and `distinct_pass_targets=2`.
+- PASS-cycle diagnostics remained deterministic: `route=route_linkplay_tcp`, `contract_valid=True`, `handoff=PASS`.
+- Closure-gate mode semantics clarified and enforced (`soak_evidence` closure-grade; `runtime` health-check-only).
+- Metadata candidate payload parity verification: `PASS 5/5` with aligned `candidate_rows_json`, `candidate_summary_json`, and `best_candidate_json`.
+
+Seal decision:
+
+- **P3-S01:** sealed.
+- **P3-S02:** sealed.
+- **P3-S03:** sealed (diagnostics-only metadata ownership boundary retained).
+- **Phase 3 overall:** sealed; Phase-4 validation now sealed through F4-S03.
+
+### Phase 4 bounded slice plan (execution-ready)
+
+| Slice | Scope | Runtime Track | Component Track | Exit gate |
+| --- | --- | --- | --- | --- |
+| F4-S01 | Capability matrix + profile scaffolding | Preserve existing helper behavior/contracts; no ownership cutover | Add profile schema skeleton + capability-map diagnostics surfaces | Deterministic diagnostics output; parity clean |
+| F4-S02 | Programmable action catalog safety skeleton | Keep legacy action flows authoritative | Add arm/confirm/cooldown/audit schema + dry-run validation service | Safety-gate diagnostics pass |
+| F4-S03 | Crossfade/balance service contract (diagnostics-first) | Keep current runtime control lane | Add normalized slider-domain contract + no-op service validation path | Contract + diagnostics pass with no authority expansion |
+
+### F4-S01 implementation checkpoint (2026-04-19)
+
+Implemented in component:
+
+- coordinator diagnostics payload `capability_profile_validation`,
+- capability matrix summary from registry entries (paths/families/capabilities/control-capable counts),
+- deterministic profile-schema scaffolding surface for next-slice consumers,
+- no-authority-expansion check and visibility in diagnostics,
+- services: `spectra_ls.validate_capability_profile` and `spectra_ls.run_f4_s01_sequence`,
+- raw operator template: `docs/testing/raw/f4_s01_capability_profile_validation.jinja`.
+
+F4-S01 closeout evidence (2026-04-20):
+
+- Runtime closure artifact captured with **PASS** (`gate_score=6/6`, timestamp `2026-04-20 03:14:23.318195-07:00`).
+- Authority/ownership check passed: `authority_mode=legacy`, `no_authority_expansion=true`.
+- Route/contract/metadata checks passed: `route=route_linkplay_tcp`, `contract_valid=true`, `metadata_prep_ready=true`.
+
+Seal decision:
+
+- **F4-S01:** sealed/validated.
+- Continue active work on **F4-S02** diagnostics lane.
+
+### F4-S02 implementation checkpoint (2026-04-20)
+
+Implemented in component:
+
+- coordinator diagnostics payload `action_catalog_validation`,
+- deterministic action-schema contract surface (including required `safety` keys),
+- diagnostics-only action catalog rows with explicit `dry_run_only` posture,
+- no-authority-expansion and F4-S01 readiness checks,
+- services: `spectra_ls.validate_action_catalog` and `spectra_ls.run_f4_s02_sequence`,
+- raw operator template: `docs/testing/raw/f4_s02_action_catalog_validation.jinja`.
+
+F4-S02 closeout evidence (2026-04-20):
+
+- Runtime closure artifact captured with **PASS** (`gate_score=7/7`, timestamp `2026-04-20 03:19:04.074224-07:00`).
+- Authority/safety checks passed: `authority_mode=legacy`, `dry_run_only=true`, `no_authority_expansion=true`.
+- Dependency check passed: `f4_s01_ready_reference=true`.
+
+Seal decision:
+
+- **F4-S02:** sealed/validated.
+- Continue Phase-4 execution on active **F4-S03** diagnostics lane.
+
+### F4-S03 implementation checkpoint (2026-04-20)
+
+Implemented in component:
+
+- coordinator diagnostics payload `crossfade_balance_validation`,
+- normalized slider-domain contract schema (`f4_s03.v1`) and mode-profile diagnostics,
+- sample dry-run mix-plan diagnostics (no-op/fallback visibility),
+- services: `spectra_ls.validate_crossfade_balance`, `spectra_ls.run_f4_s03_sequence`,
+- raw operator template: `docs/testing/raw/f4_s03_crossfade_balance_validation.jinja`.
+
+Hardening pass-2 (2026-04-20):
+
+- F4 one-shot sequence services (`run_f4_s01_sequence`, `run_f4_s02_sequence`, `run_f4_s03_sequence`) now report explicit stage-failure context when action execution errors occur, improving operator debugging and reducing opaque "Unknown error" outcomes.
+- F4-S03 dependency access is now guarded against nullable action-catalog payloads during snapshot builds and callback refresh failures are contained to logged diagnostics, preventing repeated event-dispatch exception cascades.
+
+Hardening pass-3 (2026-04-20):
+
+- F4-S03 payload now includes explicit dependency context (`active_target_resolved`, `route_decision`, `blocking_reasons`) and operator validation template guidance for dependency-only/no-target WARN captures (`f4_s02_not_ready`, `route_deferred_no_target`) with deterministic legacy-mode rerun order.
+
+Hardening pass-4 (2026-04-20):
+
+- Fixed accidental function-split regression where F4-S02 action-catalog builder could return `None` after F4-S03 insertion, causing persistent false dependency WARN gates in F4-S03; restored full F4-S02 payload return path.
+
+F4-S03 closeout evidence (2026-04-20):
+
+- Runtime closure artifact captured with **PASS** (`gate_score=8/8`, timestamp `2026-04-20 03:57:35.874550-07:00`).
+- Authority/safety checks passed: `authority_mode=legacy`, `no_authority_expansion=true`.
+- Dependency and route checks passed: `ready_for_f4_s03_closeout=true`, `f4_s02_ready_reference=true`, `route_decision=route_linkplay_tcp`, `active_target=media_player.spectra_ls_2`, `active_path=linkplay_tcp`.
+- Contract checks passed: `slider_schema_present=true`, `mode_profiles_present=true`, `sample_mix_plan.dry_run_only=true`, `dependency_reference.active_target_resolved=true`.
+
+Seal decision:
+
+- **F4-S03:** sealed/validated.
+- **Phase 4 bounded diagnostics slice set (F4-S01/F4-S02/F4-S03):** sealed/validated.
+
+P1/P2/P3 impact check (required):
+
+- **P1 impact:** none; shadow parity surfaces remain read-only and unchanged.
+- **P2 impact:** none; registry/router diagnostics contract remains unchanged and validated by closeout route context.
+- **P3 impact:** none; guarded write-path authority model remains unchanged (`legacy` retained in F4 diagnostics lane).
+
+### Phase 3 exit criteria
+
+- No route or selection flapping under dual-write operation.
+- Single-writer authority is provable at any instant (legacy or component, never both).
+- Rollback switch restores legacy authority without contract breakage.
+- P2 parity templates still PASS after P3-S01 and P3-S02 trials.
+
+## Phase 4 — Functional expansion beyond setup/settings
+
+- Mode engine APIs for hardware-first policy.
+- Profile APIs + options flow integration.
+- Programmable action catalog.
+- Crossfade/balance service layer implementation.
+- Capability-matrix gating for per-feature routing (not only boolean control-capable).
+
+### Phase 4 exit criteria
+
+- New features operate through component contracts while legacy surfaces remain intact.
+- Sensitive actions use explicit safety gates (confirm/cooldown/audit).
+
+### Phase 5 entry criteria delta note (2026-04-20)
+
+Post-F4 closeout, Phase 5 remains gated and should not auto-start from sealed diagnostics status alone.
+
+Required entry gates:
+
+1. **Authority baseline gate:** `legacy` remains default owner; cutover authority is explicitly armed per slice and reversible.
+2. **Parity gate:** P2 parity/contract verification remains PASS after enabling any Phase 5 domain flag.
+3. **Isolation gate:** only one cutover domain per slice (`routing`, then `metadata`, then optional `lighting orchestration`).
+4. **Rollback gate:** each slice includes tested rollback path + explicit stop conditions (loop/flap, contract mismatch, missing compatibility surfaces).
+5. **Evidence gate:** each slice captures fresh runtime evidence before status can move Active → Validated.
+
+Disposition:
+
+- Phase 5 remains **In Progress** with domain-isolated slice gating; additional slices activate only after required gates are satisfied for the selected domain.
+- No P1/P2/P3 source-of-truth or authority change is enacted by this delta note.
+
+## Phase 5 — Domain cutover + legacy retirement
+
+- Cut over by domain in small slices:
+  1) routing
+  2) metadata
+  3) optional lighting orchestration
+- Retire duplicated template logic only after parity soak.
+- Keep naming cleanup deferred to existing trigger gates.
+
+### Phase 5 starter slice card — P5-S01 (routing domain)
+
+Status: **Validated**
+
+Scope:
+
+- **In:** routing-domain cutover trial only (component-led route-write decision path under explicit arm/disarm control).
+- **Out:** metadata authority cutover, lighting-orchestration cutover, and legacy naming retirement work.
+
+Two-track disposition (required):
+
+- **Track A (current runtime):** compatibility-shimmed / retained as rollback source-of-truth.
+- **Track B (custom component):** routing cutover trial implementation + diagnostics-led validation.
+
+Activation gates (all required):
+
+1. Authority baseline gate satisfied (`legacy` default; reversible trial arm/disarm path confirmed).
+2. P2 parity/contract gate PASS immediately pre-trial.
+3. Single-domain isolation gate enforced (no metadata/lighting cutover flags enabled).
+4. Rollback gate validated in-window (tested rollback command/path + stop conditions documented).
+5. Evidence gate satisfied (fresh runtime capture for outcome and closure decision).
+
+Stop conditions (fail-closed):
+
+- route-write loop/flap detected,
+- required compatibility surface mismatch,
+- unresolved active target/control host route eligibility,
+- stale closure evidence window.
+
+Current runtime evidence snapshot (2026-04-20):
+
+- monitor verdict captured: `Status=PASS`, `Write proof=VERIFIED`;
+- `last_attempt.status=noop_already_selected` (accepted guarded-write verification outcome);
+- routing/contract/parity/freshness healthy (`route_linkplay_tcp`, `contract_valid=true`, `missing_required=0`, `unresolved=0`, `mismatches=0`, fresh snapshot).
+
+Remaining for closeout:
+
+- complete bounded run-window record with explicit end-of-window authority disposition,
+- execute/record rollback-to-`legacy` (unless an approved extension rationale is documented),
+- publish closeout verdict (`PASS`/`WARN`/`FAIL`) with timestamped evidence.
+
+Closeout evidence update (2026-04-20):
+
+- post-window rollback snapshot captured with `authority_mode=legacy`;
+- route/contract/parity/freshness remained healthy after disarm (`route_linkplay_tcp`, `contract_valid=true`, mismatch/unresolved counts `0`, fresh snapshot);
+- slice now meets routing-domain validation posture and is sealed as **Validated**.
+
+Next-slice note:
+
+- broader Phase-5 program work remains open; metadata/lighting cutover slices require separate domain-isolated activation and evidence.
+
+### Phase 5 follow-on slice card — P5-S02 (metadata domain)
+
+Status: **Active (gate-prep)**
+
+Scope:
+
+- **In:** metadata-domain readiness/gate validation and bounded run-window evidence capture.
+- **Out:** routing-domain ownership (already validated in P5-S01), lighting orchestration cutover, naming retirement.
+
+Current mechanism posture:
+
+- dedicated metadata trial contract service is now implemented: `spectra_ls.metadata_write_trial`.
+- current semantics remain gate-prep/readiness-first and fail-closed by default (dry-run-first; legacy authority baseline retained).
+
+Activation gates (all required):
+
+1. Authority baseline (`legacy`) confirmed and rollback-safe posture explicit.
+2. P2 parity template PASS in active window.
+3. Metadata readiness validation PASS (`p3_s03_metadata_prep_validation.jinja`) in active window.
+4. Domain isolation preserved (no concurrent routing/lighting cutover execution).
+5. Fresh timestamped evidence captured for pre/in/post window.
+
+Implementation sequence (beyond mirroring, required):
+
+- **Metadata contract inventory lock:** enumerate authoritative metadata entities/attributes and ownership expectations; mark which surfaces remain legacy-owned during gate-prep.
+- **Mechanism definition slice:** define explicit component metadata cutover mechanism/service contract (if absent) and require reversible authority semantics with audit fields equivalent to routing trials.
+- **Bounded metadata trial slice:** run explicit trial window using the defined mechanism and capture pre/in/post window results with fail-closed stop conditions.
+- **Rollback + closure slice:** prove safe end-of-window authority disposition (`legacy` unless approved extension) and close only with complete/fresh evidence and no unresolved contract drift.
+
+Run-window checklist:
+
+- `docs/testing/raw/p5_s02_metadata_cutover_run_window_checklist.md`
+
+Latest runtime evidence snapshot (2026-04-20):
+
+- Operator-captured monitor output reports `Status=PASS` and `Metadata readiness=READY` (`2026-04-20 17:59:21.972073-07:00`).
+- Baseline remains safe and explicit: `authority_mode=legacy`, `route_decision=route_linkplay_tcp`.
+- Contract + metadata gates are healthy: `contract_valid=true`, missing required counts `0`, `metadata_prep_validation.verdict=PASS`, `ready_for_metadata_handoff=true`.
+- Parity/freshness remain clean: `unresolved_sources=0`, `mismatches=0`, snapshot within freshness threshold.
+- Post-window proof captured at `2026-04-20 18:08:32.691994-07:00` confirms `authority_mode=legacy` with metadata readiness still `PASS/READY`.
+- Slice disposition: this run window is closeout-eligible and recorded; slice remains Active (gate-prep) pending mechanism-definition and broader Phase-5 metadata cutover gates.
+
+Run-3 evidence update (2026-04-20 evening):
+
+- Legacy-mode `p5s02-run3` captured explicit fail-closed dry-run blocking while not ready (`metadata_trial_last_attempt.status=blocked_metadata_not_ready`) with route/contract/parity still healthy.
+- Follow-up legacy capture in the same run window reached `PASS/READY` with `gate_score=9/9` under fresh active metadata conditions.
+- Component-mode comparison capture remains intentionally `WARN/CAUTION` due to `authority_mode_not_legacy`; metadata ownership is still `legacy_contract_surfaces`, so this is an expected policy boundary signal (not a parity failure).
+
+Mechanism-definition next step (P5-S02-M1):
+
+- Implemented deliverable: dry-run service contract shape, audit payload fields, and fail-closed stop handling are now wired in `custom_components/spectra_ls` (`metadata_write_trial` + coordinator snapshot surfacing).
+- Implemented deliverable: one-shot bounded-window sequence service (`run_p5_s02_sequence`) now executes the required P5-S02 order (authority baseline, registry/contracts/route/handoff/metadata refresh, guarded metadata trial, post-trial metadata refresh) in a single deterministic path.
+- Hardening update: contract validation now treats unresolved required surfaces as invalid (not only missing entities), closing the gap where metadata could appear healthy while control-host surfaces degraded.
+- Hardening update (audit canonicalization): coordinator now publishes `metadata_trial_last_attempt.audit_payload_state`, `audit_payload_complete`, and `missing_audit_fields` so closeout readiness can be classified from payload-native completeness semantics.
+- Hardening update (trial gate semantics): coordinator now publishes `blocking_reasons`, `trial_gate_verdict`, and `eligible_for_closeout` in `metadata_trial_last_attempt` for deterministic gate-prep classification.
+- Fresh promotion evidence captured (`p5s02-2026-04-21-run1`):
+  - monitor output at `2026-04-21 17:18:18.431382-07:00` reports `Status=PASS`, `Metadata readiness=READY`,
+  - baseline safe: `authority_mode=legacy`, `route_decision=route_linkplay_tcp`,
+  - contract clean: `valid=true`, missing/unresolved required counts `0`,
+  - metadata gate healthy: `verdict=PASS`, `gate_score=9/9`,
+  - trial audit complete: `status=dry_run_ok`, `audit_payload_state=COMPLETE`, `trial_gate_verdict=PASS`, `eligible_for_closeout=true`, `missing_audit_fields=0`.
+- Promotion-gate status: the “fresh dry-run + COMPLETE audit payload” gate is satisfied for P5-S02-M1. Slice remains **Active (gate-prep)** pending broader bounded-window/post-window evidence progression for full P5-S02 validation.
+- Immediate next run target (Run-2 strict comparator): execute one fresh bounded sequence with `mode=legacy`, `dry_run=true`, and a new `window_id`; set comparator guards from the pre-window snapshot (`expected_target=<route_trace.active_target>`, `expected_route=<route_trace.decision>`) to preserve discovery-first portability while still proving deterministic alignment in the audit payload.
+- Run-2 success criteria: monitor outputs remain `PASS/READY`, trial audit remains `COMPLETE` with `missing_audit_fields=0`, and trial semantics report `trial_gate_verdict=PASS`, `eligible_for_closeout=true`, with explicit post-window authority disposition `legacy`.
+- Run-2 evidence captured (`p5s02-2026-04-21-run2`): monitor output at `2026-04-21 17:25:39.987075-07:00` confirms `Status=PASS`, `Metadata readiness=READY`, safe baseline (`authority_mode=legacy`, `route_decision=route_linkplay_tcp`), contract clean (`missing_required=0`, `unresolved_required=0`), metadata gate `PASS` (`9/9`), and complete trial audit (`status=dry_run_ok`, `audit_payload_state=COMPLETE`, `trial_gate_verdict=PASS`, `eligible_for_closeout=true`, `missing_audit_fields=0`).
+- Disposition update: Run-2 strict comparator expectations are satisfied with fresh evidence; `P5-S02` is promoted to **Validated** via consolidated closeout packet acceptance while metadata ownership remains legacy by policy.
+- Closeout packet candidate: bounded Run-1 and Run-2 evidence now forms a consolidated closeout packet with explicit legacy authority retention, clean contract/parity signals, and complete trial-audit payloads; promotion recommendation is evidence-supported while awaiting explicit status-lane promotion recording.
+
+### Phase 5 next-slice card — P5-S03 (lighting orchestration domain)
+
+Status: **Validated**
+
+Scope:
+
+- **In:** lighting-domain orchestration gate-prep and bounded run-window validation.
+- **Out:** routing ownership, metadata ownership cutover, naming retirement.
+
+Activation gates (required):
+
+1. P5-S02 closeout decision captured in status ledger (`Validated`).
+2. Authority baseline remains `legacy` at lighting-window start.
+3. Lighting parity/contract checks PASS in active window.
+4. Domain isolation enforced (no concurrent metadata/routing cutover).
+5. Rollback/disarm evidence captured in the same window.
+
+Execution checklist:
+
+- `docs/testing/raw/p5_s03_lighting_orchestration_run_window_checklist.md`
+- Primary live monitor: `docs/testing/raw/p5_s03_lighting_functionality_monitor.jinja`
+- Freshness semantics correction: monitor-side control snapshot age is now contextual (informational) and does not by itself downgrade lighting verdicts when authority/contract/selector/parity gates pass.
+- Run-1 completed and closed out with full pre/in/post evidence:
+  - pre-window `PASS/READY` (`2026-04-21 17:41:12.841574-07:00`),
+  - in-window `PASS/READY` (`2026-04-21 17:44:00.229390-07:00`),
+  - post-window `PASS/READY` (`2026-04-21 17:44:45.600796-07:00`).
+- Closeout posture confirmed: `authority_mode=legacy`, contract/parity clean (`missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`), stop conditions not triggered.
+
+### Phase 5 next-slice card — P5-S04 (phase-exit closeout)
+
+Status: **Validated**
+
+Scope:
+
+- **In:** Phase-5 closeout packet consolidation, final authority/parity safety snapshot, and P6 planning handoff gate.
+- **Out:** new write-path ownership behavior changes in routing/metadata/lighting domains.
+
+Activation gates (required):
+
+1. P5-S01, P5-S02, and P5-S03 are `Validated` with linked evidence artifacts.
+2. Fresh closeout snapshot confirms safe authority posture and clean contract/parity state.
+3. Legacy retirement remains explicitly deferred (no implicit retirement action in this slice).
+4. P6 handoff stance is planning-only unless a separate bounded slice explicitly changes authority behavior.
+
+Execution checklist:
+
+- `docs/testing/raw/p5_s04_phase_exit_closeout_checklist.md`
+- Primary live monitor: `docs/testing/raw/p5_s04_phase_exit_functionality_monitor.jinja`
+
+Closeout evidence (2026-04-21):
+
+- monitor verdict: `Status=PASS`, `Phase-5 closeout readiness=READY`, `gate_score=7/7` (`2026-04-21 19:04:03.253466-07:00`),
+- runtime safety gates all pass with safe baseline (`authority_mode=legacy`) and clean route/contract/parity/freshness,
+- governance gates all pass with explicit P5-S01/S02/S03 closure linkage and planning-only P6 handoff stance.
+
+Disposition:
+
+- `P5-S04` promoted to **Validated**.
+
+## Phase 7 — Component-first cutover and legacy sealing
+
+Program intent:
+
+- Component becomes the default primary control plane for net-new sidebar and beyond features.
+- Legacy runtime remains trusted, stable, and respected as compatibility + rollback baseline during bounded cutover gates.
+- Legacy exits normal feature-growth ownership once cutover readiness and domain flip proofs are accepted.
+
+### Phase 7 starter slice card — P7-S01 (component-first cutover readiness gate)
+
+Status: **Validated**
+
+Scope:
+
+- **In:** cutover-readiness gate activation, sustained parity criteria, rollback proof criteria, and legacy-seal publication.
+- **Out:** immediate cross-domain authority cutover and irreversible legacy retirement actions.
+
+Activation gates (required):
+
+1. `P6-S01..P6-S04` validated with accepted evidence packets.
+2. Runtime baseline remains safe at activation (`authority_mode=legacy`, clean contract/parity).
+3. Explicit rollback posture and proof fields are published for each follow-on domain flip slice.
+4. Component-first ownership direction is explicit for net-new features.
+
+Execution checklist:
+
+- `docs/testing/raw/p7_s01_cutover_readiness_checklist.md`
+- Primary live monitor: `docs/testing/raw/p7_s01_cutover_readiness_monitor.jinja`
+
+Two-track disposition:
+
+- **Track A (current runtime):** compatibility/rollback baseline, net-new feature growth deferred.
+- **Track B (custom component):** active primary ownership readiness lane.
+
+P1/P2/P3 impact check:
+
+- **P1:** unchanged read-only parity contracts.
+- **P2:** unchanged registry/router diagnostics ownership.
+- **P3:** unchanged single-writer boundary in this slice (authority flips deferred to follow-on P7 slices).
+Run-1 evidence (2026-04-21):
+
+- monitor verdict: `Status=FAIL`, `P7-S01 readiness=BLOCKED`, `gate_score=3/4` (`2026-04-21 20:33:32.373259-07:00`),
+- baseline failure details: `route_decision=defer_no_target`, `unresolved_required=4`, `unresolved_sources=3`, `mismatches=2`.
+
+Run-2 closeout evidence (2026-04-21):
+
+- monitor verdict: `Status=PASS`, `P7-S01 readiness=READY`, `gate_score=4/4` (`2026-04-21 20:34:32.639010-07:00`),
+- baseline restored: `authority_mode=legacy`, `route_decision=route_linkplay_tcp`, `missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`, freshness within threshold.
+
+Promotion disposition:
+
+- `P7-S01` promoted to **Validated**.
+
+### Phase 7 follow-on slice checkpoint — P7-S02 (first bounded authority-flip execution lane)
+
+Status: **Validated**
+
+Scope:
+
+- **In:** first bounded authority-flip execution lane (routing/selection domain), strict single-writer enforcement, rollback-safe activation controls, and run-window evidence capture.
+- **Out:** cross-domain ownership flips, unbounded legacy retirement actions, and irreversible helper/entity contract removal.
+
+Activation gates (required):
+
+1. `P7-S01` validated with accepted closeout evidence.
+2. Runtime baseline remains clean at activation (`authority_mode=legacy`, contract/parity clean).
+3. Domain-flip rollback path and stop conditions are explicit before first write-window attempt.
+4. Component lane remains net-new feature primary while flip windows are bounded and reversible.
+
+Execution checklist:
+
+- `docs/testing/raw/p7_s02_domain_flip_readiness_checklist.md`
+- Primary live monitor: `docs/testing/raw/p7_s02_domain_flip_readiness_monitor.jinja`
+
+Two-track disposition:
+
+- **Track A (current runtime):** rollback-safe authority baseline retained outside bounded flip windows.
+- **Track B (custom component):** active first authority-flip execution lane.
+
+P1/P2/P3 impact check:
+
+- **P1:** unchanged read-only parity contract surfaces.
+- **P2:** unchanged registry/router diagnostics ownership.
+- **P3:** single-writer controls remain mandatory and explicitly audited in this slice.
+
+Run-1 pre-window evidence (2026-04-21):
+
+- monitor verdict: `Status=PASS`, `P7-S02 readiness=READY`, `gate_score=4/4` (`2026-04-21 20:38:00.223973-07:00`),
+- baseline/gates clean: `authority_mode=legacy`, `route_decision=route_linkplay_tcp`, `missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`, freshness within threshold,
+- execution disposition: pre-window authorization granted; in-window and post-window captures are required before closeout eligibility.
+
+Run-1 in-window evidence (2026-04-21):
+
+- monitor verdict: `Status=PASS`, `P7-S02 readiness=READY`, `gate_score=4/4` (`2026-04-21 20:55:41.000516-07:00`),
+- in-window probe remained clean: `monitor_source_sensor=sensor.shadow_active_target`, `authority_mode=legacy`, `route_decision=route_linkplay_tcp`, `missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`, freshness within threshold,
+- execution disposition: in-window gate accepted; post-window capture remains required before closeout eligibility.
+
+Run-1 post-window evidence (2026-04-21):
+
+- monitor verdict: `Status=PASS`, `P7-S02 readiness=READY`, `gate_score=4/4` (`2026-04-21 20:57:00.162663-07:00`),
+- post-window rollback-safe baseline verified: `monitor_source_sensor=sensor.shadow_active_target`, `authority_mode=legacy`, `route_decision=route_linkplay_tcp`, `missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`, freshness within threshold,
+- execution disposition: post-window gate accepted with no stop-condition triggers; slice is closeout eligible.
+
+Promotion disposition:
+
+- `P7-S02` promoted to **Validated**.
+
+### Phase 7 follow-on slice checkpoint — P7-S03 (bounded metadata-domain authority-flip execution lane)
+
+Status: **Validated**
+
+Scope:
+
+- **In:** bounded metadata-domain authority-flip execution lane, metadata trial service-path probe (`metadata_write_trial`) with dry-run-first semantics, strict single-writer enforcement, rollback-safe activation controls, and pre/in/post run-window evidence capture.
+- **Out:** routing-domain revalidation, lighting-domain ownership flips, unbounded legacy retirement actions, and irreversible helper/entity contract removal.
+
+Activation gates (required):
+
+1. `P7-S02` validated with accepted closeout evidence.
+2. Runtime baseline remains clean at activation (`authority_mode=legacy`, contract/parity clean).
+3. Metadata readiness is PASS/ready (`metadata_prep_validation.verdict=PASS`, `ready_for_metadata_handoff=true`) with route eligibility present.
+4. Metadata-domain rollback path and stop conditions are explicit before first in-window metadata trial attempt.
+
+Execution checklist:
+
+- `docs/testing/raw/p7_s03_metadata_domain_flip_readiness_checklist.md`
+- Primary live monitor: `docs/testing/raw/p7_s03_metadata_domain_flip_readiness_monitor.jinja`
+
+Two-track disposition:
+
+- **Track A (current runtime):** rollback-safe metadata authority baseline retained outside bounded P7-S03 windows.
+- **Track B (custom component):** active bounded metadata-domain authority-flip execution lane.
+
+P1/P2/P3 impact check:
+
+- **P1:** unchanged read-only parity contract surfaces.
+- **P2:** unchanged registry/router diagnostics ownership.
+- **P3:** single-writer controls remain mandatory and explicitly audited in this slice.
+
+Run-1 pre-window evidence (2026-04-21):
+
+- monitor verdict: `Status=PASS`, `P7-S03 readiness=READY`, `gate_score=4/4` (`2026-04-21 21:03:00.345491-07:00`),
+- baseline/metadata gates clean: `monitor_source_sensor=sensor.shadow_active_target`, `authority_mode=legacy`, `route_decision=route_linkplay_tcp`, `metadata_prep_validation.verdict=PASS`, `ready_for_metadata_handoff=true`, `metadata_prep_validation.missing_required=0`, contract/parity clean (`missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`), freshness within threshold,
+- execution disposition: pre-window authorization granted; in-window and post-window captures are required for closeout eligibility.
+
+Run-1 in-window evidence (2026-04-21):
+
+- monitor verdict: `Status=PASS`, `P7-S03 readiness=READY`, `gate_score=4/4` (`2026-04-21 21:05:29.978417-07:00`),
+- in-window probe remained clean: `monitor_source_sensor=sensor.shadow_active_target`, `authority_mode=legacy`, `route_decision=route_linkplay_tcp`, `metadata_prep_validation.verdict=PASS`, `ready_for_metadata_handoff=true`, `metadata_prep_validation.missing_required=0`, `metadata_trial_last_attempt.status=dry_run_ok`, `metadata_trial_last_attempt.trial_gate_verdict=PASS`, contract/parity clean (`missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`), freshness within threshold,
+- execution disposition: in-window gate accepted; post-window capture remained required before closeout eligibility.
+
+Run-2 post-window evidence (2026-04-21):
+
+- monitor verdict: `Status=PASS`, `P7-S03 readiness=READY`, `gate_score=4/4` (`2026-04-21 21:07:08.345292-07:00`),
+- post-window rollback-safe baseline remained clean: `monitor_source_sensor=sensor.shadow_active_target`, `authority_mode=legacy`, `route_decision=route_linkplay_tcp`, `metadata_prep_validation.verdict=PASS`, `ready_for_metadata_handoff=true`, `metadata_prep_validation.missing_required=0`, `metadata_trial_last_attempt.status=dry_run_ok`, `metadata_trial_last_attempt.window_id=window_id: p7s03-2026-04-21-run2`, `metadata_trial_last_attempt.trial_gate_verdict=PASS`, contract/parity clean (`missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`), freshness within threshold,
+- execution disposition: post-window gate accepted with no stop-condition triggers; slice is closeout eligible.
+
+Promotion disposition:
+
+- `P7-S03` promoted to **Validated**.
+
+### Phase 7 follow-on slice checkpoint — P7-S04 (phase-exit closeout packet)
+
+Status: **Validated**
+
+Scope:
+
+- **In:** Phase-7 closeout packet consolidation, final rollback-safe baseline evidence capture, and promotion gating.
+- **Out:** new domain authority expansion, additional write-path cutover trials, and immediate legacy retirement execution.
+
+Activation gates (required):
+
+1. `P7-S01`, `P7-S02`, and `P7-S03` are validated with linked evidence packets.
+2. Runtime baseline remains rollback-safe at closeout capture (`authority_mode=legacy`, contract/parity clean).
+3. Rollback path and single-writer boundary remain explicit and operator-verifiable.
+4. Component-primary posture and legacy-seal scope are documented for closeout governance.
+
+Execution checklist:
+
+- `docs/testing/raw/p7_s04_phase_exit_closeout_checklist.md`
+- Primary live monitor: `docs/testing/raw/p7_s04_phase_exit_functionality_monitor.jinja`
+
+Two-track disposition:
+
+- **Track A (current runtime):** rollback-safe compatibility baseline retained for closeout capture.
+- **Track B (custom component):** active phase-exit closeout packet lane.
+
+P1/P2/P3 impact check:
+
+- **P1:** unchanged read-only parity contract surfaces.
+- **P2:** unchanged registry/router diagnostics ownership.
+- **P3:** unchanged single-writer boundary and rollback discipline.
+
+Run-1 closeout evidence (2026-04-21):
+
+- monitor verdict: `Status=PASS`, `P7-S04 readiness=READY`, `gate_score=4/4` (`2026-04-21 21:13:00.468462-07:00`),
+- baseline remained rollback-safe and clean: `monitor_source_sensor=sensor.shadow_active_target`, `authority_mode=legacy`, `route_decision=route_linkplay_tcp`, `contract_valid=true`, `missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`, freshness within threshold (`age_s=60.0`),
+- closeout disposition: no stop-condition triggers; phase-exit packet is complete and promotion-eligible.
+
+Promotion disposition:
+
+- `P7-S04` promoted to **Validated**.
+
+### Phase 8 starter slice card — P8-S01 (legacy-seal readiness gate)
+
+Status: **Validated**
+
+Scope:
+
+- **In:** post-cutover legacy-seal readiness gating, rollback-safe baseline verification, and governance continuity checks.
+- **Out:** runtime ownership expansion, irreversible legacy retirement actions, and net-new write-path cutover behavior.
+
+Activation gates (required):
+
+1. Phase-7 closeout packet is validated.
+2. Runtime baseline remains rollback-safe (`authority_mode=legacy`) with clean contract/parity.
+3. Rollback + single-writer controls remain explicit and verifiable.
+4. Legacy net-new growth freeze and component-primary posture remain explicit.
+
+Execution checklist:
+
+- `docs/testing/raw/p8_s01_legacy_seal_readiness_checklist.md`
+- Primary live monitor: `docs/testing/raw/p8_s01_legacy_seal_readiness_monitor.jinja`
+
+Two-track disposition:
+
+- **Track A (runtime):** sealed rollback-safe baseline with no net-new ownership growth.
+- **Track B (component):** active governance/readiness lane for post-cutover operation.
+
+Activation disposition:
+
+- `P8-S01` activated with monitor/checklist artifacts and completed with full pre/in/post PASS evidence packet.
+- `P8-S01` promoted to **Validated**.
+
+Run-1 pre-window evidence (2026-04-21):
+
+- monitor verdict: `Status=PASS`, `P8-S01 readiness=READY`, `gate_score=4/4` (`2026-04-21 21:18:39.504385-07:00`),
+- baseline/gates clean: `monitor_source_sensor=sensor.shadow_active_target`, `authority_mode=legacy`, `route_decision=route_linkplay_tcp`, `contract_valid=true`, `missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`, freshness within threshold (`age_s=157.6`),
+- execution disposition: pre-window authorization accepted; in-window and post-window captures remain required before closeout eligibility.
+
+Run-2 in-window evidence (2026-04-21):
+
+- monitor verdict: `Status=PASS`, `P8-S01 readiness=READY`, `gate_score=4/4` (`2026-04-21 21:22:08.276673-07:00`),
+- baseline/gates clean: `monitor_source_sensor=sensor.shadow_active_target`, `authority_mode=legacy`, `route_decision=route_linkplay_tcp`, `contract_valid=true`, `missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`, freshness within threshold (`age_s=171.6`),
+- execution disposition: in-window capture accepted; post-window capture remained required before closeout eligibility.
+
+Run-3 post-window evidence (2026-04-21):
+
+- monitor verdict: `Status=PASS`, `P8-S01 readiness=READY`, `gate_score=4/4` (`2026-04-21 21:22:20.668596-07:00`),
+- baseline/gates clean: `monitor_source_sensor=sensor.shadow_active_target`, `authority_mode=legacy`, `route_decision=route_linkplay_tcp`, `contract_valid=true`, `missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`, freshness within threshold (`age_s=184.0`),
+- execution disposition: post-window capture accepted; pre/in/post packet complete with no stop-condition triggers.
+
+### Phase 8 follow-on slice card — P8-S02 (docs + wiki native-English overhaul)
+
+Status: **Active**
+
+Scope:
+
+- **In:** improve user/operator/developer-facing documentation with direct, native-English, task-oriented language; remove AI-sounding phrasing; improve wiki utility with clear outcomes, decision paths, and troubleshooting flow.
+- **Out:** runtime/component behavior changes, contract ownership changes, or migration gate policy changes.
+
+Activation gates (required):
+
+1. P8-S01 is validated and closed.
+2. A reusable writing standard is published for wiki/repo docs consistency.
+3. Wiki navigation and page intent are updated to prioritize operator usefulness.
+4. Documentation changes remain parity-synchronized through changelog + roadmap ledgers.
+
+Execution checklist:
+
+- Writing standard: `docs/wiki/DOCUMENTATION-WRITING-STANDARD.md`
+- Wiki source index: `docs/wiki/README.md`
+- Wiki home/navigation: `docs/wiki/Home.md`, `docs/wiki/_Sidebar.md`
+
+Two-track disposition:
+
+- **Track A (runtime):** unchanged sealed compatibility baseline.
+- **Track B (component):** unchanged primary product-growth lane while docs quality lane executes.
+
+P1/P2/P3 impact check:
+
+- **P1:** unchanged read-only parity contract surfaces.
+- **P2:** unchanged registry/router diagnostics ownership.
+- **P3:** unchanged single-writer boundary and rollback discipline.
+
+Initial execution disposition:
+
+- P8-S02 activated with writing-standard scaffolding and wiki-navigation updates.
+
+Run-1 execution update (2026-04-21):
+
+- Sidebar/component lane: added `Control Center Last Attempt Status` diagnostic sensor in `custom_components/spectra_ls/sensor.py` so mapped-input outcomes are visible as first-class state instead of only deep attributes.
+- Documentation/wiki lane: improved high-traffic operator onboarding/install/setup pages (`docs/wiki/Getting-Started.md`, `docs/wiki/Install-on-Your-Own-HA.md`, `docs/wiki/User-Setup-Deploy-and-HA-Integration.md`) with task-first structure, explicit expected outcomes, and failure actions.
+- Execution disposition: run-1 packet accepted; remaining wiki/page sweep continues in subsequent packets.
+
+Run-2 execution update (2026-04-21):
+
+- Top-level docs lane: improved `CONTRIBUTING.md` with clearer workflow language, branch boundaries, and migration posture expectations.
+- Execution disposition: run-2 contributor-doc polish accepted; additional repo/docs and wiki passes remain queued.
+
+Run-3 execution update (2026-04-22):
+
+- Top-level docs lane: polished `README.md` and `docs/README.md` with more directive, task-first language and clearer “what to read next” guidance.
+- Validation lane: completed local wiki sync dry-run (`dry_run_ok`) with clone/read sync success and 17 staged wiki-file deltas in temp workspace (no push), confirming publish-ready source changes.
+- Execution disposition: run-3 packet accepted; continue remaining page-by-page wiki cleanup passes.
+
+Run-4 execution update (2026-04-22):
+
+- Wiki docs lane: improved remaining core workflow/architecture contributor pages (`docs/wiki/Operations-Runbooks.md`, `docs/wiki/System-Architecture.md`, `docs/wiki/Contributing-Workflow.md`) with direct task flow, explicit outcomes, and parity/ownership reminders.
+- Execution disposition: run-4 packet accepted; continue remaining lower-traffic wiki cleanup pages and consistency passes.
+
+Run-5 execution update (2026-04-22):
+
+- Navigation/reference lane: aligned top-level + wiki entry navigation (`README.md`, `docs/wiki/Home.md`, `docs/wiki/_Sidebar.md`, `docs/wiki/README.md`) to link-first reference paths and stronger canonical source routing.
+- Language lane: removed low-value process narration about edit mechanics and kept page intent outcome-focused.
+- Execution disposition: run-5 packet accepted; continue remaining long-tail page consistency cleanup.
+
+Run-6 execution update (2026-04-22):
+
+- Long-tail wiki lane: improved process/reference-heavy pages (`docs/wiki/Getting-Started.md`, `docs/wiki/Discussions-and-Projects-Workflow.md`, `docs/wiki/Release-and-Changelog-Process.md`, `docs/wiki/Wiki-Content-Scope-Policy.md`, `docs/wiki/Contributing-Workflow.md`, `docs/wiki/Operations-Runbooks.md`) with explicit clickable links for canonical repo references.
+- Execution disposition: run-6 packet accepted; continue remaining page-by-page consistency sweep as follow-on maintenance.
+
+Run-7 execution update (2026-04-22):
+
+- High-traffic wiki lane: improved architecture/orientation/install pages (`docs/wiki/System-Architecture.md`, `docs/wiki/Welcome-README-and-Bug-Workflow.md`, `docs/wiki/Install-on-Your-Own-HA.md`) with explicit link-first references for canonical sources and runbooks.
+- Execution disposition: run-7 packet accepted; continue residual link-normalization sweep as follow-on maintenance.
+
+Run-8 execution update (2026-04-22):
+
+- Residual wiki lane: improved contract/control-surface/setup-roadmap pages (`docs/wiki/Control-Contracts-and-Scope-Paths.md`, `docs/wiki/Control-Surface-Inputs-and-Expanders.md`, `docs/wiki/User-Setup-Deploy-and-HA-Integration.md`, `docs/wiki/Custom-Component-Setup-Roadmap-Stub.md`) with explicit link-first references for canonical repo sources.
+- Execution disposition: run-8 packet accepted; continue small residual cleanup as follow-on maintenance.
+
+Run-9 execution update (2026-04-22):
+
+- Process/navigation lane: improved residual process and wiki-publishing pages (`docs/wiki/Contributing-Workflow.md`, `docs/wiki/Operations-Runbooks.md`, `docs/wiki/Release-and-Changelog-Process.md`, `docs/wiki/README.md`, `docs/wiki/Home.md`) with explicit link-first references for parity and publishing workflows.
+- Execution disposition: run-9 packet accepted; continue optional long-tail consistency cleanup as follow-on maintenance.
+
+Run-10 execution update (2026-04-22):
+
+- Residual policy lane: improved final non-table policy/process literals in `docs/wiki/Contributing-Workflow.md`, `docs/wiki/Wiki-Content-Scope-Policy.md`, and `docs/wiki/Install-on-Your-Own-HA.md` with explicit links where operator navigation benefits.
+- Execution disposition: run-10 packet accepted; remaining literals are primarily intentional contract/path notation.
+
+Run-11 execution update (2026-04-22):
+
+- Writing-standard lane: improved `docs/wiki/DOCUMENTATION-WRITING-STANDARD.md` examples and path references with explicit link-aware references while keeping guidance semantics intact.
+- Execution disposition: run-11 packet accepted; remaining literal references are primarily intentional contract/table notation.
+
+Run-12 execution update (2026-04-22):
+
+- Component UX lane: improved `custom_components/spectra_ls` control-center setup defaults and diagnostics visibility by adding scene-aware options defaults/selectors, stricter scene-binding normalization, richer coordinator readiness diagnostics, and a dedicated readiness sensor surface.
+- Execution disposition: run-12 packet accepted; runtime track unchanged compatibility baseline, component track additive UX/observability hardening.
+
+Run-13 execution update (2026-04-22):
+
+- Plan-delta lane: clarified cutover semantics so component remains the primary development lane for net-new work while legacy remains an explicit rollback-safe authority baseline for compatibility contracts until bounded retirement gates are executed.
+- Priority lane: activated `P8-S03` as a core fast-remap UX slice so operators can quickly re-map button/encoder input behavior from Home Assistant integration settings without script-level edits.
+- Execution disposition: run-13 packet accepted; runtime track unchanged compatibility baseline, component track prioritizes operator remap workflow acceleration.
+
+Run-14 execution update (2026-04-22):
+
+- Component remap lane: implemented preset-driven fast remap contract in integration settings/service surfaces (`media_default`, `scene_focus`, `target_navigation`, `custom`) with backward-compatible manual override flow.
+- Diagnostics lane: added active preset + effective mapping visibility in control-center readiness/attempt diagnostics for quick operator verification after remap.
+- Execution disposition: run-14 packet accepted; runtime track unchanged compatibility baseline, component track advanced P8-S03 operator remap implementation.
+
+Run-15 execution update (2026-04-22):
+
+- Component UX maturity lane: refactored integration settings to a guided two-step flow (quick preset/safety step + conditional advanced custom-mapping step) so common remaps complete faster while custom mapping remains one click away.
+- Selector ergonomics lane: replaced raw option-value style with explicit human-readable option labels for presets and encoder action choices to better match mature HA integration settings UX patterns.
+- Execution disposition: run-15 packet accepted; runtime track unchanged compatibility baseline, component track implemented guided remap flow ergonomics hardening.
+
+Run-16 execution update (2026-04-22):
+
+- Setup-lane clarity lane: added an explicit first-step chooser in integration options so operators select `Quick setup` or `Advanced mapping` before entering remap fields.
+- Flow-structure lane: split options UX into dedicated quick and advanced steps (`init -> quick/advanced`) so the common preset path is fast while manual mapping remains a focused advanced path.
+- Execution disposition: run-16 packet accepted; runtime track unchanged compatibility baseline, component track implemented explicit lane separation for settings UX.
+
+Run-17 execution update (2026-04-22):
+
+- Label-clarity lane: refined setup/action selector labels for quicker scanability and lower operator ambiguity.
+- Default-lane lane: set smarter setup-lane default (`advanced` when existing preset is `custom`, otherwise `quick`) so re-opened settings land in the expected path.
+- Execution disposition: run-17 packet accepted; runtime track unchanged compatibility baseline, component track implemented settings-flow polish.
+
+Run-18 execution update (2026-04-22):
+
+- Corrective UX lane: simplify integration Configure UX from multi-lane flow back to a single-step settings form to reduce operator confusion.
+- Sidebar surface lane: add a real Home Assistant sidebar dashboard entry (`Spectra L/S`) for persistent settings/readiness visibility outside the modal configure dialog.
+- Execution disposition: run-18 packet accepted; runtime track unchanged compatibility baseline, component track implemented usability/navigation correction.
+
+Run-19 execution update (2026-04-22):
+
+- Sidebar reliability lane: correct sidebar dashboard sensor bindings to match real registered entity IDs and eliminate post-restart `Entity not found` cards.
+- Execution disposition: run-19 packet accepted; runtime track unchanged compatibility baseline, component track implemented dashboard reliability correction.
+
+Run-20 execution update (2026-04-22):
+
+- MA exploration lane: publish a future-focused technical note that consolidates Music Assistant plugin/provider extension routes, capability constraints, and recommended integration path for Spectra audio-side ownership.
+- Fast-cutover planning lane: queue the next bounded phase slice to execute immediately after UX usefulness closure, with explicit gates, stop conditions, rollback posture, and evidence packet requirements.
+- Execution disposition: run-20 packet accepted; runtime track compatibility-shimmed, component track deferred-with-rationale as the queued next slice.
+
+Run-21 execution update (2026-04-22):
+
+- UX completion lane: finish the sidebar usability pass by replacing dev-tools-only quick actions with direct one-click action buttons for dry-run probes and rollback-safe preset application.
+- Operator flow lane: align wiki/setup docs to the click-first sidebar workflow and mark the current UX-stage lane complete.
+- Execution disposition: run-21 packet accepted; `P8-S03` promoted to validated, and `P8-S04` moved from queued to active planning/execution prep.
+
+Run-22 execution update (2026-04-22):
+
+- P8-S04 activation lane: publish deterministic monitor + checklist artifacts for MA-native plugin/provider fast-cutover gate-prep windows (pre/in/post).
+- Evidence lane: add explicit rollback-safe stop conditions and packet fields so first MA probe can be classified PASS/WARN/FAIL without ad hoc interpretation.
+- Execution disposition: run-22 packet accepted; `P8-S04` is now active with execution artifacts published.
+
+Run-23 execution update (2026-04-22):
+
+- Run-2 packet lane: publish a strict in-window execution packet for `P8-S04` with explicit `run_id`, `selected_path=player_provider`, dry-run-first probe posture, and artifact-reference capture fields.
+- Governance lane: keep promotion blocked at Run-2 by policy until post-window rollback proof is captured in a subsequent record.
+- Execution disposition: run-23 packet accepted; P8-S04 Run-2 is execution-ready.
+
+Run-24 execution update (2026-04-26):
+
+- Runtime MA operations lane: implemented fast backend profile switch contract (`beta`/`stable`/`manual`) in `packages/ma_control_hub` with profile-aware MA API URL resolution and explicit effective-profile visibility surface.
+- Component lane: compatibility shim + diagnostics parity visibility for backend profile/effective URL in `custom_components/spectra_ls` coordinator snapshot (no authority expansion).
+- Execution disposition: run-24 packet accepted; two-track disposition runtime `implemented`, component `compatibility-shimmed`. P1/P2/P3 impact: no ownership/source-of-truth cutover change; additive testing-workflow hardening only.
+
+Run-25 execution update (2026-04-26):
+
+- Runtime lane: `ma_control_hub` control-host resolution now includes a direct alias-entity discovery pass for wrapper targets (detected receiver/meta/now-playing/active-player and friendly-name alias candidates with direct/member `ip_address`) before static host fallback.
+- Component lane: `custom_components/spectra_ls` registry host discovery now mirrors runtime ordering with member-aware direct lookup and friendly-name alias fallback so route-trace/registry parity remains lock-step.
+- Execution disposition: run-25 packet accepted; two-track disposition runtime `implemented`, component `implemented`. P1/P2/P3 impact: no ownership/source-of-truth cutover change; host-routing correctness hardening only.
+
+Run-26 execution update (2026-04-26):
+
+- Component parity hardening lane: metadata-prep readiness now applies signal-aware title gating (`fresh_play_signal` + resolved active-meta context) and resolver-best-candidate fallback for metadata-candidate readiness when candidate payload shape is delayed.
+- Handoff-maturity lane: `handoff_inventory` maturity for `target_options_builder`, `auto_select_pipeline`, and `metadata_resolver_authority` now advances based on successful guarded scaffold execution evidence, not only static scaffold-plan availability.
+- Execution disposition: run-26 packet accepted; two-track disposition runtime `compatibility-shimmed`, component `implemented`. P1/P2/P3 impact: no ownership/source-of-truth cutover change; metadata readiness and parity-progress signal correctness hardening only.
+
+Run-27 execution update (2026-04-26):
+
+- Selection-ownership migration lane: added component-native executable parity services for legacy selection lifecycle behavior (`cycle_active_target`, `restore_last_valid_target`, `track_last_valid_target`) with guarded write semantics and explicit attempt telemetry.
+- Recovery lane: startup-recovery sequencing now invokes bounded restore-last-valid behavior as part of component migration flow when authority allows, while preserving legacy fail-closed posture.
+- Execution disposition: run-27 packet accepted; two-track disposition runtime `compatibility-shimmed`, component `implemented`. P1/P2/P3 impact: no source-of-truth ownership cutover; bounded selection-domain migration progression only.
+
+### Phase 8 follow-on slice card — P8-S03 (fast input-remap UX in HA settings)
+
+Status: **Validated**
+
+Scope:
+
+- **In:** operator-first remap workflow for encoder/button actions in integration settings, tighter quick-remap defaults/presets, and diagnostics that explicitly show “what is currently mapped where.”
+- **Out:** unbounded authority expansion, legacy contract retirement, or cross-domain ownership changes.
+
+Activation gates (required):
+
+1. P8-S01 validated baseline remains clean (`authority_mode=legacy`, parity/contract clean).
+2. Existing P6 settings contract remains backward compatible (no helper/entity contract breaks).
+3. Remap workflow is fast/operator-friendly from HA integration settings path.
+4. Rollback-safe posture remains explicit with read-only-first behavior where applicable.
+
+Execution checklist:
+
+- Component settings workflow: `custom_components/spectra_ls/config_flow.py`
+- Mapping normalization/contract: `custom_components/spectra_ls/const.py`
+- Execution/readiness visibility: `custom_components/spectra_ls/coordinator.py`, `custom_components/spectra_ls/sensor.py`, `custom_components/spectra_ls/diagnostics.py`
+- Operator docs parity: `docs/wiki/User-Setup-Deploy-and-HA-Integration.md`
+
+Two-track disposition:
+
+- **Track A (runtime):** compatibility-shimmed rollback baseline, no ownership expansion.
+- **Track B (component):** active operator remap UX priority lane.
+
+P1/P2/P3 impact check:
+
+- **P1:** unchanged read-only parity contract surfaces.
+- **P2:** unchanged registry/router diagnostics ownership.
+- **P3:** unchanged single-writer boundary and rollback discipline.
+
+GitHub/developer declaration (policy mirror):
+
+- Legacy runtime path is sealed as rollback-safe compatibility baseline.
+- Custom component path is primary for net-new feature/control-plane growth.
+
+### Phase 8 next slice card — P8-S04 (MA-native audio plugin feasibility + fast cutover packet)
+
+Status: **Active (execution packet published)**
+
+Scope:
+
+- **In:**
+  - consolidate MA-native extension options into one implementation-ready path,
+  - define a bounded Spectra audio-side plugin/provider scaffold plan,
+  - publish a fast cutover packet with explicit rollback and evidence controls.
+- **Out:**
+  - immediate authority flip in this planning slice,
+  - cross-domain helper/entity retirement,
+  - unbounded runtime ownership expansion.
+
+Primary planning artifact:
+
+- `docs/notes/NOTES-ma-audio-plugin-cutover-plan.md`
+
+Execution artifacts:
+
+- `docs/testing/raw/p8_s04_ma_plugin_cutover_readiness_monitor.jinja`
+- `docs/testing/raw/p8_s04_ma_plugin_cutover_readiness_checklist.md`
+
+Activation gates (required):
+
+1. P8-S03 UX usefulness closure accepted (operator-confirmed usable baseline).
+2. Legacy rollback baseline remains clean (`authority_mode=legacy`, contract/parity clean).
+3. Chosen MA integration route is explicitly mapped as implemented/shimmed/deferred across both tracks.
+4. Pre/in/post evidence capture template is defined before any authority-touching implementation.
+
+Two-track disposition target (for execution start):
+
+- **Track A (runtime):** compatibility-shimmed rollback baseline retained during plugin feasibility/probe windows.
+- **Track B (component):** implement MA-native audio plugin/provider scaffold and diagnostics-first control-path probes.
+
+P1/P2/P3 impact check:
+
+- **P1:** unchanged read-only parity surfaces.
+- **P2:** unchanged registry/router ownership in this planning queue step.
+- **P3:** unchanged single-writer boundary; any authority move stays explicitly gated for execution windows.
+
+Deferred H1 note (report/log/heal):
+
+- Detailed implementation scaffold is published at `docs/features/H1-report-log-heal-scaffold.md`.
+- H1 is intentionally deferred while Phase-5 active execution lanes continue.
+- Scope is planning + runbook readiness only in this slice (no authority/control-path ownership change).
+
+P1/P2/P3 impact check for P5-S02 draft:
+
+- **P1:** unchanged read-only parity contracts.
+- **P2:** remains parity-validation authority gate.
+- **P3:** single-writer boundary preserved with explicit rollback.
+
+Run-window execution checklist (required for activation/closeout evidence):
+
+- `docs/testing/raw/p5_s02_metadata_cutover_run_window_checklist.md`
+
+### Phase 5 exit criteria
+
+- Component is primary control plane with validated backward compatibility.
+
+## Phase 6 — HA sidebar Spectra control center
+
+- Deliver a modern, complete Spectra control center in the Home Assistant sidebar after Phase-5 gates are completed.
+- Keep migration-safe rollout: read-only visibility first, then bounded writable controls once parity/evidence checks stay healthy.
+
+### Phase 6 starter slice card — P6-S01 (control-center foundation)
+
+Status: **Validated**
+
+Scope:
+
+- **In:**
+  - Control Center scaffold in HA sidebar context,
+  - setup/onboarding flow (discovery + readiness),
+  - tuning surfaces (profiles, response/debounce),
+  - defaults and per-target override surfaces,
+  - mapped-environment view (rooms/targets/control paths/capabilities),
+  - diagnostics/evidence panel aligned to existing PASS/WARN/FAIL artifacts.
+- **Out:**
+  - unbounded authority expansion,
+  - breaking helper/entity contract renames,
+  - legacy retirement before parity soak.
+
+Activation gates (required):
+
+1. Phase-5 slice gates complete for active domain sequence.
+2. P2/P3 parity and authority guardrails remain stable under current runtime evidence.
+3. UX surfaces initially launch in read-only-safe mode where needed.
+4. Rollback path is explicit for any newly writable control-center action.
+
+Execution checklist:
+
+- `docs/testing/raw/p6_s01_control_center_foundation_checklist.md`
+- Primary live monitor: `docs/testing/raw/p6_s01_control_center_foundation_monitor.jinja`
+
+Baseline evidence (2026-04-21):
+
+- monitor verdict: `Status=PASS`, `P6-S01 readiness=READY`, `gate_score=6/6` (`2026-04-21 19:18:22.634239-07:00`),
+- runtime baseline remains safe (`authority_mode=legacy`) with clean route/contract/parity and fresh snapshot,
+- foundation governance gates all pass (read-only-first, compatibility, rollback, bounded authority).
+
+Disposition:
+
+- `P6-S01` promoted to **Validated** with baseline + closeout packet evidence accepted.
+
+Closeout evidence (2026-04-21):
+
+- monitor verdict: `Status=PASS`, `P6-S01 readiness=READY`, `gate_score=6/6` (`2026-04-21 20:17:21.077121-07:00`),
+- runtime baseline clean: `authority_mode=legacy`, `route_decision=route_linkplay_tcp`, `contract_valid=true`, `missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`, freshness within threshold,
+- foundation governance gates all true: read-only-first launch, compatibility posture, rollback posture, and bounded-authority posture.
+
+### Phase 6 follow-on slice checkpoint — P6-S02 (control-center settings contract)
+
+Status: **Validated**
+
+Scope:
+
+- **In:** initial functional customization contract for control-center inputs (encoder turn/press/long-press mappings + button scene bindings), operator-updatable settings path, and diagnostics visibility for mapped values.
+- **Out:** write-authority expansion, runtime ownership cutover, breaking helper/entity contract renames, and legacy retirement.
+
+Implemented surfaces:
+
+- options-flow settings form in `custom_components/spectra_ls/config_flow.py`,
+- normalized settings/defaults contract in `custom_components/spectra_ls/const.py`,
+- service path `spectra_ls.set_control_center_settings` in `custom_components/spectra_ls/__init__.py` + `services.yaml`,
+- coordinator snapshot diagnostics `control_center_validation` + `write_controls.control_center_settings` in `custom_components/spectra_ls/coordinator.py` with shadow/diagnostics export visibility.
+
+Two-track disposition:
+
+- **Track A (current runtime):** compatibility-preserved (unchanged runtime ownership and rollback baseline).
+- **Track B (custom component):** validated P6 settings contract foundation for sidebar/control-center customization workflow.
+
+P1/P2/P3 impact check:
+
+- **P1:** unchanged read-only parity contracts.
+- **P2:** unchanged registry/router diagnostics contract surfaces.
+- **P3:** unchanged single-writer authority boundary (`legacy` remains baseline).
+
+Execution checklist:
+
+- `docs/testing/raw/p6_s02_control_center_settings_checklist.md`
+- Primary live monitor: `docs/testing/raw/p6_s02_control_center_settings_monitor.jinja`
+
+Closeout evidence (2026-04-21):
+
+- monitor verdict: `Status=PASS`, `P6-S02 readiness=READY`, `gate_score=4/4` (`2026-04-21 20:15:35.644673-07:00`),
+- settings-contract readiness proven: `schema_version=p6_s02.v1`, `settings_present=true`, `ready_for_customization=true`, `required_keys=8`,
+- safe baseline retained: `authority_mode=legacy`, `route_decision=route_linkplay_tcp`, clean contract/parity (`missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`).
+
+Promotion disposition:
+
+- `P6-S02` promoted to **Validated**.
+
+### Phase 6 follow-on slice checkpoint — P6-S03 (control-input execution skeleton)
+
+Status: **Validated**
+
+Scope:
+
+- **In:** first bounded execution lane for mapped control-center input events (encoder/button), dry-run-first operation, read-only enforcement, and explicit action-attempt diagnostics.
+- **Out:** authority expansion, broad domain service dispatch beyond staged mappings, helper/entity contract breakage, and legacy retirement.
+
+Implemented surfaces:
+
+- `execute_control_center_input` service contract (`custom_components/spectra_ls/services.yaml` + `__init__.py`),
+- coordinator action-attempt engine with explicit fail-closed status semantics and correlation IDs,
+- scene execution path only when mapping resolves to `scene.*` and read-only mode is disabled,
+- diagnostics visibility of latest action attempt in `write_controls.control_center_last_attempt`.
+
+Two-track disposition:
+
+- **Track A (current runtime):** compatibility-preserved (runtime/source-of-truth unchanged).
+- **Track B (custom component):** validated bounded execution skeleton for control-center mappings.
+
+Closeout evidence linkage (2026-04-21):
+
+- accepted execution proof via P6-S04 closeout packet (`Status=PASS`, `P6-S04 readiness=READY`, `gate_score=5/5` at `2026-04-21 20:07:51.471030-07:00`),
+- deterministic dry-run semantics observed: `last_attempt.status=dry_run_ok`, `input_event=encoder_press`, `mapped_action=play_pause`, `last_attempt.dry_run=true`,
+- safety baseline preserved: `authority_mode=legacy`, `route_decision=route_linkplay_tcp`, clean contract/parity (`missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`).
+
+Promotion disposition:
+
+- `P6-S03` promoted to **Validated**.
+
+P1/P2/P3 impact check:
+
+- **P1:** unchanged read-only parity contracts.
+- **P2:** unchanged registry/router diagnostics ownership.
+- **P3:** unchanged authority boundary; `legacy` remains baseline owner.
+
+### Phase 6 follow-on slice checkpoint — P6-S04 (control-input execution validation artifacts)
+
+Status: **Validated**
+
+Scope:
+
+- **In:** operator-grade validation and closeout artifacts for `spectra_ls.execute_control_center_input` lane.
+- **Out:** authority ownership changes, broad execution-surface refactors, or legacy retirement.
+
+Implemented surfaces:
+
+- `docs/testing/raw/p6_s04_control_input_execution_monitor.jinja`
+- `docs/testing/raw/p6_s04_control_input_execution_checklist.md`
+
+Two-track disposition:
+
+- **Track A (current runtime):** compatibility-preserved (legacy authority baseline unchanged).
+- **Track B (custom component/docs):** validated evidence-capture/closeout classification artifacts for execution readiness.
+
+Closeout evidence (2026-04-21):
+
+- monitor verdict: `Status=PASS`, `P6-S04 readiness=READY`, `gate_score=5/5` (`2026-04-21 20:07:51.471030-07:00`),
+- deterministic dry-run-first semantics proven: `last_attempt.status=dry_run_ok`, `input_event=encoder_press`, `mapped_action=play_pause`, `last_attempt.dry_run=true`,
+- safe baseline retained: `authority_mode=legacy`, `route_decision=route_linkplay_tcp`, clean contract/parity (`missing_required=0`, `unresolved_required=0`, `unresolved_sources=0`, `mismatches=0`).
+
+Promotion disposition:
+
+- `P6-S04` promoted to **Validated**.
+
+P1/P2/P3 impact check:
+
+- **P1:** unchanged read-only parity contracts.
+- **P2:** unchanged registry/router validation ownership.
+- **P3:** unchanged single-writer authority boundary.
+
+P1/P2/P3 impact check:
+
+- **P1:** unchanged (shadow parity contracts remain read-only/stable).
+- **P2:** unchanged (registry/router diagnostics remain authoritative).
+- **P3:** unchanged (single-writer authority boundary remains explicit and bounded).
+
+Acceptance criteria:
+
+1. Operators can complete setup/tuning/defaults/overrides from the sidebar without raw-template dependency for routine tasks.
+2. Mapped-environment page explains effective routing/capability decisions for active targets.
+3. Diagnostics panel links directly to evidence-grade artifacts used in roadmap closeout decisions.
+4. Existing runtime/component contracts remain backward compatible during rollout.
+
+## Migration plan (step-by-step)
+
+1. Build shadow outputs first (no writes).
+2. Validate parity using diagnostics templates + component parity checks.
+3. Enable dual-write for one domain only (routing first).
+4. Monitor for loops/flaps and fix before widening scope.
+5. Add domain cutover flags and rollback switches.
+6. Cut over next domain only after previous domain soak passes.
+7. Decommission legacy logic after sustained parity and no downstream dependency.
+
+## Parallel execution policy (required per feature slice)
+
+Every feature change must include:
+
+- **Track A (current runtime):** implement/shim/defer status.
+- **Track B (custom component):** implement/shim/defer status.
+- **Parity note:** acceptance result or explicit gap with owner and deadline.
+
+## Documentation parity protocol (required)
+
+For architecture/process/contract changes, update in the same change set:
+
+1. `docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`
+2. `docs/roadmap/v-next-NOTES.md`
+3. `docs/CHANGELOG.md`
+4. `README.md` (or explicit no-material-change decision)
+
+Missing one item means the slice is not done.
+
+## Retroactive baseline docs (active references)
+
+- Runtime architecture baseline: `docs/architecture/CODEBASE-RUNTIME-ARCHITECTURE.md`
+- Control-hub architecture baseline: `docs/architecture/CONTROL-HUB-ARCHITECTURE.md`
+- Dead-path cleanup matrix: `docs/cleanup/DEAD-PATHS-CLEANUP.md`
+
+## Plan Delta protocol (required)
+
+If new findings force strategy changes mid-slice:
+
+1. Stop scope expansion.
+2. Add a **Plan Delta** note (what changed, why, stable assumptions, new exit criteria).
+3. Update both roadmap and v-next status before resuming.
+
+## Risk register
+
+1. **Contract drift** between templates and component outputs.
+2. **Write-loop flapping** during dual-write windows.
+3. **Parser shape regressions** across string/native payload forms.
+4. **Target ambiguity regressions** in discovery/routing transitions.
+5. **Naming migration blast radius** if cleanup starts before gates.
+
+## Known tough spots (must be surfaced, not glossed)
+
+1. **Selection-loop risk (High):** `ma_auto_select` + broad `state_changed` automation triggers can fight component write trials unless single-writer + debounce guards are active.
+2. **Fallback ambiguity risk (Medium):** static host/entity fallback branches still exist and can mask discovery-routing regressions when enabled.
+3. **Parser contract risk (Medium):** dual-mode payload parsing is broad and duplicated; regressions can appear if component payload shape drifts.
+4. **Authority boundary risk (High):** routing, selection, and metadata are coupled in legacy templates; P3 must avoid multi-domain write activation in one slice.
+
+## Verification matrix
+
+- Contract parity checks (legacy vs component entities/attributes).
+- Route determinism checks across ambiguous and non-ambiguous targets.
+- Diagnostics health checks from existing `docs/testing/DEVTOOLS-TEMPLATES.local.md` + component diagnostics.
+- Startup/bootstrap race checks (target options and host resolution).
+- Dual-write stability checks (no repeated oscillation or stale override loops).
+
+## GitHub structure strategy
+
+### Current strategy (recommended now)
+
+- Stay in one structured monorepo at `/mnt/homeassistant`.
+- Keep boundaries explicit by directory ownership and workflow labels.
+
+### Future split (optional, gated)
+
+Split into multiple repos only after all are true:
+
+1. Component schema/API stable across multiple releases.
+2. Migration tooling tested and documented.
+3. Independent CI confidence per domain.
+4. Operator docs fully support split lifecycle.
+
+Until then, use monorepo with strict domain boundaries to preserve cross-contract velocity.

@@ -1,6 +1,6 @@
 // Description: Shared Arylic TCP transport helpers for Spectra LS System (queueing, coalescing, and send path).
-// Version: 2026.06.23.4
-// Last updated: 2026-06-23
+// Version: 2026.08.14.3
+// Last updated: 2026-08-14
 
 #pragma once
 
@@ -66,7 +66,19 @@ namespace arylic_tcp {
 #endif
 
 #ifndef SLS_ARYLIC_TCP_STALE_VOL_DROP_MS
-#define SLS_ARYLIC_TCP_STALE_VOL_DROP_MS 900
+#define SLS_ARYLIC_TCP_STALE_VOL_DROP_MS 300
+#endif
+
+#ifndef SLS_ARYLIC_TCP_VOL_MAX_ATTEMPTS
+#define SLS_ARYLIC_TCP_VOL_MAX_ATTEMPTS 1
+#endif
+
+#ifndef SLS_ARYLIC_TCP_VOL_SEND_TIMEOUT_MS
+#define SLS_ARYLIC_TCP_VOL_SEND_TIMEOUT_MS 220
+#endif
+
+#ifndef SLS_ARYLIC_TCP_RETRY_DELAY_MS
+#define SLS_ARYLIC_TCP_RETRY_DELAY_MS 12
 #endif
 
 inline void append_le_u32(std::vector<uint8_t> &out, uint32_t value) {
@@ -101,6 +113,9 @@ constexpr uint8_t ARYLIC_TCP_BURST_MAX_SENDS = static_cast<uint8_t>(SLS_ARYLIC_T
 constexpr uint32_t ARYLIC_TCP_WORKER_STACK = static_cast<uint32_t>(SLS_ARYLIC_TCP_WORKER_STACK);
 constexpr UBaseType_t ARYLIC_TCP_WORKER_PRIO = static_cast<UBaseType_t>(SLS_ARYLIC_TCP_WORKER_PRIO);
 constexpr uint32_t ARYLIC_TCP_STALE_VOL_DROP_MS = static_cast<uint32_t>(SLS_ARYLIC_TCP_STALE_VOL_DROP_MS);
+constexpr uint8_t ARYLIC_TCP_VOL_MAX_ATTEMPTS = static_cast<uint8_t>(SLS_ARYLIC_TCP_VOL_MAX_ATTEMPTS);
+constexpr uint32_t ARYLIC_TCP_RETRY_DELAY_MS = static_cast<uint32_t>(SLS_ARYLIC_TCP_RETRY_DELAY_MS);
+constexpr uint32_t ARYLIC_TCP_VOL_SEND_TIMEOUT_MS = static_cast<uint32_t>(SLS_ARYLIC_TCP_VOL_SEND_TIMEOUT_MS);
 
 struct ArylicTcpItem {
 	char host[ARYLIC_TCP_HOST_LEN];
@@ -388,16 +403,18 @@ inline void arylic_tcp_worker(void *) {
 						 recent->last_payload);
 				continue;
 			}
-			const uint32_t burst_wait_ms = compute_burst_guard_wait_ms(recent);
-			if (burst_wait_ms > 0) {
-				static uint32_t last_burst_log_ms = 0;
-				const uint32_t now = millis();
-				if (now - last_burst_log_ms >= 500) {
-					last_burst_log_ms = now;
-					ESP_LOGI("arylic_tcp", "burst_guard host=%s port=%u wait=%ums", item.host,
-							 (unsigned) item.port, (unsigned) burst_wait_ms);
+			if (!payload_is_vol) {
+				const uint32_t burst_wait_ms = compute_burst_guard_wait_ms(recent);
+				if (burst_wait_ms > 0) {
+					static uint32_t last_burst_log_ms = 0;
+					const uint32_t now = millis();
+					if (now - last_burst_log_ms >= 500) {
+						last_burst_log_ms = now;
+						ESP_LOGI("arylic_tcp", "burst_guard host=%s port=%u wait=%ums", item.host,
+								 (unsigned) item.port, (unsigned) burst_wait_ms);
+					}
+					vTaskDelay(pdMS_TO_TICKS(burst_wait_ms));
 				}
-				vTaskDelay(pdMS_TO_TICKS(burst_wait_ms));
 			}
 			if (recent->last_sent_payload[0] != '\0' &&
 					strncmp(recent->last_sent_payload, payload.c_str(), ARYLIC_TCP_PAYLOAD_LEN) == 0) {
@@ -538,15 +555,19 @@ inline bool send_payload(const char *host, uint16_t port, const std::string &pay
 	log_tx_throttled(host, port, payload);
 
 	const bool payload_is_vol = payload.find(":VOL:") != std::string::npos;
-	const uint8_t max_attempts = payload_is_vol ? 1 : 2;
+	const uint32_t effective_timeout_ms = payload_is_vol
+		? std::min<uint32_t>(timeout_ms, ARYLIC_TCP_VOL_SEND_TIMEOUT_MS)
+		: timeout_ms;
+	uint8_t max_attempts = payload_is_vol ? ARYLIC_TCP_VOL_MAX_ATTEMPTS : 2;
+	if (max_attempts < 1) max_attempts = 1;
 	bool sent_ok = false;
 	for (uint8_t attempt = 1; attempt <= max_attempts; attempt++) {
-		const uint32_t timeout_budget_ms = compute_timeout_budget_ms(timeout_ms);
+		const uint32_t timeout_budget_ms = compute_timeout_budget_ms(effective_timeout_ms);
 		const uint32_t deadline_ms = millis() + timeout_budget_ms;
 		int sock = ensure_persistent_socket(host, port, deadline_ms, attempt);
 		if (sock < 0) {
 			note_send_failure(host, port, "connect_fail");
-			if (attempt < max_attempts) vTaskDelay(pdMS_TO_TICKS(20));
+			if (attempt < max_attempts) vTaskDelay(pdMS_TO_TICKS(ARYLIC_TCP_RETRY_DELAY_MS));
 			continue;
 		}
 
@@ -586,7 +607,7 @@ inline bool send_payload(const char *host, uint16_t port, const std::string &pay
 		}
 		close_persistent_socket();
 		note_send_failure(host, port, "send_fail");
-		if (attempt < max_attempts) vTaskDelay(pdMS_TO_TICKS(20));
+		if (attempt < max_attempts) vTaskDelay(pdMS_TO_TICKS(ARYLIC_TCP_RETRY_DELAY_MS));
 	}
 
 	if (!sent_ok) {

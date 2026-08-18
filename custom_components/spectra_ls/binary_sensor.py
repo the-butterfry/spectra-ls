@@ -1,10 +1,12 @@
 # Description: Binary sensor entities for Spectra LS shadow parity routing surfaces with Phase 3 write-control, Phase 4 diagnostics attributes, and Phase 6 control-center settings visibility, including host-cutover readiness and shared MA authority-contract packet propagation.
-# Version: 2026.06.20.1
-# Last updated: 2026-06-20
+# Version: 2026.08.18.2
+# Last updated: 2026-08-18
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
 from __future__ import annotations
+
+from typing import Any
 
 from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.config_entries import ConfigEntry
@@ -19,12 +21,24 @@ from .const import (
     LEGACY_META_CONFIDENCE_MIN,
     LEGACY_META_RESOLVER,
 )
+from .payload_surface_fabric import PayloadSurfaceFabric
 
 
-def _component_metadata_override_packet(data: dict) -> dict:
-    write_controls = data.get("write_controls", {}) if isinstance(data.get("write_controls", {}), dict) else {}
-    packet = write_controls.get("metadata_override", {})
-    return packet if isinstance(packet, dict) else {}
+def _metadata_values(data: dict[str, Any]) -> dict[str, Any]:
+    return PayloadSurfaceFabric.metadata_values(data)
+
+
+def _metadata_checks(data: dict[str, Any]) -> dict[str, Any]:
+    return PayloadSurfaceFabric.metadata_checks(data)
+
+
+def _component_metadata_override_packet(data: dict[str, Any]) -> dict[str, Any]:
+    return PayloadSurfaceFabric.metadata_override_packet(data)
+
+
+def _dict_surface(data: dict[str, Any], key: str) -> dict[str, Any]:
+    candidate = data.get(key, {})
+    return candidate if isinstance(candidate, dict) else {}
 
 
 class SpectraLsShadowControlCapableBinarySensor(CoordinatorEntity, BinarySensorEntity):
@@ -99,7 +113,7 @@ class SpectraLsHostCutoverGateReadyBinarySensor(CoordinatorEntity, BinarySensorE
     @property
     def extra_state_attributes(self):
         data = self.coordinator.data
-        gate = data.get("host_control_cutover_gate", {}) if isinstance(data.get("host_control_cutover_gate", {}), dict) else {}
+        gate = _dict_surface(data, "host_control_cutover_gate")
         return {
             "status": gate.get("status", "blocked"),
             "ready_for_authoritative_activation": gate.get("ready_for_authoritative_activation", False),
@@ -127,18 +141,44 @@ class SpectraLsComponentNowPlayingDisplayAllowedBinarySensor(CoordinatorEntity, 
 
     @property
     def is_on(self) -> bool:
-        metadata_prep = self.coordinator.data.get("metadata_prep_validation", {})
-        values = metadata_prep.get("values", {}) if isinstance(metadata_prep.get("values", {}), dict) else {}
+        values = _metadata_values(self.coordinator.data)
         return bool(values.get("now_playing_display_allowed", False))
 
     @property
     def extra_state_attributes(self):
         data = self.coordinator.data
-        metadata_prep = data.get("metadata_prep_validation", {}) if isinstance(data.get("metadata_prep_validation", {}), dict) else {}
-        values = metadata_prep.get("values", {}) if isinstance(metadata_prep.get("values", {}), dict) else {}
-        checks = metadata_prep.get("checks", {}) if isinstance(metadata_prep.get("checks", {}), dict) else {}
+        values = _metadata_values(data)
+        checks = _metadata_checks(data)
         return {
             "display_contract_consistent": checks.get("now_playing_display_contract_consistent"),
+            "now_playing_entity": values.get("now_playing_entity", ""),
+            "now_playing_state": values.get("now_playing_state", ""),
+            "captured_at": data.get("captured_at"),
+        }
+
+
+class SpectraLsComponentNowPlayingOledBlankBinarySensor(CoordinatorEntity, BinarySensorEntity):
+    """Component-authoritative OLED blank contract surface."""
+
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:monitor-off"
+    _attr_name = "Component Now Playing OLED Blank"
+    _attr_unique_id = "spectra_ls_component_now_playing_oled_blank"
+
+    @property
+    def is_on(self) -> bool:
+        values = _metadata_values(self.coordinator.data)
+        return bool(values.get("now_playing_oled_blank_contract", False))
+
+    @property
+    def extra_state_attributes(self):
+        data = self.coordinator.data
+        values = _metadata_values(data)
+        checks = _metadata_checks(data)
+        return {
+            "blank_reason": values.get("now_playing_oled_blank_reason", ""),
+            "oled_payload_ready": checks.get("canonical_oled_payload_ready"),
             "now_playing_entity": values.get("now_playing_entity", ""),
             "now_playing_state": values.get("now_playing_state", ""),
             "captured_at": data.get("captured_at"),
@@ -229,10 +269,9 @@ class SpectraLsComponentMetadataOverrideActiveBinarySensor(CoordinatorEntity, Bi
 
     @property
     def extra_state_attributes(self):
-        packet = _component_metadata_override_packet(self.coordinator.data)
-        override_entity_value = str(packet.get("entity", "") or "").strip()
-        if override_entity_value.lower() in {"", "none", "unknown", "unavailable", "null"}:
-            override_entity_value = ""
+        data = self.coordinator.data
+        packet = _component_metadata_override_packet(data)
+        override_entity_value = PayloadSurfaceFabric.metadata_override_entity(data)
 
         metadata_attempt = self.coordinator.metadata_stack.last_metadata_override_attempt
         return {
@@ -258,15 +297,9 @@ class SpectraLsComponentRollbackSafePostureBinarySensor(CoordinatorEntity, Binar
     @property
     def is_on(self) -> bool:
         data = self.coordinator.data
-        route_trace = data.get("route_trace", {}) if isinstance(data.get("route_trace", {}), dict) else {}
-        contract = (
-            data.get("contract_validation", {})
-            if isinstance(data.get("contract_validation", {}), dict)
-            else {}
-        )
-        write_controls = (
-            data.get("write_controls", {}) if isinstance(data.get("write_controls", {}), dict) else {}
-        )
+        route_trace = _dict_surface(data, "route_trace")
+        contract = _dict_surface(data, "contract_validation")
+        write_controls = _dict_surface(data, "write_controls")
         route_decision = str(route_trace.get("decision", "") or "").strip().lower()
         authority_mode = str(write_controls.get("authority_mode", "") or "").strip().lower()
         contract_valid = bool(contract.get("valid", False))
@@ -278,15 +311,9 @@ class SpectraLsComponentRollbackSafePostureBinarySensor(CoordinatorEntity, Binar
     @property
     def extra_state_attributes(self):
         data = self.coordinator.data
-        route_trace = data.get("route_trace", {}) if isinstance(data.get("route_trace", {}), dict) else {}
-        contract = (
-            data.get("contract_validation", {})
-            if isinstance(data.get("contract_validation", {}), dict)
-            else {}
-        )
-        write_controls = (
-            data.get("write_controls", {}) if isinstance(data.get("write_controls", {}), dict) else {}
-        )
+        route_trace = _dict_surface(data, "route_trace")
+        contract = _dict_surface(data, "contract_validation")
+        write_controls = _dict_surface(data, "write_controls")
         return {
             "route_decision": route_trace.get("decision", ""),
             "authority_mode": write_controls.get("authority_mode", ""),
@@ -302,13 +329,13 @@ async def async_setup_entry(
 ) -> None:
     """Set up Spectra LS shadow binary sensors."""
     coordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities(
-        [
-            SpectraLsShadowControlCapableBinarySensor(coordinator),
-            SpectraLsHostCutoverGateReadyBinarySensor(coordinator),
-            SpectraLsComponentNowPlayingDisplayAllowedBinarySensor(coordinator),
-            SpectraLsComponentMetaLowConfidenceBinarySensor(coordinator),
-            SpectraLsComponentMetadataOverrideActiveBinarySensor(coordinator),
-            SpectraLsComponentRollbackSafePostureBinarySensor(coordinator),
-        ]
+    binary_sensor_types = (
+        SpectraLsShadowControlCapableBinarySensor,
+        SpectraLsHostCutoverGateReadyBinarySensor,
+        SpectraLsComponentNowPlayingDisplayAllowedBinarySensor,
+        SpectraLsComponentNowPlayingOledBlankBinarySensor,
+        SpectraLsComponentMetaLowConfidenceBinarySensor,
+        SpectraLsComponentMetadataOverrideActiveBinarySensor,
+        SpectraLsComponentRollbackSafePostureBinarySensor,
     )
+    async_add_entities([sensor_type(coordinator) for sensor_type in binary_sensor_types])

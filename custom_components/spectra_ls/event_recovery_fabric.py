@@ -1,6 +1,6 @@
 # Description: Event-recovery fabric workflow for Spectra LS state-change orchestration extracted from meta-fabric.
-# Version: 2026.08.01.6
-# Last updated: 2026-08-01
+# Version: 2026.08.18.1
+# Last updated: 2026-08-18
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -37,6 +37,95 @@ class EventRecoveryFabricWorkflow:
         self._component_state_last_trigger_monotonic: dict[str, float] = {}
         self._component_state_cooldown_s = 0.8
         self._component_state_inflight_targets: set[str] = set()
+
+    @staticmethod
+    def _event_data(event: Any) -> dict[str, Any]:
+        return event.data if event is not None and isinstance(getattr(event, "data", None), dict) else {}
+
+    def _global_state_watched_targets(self) -> set[str]:
+        """Return currently watched global entity targets from target-options plan."""
+        c = self._coordinator
+        target_options_plan = c._compute_component_target_options_plan()
+        if not isinstance(target_options_plan, dict):
+            return set()
+        helper_options = (
+            target_options_plan.get("proposed_options", [])
+            if isinstance(target_options_plan.get("proposed_options", []), list)
+            else []
+        )
+        return {
+            str(item).strip()
+            for item in helper_options
+            if isinstance(item, str) and str(item).strip()
+        }
+
+    @staticmethod
+    def _unresolved_state_transition(old_state: str, new_state: str, normalize_state) -> bool:
+        old_norm = normalize_state(old_state)
+        new_norm = normalize_state(new_state)
+        unresolved = {"unknown", "unavailable", "none", "", "null"}
+        return old_norm in unresolved and new_norm in unresolved
+
+    @staticmethod
+    def _should_skip_component_watched_event(
+        *,
+        entity_id: str,
+        old_state: str,
+        new_state: str,
+        normalize_state,
+    ) -> bool:
+        watched_entities = {
+            COMPONENT_ACTIVE_TARGET,
+            COMPONENT_CONTROL_TARGETS,
+            COMPONENT_NOW_PLAYING_ENTITY,
+            COMPONENT_METADATA_OVERRIDE_ACTIVE,
+        }
+        if entity_id not in watched_entities:
+            return False
+
+        if old_state == new_state:
+            return True
+        if EventRecoveryFabricWorkflow._unresolved_state_transition(old_state, new_state, normalize_state):
+            return True
+        if entity_id not in {COMPONENT_CONTROL_TARGETS, COMPONENT_NOW_PLAYING_ENTITY}:
+            return True
+        return False
+
+    @staticmethod
+    def _can_schedule_coalesced(
+        *,
+        entity_id: str,
+        now_mono: float,
+        cache: dict[str, float],
+        cooldown_s: float,
+        inflight: set[str],
+    ) -> bool:
+        last_trigger = cache.get(entity_id, 0.0)
+        if last_trigger > 0 and (now_mono - last_trigger) < cooldown_s:
+            return False
+        if entity_id in inflight:
+            return False
+        return True
+
+    def _refresh_snapshot_or_defer(self) -> None:
+        """Run immediate snapshot refresh when interval allows, otherwise schedule deferred refresh."""
+        c = self._coordinator
+        now_mono = monotonic()
+        elapsed = now_mono - c._last_snapshot_refresh_monotonic
+        if c._last_snapshot_refresh_monotonic == 0.0 or elapsed >= c._snapshot_refresh_min_interval_s:
+            c._refresh_snapshot(force=False)
+            if c._deferred_snapshot_refresh_unsub is not None:
+                c._deferred_snapshot_refresh_unsub()
+                c._deferred_snapshot_refresh_unsub = None
+            return
+
+        if c._deferred_snapshot_refresh_unsub is None:
+            delay_s = max(c._snapshot_refresh_min_interval_s - elapsed, 0.05)
+            c._deferred_snapshot_refresh_unsub = async_call_later(
+                c.hass,
+                delay_s,
+                c._handle_deferred_snapshot_refresh,
+            )
 
     async def _async_run_component_players_change_refresh_coalesced(self, entity_id: str) -> None:
         """Run one coalesced players-change refresh task and clear in-flight marker."""
@@ -166,37 +255,28 @@ class EventRecoveryFabricWorkflow:
         try:
             if c._write_authority_mode != WRITE_AUTH_COMPONENT:
                 return
-            event_data = event.data if event is not None else {}
+            event_data = self._event_data(event)
             entity_id = str(event_data.get("entity_id", "") or "")
             if entity_id == "":
                 return
-
-            target_options_plan = c._compute_component_target_options_plan()
-            if not isinstance(target_options_plan, dict):
+            watched_targets = self._global_state_watched_targets()
+            if entity_id not in watched_targets:
                 return
-            helper_options = (
-                target_options_plan.get("proposed_options", [])
-                if isinstance(target_options_plan.get("proposed_options", []), list)
-                else []
-            )
-            watched_targets = {
-                str(item).strip()
-                for item in helper_options
-                if isinstance(item, str) and str(item).strip()
-            }
-            if entity_id in watched_targets:
-                now_mono = monotonic()
-                self._prune_global_state_cache(now_mono)
-                last_trigger = self._global_state_last_trigger_monotonic.get(entity_id, 0.0)
-                if last_trigger > 0 and (now_mono - last_trigger) < self._global_state_cooldown_s:
-                    return
 
-                if entity_id in self._global_state_inflight_targets:
-                    return
+            now_mono = monotonic()
+            self._prune_global_state_cache(now_mono)
+            if not self._can_schedule_coalesced(
+                entity_id=entity_id,
+                now_mono=now_mono,
+                cache=self._global_state_last_trigger_monotonic,
+                cooldown_s=self._global_state_cooldown_s,
+                inflight=self._global_state_inflight_targets,
+            ):
+                return
 
-                self._global_state_last_trigger_monotonic[entity_id] = now_mono
-                self._global_state_inflight_targets.add(entity_id)
-                c.hass.async_create_task(self._async_run_global_state_auto_select(entity_id))
+            self._global_state_last_trigger_monotonic[entity_id] = now_mono
+            self._global_state_inflight_targets.add(entity_id)
+            c.hass.async_create_task(self._async_run_global_state_auto_select(entity_id))
         except Exception:  # pragma: no cover - defensive callback hardening
             _LOGGER.exception("Failed global state-change handling for component auto-select parity")
 
@@ -204,45 +284,30 @@ class EventRecoveryFabricWorkflow:
         """Handle state-change orchestration lane for event/recovery parity behaviors."""
         c = self._coordinator
         try:
-            event_data = event.data if event is not None and isinstance(event.data, dict) else {}
+            event_data = self._event_data(event)
             entity_id = str(event_data.get("entity_id", "") or "")
             old_state_obj = event_data.get("old_state")
             new_state_obj = event_data.get("new_state")
             old_state = str(getattr(old_state_obj, "state", "") or "")
             new_state = str(getattr(new_state_obj, "state", "") or "")
 
-            watched_entities = {
-                COMPONENT_ACTIVE_TARGET,
-                COMPONENT_CONTROL_TARGETS,
-                COMPONENT_NOW_PLAYING_ENTITY,
-                COMPONENT_METADATA_OVERRIDE_ACTIVE,
-            }
-
-            if entity_id in watched_entities:
-                # Ignore attribute-only mutations (for example captured_at churn) and
-                # unresolved->unresolved transitions to avoid self-trigger refresh loops.
-                if old_state == new_state:
-                    return
-
-                old_norm = c._normalize_state(old_state)
-                new_norm = c._normalize_state(new_state)
-                unresolved = {"unknown", "unavailable", "none", "", "null"}
-                if old_norm in unresolved and new_norm in unresolved:
-                    return
-
-                # Only these component trigger entities are allowed to schedule
-                # snapshot refresh work; other watched entities are output-facing
-                # diagnostics that can self-trigger churn loops.
-                if entity_id not in {COMPONENT_CONTROL_TARGETS, COMPONENT_NOW_PLAYING_ENTITY}:
-                    return
+            if self._should_skip_component_watched_event(
+                entity_id=entity_id,
+                old_state=old_state,
+                new_state=new_state,
+                normalize_state=c._normalize_state,
+            ):
+                return
 
             if entity_id in {COMPONENT_CONTROL_TARGETS, COMPONENT_NOW_PLAYING_ENTITY}:
                 now_mono = monotonic()
-                last_trigger = self._component_state_last_trigger_monotonic.get(entity_id, 0.0)
-                if last_trigger > 0 and (now_mono - last_trigger) < self._component_state_cooldown_s:
-                    return
-
-                if entity_id in self._component_state_inflight_targets:
+                if not self._can_schedule_coalesced(
+                    entity_id=entity_id,
+                    now_mono=now_mono,
+                    cache=self._component_state_last_trigger_monotonic,
+                    cooldown_s=self._component_state_cooldown_s,
+                    inflight=self._component_state_inflight_targets,
+                ):
                     return
 
                 self._component_state_last_trigger_monotonic[entity_id] = now_mono
@@ -251,21 +316,6 @@ class EventRecoveryFabricWorkflow:
                     self._async_run_component_players_change_refresh_coalesced(entity_id)
                 )
 
-            now_mono = monotonic()
-            elapsed = now_mono - c._last_snapshot_refresh_monotonic
-            if c._last_snapshot_refresh_monotonic == 0.0 or elapsed >= c._snapshot_refresh_min_interval_s:
-                c._refresh_snapshot(force=False)
-                if c._deferred_snapshot_refresh_unsub is not None:
-                    c._deferred_snapshot_refresh_unsub()
-                    c._deferred_snapshot_refresh_unsub = None
-                return
-
-            if c._deferred_snapshot_refresh_unsub is None:
-                delay_s = max(c._snapshot_refresh_min_interval_s - elapsed, 0.05)
-                c._deferred_snapshot_refresh_unsub = async_call_later(
-                    c.hass,
-                    delay_s,
-                    c._handle_deferred_snapshot_refresh,
-                )
+            self._refresh_snapshot_or_defer()
         except Exception:  # pragma: no cover - defensive callback hardening
             _LOGGER.exception("Failed to refresh Spectra LS snapshot on state-change event")

@@ -1,6 +1,6 @@
 ## Description: RP2040 firmware for Spectra LS input scanning and UART event transport.
-## Version: 2026.05.02.1
-## Last updated: 2026-05-02
+## Version: 2026.08.14.3
+## Last updated: 2026-08-14
 #
 # RP FILE CONTRACT:
 # - Owns hardware initialization and main-loop orchestration only.
@@ -122,7 +122,7 @@ ANALOG_IDLE_LOCK_MS = 0  # idle gate disabled
 ANALOG_IDLE_MIN_CHANGE_BY_NAME = {}
 ANALOG_CONFIRM_SAMPLES_BY_NAME = {}
 ANALOG_CONFIRM_DELTA_BY_NAME = {}
-ANALOG_SEND_INTERVAL_MS = 30  # 0 disables rate limiting
+ANALOG_SEND_INTERVAL_MS = 20  # 0 disables rate limiting
 ANALOG_SNAP_ZERO_PCT = 0  # 0 disables snap
 ANALOG_SNAP_FULL_PCT = 0  # 0 disables snap
 ANALOG_SNAP_ZERO_PCT_BY_NAME = {
@@ -193,10 +193,10 @@ DEBUG_ENCODER_SERIAL = True
 DEBUG_ENCODER_SERIAL_INTERVAL_MS = 120
 DEBUG_BUTTONS_SERIAL = False
 DEBUG_ANALOG_SERIAL = True
-DEBUG_ANALOG_STREAM_NAMES = ("volume_pot", "eq_bass_pot", "eq_mid_pot", "eq_treble_pot")
-DEBUG_ANALOG_STREAM_INTERVAL_MS = 120
-DEBUG_ANALOG_STREAM_MIN_DELTA = 2
-DEBUG_POT_DIRECTION_SERIAL = False
+DEBUG_ANALOG_STREAM_NAMES = ("volume_pot",)
+DEBUG_ANALOG_STREAM_INTERVAL_MS = 60
+DEBUG_ANALOG_STREAM_MIN_DELTA = 1
+DEBUG_POT_DIRECTION_SERIAL = True
 DEBUG_SEESAW_INIT = True
 DEBUG_PCF8575_INIT = True
 DEBUG_I2C_SCAN = True

@@ -1,6 +1,6 @@
 # Description: Validation/control fabric workflow for Spectra LS snapshot validation assembly extracted from meta-fabric.
-# Version: 2026.08.14.2
-# Last updated: 2026-08-14
+# Version: 2026.08.18.5
+# Last updated: 2026-08-18
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -64,6 +64,75 @@ class ValidationFabricWorkflow:
         left_norm = cls._normalize_host(left)
         right_norm = cls._normalize_host(right)
         return left_norm != "" and right_norm != "" and left_norm == right_norm
+
+    @staticmethod
+    def _collect_registry_capabilities(targets: list[Any]) -> set[str]:
+        """Collect normalized capability tokens from registry entry payloads."""
+        capabilities_union: set[str] = set()
+        for entry in targets:
+            if not isinstance(entry, dict):
+                continue
+            caps = entry.get("capabilities", [])
+            if not isinstance(caps, list):
+                continue
+            for cap in caps:
+                if isinstance(cap, str) and cap.strip():
+                    capabilities_union.add(cap.strip())
+        return capabilities_union
+
+    @staticmethod
+    def _summarize_action_catalog(
+        action_catalog: list[dict[str, Any]],
+        capabilities_union: set[str],
+    ) -> dict[str, Any]:
+        """Build deterministic action-catalog summary metrics for diagnostics packets."""
+        confirm_required_count = 0
+        sensitive_count = 0
+        max_cooldown_s = 0
+
+        for action in action_catalog:
+            safety = action.get("safety", {}) if isinstance(action.get("safety", {}), dict) else {}
+            if bool(safety.get("confirm_required", False)):
+                confirm_required_count += 1
+            if bool(safety.get("sensitive", False)):
+                sensitive_count += 1
+            cooldown = safety.get("cooldown_s", 0)
+            if isinstance(cooldown, (int, float)):
+                max_cooldown_s = max(max_cooldown_s, int(cooldown))
+
+        return {
+            "action_count": len(action_catalog),
+            "confirm_required_count": confirm_required_count,
+            "sensitive_count": sensitive_count,
+            "max_cooldown_s": max_cooldown_s,
+            "capability_pool": sorted(capabilities_union),
+        }
+
+    @staticmethod
+    def _collect_blocking_reasons(
+        *,
+        checks: dict[str, bool],
+        reason_map: dict[str, str],
+    ) -> list[str]:
+        """Collect blocking reasons for checks that fail using a deterministic mapping."""
+        blockers: list[str] = []
+        for key, passed in checks.items():
+            if not passed and key in reason_map:
+                blockers.append(reason_map[key])
+        return blockers
+
+    @staticmethod
+    def _compute_validation_verdict(
+        *,
+        fail_checks: list[bool],
+        warn_checks: list[bool],
+    ) -> str:
+        """Compute PASS/WARN/FAIL from grouped check predicates."""
+        if any(fail_checks):
+            return "FAIL"
+        if any(warn_checks):
+            return "WARN"
+        return "PASS"
 
     def build_metadata_validation_bundle(
         self,
@@ -334,15 +403,16 @@ class ValidationFabricWorkflow:
             "ma_boot_ready": ma_boot_ready,
         }
 
-        verdict = "PASS"
-        if not checks["route_trace_present"]:
-            verdict = "FAIL"
-        elif not checks["ma_boot_ready"]:
-            verdict = "WARN"
-        elif not checks["contract_valid"] or not checks["registry_present"]:
-            verdict = "FAIL"
-        elif not checks["candidate_available"] or not checks["no_authority_expansion"]:
-            verdict = "WARN"
+        verdict = self._compute_validation_verdict(
+            fail_checks=[
+                not checks["route_trace_present"],
+                checks["ma_boot_ready"] and (not checks["contract_valid"] or not checks["registry_present"]),
+            ],
+            warn_checks=[
+                not checks["ma_boot_ready"],
+                checks["ma_boot_ready"] and (not checks["candidate_available"] or not checks["no_authority_expansion"]),
+            ],
+        )
 
         blocking_reasons: list[str] = []
         if not checks["route_trace_present"]:
@@ -552,21 +622,24 @@ class ValidationFabricWorkflow:
         )
         selected_target_host_resolved = self._normalize_host(selected_target_host) != ""
 
-        blocking_reasons: list[str] = []
-        if active_target_resolved and not selected_target_matches_active:
-            blocking_reasons.append("selected_target_mismatch")
-        if route_decision == "route_linkplay_tcp" and not selected_target_host_resolved:
-            blocking_reasons.append("selected_target_host_unresolved")
-        if not control_hosts_resolved:
-            blocking_reasons.append("control_hosts_unresolved")
-
-        verdict = "PASS"
-        if "selected_target_mismatch" in blocking_reasons:
-            verdict = "FAIL"
-        elif "selected_target_host_unresolved" in blocking_reasons:
-            verdict = "WARN"
-        elif "control_hosts_unresolved" in blocking_reasons:
-            verdict = "WARN"
+        checks = {
+            "selected_target_matches_active": (not active_target_resolved) or selected_target_matches_active,
+            "selected_target_host_resolved": (route_decision != "route_linkplay_tcp") or selected_target_host_resolved,
+            "control_hosts_resolved": control_hosts_resolved,
+        }
+        reason_map = {
+            "selected_target_matches_active": "selected_target_mismatch",
+            "selected_target_host_resolved": "selected_target_host_unresolved",
+            "control_hosts_resolved": "control_hosts_unresolved",
+        }
+        blocking_reasons = self._collect_blocking_reasons(checks=checks, reason_map=reason_map)
+        verdict = self._compute_validation_verdict(
+            fail_checks=["selected_target_mismatch" in blocking_reasons],
+            warn_checks=[
+                "selected_target_host_unresolved" in blocking_reasons,
+                "control_hosts_unresolved" in blocking_reasons,
+            ],
+        )
 
         return {
             "verdict": verdict,
@@ -807,7 +880,7 @@ class ValidationFabricWorkflow:
 
         control_path_counts: dict[str, int] = {}
         hardware_family_counts: dict[str, int] = {}
-        capabilities_union: set[str] = set()
+        capabilities_union = self._collect_registry_capabilities(targets)
         control_capable_count = 0
 
         for entry in targets:
@@ -820,12 +893,6 @@ class ValidationFabricWorkflow:
 
             if bool(entry.get("control_capable", False)):
                 control_capable_count += 1
-
-            caps = entry.get("capabilities", [])
-            if isinstance(caps, list):
-                for cap in caps:
-                    if isinstance(cap, str) and cap.strip():
-                        capabilities_union.add(cap.strip())
 
         route_decision = str(route_trace.get("decision", "") or "")
         contract_valid = bool(contract_validation.get("valid", False))
@@ -840,15 +907,18 @@ class ValidationFabricWorkflow:
             "no_authority_expansion": c._write_authority_mode in WRITE_AUTH_ALLOWED,
         }
 
-        verdict = "PASS"
-        if not checks["registry_present"] or not checks["route_trace_present"] or not checks["contract_valid"]:
-            verdict = "FAIL"
-        elif (
-            not checks["capability_matrix_present"]
-            or not checks["metadata_prep_ready"]
-            or not checks["no_authority_expansion"]
-        ):
-            verdict = "WARN"
+        verdict = self._compute_validation_verdict(
+            fail_checks=[
+                not checks["registry_present"],
+                not checks["route_trace_present"],
+                not checks["contract_valid"],
+            ],
+            warn_checks=[
+                not checks["capability_matrix_present"],
+                not checks["metadata_prep_ready"],
+                not checks["no_authority_expansion"],
+            ],
+        )
 
         profile_schema = {
             "schema_version": "f4_s01.v1",
@@ -900,15 +970,7 @@ class ValidationFabricWorkflow:
         entries = registry.get("entries", {}) if isinstance(registry.get("entries", {}), dict) else {}
         targets = list(entries.values()) if isinstance(entries, dict) else []
 
-        capabilities_union: set[str] = set()
-        for entry in targets:
-            if not isinstance(entry, dict):
-                continue
-            caps = entry.get("capabilities", [])
-            if isinstance(caps, list):
-                for cap in caps:
-                    if isinstance(cap, str) and cap.strip():
-                        capabilities_union.add(cap.strip())
+        capabilities_union = self._collect_registry_capabilities(targets)
 
         action_schema = {
             "schema_version": "f4_s02.v1",
@@ -992,33 +1054,21 @@ class ValidationFabricWorkflow:
             "no_authority_expansion": no_authority_expansion,
         }
 
-        verdict = "PASS"
-        if (
-            not checks["registry_present"]
-            or not checks["contract_valid"]
-            or not checks["action_schema_present"]
-            or not checks["action_catalog_present"]
-        ):
-            verdict = "FAIL"
-        elif (
-            not checks["capability_profile_ready"]
-            or not checks["dry_run_only"]
-            or not checks["no_authority_expansion"]
-        ):
-            verdict = "WARN"
+        verdict = self._compute_validation_verdict(
+            fail_checks=[
+                not checks["registry_present"],
+                not checks["contract_valid"],
+                not checks["action_schema_present"],
+                not checks["action_catalog_present"],
+            ],
+            warn_checks=[
+                not checks["capability_profile_ready"],
+                not checks["dry_run_only"],
+                not checks["no_authority_expansion"],
+            ],
+        )
 
-        confirm_required_count = 0
-        sensitive_count = 0
-        max_cooldown_s = 0
-        for action in action_catalog:
-            safety = action.get("safety", {}) if isinstance(action.get("safety", {}), dict) else {}
-            if bool(safety.get("confirm_required", False)):
-                confirm_required_count += 1
-            if bool(safety.get("sensitive", False)):
-                sensitive_count += 1
-            cooldown = safety.get("cooldown_s", 0)
-            if isinstance(cooldown, (int, float)):
-                max_cooldown_s = max(max_cooldown_s, int(cooldown))
+        catalog_summary = self._summarize_action_catalog(action_catalog, capabilities_union)
 
         return {
             "verdict": verdict,
@@ -1035,13 +1085,7 @@ class ValidationFabricWorkflow:
             },
             "action_schema": action_schema,
             "action_catalog": action_catalog,
-            "catalog_summary": {
-                "action_count": len(action_catalog),
-                "confirm_required_count": confirm_required_count,
-                "sensitive_count": sensitive_count,
-                "max_cooldown_s": max_cooldown_s,
-                "capability_pool": sorted(capabilities_union),
-            },
+            "catalog_summary": catalog_summary,
         }
 
     def build_crossfade_balance_validation(
@@ -1120,34 +1164,32 @@ class ValidationFabricWorkflow:
             "snapshot_fresh": True,
         }
 
-        verdict = "PASS"
-        if not checks["contract_valid"] or not checks["route_trace_present"]:
-            verdict = "FAIL"
-        elif (
-            not checks["f4_s02_ready"]
-            or not checks["slider_schema_present"]
-            or not checks["mode_profiles_present"]
-            or not checks["no_authority_expansion"]
-        ):
-            verdict = "WARN"
-
-        blocking_reasons: list[str] = []
-        if not checks["contract_valid"]:
-            blocking_reasons.append("contract_invalid")
-        if not checks["route_trace_present"]:
-            blocking_reasons.append("route_trace_missing")
-        if not checks["f4_s02_ready"]:
-            blocking_reasons.append("f4_s02_not_ready")
+        reason_map = {
+            "contract_valid": "contract_invalid",
+            "route_trace_present": "route_trace_missing",
+            "f4_s02_ready": "f4_s02_not_ready",
+            "slider_schema_present": "slider_schema_missing",
+            "mode_profiles_present": "mode_profiles_missing",
+            "no_authority_expansion": "authority_expansion_detected",
+        }
+        blocking_reasons = self._collect_blocking_reasons(checks=checks, reason_map=reason_map)
         if not active_target_resolved:
             blocking_reasons.append("active_target_unresolved")
         if route_decision == "defer_no_target":
             blocking_reasons.append("route_deferred_no_target")
-        if not checks["slider_schema_present"]:
-            blocking_reasons.append("slider_schema_missing")
-        if not checks["mode_profiles_present"]:
-            blocking_reasons.append("mode_profiles_missing")
-        if not checks["no_authority_expansion"]:
-            blocking_reasons.append("authority_expansion_detected")
+
+        verdict = self._compute_validation_verdict(
+            fail_checks=[
+                not checks["contract_valid"],
+                not checks["route_trace_present"],
+            ],
+            warn_checks=[
+                not checks["f4_s02_ready"],
+                not checks["slider_schema_present"],
+                not checks["mode_profiles_present"],
+                not checks["no_authority_expansion"],
+            ],
+        )
 
         return {
             "verdict": verdict,

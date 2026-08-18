@@ -1,6 +1,6 @@
 <!-- Description: Documentation index for Spectra L/S technical, onboarding, roadmap, and operations artifacts. -->
-<!-- Version: 2026.08.01.5 -->
-<!-- Last updated: 2026-08-01 -->
+<!-- Version: 2026.08.18.1 -->
+<!-- Last updated: 2026-08-18 -->
 
 # Spectra L/S Documentation Index
 
@@ -53,6 +53,7 @@ Operator-facing wiki entry pages live under `docs/wiki/`.
 ## Testing and diagnostics
 
 - Dev Tools templates: `docs/testing/DEVTOOLS-TEMPLATES.local.md`
+- Isolated contract harness guide: `docs/testing/SPECTRA-CONTRACT-HARNESS.md`
 - WLED palette room E2E runbook: `docs/testing/raw/wled_palette_room_e2e_runbook.md`
 - CA-S04 runtime write-lane validation template: `docs/testing/raw/ca_s04_runtime_write_lane_retirement_validation.jinja`
 - CA-S05 listener soak validation template: `docs/testing/raw/ca_s05_esp_listener_soak_validation.jinja`

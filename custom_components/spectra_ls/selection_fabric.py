@@ -1,6 +1,6 @@
 # Description: Selection-fabric workflow for Spectra LS scheduler, target-options, and helper write orchestration extracted from meta-fabric.
-# Version: 2026.08.01.5
-# Last updated: 2026-08-01
+# Version: 2026.08.18.4
+# Last updated: 2026-08-18
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -74,6 +74,38 @@ class SelectionFabricWorkflow:
             authority_block_reason=authority_block_reason,
         )
 
+    def _execute_guarded_component_write(
+        self,
+        *,
+        result: dict[str, Any],
+        dry_run: bool,
+        write_fn: Any,
+        success_status: str,
+        success_reason: str,
+        error_reason: str,
+    ) -> None:
+        """Run a standardized pending->dry_run/write_applied/write_error guarded write flow."""
+        c = self._coordinator
+        if result.get("status") != "pending":
+            return
+
+        if dry_run:
+            result["status"] = "dry_run_ok"
+            result["reason"] = success_reason.replace("applied", "guards passed (dry run); no write executed")
+            return
+
+        c._write_in_progress = True
+        try:
+            write_fn()
+            result["status"] = success_status
+            result["reason"] = success_reason
+        except Exception as err:  # pragma: no cover - defensive runtime guard
+            result["status"] = "write_error"
+            result["reason"] = error_reason
+            result["error"] = str(err)
+        finally:
+            c._write_in_progress = False
+
     def _selection_state(self) -> dict[str, Any]:
         c = self._coordinator
         state = getattr(c, "_component_selection_state", None)
@@ -106,6 +138,46 @@ class SelectionFabricWorkflow:
 
         c._component_selection_state = state
         return state
+
+    def _selection_helper_snapshot(
+        self,
+        *,
+        helper_entity: str = LEGACY_ACTIVE_TARGET_HELPER,
+        include_last_valid: bool = False,
+    ) -> dict[str, Any]:
+        """Resolve helper-backed selection snapshot with normalized current/options and optional last-valid target."""
+        c = self._coordinator
+        selection_state = self._selection_state()
+        helper_state = c.hass.states.get(helper_entity)
+
+        helper_current = str(selection_state.get("active_target", "") or "").strip()
+        if helper_state is not None and not c._is_resolved_state(helper_current):
+            helper_current = str(helper_state.state or "").strip()
+
+        helper_options = (
+            list(selection_state.get("options", []))
+            if isinstance(selection_state.get("options", []), list)
+            else []
+        )
+        if helper_state is not None and len(helper_options) == 0:
+            helper_options = WritePathFabric.normalize_options(helper_state.attributes.get("options", []))
+
+        snapshot: dict[str, Any] = {
+            "selection_state": selection_state,
+            "helper_state": helper_state,
+            "helper_current": helper_current,
+            "helper_options": helper_options,
+        }
+
+        if include_last_valid:
+            last_valid_state = c.hass.states.get(LEGACY_LAST_VALID_TARGET)
+            last_valid_target = str(selection_state.get("last_valid_target", "") or "").strip()
+            if not c._is_resolved_state(last_valid_target):
+                last_valid_target = str(last_valid_state.state if last_valid_state is not None else "").strip()
+            snapshot["last_valid_state"] = last_valid_state
+            snapshot["last_valid_target"] = last_valid_target
+
+        return snapshot
 
     def _persist_selection_state(
         self,
@@ -463,6 +535,22 @@ class SelectionFabricWorkflow:
             "ranked_candidates": top,
         }
 
+    @staticmethod
+    def _build_scheduler_policy(
+        *,
+        require_control_capable: bool,
+        prefer_fresh: bool,
+        max_results: int,
+        target_hint: str,
+    ) -> dict[str, Any]:
+        """Build normalized scheduler policy payload for decision/apply lanes."""
+        return {
+            "require_control_capable": bool(require_control_capable),
+            "prefer_fresh": bool(prefer_fresh),
+            "max_results": int(max_results),
+            "target_hint": str(target_hint or "").strip(),
+        }
+
     async def async_run_scheduler_choice(
         self,
         *,
@@ -484,12 +572,12 @@ class SelectionFabricWorkflow:
         decision = self.compute_scheduler_decision(
             registry=registry,
             route_trace=route_trace,
-            policy={
-                "require_control_capable": bool(require_control_capable),
-                "prefer_fresh": bool(prefer_fresh),
-                "max_results": int(max_results),
-                "target_hint": str(target_hint or "").strip(),
-            },
+            policy=self._build_scheduler_policy(
+                require_control_capable=require_control_capable,
+                prefer_fresh=prefer_fresh,
+                max_results=max_results,
+                target_hint=target_hint,
+            ),
         )
 
         result = {
@@ -531,17 +619,17 @@ class SelectionFabricWorkflow:
         decision = self.compute_scheduler_decision(
             registry=registry,
             route_trace=route_trace,
-            policy={
-                "require_control_capable": bool(require_control_capable),
-                "prefer_fresh": bool(prefer_fresh),
-                "max_results": int(max_results),
-                "target_hint": str(target_hint or "").strip(),
-            },
+            policy=self._build_scheduler_policy(
+                require_control_capable=require_control_capable,
+                prefer_fresh=prefer_fresh,
+                max_results=max_results,
+                target_hint=target_hint,
+            ),
         )
 
         selected_target = str(decision.get("selected_target", "") or "").strip()
-        helper_state = c.hass.states.get(LEGACY_ACTIVE_TARGET_HELPER)
-        selection_state = self._selection_state()
+        helper_snapshot = self._selection_helper_snapshot()
+        helper_state = helper_snapshot["helper_state"]
 
         result: dict[str, Any] = self._new_write_result(
             requested_at=requested_at,
@@ -573,14 +661,8 @@ class SelectionFabricWorkflow:
             authority_block_reason="Component-only authority required; scheduler apply is blocked",
         )
 
-        helper_options: list[str] = []
-        helper_current = str(selection_state.get("active_target", "") or "").strip()
-        helper_options = list(selection_state.get("options", [])) if isinstance(selection_state.get("options", []), list) else []
-        if helper_state is not None:
-            if len(helper_options) == 0:
-                helper_options = WritePathFabric.normalize_options(helper_state.attributes.get("options", []))
-            if not c._is_resolved_state(helper_current):
-                helper_current = str(helper_state.state or "").strip()
+        helper_current = str(helper_snapshot.get("helper_current", "") or "").strip()
+        helper_options: list[str] = list(helper_snapshot.get("helper_options", [])) if isinstance(helper_snapshot.get("helper_options", []), list) else []
 
         if result["status"] == "pending" and helper_options and selected_target not in helper_options:
             result["status"] = "blocked_option_mismatch"
@@ -591,25 +673,17 @@ class SelectionFabricWorkflow:
             result["status"] = "noop_already_selected"
             result["reason"] = "Target helper already matches scheduler-selected target"
 
-        if result["status"] == "pending" and dry_run:
-            result["status"] = "dry_run_ok"
-            result["reason"] = "Scheduler apply guards passed (dry run); no helper write executed"
-
-        if result["status"] == "pending":
-            c._write_in_progress = True
-            try:
-                self._persist_selection_state(
-                    active_target=selected_target,
-                    source="scheduler_apply_choice",
-                )
-                result["status"] = "write_applied"
-                result["reason"] = "Scheduler-selected target applied to component selection state"
-            except Exception as err:  # pragma: no cover - defensive runtime guard
-                result["status"] = "write_error"
-                result["reason"] = "Component selection-state update failed during scheduler apply"
-                result["error"] = str(err)
-            finally:
-                c._write_in_progress = False
+        self._execute_guarded_component_write(
+            result=result,
+            dry_run=dry_run,
+            write_fn=lambda: self._persist_selection_state(
+                active_target=selected_target,
+                source="scheduler_apply_choice",
+            ),
+            success_status="write_applied",
+            success_reason="Scheduler-selected target applied to component selection state",
+            error_reason="Component selection-state update failed during scheduler apply",
+        )
 
         if result["status"] in {"dry_run_ok", "noop_already_selected", "write_applied", "write_error"}:
             WritePathFabric.mark_write_touch(c)
@@ -688,8 +762,6 @@ class SelectionFabricWorkflow:
         )
 
         if result["status"] == "pending" and dry_run:
-            result["status"] = "dry_run_ok"
-            result["reason"] = "Target-options scaffold computed successfully (dry run)"
             helper_current = str(selection_state.get("active_target", "") or "").strip()
             if not c._is_resolved_state(helper_current):
                 helper_current = str(helper_state.state or "").strip() if helper_state is not None else ""
@@ -697,31 +769,30 @@ class SelectionFabricWorkflow:
             default_option = str(result.get("default_option", "none") or "none")
             result["would_select_default"] = (not current_ok) and default_option in proposed_options
 
-        if result["status"] == "pending":
-            c._write_in_progress = True
-            try:
-                helper_current = str(selection_state.get("active_target", "") or "").strip()
-                if not c._is_resolved_state(helper_current):
-                    helper_current = str(helper_state.state or "").strip() if helper_state is not None else ""
-                current_ok = c._is_resolved_state(helper_current) and helper_current in proposed_options
-                default_option = str(result.get("default_option", "none") or "none")
-                next_active = helper_current if current_ok else (default_option if default_option in proposed_options else "")
-                self._persist_selection_state(
-                    active_target=next_active,
-                    options=proposed_options,
-                    source="build_target_options_scaffold",
-                )
-                result["status"] = "options_applied"
-                result["reason"] = "Target-options scaffold applied to component selection state"
-                result["applied_options"] = proposed_options
-                if (not current_ok) and default_option in proposed_options:
-                    result["selected_default_option"] = default_option
-            except Exception as err:  # pragma: no cover - defensive runtime guard
-                result["status"] = "write_error"
-                result["reason"] = "Component selection-state update failed during target-options scaffold apply"
-                result["error"] = str(err)
-            finally:
-                c._write_in_progress = False
+        def _apply_target_options_state() -> None:
+            helper_current = str(selection_state.get("active_target", "") or "").strip()
+            if not c._is_resolved_state(helper_current):
+                helper_current = str(helper_state.state or "").strip() if helper_state is not None else ""
+            current_ok = c._is_resolved_state(helper_current) and helper_current in proposed_options
+            default_option = str(result.get("default_option", "none") or "none")
+            next_active = helper_current if current_ok else (default_option if default_option in proposed_options else "")
+            self._persist_selection_state(
+                active_target=next_active,
+                options=proposed_options,
+                source="build_target_options_scaffold",
+            )
+            result["applied_options"] = proposed_options
+            if (not current_ok) and default_option in proposed_options:
+                result["selected_default_option"] = default_option
+
+        self._execute_guarded_component_write(
+            result=result,
+            dry_run=dry_run,
+            write_fn=_apply_target_options_state,
+            success_status="options_applied",
+            success_reason="Target-options scaffold applied to component selection state",
+            error_reason="Component selection-state update failed during target-options scaffold apply",
+        )
 
         if result["status"] in {"dry_run_ok", "options_applied", "write_error"}:
             WritePathFabric.mark_write_touch(c)
@@ -902,25 +973,17 @@ class SelectionFabricWorkflow:
             result["status"] = "noop_already_selected"
             result["reason"] = "Helper already matches auto-select scaffold target"
 
-        if result["status"] == "pending" and dry_run:
-            result["status"] = "dry_run_ok"
-            result["reason"] = "Auto-select scaffold guards passed (dry run)"
-
-        if result["status"] == "pending":
-            c._write_in_progress = True
-            try:
-                self._persist_selection_state(
-                    active_target=selected_target,
-                    source="run_auto_select_scaffold",
-                )
-                result["status"] = "write_applied"
-                result["reason"] = "Auto-select scaffold applied selected target to component selection state"
-            except Exception as err:  # pragma: no cover - defensive runtime guard
-                result["status"] = "write_error"
-                result["reason"] = "Component selection-state update failed during auto-select scaffold apply"
-                result["error"] = str(err)
-            finally:
-                c._write_in_progress = False
+        self._execute_guarded_component_write(
+            result=result,
+            dry_run=dry_run,
+            write_fn=lambda: self._persist_selection_state(
+                active_target=selected_target,
+                source="run_auto_select_scaffold",
+            ),
+            success_status="write_applied",
+            success_reason="Auto-select scaffold applied selected target to component selection state",
+            error_reason="Component selection-state update failed during auto-select scaffold apply",
+        )
 
         if result["status"] in {"dry_run_ok", "noop_already_selected", "write_applied", "write_error"}:
             WritePathFabric.mark_write_touch(c)
@@ -950,12 +1013,9 @@ class SelectionFabricWorkflow:
         requested_at = datetime.now(UTC).isoformat()
         corr = (correlation_id or "").strip() or f"track-last-valid-{uuid4().hex[:12]}"
 
-        helper_state = c.hass.states.get(LEGACY_ACTIVE_TARGET_HELPER)
-        last_valid_state = c.hass.states.get(LEGACY_LAST_VALID_TARGET)
-        selection_state = self._selection_state()
-        helper_current = str(selection_state.get("active_target", "") or "").strip()
-        if not c._is_resolved_state(helper_current):
-            helper_current = str(helper_state.state if helper_state is not None else "").strip()
+        helper_snapshot = self._selection_helper_snapshot()
+        helper_current = str(helper_snapshot.get("helper_current", "") or "").strip()
+        selection_state = helper_snapshot.get("selection_state", {}) if isinstance(helper_snapshot.get("selection_state", {}), dict) else {}
 
         result: dict[str, Any] = self._new_write_result(
             requested_at=requested_at,
@@ -983,30 +1043,23 @@ class SelectionFabricWorkflow:
         if result["status"] == "pending":
             current_last_valid = str(selection_state.get("last_valid_target", "") or "").strip()
             if not c._is_resolved_state(current_last_valid):
+                last_valid_state = c.hass.states.get(LEGACY_LAST_VALID_TARGET)
                 current_last_valid = str(last_valid_state.state if last_valid_state is not None else "").strip()
             if current_last_valid == helper_current:
                 result["status"] = "noop_already_tracked"
                 result["reason"] = "Last-valid helper already matches current active target"
 
-        if result["status"] == "pending" and dry_run:
-            result["status"] = "dry_run_ok"
-            result["reason"] = "Last-valid tracking guards passed (dry run)"
-
-        if result["status"] == "pending":
-            c._write_in_progress = True
-            try:
-                self._persist_selection_state(
-                    last_valid_target=helper_current,
-                    source=source,
-                )
-                result["status"] = "write_applied"
-                result["reason"] = "Last-valid target updated in component selection state"
-            except Exception as err:  # pragma: no cover - defensive runtime guard
-                result["status"] = "write_error"
-                result["reason"] = "Component selection-state update failed during last-valid tracking"
-                result["error"] = str(err)
-            finally:
-                c._write_in_progress = False
+        self._execute_guarded_component_write(
+            result=result,
+            dry_run=dry_run,
+            write_fn=lambda: self._persist_selection_state(
+                last_valid_target=helper_current,
+                source=source,
+            ),
+            success_status="write_applied",
+            success_reason="Last-valid target updated in component selection state",
+            error_reason="Component selection-state update failed during last-valid tracking",
+        )
 
         if result["status"] in {"dry_run_ok", "noop_already_tracked", "write_applied", "write_error"}:
             WritePathFabric.mark_write_touch(c)
@@ -1035,20 +1088,10 @@ class SelectionFabricWorkflow:
         requested_at = datetime.now(UTC).isoformat()
         corr = (correlation_id or "").strip() or f"restore-last-valid-{uuid4().hex[:12]}"
 
-        helper_state = c.hass.states.get(LEGACY_ACTIVE_TARGET_HELPER)
-        last_valid_state = c.hass.states.get(LEGACY_LAST_VALID_TARGET)
-        selection_state = self._selection_state()
-
-        helper_current = str(selection_state.get("active_target", "") or "").strip()
-        if not c._is_resolved_state(helper_current):
-            helper_current = str(helper_state.state if helper_state is not None else "").strip()
-        last_valid_target = str(selection_state.get("last_valid_target", "") or "").strip()
-        if not c._is_resolved_state(last_valid_target):
-            last_valid_target = str(last_valid_state.state if last_valid_state is not None else "").strip()
-        helper_options: list[str] = []
-        helper_options = list(selection_state.get("options", [])) if isinstance(selection_state.get("options", []), list) else []
-        if helper_state is not None and len(helper_options) == 0:
-            helper_options = WritePathFabric.normalize_options(helper_state.attributes.get("options", []))
+        helper_snapshot = self._selection_helper_snapshot(include_last_valid=True)
+        helper_current = str(helper_snapshot.get("helper_current", "") or "").strip()
+        last_valid_target = str(helper_snapshot.get("last_valid_target", "") or "").strip()
+        helper_options: list[str] = list(helper_snapshot.get("helper_options", [])) if isinstance(helper_snapshot.get("helper_options", []), list) else []
 
         current_resolved = c._is_resolved_state(helper_current)
         restore_candidate = (
@@ -1087,25 +1130,17 @@ class SelectionFabricWorkflow:
             result["status"] = "noop_already_selected"
             result["reason"] = "Helper already matches restorable last-valid target"
 
-        if result["status"] == "pending" and dry_run:
-            result["status"] = "dry_run_ok"
-            result["reason"] = "Restore-last-valid guards passed (dry run)"
-
-        if result["status"] == "pending":
-            c._write_in_progress = True
-            try:
-                self._persist_selection_state(
-                    active_target=restore_candidate,
-                    source="restore_last_valid_target",
-                )
-                result["status"] = "write_applied"
-                result["reason"] = "Restored component selection state from last-valid target"
-            except Exception as err:  # pragma: no cover - defensive runtime guard
-                result["status"] = "write_error"
-                result["reason"] = "Component selection-state update failed during restore-last-valid apply"
-                result["error"] = str(err)
-            finally:
-                c._write_in_progress = False
+        self._execute_guarded_component_write(
+            result=result,
+            dry_run=dry_run,
+            write_fn=lambda: self._persist_selection_state(
+                active_target=restore_candidate,
+                source="restore_last_valid_target",
+            ),
+            success_status="write_applied",
+            success_reason="Restored component selection state from last-valid target",
+            error_reason="Component selection-state update failed during restore-last-valid apply",
+        )
 
         if result["status"] in {
             "dry_run_ok",
@@ -1141,7 +1176,8 @@ class SelectionFabricWorkflow:
         requested_at = datetime.now(UTC).isoformat()
         corr = (correlation_id or "").strip() or f"cycle-target-{uuid4().hex[:12]}"
 
-        helper_state = c.hass.states.get(LEGACY_ACTIVE_TARGET_HELPER)
+        helper_snapshot = self._selection_helper_snapshot()
+        helper_state = helper_snapshot["helper_state"]
         component_override_state = getattr(c, "_component_metadata_override_state", {})
         override_active = False
         if isinstance(component_override_state, dict):
@@ -1153,15 +1189,8 @@ class SelectionFabricWorkflow:
                 "true",
                 "1",
             }
-        selection_state = self._selection_state()
-
-        helper_current = str(selection_state.get("active_target", "") or "").strip()
-        if not c._is_resolved_state(helper_current):
-            helper_current = str(helper_state.state if helper_state is not None else "").strip()
-        helper_options: list[str] = []
-        helper_options = list(selection_state.get("options", [])) if isinstance(selection_state.get("options", []), list) else []
-        if helper_state is not None and len(helper_options) == 0:
-            helper_options = WritePathFabric.normalize_options(helper_state.attributes.get("options", []))
+        helper_current = str(helper_snapshot.get("helper_current", "") or "").strip()
+        helper_options: list[str] = list(helper_snapshot.get("helper_options", [])) if isinstance(helper_snapshot.get("helper_options", []), list) else []
 
         cycle_options = list(helper_options)
         if not include_none:
@@ -1267,15 +1296,10 @@ class SelectionFabricWorkflow:
         corr = (correlation_id or "").strip() or f"set-active-target-{uuid4().hex[:12]}"
 
         requested_target = str(target or "").strip()
-        helper_state = c.hass.states.get(LEGACY_ACTIVE_TARGET_HELPER)
-        selection_state = self._selection_state()
-        helper_current = str(selection_state.get("active_target", "") or "").strip()
-        if not c._is_resolved_state(helper_current):
-            helper_current = str(helper_state.state if helper_state is not None else "").strip()
-        helper_options: list[str] = []
-        helper_options = list(selection_state.get("options", [])) if isinstance(selection_state.get("options", []), list) else []
-        if helper_state is not None and len(helper_options) == 0:
-            helper_options = WritePathFabric.normalize_options(helper_state.attributes.get("options", []))
+        helper_snapshot = self._selection_helper_snapshot()
+        helper_state = helper_snapshot["helper_state"]
+        helper_current = str(helper_snapshot.get("helper_current", "") or "").strip()
+        helper_options: list[str] = list(helper_snapshot.get("helper_options", [])) if isinstance(helper_snapshot.get("helper_options", []), list) else []
 
         result: dict[str, Any] = self._new_write_result(
             requested_at=requested_at,

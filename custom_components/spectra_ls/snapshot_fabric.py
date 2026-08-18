@@ -1,6 +1,6 @@
 # Description: Snapshot-fabric workflow for Spectra LS coordinator snapshot and write-controls packet assembly extracted from coordinator.
-# Version: 2026.08.14.1
-# Last updated: 2026-08-14
+# Version: 2026.08.18.1
+# Last updated: 2026-08-18
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -149,6 +149,173 @@ class SnapshotFabricWorkflow:
             return selected_target, selected_path, "component_sticky_ranked_candidate"
         return selected_target, selected_path, "component_ranked_candidate"
 
+    def _build_legacy_parity_snapshot(self) -> tuple[dict[str, Any], dict[str, Any], list[str], list[str], list[str], list[str]]:
+        """Build legacy/parity surfaces and mismatch/unresolved projections."""
+        c = self._coordinator
+        active_target = c._snapshot_for_entity(LEGACY_SURFACES["active_target"])
+        active_control_path = c._snapshot_for_entity(LEGACY_SURFACES["active_control_path"])
+        control_hosts = c._snapshot_for_entity(LEGACY_SURFACES["control_hosts"])
+        active_control_capable = c._snapshot_for_entity(
+            LEGACY_SURFACES["active_control_capable"],
+            as_bool=True,
+        )
+
+        legacy = {
+            "active_target": active_target.state,
+            "active_control_path": active_control_path.state,
+            "control_hosts": control_hosts.state,
+            "active_control_capable": active_control_capable.value,
+        }
+
+        parity = {
+            "active_target": active_target.value,
+            "active_control_path": active_control_path.value,
+            "control_hosts": control_hosts.value,
+            "active_control_capable": active_control_capable.value,
+        }
+
+        unresolved_sources: list[str] = []
+        for key, snapshot in {
+            "active_target": active_target,
+            "active_control_path": active_control_path,
+            "control_hosts": control_hosts,
+            "active_control_capable": active_control_capable,
+        }.items():
+            if not snapshot.available:
+                unresolved_sources.append(key)
+
+        mismatches = [
+            key
+            for key in ("active_target", "active_control_path", "control_hosts", "active_control_capable")
+            if parity[key] != legacy[key]
+        ]
+        return (
+            legacy,
+            parity,
+            list(unresolved_sources),
+            list(mismatches),
+            list(unresolved_sources),
+            list(mismatches),
+        )
+
+    def _build_registry_and_route_trace(self) -> tuple[dict[str, Any], dict[str, Any]]:
+        """Build registry snapshot and authoritative route trace from component-owned surfaces."""
+        c = self._coordinator
+        registry = build_registry_snapshot(
+            hass=c.hass,
+            legacy_control_host_entity=LEGACY_CONTROL_HOST,
+            legacy_control_targets_entity=LEGACY_CONTROL_TARGETS,
+            legacy_rooms_json_entity=LEGACY_ROOMS_JSON,
+            legacy_rooms_raw_entity=LEGACY_ROOMS_RAW,
+            legacy_active_target_helper_entity=None,
+            legacy_active_target_entity=LEGACY_SURFACES["active_target"],
+        )
+
+        component_active_target, component_active_control_path, authority_source = self._derive_component_route_authority(
+            registry
+        )
+
+        route_trace = build_route_trace(
+            active_target=component_active_target,
+            active_control_path=component_active_control_path,
+            registry=registry,
+        )
+        route_trace["authority_source"] = authority_source
+        return registry, route_trace
+
+    @staticmethod
+    def _clean_text(raw: Any) -> str:
+        value = str(raw or "").strip()
+        if value.lower() in {"", "none", "unknown", "unavailable", "null"}:
+            return ""
+        return value
+
+    def _clean_port(self, raw: Any) -> str:
+        value = self._clean_text(raw)
+        if value == "":
+            return ""
+        try:
+            num = int(float(value))
+        except (TypeError, ValueError):
+            return ""
+        return str(num) if 0 < num <= 65534 else ""
+
+    def _with_resolved_route_host_port(self, route_trace: dict[str, Any]) -> dict[str, Any]:
+        """Return route trace with normalized host/port projections from route/selected/component fallbacks."""
+        c = self._coordinator
+        selected_target = (
+            route_trace.get("selected_target", {})
+            if isinstance(route_trace.get("selected_target", {}), dict)
+            else {}
+        )
+
+        route_host = self._clean_text(
+            route_trace.get("control_host")
+            or route_trace.get("active_host")
+            or route_trace.get("host")
+        )
+        route_port = self._clean_port(
+            route_trace.get("control_port")
+            or route_trace.get("active_port")
+            or route_trace.get("port")
+        )
+
+        selected_host = self._clean_text(selected_target.get("host", ""))
+        component_host = self._clean_text(
+            c.hass.states.get("sensor.component_control_host").state
+            if c.hass.states.get("sensor.component_control_host") is not None
+            else ""
+        )
+
+        selected_port = self._clean_port(selected_target.get("port", ""))
+        component_port = self._clean_port(
+            c.hass.states.get("sensor.component_control_port").state
+            if c.hass.states.get("sensor.component_control_port") is not None
+            else ""
+        )
+
+        resolved_route_host = route_host or selected_host or component_host
+        resolved_route_port = route_port or selected_port or component_port
+
+        return {
+            **route_trace,
+            "control_host": resolved_route_host,
+            "active_host": resolved_route_host,
+            "host": resolved_route_host,
+            "control_port": resolved_route_port,
+            "active_port": resolved_route_port,
+            "port": resolved_route_port,
+        }
+
+    def _project_validation_surfaces(
+        self,
+        *,
+        parity: dict[str, Any],
+        registry: dict[str, Any],
+        route_trace: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Build and project dict-safe validation packet surfaces."""
+        c = self._coordinator
+        validation_packet = c._meta_fabric.build_snapshot_validation_packet(
+            parity=parity,
+            registry=registry,
+            route_trace=route_trace,
+        )
+        return {
+            "host_control_cutover_gate": self._dict_surface(validation_packet, "host_control_cutover_gate"),
+            "contract_validation": self._dict_surface(validation_packet, "contract_validation"),
+            "selection_handoff_validation": self._dict_surface(validation_packet, "selection_handoff_validation"),
+            "route_safety_validation": self._dict_surface(validation_packet, "route_safety_validation"),
+            "metadata_prep_validation": self._dict_surface(validation_packet, "metadata_prep_validation"),
+            "metadata_bridge_validation": self._dict_surface(validation_packet, "metadata_bridge_validation"),
+            "cutover_prep_validation": self._dict_surface(validation_packet, "cutover_prep_validation"),
+            "capability_profile_validation": self._dict_surface(validation_packet, "capability_profile_validation"),
+            "action_catalog_validation": self._dict_surface(validation_packet, "action_catalog_validation"),
+            "crossfade_balance_validation": self._dict_surface(validation_packet, "crossfade_balance_validation"),
+            "scheduler_validation": self._dict_surface(validation_packet, "scheduler_validation"),
+            "control_center_validation": self._dict_surface(validation_packet, "control_center_validation"),
+        }
+
     def build_write_controls(self) -> dict[str, Any]:
         """Build write-controls packet from coordinator and meta-fabric surfaces."""
         c = self._coordinator
@@ -193,136 +360,23 @@ class SnapshotFabricWorkflow:
     def build_snapshot(self) -> dict[str, Any]:
         """Build complete coordinator snapshot packet with parity/validation surfaces."""
         c = self._coordinator
-        active_target = c._snapshot_for_entity(LEGACY_SURFACES["active_target"])
-        active_control_path = c._snapshot_for_entity(LEGACY_SURFACES["active_control_path"])
-        control_hosts = c._snapshot_for_entity(LEGACY_SURFACES["control_hosts"])
-        active_control_capable = c._snapshot_for_entity(
-            LEGACY_SURFACES["active_control_capable"],
-            as_bool=True,
-        )
+        (
+            legacy,
+            parity,
+            unresolved_sources,
+            mismatches,
+            legacy_parity_unresolved_sources,
+            legacy_parity_mismatches,
+        ) = self._build_legacy_parity_snapshot()
 
-        legacy = {
-            "active_target": active_target.state,
-            "active_control_path": active_control_path.state,
-            "control_hosts": control_hosts.state,
-            "active_control_capable": active_control_capable.value,
-        }
+        registry, route_trace = self._build_registry_and_route_trace()
+        route_trace = self._with_resolved_route_host_port(route_trace)
 
-        parity = {
-            "active_target": active_target.value,
-            "active_control_path": active_control_path.value,
-            "control_hosts": control_hosts.value,
-            "active_control_capable": active_control_capable.value,
-        }
-
-        unresolved_sources: list[str] = []
-        for key, snapshot in {
-            "active_target": active_target,
-            "active_control_path": active_control_path,
-            "control_hosts": control_hosts,
-            "active_control_capable": active_control_capable,
-        }.items():
-            if not snapshot.available:
-                unresolved_sources.append(key)
-
-        mismatches = [
-            key
-            for key in ("active_target", "active_control_path", "control_hosts", "active_control_capable")
-            if parity[key] != legacy[key]
-        ]
-        legacy_parity_unresolved_sources = list(unresolved_sources)
-        legacy_parity_mismatches = list(mismatches)
-
-        registry = build_registry_snapshot(
-            hass=c.hass,
-            legacy_control_host_entity=LEGACY_CONTROL_HOST,
-            legacy_control_targets_entity=LEGACY_CONTROL_TARGETS,
-            legacy_rooms_json_entity=LEGACY_ROOMS_JSON,
-            legacy_rooms_raw_entity=LEGACY_ROOMS_RAW,
-            legacy_active_target_helper_entity=None,
-            legacy_active_target_entity=LEGACY_SURFACES["active_target"],
-        )
-
-        component_active_target, component_active_control_path, authority_source = self._derive_component_route_authority(
-            registry
-        )
-
-        route_trace = build_route_trace(
-            active_target=component_active_target,
-            active_control_path=component_active_control_path,
-            registry=registry,
-        )
-        route_trace["authority_source"] = authority_source
-
-        selected_target = (
-            route_trace.get("selected_target", {})
-            if isinstance(route_trace.get("selected_target", {}), dict)
-            else {}
-        )
-
-        def _clean_text(raw: Any) -> str:
-            value = str(raw or "").strip()
-            if value.lower() in {"", "none", "unknown", "unavailable", "null"}:
-                return ""
-            return value
-
-        def _clean_port(raw: Any) -> str:
-            value = _clean_text(raw)
-            if value == "":
-                return ""
-            try:
-                num = int(float(value))
-            except (TypeError, ValueError):
-                return ""
-            return str(num) if 0 < num <= 65534 else ""
-
-        route_host = _clean_text(
-            route_trace.get("control_host")
-            or route_trace.get("active_host")
-            or route_trace.get("host")
-        )
-        route_port = _clean_port(
-            route_trace.get("control_port")
-            or route_trace.get("active_port")
-            or route_trace.get("port")
-        )
-
-        selected_host = _clean_text(selected_target.get("host", ""))
-        component_host = _clean_text(c.hass.states.get("sensor.component_control_host").state if c.hass.states.get("sensor.component_control_host") is not None else "")
-
-        selected_port = _clean_port(selected_target.get("port", ""))
-        component_port = _clean_port(c.hass.states.get("sensor.component_control_port").state if c.hass.states.get("sensor.component_control_port") is not None else "")
-
-        resolved_route_host = route_host or selected_host or component_host
-        resolved_route_port = route_port or selected_port or component_port
-
-        route_trace = {
-            **route_trace,
-            "control_host": resolved_route_host,
-            "active_host": resolved_route_host,
-            "host": resolved_route_host,
-            "control_port": resolved_route_port,
-            "active_port": resolved_route_port,
-            "port": resolved_route_port,
-        }
-
-        validation_packet = c._meta_fabric.build_snapshot_validation_packet(
+        validation_surfaces = self._project_validation_surfaces(
             parity=parity,
             registry=registry,
             route_trace=route_trace,
         )
-        host_control_cutover_gate = self._dict_surface(validation_packet, "host_control_cutover_gate")
-        contract_validation = self._dict_surface(validation_packet, "contract_validation")
-        selection_handoff_validation = self._dict_surface(validation_packet, "selection_handoff_validation")
-        route_safety_validation = self._dict_surface(validation_packet, "route_safety_validation")
-        metadata_prep_validation = self._dict_surface(validation_packet, "metadata_prep_validation")
-        metadata_bridge_validation = self._dict_surface(validation_packet, "metadata_bridge_validation")
-        cutover_prep_validation = self._dict_surface(validation_packet, "cutover_prep_validation")
-        capability_profile_validation = self._dict_surface(validation_packet, "capability_profile_validation")
-        action_catalog_validation = self._dict_surface(validation_packet, "action_catalog_validation")
-        crossfade_balance_validation = self._dict_surface(validation_packet, "crossfade_balance_validation")
-        scheduler_validation = self._dict_surface(validation_packet, "scheduler_validation")
-        control_center_validation = self._dict_surface(validation_packet, "control_center_validation")
 
         if c._write_authority_mode == WRITE_AUTH_COMPONENT:
             legacy_compat_parity_keys = {
@@ -349,20 +403,9 @@ class SnapshotFabricWorkflow:
             "legacy_parity_mismatches": legacy_parity_mismatches,
             "registry": registry,
             "route_trace": route_trace,
-            "host_control_cutover_gate": host_control_cutover_gate,
-            "contract_validation": contract_validation,
-            "selection_handoff_validation": selection_handoff_validation,
-            "route_safety_validation": route_safety_validation,
-            "metadata_prep_validation": metadata_prep_validation,
-            "capability_profile_validation": capability_profile_validation,
-            "action_catalog_validation": action_catalog_validation,
-            "crossfade_balance_validation": crossfade_balance_validation,
-            "scheduler_validation": scheduler_validation,
-            "metadata_bridge_validation": metadata_bridge_validation,
-            "cutover_prep_validation": cutover_prep_validation,
+            **validation_surfaces,
             "handoff_inventory": c._build_handoff_inventory(),
             "ma_backend_profile": ma_backend_profile,
-            "control_center_validation": control_center_validation,
             "write_controls": self.build_write_controls(),
             "captured_at": datetime.now(UTC).isoformat(),
         }

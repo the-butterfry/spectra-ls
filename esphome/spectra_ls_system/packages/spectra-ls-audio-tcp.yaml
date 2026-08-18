@@ -1,6 +1,6 @@
 # Description: Audio controls package for Spectra LS System (TCP-only) with host-resolved control routing.
-# Version: 2026.08.01.2
-# Last updated: 2026-08-01
+# Version: 2026.08.15.2
+# Last updated: 2026-08-15
 # PARITY DIRECTIVE: Behavior/contract edits require same-slice runtime+component parity review and version-metadata review.
 # Update version/date whenever you change this file.
 
@@ -99,6 +99,14 @@ binary_sensor:
       - lambda: |-
           id(meta_refresh_force) = true;
       - script.execute: compute_display_state
+  - platform: homeassistant
+    id: ha_audio_oled_blank_contract
+    entity_id: ${ha_ma_active_oled_blank}
+    internal: true
+    on_state:
+      - lambda: |-
+          id(meta_refresh_force) = true;
+      - script.execute: compute_display_state
   - platform: template
     name: "HA AirPlay Active"
     id: ha_airplay_active
@@ -150,17 +158,36 @@ sensor:
           then:
             - lambda: |-
                 static uint32_t last_log = 0;
-                float pct = (float) x;
-                if (pct > 100.0f) {
-                  pct = (pct / 65535.0f) * 100.0f;
+                float pct_raw = (float) x;
+                if (pct_raw > 100.0f) {
+                  pct_raw = (pct_raw / 65535.0f) * 100.0f;
                 }
-                if (pct < 0.0f) pct = 0.0f;
-                if (pct > 100.0f) pct = 100.0f;
-                if (pct <= 2.0f) pct = 0.0f;
-                if (pct >= 98.0f) pct = 100.0f;
+                if (pct_raw < 0.0f) pct_raw = 0.0f;
+                if (pct_raw > 100.0f) pct_raw = 100.0f;
+                if (pct_raw <= 2.0f) pct_raw = 0.0f;
+                if (pct_raw >= 98.0f) pct_raw = 100.0f;
                 if (${volume_pot_invert}) {
-                  pct = 100.0f - pct;
+                  pct_raw = 100.0f - pct_raw;
                 }
+
+                // RP2040-driven pot cleanup (comms + meter): median-of-3 removes
+                // single-sample spikes with near-zero lag.
+                static bool pot_hist_init = false;
+                static float pot_prev_a = 0.0f;
+                static float pot_prev_b = 0.0f;
+                auto median3 = [](float a, float b, float c) {
+                  if ((a >= b && a <= c) || (a <= b && a >= c)) return a;
+                  if ((b >= a && b <= c) || (b <= a && b >= c)) return b;
+                  return c;
+                };
+                if (!pot_hist_init) {
+                  pot_hist_init = true;
+                  pot_prev_a = pct_raw;
+                  pot_prev_b = pct_raw;
+                }
+                const float pct = median3(pot_prev_a, pot_prev_b, pct_raw);
+                pot_prev_a = pot_prev_b;
+                pot_prev_b = pct_raw;
 
                 int max_vol = (int) ${audio_max_volume_pct};
                 if (max_vol <= 0 || max_vol > 100) max_vol = 100;
@@ -170,8 +197,6 @@ sensor:
 
                 const uint32_t now = millis();
                 const bool pot_changed = (target != id(pot_volume_target));
-                id(np_disp_vol) = target;
-                id(np_disp_vol_from_pot) = true;
                 id(pot_volume_pct_cached) = (int) (pct + 0.5f);
                 id(pot_volume_pct_last_ms) = now;
 
@@ -192,11 +217,21 @@ sensor:
                   id(last_input_ms) = now;
                 }
                 if (now - last_log > (uint32_t) ${input_raw_log_interval_ms}) {
-                  ESP_LOGI("input", "Volume pot raw=%d target=%d screen_awake=%d", (int) x, target, screen_awake ? 1 : 0);
+                  ESP_LOGI("input", "Volume pot raw=%d pct=%.1f target=%d screen_awake=%d", (int) x, pct, target, screen_awake ? 1 : 0);
                   last_log = now;
                 }
 
-                id(arylic_pot_apply_target).execute(3, target);
+                if (pot_changed) {
+                  // OLED bar must follow physical pot immediately (display lane only).
+                  id(np_disp_vol_raw) = target;
+                  id(np_disp_vol_smoothed) = target;
+                  id(np_disp_vol_last_target) = target;
+                  id(np_disp_vol_direction) = 0;
+                  id(np_disp_vol_direction_hold_until_ms) = 0;
+                  id(np_disp_vol) = target;
+                  id(np_disp_vol_from_pot) = true;
+                  id(arylic_pot_apply_target).execute(3, target);
+                }
   - platform: rp2040_uart
     rp2040_uart_id: rp2040_uart_hub
     type: analog
@@ -405,27 +440,7 @@ number:
           int target = (int) (ratio * (float) max_vol + 0.5f);
           if (target < 0) target = 0;
           if (target > max_vol) target = max_vol;
-          const uint32_t now = millis();
-          const bool needs_prompt = false;
-          bool playing = id(arylic_playing).has_state() && id(arylic_playing).state;
-          if (!playing && id(ha_audio_state).has_state()) {
-            std::string s = id(ha_audio_state).state.c_str();
-            for (auto &c : s) c = (char) ::tolower(c);
-            if (s == "playing") playing = true;
-          }
-          if (id(arylic_control_hosts).empty()) {
-            id(audio_wake_until_ms) = now + ${audio_wake_hold_ms};
-            return;
-          }
-          id(arylic_volume_cached) = target;
-          id(audio_wake_until_ms) = now + ${audio_wake_hold_ms};
-          if (!id(arylic_control_hosts).empty()) {
-            const bool tcp_ok = esphome::arylic_tcp::send_volume_multi(id(arylic_control_hosts), (uint16_t) id(arylic_control_port), target);
-            if (!tcp_ok) {
-              ESP_LOGW("arylic_tcp", "VOL send failed target=%d", target);
-            }
-          }
-          id(arylic_last_vol_sent_ms) = now;
+          id(arylic_set_volume).execute(target);
 
 button:
   - platform: template
@@ -1156,9 +1171,32 @@ text_sensor:
           std::string low = cur;
           for (auto &c : low) c = (char) ::tolower(c);
           const bool resolved = !(low.empty() || low == "unknown" || low == "unavailable" || low == "none" || low == "null");
+          const uint32_t now = millis();
+          const bool component_blank_contract =
+            id(ha_audio_oled_blank_contract).has_state() && id(ha_audio_oled_blank_contract).state;
+
+          bool ha_state_active = false;
+          if (id(ha_audio_state).has_state()) {
+            std::string st = id(ha_audio_state).state.c_str();
+            for (auto &c : st) c = (char) ::tolower(c);
+            ha_state_active = (st == "playing" || st == "paused");
+          }
+
+          const uint32_t meta_stale_ms = (uint32_t) ${meta_stale_ms};
+          const bool recent_activity =
+            (id(ha_audio1_last_meta_ms) > 0 && (now - id(ha_audio1_last_meta_ms)) < meta_stale_ms) ||
+            (id(ha_audio_pos_last_ms) > 0 && (now - id(ha_audio_pos_last_ms)) < meta_stale_ms) ||
+            (id(ha_audio1_last_playing_ms) > 0 && (now - id(ha_audio1_last_playing_ms)) < meta_stale_ms);
+          const bool wake_overlay_active = id(audio_wake_until_ms) > now;
+
+          const bool auto_popup_allowed =
+            !component_blank_contract && (ha_state_active || recent_activity || wake_overlay_active);
+
           if (resolved && cur != last_source) {
             last_source = cur;
-            id(show_source_context_popup).execute();
+            if (auto_popup_allowed) {
+              id(show_source_context_popup).execute();
+            }
           }
       - script.execute: ensure_control_target_sync
   - platform: homeassistant
@@ -1730,6 +1768,8 @@ script:
           int clamped = target;
           if (clamped < 0) clamped = 0;
           if (clamped > max_vol) clamped = max_vol;
+          id(arylic_volume_cached) = clamped;
+          id(pot_volume_target) = clamped;
           auto pick_hosts = [&]() -> std::string {
             auto valid = [&](const std::string &value) {
               if (value.empty()) return false;
@@ -1767,68 +1807,30 @@ script:
                      0);
           };
           const std::string hosts = pick_hosts();
-          bool playing = id(arylic_playing).has_state() && id(arylic_playing).state;
-          if (!playing && id(ha_audio_state).has_state()) {
-            std::string s = id(ha_audio_state).state.c_str();
-            for (auto &c : s) c = (char) ::tolower(c);
-            if (s == "playing") playing = true;
+          const uint32_t min_interval = (uint32_t) ${volume_pot_send_interval_ms};
+          if (now - id(arylic_last_vol_sent_ms) < min_interval) {
+            id(pot_volume_deferred) = true;
+            id(pot_volume_deferred_until_ms) = id(arylic_last_vol_sent_ms) + min_interval;
+            return;
           }
           if (hosts.empty()) {
             id(audio_wake_until_ms) = now + ${audio_wake_hold_ms};
-            id(pot_volume_target) = clamped;
             id(pot_volume_deferred) = true;
             id(pot_volume_deferred_until_ms) = now + 150;
-            id(arylic_set_volume_via_ha_target).execute(clamped);
             log_block("no_hosts");
             return;
           }
           const bool tcp_ok = esphome::arylic_tcp::send_volume_multi(hosts, (uint16_t) id(arylic_control_port), clamped);
           if (!tcp_ok) {
             ESP_LOGW("arylic_tcp", "VOL send failed target=%d", clamped);
-            id(pot_volume_target) = clamped;
             id(pot_volume_deferred) = true;
             id(pot_volume_deferred_until_ms) = now + 150;
-            id(arylic_set_volume_via_ha_target).execute(clamped);
             return;
           }
 
-          id(arylic_volume_cached) = clamped;
           id(arylic_last_vol_sent_ms) = now;
           id(arylic_last_vol_sent_target) = clamped;
           id(pot_volume_deferred) = false;
-
-  - id: arylic_set_volume_via_ha_target
-    mode: restart
-    parameters:
-      target: int
-    then:
-      - if:
-          condition:
-            lambda: |-
-              if (!id(ma_active_target).has_state()) return false;
-              std::string entity = id(ma_active_target).state.c_str();
-              std::string low = entity;
-              for (auto &c : low) c = (char) ::tolower(c);
-              if (low.empty() || low == "unknown" || low == "unavailable" || low == "none" || low == "null") return false;
-              return entity.find("media_player.") == 0;
-          then:
-            - homeassistant.service:
-                service: media_player.volume_set
-                data:
-                  entity_id: !lambda |-
-                    return id(ma_active_target).state.c_str();
-                  volume_level: !lambda |-
-                    float v = (float) target / 100.0f;
-                    if (v < 0.0f) v = 0.0f;
-                    if (v > 1.0f) v = 1.0f;
-                    return v;
-            - lambda: |-
-                const uint32_t now = millis();
-                id(arylic_volume_cached) = target;
-                id(arylic_last_vol_sent_ms) = now;
-                id(arylic_last_vol_sent_target) = target;
-                id(pot_volume_deferred) = false;
-                ESP_LOGW("audio_gate", "VOL fallback via HA target='%s' value=%d", id(ma_active_target).state.c_str(), target);
 
   - id: arylic_set_eq_channel
     mode: restart
@@ -2116,55 +2118,6 @@ script:
       - lambda: |-
           if (delta == 0) return;
           const uint32_t now = millis();
-          const bool needs_prompt = id(control_target_needs_prompt);
-          auto pick_hosts = [&]() -> std::string {
-            auto valid = [&](const std::string &value) {
-              if (value.empty()) return false;
-              std::string low = value;
-              for (auto &c : low) c = (char) ::tolower(c);
-              return !(low == "unknown" || low == "unavailable" || low == "none" || low == "null");
-            };
-            if (valid(id(arylic_control_hosts))) return id(arylic_control_hosts);
-            if (valid(id(arylic_control_host))) return id(arylic_control_host);
-            std::string live_hosts = (id(ma_control_hosts).has_state()) ? id(ma_control_hosts).state.c_str() : "";
-            std::string live_host = (id(ma_control_host).has_state()) ? id(ma_control_host).state.c_str() : "";
-            if (valid(live_hosts)) {
-              id(arylic_control_hosts) = live_hosts;
-              id(arylic_control_host) = live_hosts;
-              id(arylic_control_hosts_last_valid_ms) = now;
-              return live_hosts;
-            }
-            if (valid(live_host)) {
-              id(arylic_control_host) = live_host;
-              if (!valid(id(arylic_control_hosts))) id(arylic_control_hosts) = live_host;
-              id(arylic_control_hosts_last_valid_ms) = now;
-              return live_host;
-            }
-            return std::string();
-          };
-          auto log_block = [&](const char *reason) {
-            static uint32_t last_log_ms = 0;
-            if (now - last_log_ms < (uint32_t) ${audio_gate_log_interval_ms}) return;
-            last_log_ms = now;
-            ESP_LOGW("audio_gate", "vol_delta blocked (%s) needs_prompt=%d hosts='%s' host='%s' amb=%d",
-                     reason,
-                     needs_prompt ? 1 : 0,
-                     id(arylic_control_hosts).c_str(),
-                     id(arylic_control_host).c_str(),
-                     0);
-          };
-          const std::string hosts = pick_hosts();
-          bool playing = id(arylic_playing).has_state() && id(arylic_playing).state;
-          if (!playing && id(ha_audio_state).has_state()) {
-            std::string s = id(ha_audio_state).state.c_str();
-            for (auto &c : s) c = (char) ::tolower(c);
-            if (s == "playing") playing = true;
-          }
-          if (hosts.empty()) {
-            id(audio_wake_until_ms) = now + ${audio_wake_hold_ms};
-            log_block("no_hosts");
-            return;
-          }
           ESP_LOGI("input", "Encoder Volume delta=%d", delta);
           int current = id(arylic_volume_cached);
           if (current < 0 && id(arylic_volume).has_state()) {
@@ -2176,19 +2129,8 @@ script:
           if (max_vol <= 0 || max_vol > 100) max_vol = 100;
           if (target < 0) target = 0;
           if (target > max_vol) target = max_vol;
-          const uint32_t min_interval = (uint32_t) (1000 / ${encoder_rate_limit_hz});
           id(audio_wake_until_ms) = now + ${audio_wake_hold_ms};
-          if (now - id(arylic_last_vol_sent_ms) < min_interval) {
-            id(arylic_volume_cached) = target;
-            return;
-          }
-          const bool tcp_ok = esphome::arylic_tcp::send_volume_multi(hosts, (uint16_t) id(arylic_control_port), target);
-          if (!tcp_ok) {
-            ESP_LOGW("arylic_tcp", "VOL send failed target=%d", target);
-          }
-          id(arylic_last_vol_sent_ms) = now;
-          id(arylic_last_vol_sent_target) = target;
-          id(arylic_volume_cached) = target;
+          id(arylic_set_volume).execute(target);
 
   - id: arylic_bass_delta
     mode: restart

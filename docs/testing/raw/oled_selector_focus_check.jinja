@@ -1,0 +1,90 @@
+{# Description: Selector-focused quick triage template for OLED now-playing winner telemetry. #}
+{# Version: 2026.08.18.1 #}
+{# Last updated: 2026-08-18 #}
+
+{% set invalid = ['', 'none', 'unknown', 'unavailable', 'null', none] %}
+
+{% set s_target_primary = 'sensor.shadow_active_target' %}
+{% set s_target_fallback = 'sensor.spectra_ls_shadow_active_target' %}
+{% set s_target = s_target_primary if (state_attr(s_target_primary, 'metadata_prep_validation') is not none) else s_target_fallback %}
+
+{% set metadata_prep = state_attr(s_target, 'metadata_prep_validation') or {} %}
+{% if metadata_prep is not mapping %}{% set metadata_prep = {} %}{% endif %}
+
+{% set checks = metadata_prep.checks if metadata_prep.checks is defined and metadata_prep.checks is mapping else {} %}
+{% set values = metadata_prep.values if metadata_prep.values is defined and metadata_prep.values is mapping else {} %}
+
+{% set selector_raw = values.component_now_playing_selection | default({}) %}
+{% set selector = selector_raw if selector_raw is mapping else ((selector_raw | from_json) if (selector_raw is string and (selector_raw | trim).startswith('{')) else {}) %}
+
+{% set winner_entity = checks.component_now_playing_selection_winner_entity | default(values.component_now_playing_selection_winner_entity | default(selector.winner_entity | default('unknown'))) %}
+{% set winner_source = checks.component_now_playing_selection_winner_source | default(values.component_now_playing_selection_winner_source | default(selector.winner_source | default('unknown'))) %}
+{% set winner_pool = checks.component_now_playing_selection_winner_pool | default(selector.winner_pool | default('unknown')) %}
+{% set winner_reason = checks.component_now_playing_selection_winner_reason | default(selector.winner_reason | default('unknown')) %}
+{% set candidate_count = checks.component_now_playing_selection_candidate_count | default(selector.candidate_count | default('unknown')) %}
+{% set eligible_count = checks.component_now_playing_selection_eligible_count | default(selector.eligible_count | default('unknown')) %}
+{% set ma_rich_active_exists = checks.component_now_playing_selection_ma_rich_active_exists | default(selector.ma_rich_active_exists | default('unknown')) %}
+
+{% set candidates = selector.candidates if selector.candidates is defined and selector.candidates is iterable else [] %}
+{% set sparse = namespace(count=0, entities=[]) %}
+{% for row in candidates if row is mapping %}
+  {% set reasons = row.reasons if row.reasons is defined and row.reasons is iterable else [] %}
+  {% if 'sparse_transport_blocked_by_ma_rich' in reasons %}
+    {% set sparse.count = sparse.count + 1 %}
+    {% set sparse.entities = sparse.entities + [row.entity if row.entity is defined else 'unknown'] %}
+  {% endif %}
+{% endfor %}
+
+{% set effective_entity = states('sensor.component_now_playing_entity') %}
+{% if effective_entity in invalid %}{% set effective_entity = states('sensor.now_playing_entity') %}{% endif %}
+{% set effective_state = states('sensor.component_now_playing_state') %}
+{% if effective_state in invalid %}{% set effective_state = states('sensor.now_playing_state') %}{% endif %}
+{% set display_allowed = states('binary_sensor.component_now_playing_display_allowed') %}
+{% if display_allowed in invalid %}{% set display_allowed = states('binary_sensor.now_playing_display_allowed') %}{% endif %}
+
+{% set selector_partial = winner_entity in invalid and winner_pool not in ['unknown', 'none', ''] %}
+{% set selector_low_confidence = winner_pool in ['fallback_any', 'fallback_meta', 'unknown'] %}
+{% set winner_matches_effective = winner_entity not in invalid and effective_entity not in invalid and winner_entity == effective_entity %}
+
+{% set cause = 'selector_healthy' %}
+{% if selector_partial %}
+  {% set cause = 'component_selector_telemetry_partial' %}
+{% elif selector_low_confidence and effective_state in ['playing', 'paused'] and display_allowed in ['on', 'true', '1'] %}
+  {% set cause = 'component_selector_low_confidence_winner_pool' %}
+{% elif sparse.count > 0 and ma_rich_active_exists in ['true', 'on', true] %}
+  {% set cause = 'sparse_transport_candidates_blocked_by_ma_rich' %}
+{% elif winner_entity in invalid %}
+  {% set cause = 'selector_winner_missing' %}
+{% endif %}
+
+{% set verdict = 'PASS' %}
+{% if cause in ['component_selector_telemetry_partial', 'selector_winner_missing'] %}
+  {% set verdict = 'FAIL' %}
+{% elif cause in ['component_selector_low_confidence_winner_pool', 'sparse_transport_candidates_blocked_by_ma_rich'] %}
+  {% set verdict = 'WARN' %}
+{% endif %}
+
+### OLED Selector Focus Check
+- Result: **{{ verdict }}**
+- Cause: **{{ cause }}**
+- Timestamp: **{{ now() }}**
+- Shadow source: **{{ s_target }}**
+
+### Selector posture
+- winner entity/source: **{{ winner_entity if winner_entity not in invalid else 'n/a' }} / {{ winner_source if winner_source not in invalid else 'n/a' }}**
+- winner pool/reason: **{{ winner_pool if winner_pool not in invalid else 'n/a' }} / {{ winner_reason if winner_reason not in invalid else 'n/a' }}**
+- candidate/eligible counts: **{{ candidate_count if candidate_count not in invalid else 'n/a' }} / {{ eligible_count if eligible_count not in invalid else 'n/a' }}**
+- MA-rich active exists: **{{ ma_rich_active_exists }}**
+- sparse candidates blocked by MA-rich: **{{ sparse.count }}{% if sparse.count > 0 %} ({{ sparse.entities | join(', ') }}){% endif %}**
+- winner matches effective entity: **{{ winner_matches_effective }}**
+- selector telemetry partial: **{{ selector_partial }}**
+- selector low-confidence pool: **{{ selector_low_confidence }}**
+
+### Escalation
+{% if verdict == 'FAIL' %}
+- Run `docs/testing/raw/oled_now_playing_validation.jinja` immediately and capture full packet for diff.
+{% elif verdict == 'WARN' %}
+- Re-run during active playback and compare winner pool/reason transitions across 2-3 captures.
+{% else %}
+- Selector posture looks healthy; continue with smoke or full OLED validation only if symptom reproduces.
+{% endif %}

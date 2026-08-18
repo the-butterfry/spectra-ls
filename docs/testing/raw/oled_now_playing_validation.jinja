@@ -1,6 +1,6 @@
 {# Description: Raw copy/paste Developer Tools template to validate OLED, control target, and meta target alignment (including SRC fallback causes). #}
-{# Version: 2026.08.01.5 #}
-{# Last updated: 2026-08-01 #}
+{# Version: 2026.08.18.2 #}
+{# Last updated: 2026-08-18 #}
 
 {# =========================
   OLED + Control Target + Meta Target Validation
@@ -38,36 +38,36 @@
 {% set metadata_checks = metadata_prep.checks if metadata_prep.checks is defined and metadata_prep.checks is mapping else {} %}
 {% set metadata_values = metadata_prep.values if metadata_prep.values is defined and metadata_prep.values is mapping else {} %}
 {% set metadata_canonical = metadata_prep.canonical_summary if metadata_prep.canonical_summary is defined and metadata_prep.canonical_summary is mapping else {} %}
-{% set packet_meta_target = metadata_values.active_meta_entity if metadata_values.active_meta_entity is defined else 'unknown' %}
-{% set packet_canonical_control_target = metadata_values.canonical_control_target if metadata_values.canonical_control_target is defined else (metadata_canonical.control_target if metadata_canonical.control_target is defined else 'unknown') %}
-{% set packet_canonical_meta_target = metadata_values.canonical_meta_target if metadata_values.canonical_meta_target is defined else (metadata_canonical.meta_target if metadata_canonical.meta_target is defined else 'unknown') %}
-{% set packet_canonical_now_playing_entity = metadata_values.canonical_now_playing_entity if metadata_values.canonical_now_playing_entity is defined else (metadata_canonical.now_playing_entity if metadata_canonical.now_playing_entity is defined else 'unknown') %}
-{% set packet_canonical_alignment_state = metadata_values.canonical_alignment_state if metadata_values.canonical_alignment_state is defined else (metadata_canonical.alignment_state if metadata_canonical.alignment_state is defined else 'unknown') %}
-{% set packet_canonical_oled_posture = metadata_values.canonical_oled_posture if metadata_values.canonical_oled_posture is defined else (metadata_canonical.oled_posture if metadata_canonical.oled_posture is defined else 'unknown') %}
-{% set packet_canonical_oled_payload_ready = metadata_values.canonical_oled_payload_ready if metadata_values.canonical_oled_payload_ready is defined else (metadata_canonical.oled_payload_ready if metadata_canonical.oled_payload_ready is defined else 'unknown') %}
-{% set packet_canonical_cause = metadata_values.canonical_cause_hint if metadata_values.canonical_cause_hint is defined else (metadata_canonical.cause_hint if metadata_canonical.cause_hint is defined else 'unknown') %}
-{% set packet_now_playing_app = metadata_values.now_playing_app if metadata_values.now_playing_app is defined else 'unknown' %}
-{% set packet_now_playing_source = metadata_values.now_playing_source if metadata_values.now_playing_source is defined else 'unknown' %}
-{% set packet_resolver_selected_meta_entity = metadata_values.resolver_selected_meta_entity if metadata_values.resolver_selected_meta_entity is defined else 'unknown' %}
-{% set packet_component_entity_source = metadata_values.component_now_playing_entity_source if metadata_values.component_now_playing_entity_source is defined else (metadata_checks.component_now_playing_entity_source if metadata_checks.component_now_playing_entity_source is defined else 'unknown') %}
-{% set packet_passthrough_album_suppressed = metadata_values.passthrough_album_suppressed if metadata_values.passthrough_album_suppressed is defined else 'unknown' %}
-{% set packet_passthrough_cache_reused = metadata_values.passthrough_metadata_cache_reused if metadata_values.passthrough_metadata_cache_reused is defined else 'unknown' %}
-{% set packet_passthrough_cache_age_s = metadata_values.passthrough_metadata_cache_age_s if metadata_values.passthrough_metadata_cache_age_s is defined else 'unknown' %}
-{% set packet_passthrough_upstream_meta_fallback_used = metadata_values.passthrough_upstream_meta_fallback_used if metadata_values.passthrough_upstream_meta_fallback_used is defined else 'unknown' %}
-{% set packet_passthrough_upstream_meta_entity = metadata_values.passthrough_upstream_meta_entity if metadata_values.passthrough_upstream_meta_entity is defined else 'unknown' %}
-{% set packet_passthrough_upstream_meta_reason = metadata_values.passthrough_upstream_meta_reason if metadata_values.passthrough_upstream_meta_reason is defined else 'unknown' %}
-{% set packet_passthrough_upstream_meta_score = metadata_values.passthrough_upstream_meta_score if metadata_values.passthrough_upstream_meta_score is defined else 'unknown' %}
-{% set packet_component_playback_keepalive_ready = metadata_checks.component_playback_keepalive_ready if metadata_checks.component_playback_keepalive_ready is defined else (metadata_values.component_playback_keepalive_ready if metadata_values.component_playback_keepalive_ready is defined else 'unknown') %}
-{% set packet_global_active_metadata_rescue_used = metadata_checks.global_active_metadata_rescue_used if metadata_checks.global_active_metadata_rescue_used is defined else (metadata_values.global_active_metadata_rescue_used if metadata_values.global_active_metadata_rescue_used is defined else 'unknown') %}
-{% set packet_selector_raw = metadata_values.component_now_playing_selection if metadata_values.component_now_playing_selection is defined else {} %}
+{% set packet_meta_target = metadata_values.active_meta_entity | default('unknown') %}
+{% set packet_canonical_control_target = metadata_values.canonical_control_target | default(metadata_canonical.control_target | default('unknown')) %}
+{% set packet_canonical_meta_target = metadata_values.canonical_meta_target | default(metadata_canonical.meta_target | default('unknown')) %}
+{% set packet_canonical_now_playing_entity = metadata_values.canonical_now_playing_entity | default(metadata_canonical.now_playing_entity | default('unknown')) %}
+{% set packet_canonical_alignment_state = metadata_values.canonical_alignment_state | default(metadata_canonical.alignment_state | default('unknown')) %}
+{% set packet_canonical_oled_posture = metadata_values.canonical_oled_posture | default(metadata_canonical.oled_posture | default('unknown')) %}
+{% set packet_canonical_oled_payload_ready = metadata_values.canonical_oled_payload_ready | default(metadata_canonical.oled_payload_ready | default('unknown')) %}
+{% set packet_canonical_cause = metadata_values.canonical_cause_hint | default(metadata_canonical.cause_hint | default('unknown')) %}
+{% set packet_now_playing_app = metadata_values.now_playing_app | default('unknown') %}
+{% set packet_now_playing_source = metadata_values.now_playing_source | default('unknown') %}
+{% set packet_resolver_selected_meta_entity = metadata_values.resolver_selected_meta_entity | default('unknown') %}
+{% set packet_component_entity_source = metadata_values.component_now_playing_entity_source | default(metadata_checks.component_now_playing_entity_source | default('unknown')) %}
+{% set packet_passthrough_album_suppressed = metadata_values.passthrough_album_suppressed | default('unknown') %}
+{% set packet_passthrough_cache_reused = metadata_values.passthrough_metadata_cache_reused | default('unknown') %}
+{% set packet_passthrough_cache_age_s = metadata_values.passthrough_metadata_cache_age_s | default('unknown') %}
+{% set packet_passthrough_upstream_meta_fallback_used = metadata_values.passthrough_upstream_meta_fallback_used | default('unknown') %}
+{% set packet_passthrough_upstream_meta_entity = metadata_values.passthrough_upstream_meta_entity | default('unknown') %}
+{% set packet_passthrough_upstream_meta_reason = metadata_values.passthrough_upstream_meta_reason | default('unknown') %}
+{% set packet_passthrough_upstream_meta_score = metadata_values.passthrough_upstream_meta_score | default('unknown') %}
+{% set packet_component_playback_keepalive_ready = metadata_checks.component_playback_keepalive_ready | default(metadata_values.component_playback_keepalive_ready | default('unknown')) %}
+{% set packet_global_active_metadata_rescue_used = metadata_checks.global_active_metadata_rescue_used | default(metadata_values.global_active_metadata_rescue_used | default('unknown')) %}
+{% set packet_selector_raw = metadata_values.component_now_playing_selection | default({}) %}
 {% set packet_selector = packet_selector_raw if packet_selector_raw is mapping else ((packet_selector_raw | from_json) if (packet_selector_raw is string and (packet_selector_raw | trim).startswith('{')) else {}) %}
-{% set packet_selector_winner_entity_raw = metadata_checks.component_now_playing_selection_winner_entity if metadata_checks.component_now_playing_selection_winner_entity is defined else (metadata_values.component_now_playing_selection_winner_entity if metadata_values.component_now_playing_selection_winner_entity is defined else (packet_selector.winner_entity if packet_selector.winner_entity is defined else 'unknown')) %}
-{% set packet_selector_winner_source_raw = metadata_checks.component_now_playing_selection_winner_source if metadata_checks.component_now_playing_selection_winner_source is defined else (metadata_values.component_now_playing_selection_winner_source if metadata_values.component_now_playing_selection_winner_source is defined else (packet_selector.winner_source if packet_selector.winner_source is defined else 'unknown')) %}
-{% set packet_selector_winner_pool = metadata_checks.component_now_playing_selection_winner_pool if metadata_checks.component_now_playing_selection_winner_pool is defined else (packet_selector.winner_pool if packet_selector.winner_pool is defined else 'unknown') %}
-{% set packet_selector_winner_reason = metadata_checks.component_now_playing_selection_winner_reason if metadata_checks.component_now_playing_selection_winner_reason is defined else (packet_selector.winner_reason if packet_selector.winner_reason is defined else 'unknown') %}
-{% set packet_selector_ma_rich_active_exists = metadata_checks.component_now_playing_selection_ma_rich_active_exists if metadata_checks.component_now_playing_selection_ma_rich_active_exists is defined else (packet_selector.ma_rich_active_exists if packet_selector.ma_rich_active_exists is defined else 'unknown') %}
-{% set packet_selector_candidate_count = metadata_checks.component_now_playing_selection_candidate_count if metadata_checks.component_now_playing_selection_candidate_count is defined else (packet_selector.candidate_count if packet_selector.candidate_count is defined else 'unknown') %}
-{% set packet_selector_eligible_count = metadata_checks.component_now_playing_selection_eligible_count if metadata_checks.component_now_playing_selection_eligible_count is defined else (packet_selector.eligible_count if packet_selector.eligible_count is defined else 'unknown') %}
+{% set packet_selector_winner_entity_raw = metadata_checks.component_now_playing_selection_winner_entity | default(metadata_values.component_now_playing_selection_winner_entity | default(packet_selector.winner_entity | default('unknown'))) %}
+{% set packet_selector_winner_source_raw = metadata_checks.component_now_playing_selection_winner_source | default(metadata_values.component_now_playing_selection_winner_source | default(packet_selector.winner_source | default('unknown'))) %}
+{% set packet_selector_winner_pool = metadata_checks.component_now_playing_selection_winner_pool | default(packet_selector.winner_pool | default('unknown')) %}
+{% set packet_selector_winner_reason = metadata_checks.component_now_playing_selection_winner_reason | default(packet_selector.winner_reason | default('unknown')) %}
+{% set packet_selector_ma_rich_active_exists = metadata_checks.component_now_playing_selection_ma_rich_active_exists | default(packet_selector.ma_rich_active_exists | default('unknown')) %}
+{% set packet_selector_candidate_count = metadata_checks.component_now_playing_selection_candidate_count | default(packet_selector.candidate_count | default('unknown')) %}
+{% set packet_selector_eligible_count = metadata_checks.component_now_playing_selection_eligible_count | default(packet_selector.eligible_count | default('unknown')) %}
 {% set packet_selector_candidates = packet_selector.candidates if packet_selector.candidates is defined and packet_selector.candidates is iterable else [] %}
 
 {% set sparse_blocked = namespace(count=0, entities=[]) %}
@@ -159,8 +159,20 @@
     {% set esp_dynamic.port = st %}
   {% endif %}
 {% endfor %}
-{% set esp_control_host = esp_control_host_direct if esp_control_host_direct not in invalid else (esp_control_host_prefixed if esp_control_host_prefixed not in invalid else (esp_dynamic.host if esp_dynamic.host not in invalid else (esp_control_hosts_direct if esp_control_hosts_direct not in invalid else (esp_control_hosts_prefixed if esp_control_hosts_prefixed not in invalid else esp_dynamic.hosts)))) %}
-{% set esp_control_port = esp_control_port_direct if esp_control_port_direct not in invalid else (esp_control_port_prefixed if esp_control_port_prefixed not in invalid else esp_dynamic.port) %}
+{% set esp_control_host = namespace(value='unknown') %}
+{% for candidate in [esp_control_host_direct, esp_control_host_prefixed, esp_dynamic.host, esp_control_hosts_direct, esp_control_hosts_prefixed, esp_dynamic.hosts] %}
+  {% if esp_control_host.value in invalid and candidate not in invalid %}
+    {% set esp_control_host.value = candidate %}
+  {% endif %}
+{% endfor %}
+{% set esp_control_port = namespace(value='unknown') %}
+{% for candidate in [esp_control_port_direct, esp_control_port_prefixed, esp_dynamic.port] %}
+  {% if esp_control_port.value in invalid and candidate not in invalid %}
+    {% set esp_control_port.value = candidate %}
+  {% endif %}
+{% endfor %}
+{% set esp_control_host = esp_control_host.value %}
+{% set esp_control_port = esp_control_port.value %}
 {% set esp_oled = states('sensor.spectra_ls_system_esp_oled_status') %}
 {% set esp_mode = esp_oled.split('|', 1)[0] if esp_oled not in invalid and '|' in esp_oled else 'unknown' %}
 {% set esp_oled_payload = esp_oled.split('oled:', 1)[1] if esp_oled not in invalid and 'oled:' in esp_oled else '' %}
@@ -192,9 +204,9 @@
 
 {# --- alignment checks --- #}
 {% set control_target_route_mismatch = helper_control_target not in invalid and route_active_target not in invalid and helper_control_target != route_active_target %}
-{% set packet_control_target_mismatch = metadata_values.control_target_vs_now_playing_mismatch if metadata_values.control_target_vs_now_playing_mismatch is defined else none %}
-{% set packet_meta_target_mismatch = metadata_values.meta_target_vs_now_playing_mismatch if metadata_values.meta_target_vs_now_playing_mismatch is defined else none %}
-{% set packet_intentional_divergence = metadata_values.intentional_control_metadata_divergence if metadata_values.intentional_control_metadata_divergence is defined else none %}
+{% set packet_control_target_mismatch = metadata_values.control_target_vs_now_playing_mismatch | default(none) %}
+{% set packet_meta_target_mismatch = metadata_values.meta_target_vs_now_playing_mismatch | default(none) %}
+{% set packet_intentional_divergence = metadata_values.intentional_control_metadata_divergence | default(none) %}
 {% set control_target_now_playing_entity_mismatch = (packet_control_target_mismatch if packet_control_target_mismatch is not none else (effective_control_target not in invalid and effective_entity not in invalid and effective_control_target != effective_entity)) %}
 {% set passthrough_split_brain_risk = false %}
 {% set control_target_esp_mismatch = false %}
@@ -311,64 +323,61 @@
 
 {# --- root-cause classification --- #}
 {% set cause = packet_canonical_cause if packet_canonical_cause not in invalid else 'healthy_or_non_src_case' %}
+{% set canonical_cause_missing = packet_canonical_cause in invalid %}
 {% if intentional_control_metadata_divergence and cause == 'control_target_vs_now_playing_entity_mismatch' %}
   {% set cause = 'intentional_control_target_metadata_divergence_component_owner' %}
 {% endif %}
-{% if packet_canonical_cause in invalid and control_host_esp_mismatch %}
+{% if canonical_cause_missing and control_host_esp_mismatch %}
   {% set cause = 'control_host_mismatch_esp_vs_effective_control_host' %}
-{% elif packet_canonical_cause in invalid and control_target_esp_mismatch %}
+{% elif canonical_cause_missing and control_target_esp_mismatch %}
   {% set cause = 'control_target_mismatch_esp_vs_effective_control_target' %}
-{% elif packet_canonical_cause in invalid and control_target_route_mismatch %}
+{% elif canonical_cause_missing and control_target_route_mismatch %}
   {% set cause = 'legacy_helper_mismatch_non_authoritative' %}
-{% elif packet_canonical_cause in invalid and passthrough_split_brain_risk %}
+{% elif canonical_cause_missing and passthrough_split_brain_risk %}
   {% set cause = 'passthrough_split_brain_control_target_vs_now_playing_entity' %}
-{% elif packet_canonical_cause in invalid and intentional_control_metadata_divergence %}
+{% elif canonical_cause_missing and intentional_control_metadata_divergence %}
   {% set cause = 'intentional_control_target_metadata_divergence_component_owner' %}
-{% elif packet_canonical_cause in invalid and control_target_now_playing_entity_mismatch %}
+{% elif canonical_cause_missing and control_target_now_playing_entity_mismatch %}
   {% set cause = 'control_target_vs_now_playing_entity_mismatch' %}
-{% elif packet_canonical_cause in invalid and meta_target_entity_mismatch and metadata_owner_component %}
+{% elif canonical_cause_missing and meta_target_entity_mismatch and metadata_owner_component %}
   {% set cause = 'meta_target_mismatch_component_owner_active_meta_vs_now_playing_entity' %}
-{% elif packet_canonical_cause in invalid and control_handoff_not_ready and effective_state in ['playing', 'paused'] and effective_display_allowed in ['on', 'true', '1'] %}
+{% elif canonical_cause_missing and control_handoff_not_ready and effective_state in ['playing', 'paused'] and effective_display_allowed in ['on', 'true', '1'] %}
   {% set cause = 'esp_control_handoff_not_ready' %}
-{% elif packet_canonical_cause in invalid and selector_partial_telemetry %}
+{% elif canonical_cause_missing and selector_partial_telemetry %}
   {% set cause = 'component_selector_telemetry_partial' %}
-{% elif packet_canonical_cause in invalid and metadata_owner_component and selector_low_confidence_pool and effective_state in ['playing', 'paused'] and effective_display_allowed in ['on', 'true', '1'] %}
+{% elif canonical_cause_missing and metadata_owner_component and selector_low_confidence_pool and effective_state in ['playing', 'paused'] and effective_display_allowed in ['on', 'true', '1'] %}
   {% set cause = 'component_selector_low_confidence_winner_pool' %}
-{% elif packet_canonical_cause in invalid and oled_src_fallback and display_not_allowed %}
+{% elif canonical_cause_missing and oled_src_fallback and display_not_allowed %}
   {% set cause = 'display_policy_suppressed' %}
-{% elif packet_canonical_cause in invalid and not_audio_mode %}
+{% elif canonical_cause_missing and not_audio_mode %}
   {% set cause = 'oled_not_in_audio_mode' %}
-{% elif packet_canonical_cause in invalid and oled_src_fallback and stale_freshness %}
+{% elif canonical_cause_missing and oled_src_fallback and stale_freshness %}
   {% set cause = 'metadata_freshness_stale' %}
-{% elif packet_canonical_cause in invalid and oled_src_fallback and title_missing and not source_missing %}
+{% elif canonical_cause_missing and oled_src_fallback and title_missing and not source_missing %}
   {% set cause = 'title_missing_source_present_fallback_to_src' %}
-{% elif packet_canonical_cause in invalid and oled_blank_audio_payload and title_missing and not source_missing and effective_display_allowed in ['on', 'true', '1'] %}
+{% elif canonical_cause_missing and oled_blank_audio_payload and title_missing and not source_missing and effective_display_allowed in ['on', 'true', '1'] %}
   {% if passthrough_source_detected %}
     {% set cause = 'audio_payload_blank_expected_passthrough_no_track_metadata' %}
   {% else %}
     {% set cause = 'audio_payload_blank_source_only_no_title' %}
   {% endif %}
-{% elif packet_canonical_cause in invalid and oled_src_fallback and title_missing and source_missing %}
+{% elif canonical_cause_missing and oled_src_fallback and title_missing and source_missing %}
   {% set cause = 'no_viable_now_playing_contract_fields' %}
-{% elif packet_canonical_cause in invalid and oled_src_fallback %}
+{% elif canonical_cause_missing and oled_src_fallback %}
   {% set cause = 'src_fallback_unclassified_capture_more_context' %}
 {% endif %}
 
 {# --- verdict --- #}
+{% set fail_causes = ['title_missing_source_present_fallback_to_src', 'no_viable_now_playing_contract_fields', 'src_fallback_unclassified_capture_more_context'] %}
+{% set warn_causes = ['legacy_helper_mismatch_non_authoritative', 'component_selector_low_confidence_winner_pool', 'component_selector_telemetry_partial', 'display_policy_suppressed', 'metadata_freshness_stale', 'audio_payload_blank_source_only_no_title', 'audio_payload_blank_expected_passthrough_no_track_metadata'] %}
 {% set verdict = 'PASS' %}
 {% if control_host_esp_mismatch
   or control_target_esp_mismatch
   or (control_target_now_playing_entity_mismatch and not intentional_control_metadata_divergence)
   or (meta_target_entity_mismatch and metadata_owner_component and not intentional_control_metadata_divergence)
-  or cause in ['title_missing_source_present_fallback_to_src', 'no_viable_now_playing_contract_fields', 'src_fallback_unclassified_capture_more_context'] %}
+  or cause in fail_causes %}
   {% set verdict = 'FAIL' %}
-{% elif cause in ['legacy_helper_mismatch_non_authoritative'] %}
-  {% set verdict = 'WARN' %}
-{% elif cause in ['component_selector_low_confidence_winner_pool', 'component_selector_telemetry_partial'] %}
-  {% set verdict = 'WARN' %}
-{% elif cause in ['display_policy_suppressed', 'metadata_freshness_stale'] %}
-  {% set verdict = 'WARN' %}
-{% elif cause in ['audio_payload_blank_source_only_no_title', 'audio_payload_blank_expected_passthrough_no_track_metadata'] %}
+{% elif cause in warn_causes %}
   {% set verdict = 'WARN' %}
 {% elif esp_oled in invalid or (control_handoff_not_ready and esp_mode == 'audio') %}
   {% set verdict = 'WARN' %}

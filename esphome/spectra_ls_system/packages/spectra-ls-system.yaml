@@ -1,6 +1,6 @@
 # Description: Spectra LS core state + globals + system intervals + shared scripts.
-# Version: 2026.07.24.1
-# Last updated: 2026-07-24
+# Version: 2026.08.14.11
+# Last updated: 2026-08-14
 # Update version/date whenever you change this file.
 #
 # Sections:
@@ -965,6 +965,26 @@ globals:
     type: int
     restore_value: no
     initial_value: "0"
+  - id: np_disp_vol_raw
+    type: int
+    restore_value: no
+    initial_value: "-1"
+  - id: np_disp_vol_smoothed
+    type: int
+    restore_value: no
+    initial_value: "-1"
+  - id: np_disp_vol_last_target
+    type: int
+    restore_value: no
+    initial_value: "-1"
+  - id: np_disp_vol_direction
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: np_disp_vol_direction_hold_until_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
   - id: np_disp_vol_from_pot
     type: bool
     restore_value: no
@@ -1009,6 +1029,14 @@ globals:
     type: std::string
     restore_value: no
     initial_value: '""'
+  - id: np_oled_line
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: np_oled_line_ready
+    type: bool
+    restore_value: no
+    initial_value: "false"
   - id: np_active_target_entity
     type: std::string
     restore_value: no
@@ -1332,129 +1360,7 @@ text_sensor:
         return mode + "|menu:lvl=" + std::to_string(id(menu_level));
       }
 
-      auto lower = [](std::string value) {
-        for (auto &c : value) c = (char) ::tolower(c);
-        return value;
-      };
-
-      auto sanitize_ascii = [](const std::string &input) {
-        std::string out;
-        out.reserve(input.size());
-        for (unsigned char c : input) {
-          if (c >= 32 && c <= 126) {
-            out.push_back((char) c);
-          } else if (c == '\t') {
-            out.push_back(' ');
-          }
-        }
-        return out;
-      };
-
-      auto has_displayable_text = [&](const std::string &value) {
-        const std::string low = lower(value);
-        return !(low.empty() || low == "-" || low == "none" || low == "unknown" || low == "unavailable" || low == "null");
-      };
-
-      auto is_passthrough_source = [&](const std::string &value) {
-        const std::string low = lower(value);
-        return low.find("optical") != std::string::npos ||
-               low.find("line-in") != std::string::npos ||
-               low.find("line in") != std::string::npos ||
-               low.find("aux") != std::string::npos ||
-               low.find("coax") != std::string::npos ||
-               low.find("hdmi") != std::string::npos ||
-               low.find("arc") != std::string::npos;
-      };
-
-      auto parse_float = [](const std::string &raw, float fallback) {
-        if (raw.empty()) return fallback;
-        char *end = nullptr;
-        const float parsed = ::strtof(raw.c_str(), &end);
-        if (end == raw.c_str()) return fallback;
-        while (*end == ' ' || *end == '\t' || *end == '\n' || *end == '\r') end++;
-        return (*end == '\0') ? parsed : fallback;
-      };
-
-      auto normalize_source_label = [&](const std::string &value) {
-        if (value.empty()) return std::string("");
-        const std::string low = lower(value);
-        if (low == "opt" || low.find("optical") != std::string::npos) return std::string("Optical In");
-        if (low == "line" || low == "line-in" || low.find("line in") != std::string::npos || low.find("aux") != std::string::npos) return std::string("Line In");
-        if (low == "bt" || low.find("bluetooth") != std::string::npos) return std::string("Bluetooth");
-        if (low == "net" || low.find("network") != std::string::npos || low.find("wifi") != std::string::npos) return std::string("Wi-Fi");
-        if (low.find("coax") != std::string::npos) return std::string("Coaxial");
-        if (low.find("hdmi") != std::string::npos || low.find("arc") != std::string::npos) return std::string("HDMI/ARC");
-        return value;
-      };
-
-      const std::string media_class = id(ha_audio_media_class).has_state() ? id(ha_audio_media_class).state.c_str() : "unknown";
-      const std::string media_class_l = lower(media_class);
-      const bool display_allowed = id(ha_audio_display_allowed).has_state() ? id(ha_audio_display_allowed).state : false;
-      const bool class_blocks_display =
-        (media_class_l.empty() || media_class_l == "none" || media_class_l == "unknown" || media_class_l == "unavailable");
-
-      const bool ha_declares_playing =
-        id(ha_audio_state).has_state() && lower(id(ha_audio_state).state.c_str()) == "playing";
-      const bool ha_declares_paused =
-        id(ha_audio_state).has_state() && lower(id(ha_audio_state).state.c_str()) == "paused";
-      const bool transport_declares_playing =
-        (id(arylic_playing).has_state() && id(arylic_playing).state) ||
-        id(arylic_playing_state) ||
-        id(arylic_lr_playing_state);
-
-      float np_freshness_age_s = -1.0f;
-      if (id(ha_now_playing_freshness_age_s).has_state()) {
-        np_freshness_age_s = parse_float(id(ha_now_playing_freshness_age_s).state.c_str(), -1.0f);
-      }
-      const float freshness_gate_s = ((float) ${meta_stale_ms} / 1000.0f) + 2.0f;
-      const bool fresh_clock_evidence = np_freshness_age_s >= 0.0f && np_freshness_age_s <= freshness_gate_s;
-      const bool paused_recent_passthrough_keepalive = ha_declares_paused && fresh_clock_evidence;
-      const bool live_playback_evidence =
-        ha_declares_playing || transport_declares_playing || fresh_clock_evidence || paused_recent_passthrough_keepalive;
-      const bool no_progress_payload =
-        id(ha_audio_pos_last_value) <= 0.05f &&
-        id(arylic_meta_position_state) <= 0 &&
-        id(arylic_meta_duration_state) <= 0;
-
-      std::string line =
-        (display_allowed && !class_blocks_display && live_playback_evidence && id(ha_audio_title).has_state())
-          ? id(ha_audio_title).state.c_str()
-          : "";
-
-      // HA contract remains authoritative; this fallback only bridges transient title propagation lag.
-      if (display_allowed && !class_blocks_display && live_playback_evidence && !has_displayable_text(line)) {
-        const std::string arylic_title = id(arylic_title_state);
-        if (has_displayable_text(arylic_title)) {
-          line = arylic_title;
-        }
-      }
-      if (display_allowed && !class_blocks_display && live_playback_evidence && !has_displayable_text(line)) {
-        const std::string raw_source_label = id(np_raw_source_label);
-        const std::string raw_src_display = id(np_raw_src_display);
-        const std::string ha_source = id(ha_audio_source).has_state() ? id(ha_audio_source).state.c_str() : "";
-        const std::string ary_source = id(arylic_source_state);
-        const std::string app_label = id(ha_audio_app).has_state() ? id(ha_audio_app).state.c_str() : "";
-        const std::string np_friendly = id(ha_now_playing_friendly).has_state() ? id(ha_now_playing_friendly).state.c_str() : "";
-        const bool passthrough_context =
-          is_passthrough_source(raw_source_label) ||
-          is_passthrough_source(raw_src_display) ||
-          is_passthrough_source(ha_source) ||
-          is_passthrough_source(ary_source);
-
-        if (passthrough_context) {
-          if (has_displayable_text(app_label) && !is_passthrough_source(app_label)) line = app_label;
-          else if (has_displayable_text(np_friendly) && !is_passthrough_source(np_friendly)) line = np_friendly;
-        }
-
-        if (!has_displayable_text(line)) {
-          if (has_displayable_text(raw_source_label)) line = raw_source_label;
-          else if (has_displayable_text(raw_src_display)) line = raw_src_display;
-          else if (has_displayable_text(ha_source)) line = ha_source;
-          else if (has_displayable_text(ary_source)) line = ary_source;
-        }
-      }
-      line = normalize_source_label(line);
-      line = sanitize_ascii(line);
+      std::string line = id(np_oled_line);
       if (line.empty()) {
         if (id(screen_mode) == 0) {
           line = "LIGHTING";

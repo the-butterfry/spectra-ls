@@ -1,6 +1,6 @@
 # Description: Sensor entities for Spectra LS shadow parity routing surfaces with Phase 3 write-control, Phase 4 diagnostics attributes, and Phase 6/8 control-center settings/readiness/last-attempt visibility, including recorder-safe attribute payload sizing and shared MA authority-contract packet propagation.
-# Version: 2026.08.01.2
-# Last updated: 2026-08-01
+# Version: 2026.08.18.3
+# Last updated: 2026-08-18
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -23,6 +23,7 @@ from .const import (
     LEGACY_META_CONFIDENCE_MIN,
     LEGACY_META_RESOLVER,
 )
+from .payload_surface_fabric import PayloadSurfaceFabric
 
 
 def _dict_surface(payload: dict[str, Any], key: str) -> dict[str, Any]:
@@ -31,15 +32,41 @@ def _dict_surface(payload: dict[str, Any], key: str) -> dict[str, Any]:
 
 
 def _metadata_values(data: dict[str, Any]) -> dict[str, Any]:
-    metadata_prep = _dict_surface(data, "metadata_prep_validation")
-    values = metadata_prep.get("values", {})
-    return values if isinstance(values, dict) else {}
+    return PayloadSurfaceFabric.metadata_values(data)
 
 
 def _metadata_checks(data: dict[str, Any]) -> dict[str, Any]:
-    metadata_prep = _dict_surface(data, "metadata_prep_validation")
-    checks = metadata_prep.get("checks", {})
-    return checks if isinstance(checks, dict) else {}
+    return PayloadSurfaceFabric.metadata_checks(data)
+
+
+def _metadata_prep_packet(data: dict[str, Any]) -> dict[str, Any]:
+    return _dict_surface(data, "metadata_prep_validation")
+
+
+def _metadata_prep_values_packet(data: dict[str, Any]) -> dict[str, Any]:
+    return _dict_surface(_metadata_prep_packet(data), "values")
+
+
+def _metadata_prep_checks_packet(data: dict[str, Any]) -> dict[str, Any]:
+    return _dict_surface(_metadata_prep_packet(data), "checks")
+
+
+def _registry_entries(data: dict[str, Any]) -> dict[str, Any]:
+    return _dict_surface(_dict_surface(data, "registry"), "entries")
+
+
+def _coerce_float(value: Any) -> float | None:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _coerce_positive_float(value: Any) -> float | None:
+    parsed = _coerce_float(value)
+    if parsed is None or parsed <= 0.0:
+        return None
+    return parsed
 
 
 def _jsonish(value: Any) -> Any:
@@ -216,15 +243,11 @@ def _component_ma_backend_profile(data: dict[str, Any]) -> dict[str, Any]:
 
 
 def _metadata_value_text(data: dict[str, Any], key: str) -> str:
-    values = _metadata_values(data)
-    return str(values.get(key, "") or "").strip()
+    return PayloadSurfaceFabric.metadata_value_text(data, key)
 
 
 def _contract_text(value: Any) -> str:
-    text = str(value or "").strip()
-    if text.lower() in {"", "none", "unknown", "unavailable", "null"}:
-        return ""
-    return text
+    return PayloadSurfaceFabric.contract_text(value)
 
 
 def _component_now_playing_state(entity: CoordinatorEntity) -> Any | None:
@@ -234,33 +257,56 @@ def _component_now_playing_state(entity: CoordinatorEntity) -> Any | None:
     return entity.coordinator.hass.states.get(entity_id)
 
 
+def _state_attrs(state_obj: Any) -> dict[str, Any]:
+    attrs = getattr(state_obj, "attributes", {})
+    return attrs if isinstance(attrs, dict) else {}
+
+
 def _component_state_attr_text(state_obj: Any, keys: tuple[str, ...]) -> str:
     if state_obj is None:
         return ""
-    attrs = state_obj.attributes if hasattr(state_obj, "attributes") else {}
-    if not isinstance(attrs, dict):
-        return ""
+    attrs = _state_attrs(state_obj)
     for key in keys:
-        value = str(attrs.get(key, "") or "").strip()
-        if value and value.lower() not in {"none", "unknown", "unavailable"}:
+        value = PayloadSurfaceFabric.contract_text(attrs.get(key, ""))
+        if value:
             return value
     return ""
 
 
+def _component_now_playing_contract_or_state(
+    entity: CoordinatorEntity,
+    *,
+    metadata_key: str,
+    state_field: str,
+) -> str:
+    value = _metadata_value_text(entity.coordinator.data, metadata_key)
+    if value:
+        return value
+    state_obj = _component_now_playing_state(entity)
+    if state_obj is None:
+        return ""
+    return _contract_text(getattr(state_obj, state_field, ""))
+
+
+def _component_now_playing_contract_or_attr(
+    entity: CoordinatorEntity,
+    *,
+    metadata_key: str,
+    attr_keys: tuple[str, ...],
+) -> str:
+    value = _metadata_value_text(entity.coordinator.data, metadata_key)
+    if value:
+        return value
+    state_obj = _component_now_playing_state(entity)
+    return _component_state_attr_text(state_obj, attr_keys)
+
+
 def _component_metadata_provider_packet(data: dict[str, Any]) -> dict[str, Any]:
-    write_controls = data.get("write_controls", {})
-    if not isinstance(write_controls, dict):
-        return {}
-    packet = write_controls.get("metadata_provider_last", {})
-    return packet if isinstance(packet, dict) else {}
+    return PayloadSurfaceFabric.metadata_provider_packet(data)
 
 
 def _component_metadata_override_packet(data: dict[str, Any]) -> dict[str, Any]:
-    write_controls = data.get("write_controls", {})
-    if not isinstance(write_controls, dict):
-        return {}
-    packet = write_controls.get("metadata_override", {})
-    return packet if isinstance(packet, dict) else {}
+    return PayloadSurfaceFabric.metadata_override_packet(data)
 
 
 def _component_runtime_track_disposition(data: dict[str, Any]) -> str:
@@ -276,7 +322,7 @@ def _component_runtime_track_disposition(data: dict[str, Any]) -> str:
 
 def _component_component_track_disposition(data: dict[str, Any]) -> str:
     """Return current component-track disposition for CA closeout consumers."""
-    metadata_prep = _dict_surface(data, "metadata_prep_validation")
+    metadata_prep = _metadata_prep_packet(data)
     handoff = _dict_surface(data, "handoff_inventory")
     prep_ready = bool(metadata_prep.get("ready_for_metadata_handoff", False))
     metadata_lane = str(handoff.get("metadata_resolver_status", "") or "").strip().lower()
@@ -305,8 +351,8 @@ def _component_lc07_final_disposition(data: dict[str, Any]) -> str:
 
 def _component_lc08_final_disposition(data: dict[str, Any]) -> str:
     """Return closeout disposition summary for LC-08 diagnostics fallback lanes."""
-    metadata_prep = _dict_surface(data, "metadata_prep_validation")
-    checks = metadata_prep.get("checks", {}) if isinstance(metadata_prep.get("checks", {}), dict) else {}
+    metadata_prep = _metadata_prep_packet(data)
+    checks = _metadata_prep_checks_packet(data)
     component_ready = bool(metadata_prep.get("ready_for_metadata_handoff", False))
     fresh_signal = bool(checks.get("now_playing_fresh_play_signal", False))
     if component_ready or fresh_signal:
@@ -420,8 +466,7 @@ class SpectraLsComponentControlTargetsSensor(CoordinatorEntity, SensorEntity):
 
     @property
     def native_value(self):
-        registry = _dict_surface(self.coordinator.data, "registry")
-        entries = registry.get("entries", {}) if isinstance(registry.get("entries", {}), dict) else {}
+        entries = _registry_entries(self.coordinator.data)
         count = 0
         for entry in entries.values():
             if not isinstance(entry, dict):
@@ -434,8 +479,7 @@ class SpectraLsComponentControlTargetsSensor(CoordinatorEntity, SensorEntity):
     @property
     def extra_state_attributes(self):
         data = self.coordinator.data
-        registry = _dict_surface(data, "registry")
-        entries = registry.get("entries", {}) if isinstance(registry.get("entries", {}), dict) else {}
+        entries = _registry_entries(data)
 
         entities: list[str] = []
         labels: list[str] = []
@@ -563,7 +607,47 @@ class SpectraLsComponentApiUrlSensor(CoordinatorEntity, SensorEntity):
         }
 
 
-class SpectraLsComponentNowPlayingEntitySensor(CoordinatorEntity, SensorEntity):
+class _ComponentNowPlayingContractStateSensor(CoordinatorEntity, SensorEntity):
+    """Shared now-playing sensor base: metadata key with state-field fallback."""
+
+    _metadata_key: str = ""
+    _state_field: str = "state"
+
+    @property
+    def native_value(self):
+        return _component_now_playing_contract_or_state(
+            self,
+            metadata_key=self._metadata_key,
+            state_field=self._state_field,
+        )
+
+
+class _ComponentNowPlayingContractAttrSensor(CoordinatorEntity, SensorEntity):
+    """Shared now-playing sensor base: metadata key with attribute fallback chain."""
+
+    _metadata_key: str = ""
+    _attr_keys: tuple[str, ...] = ()
+
+    @property
+    def native_value(self):
+        return _component_now_playing_contract_or_attr(
+            self,
+            metadata_key=self._metadata_key,
+            attr_keys=self._attr_keys,
+        )
+
+
+class _ComponentNowPlayingMetadataTextSensor(CoordinatorEntity, SensorEntity):
+    """Shared now-playing sensor base: direct metadata text value."""
+
+    _metadata_key: str = ""
+
+    @property
+    def native_value(self):
+        return _metadata_value_text(self.coordinator.data, self._metadata_key)
+
+
+class SpectraLsComponentNowPlayingEntitySensor(_ComponentNowPlayingContractStateSensor):
     """Component-native now-playing entity contract surface."""
 
     _attr_has_entity_name = True
@@ -571,20 +655,11 @@ class SpectraLsComponentNowPlayingEntitySensor(CoordinatorEntity, SensorEntity):
     _attr_icon = "mdi:play-network"
     _attr_name = "Component Now Playing Entity"
     _attr_unique_id = "spectra_ls_component_now_playing_entity"
-
-    @property
-    def native_value(self):
-        values = _metadata_values(self.coordinator.data)
-        entity = _contract_text(values.get("now_playing_entity", ""))
-        if entity:
-            return entity
-        state_obj = _component_now_playing_state(self)
-        if state_obj is not None:
-            return _contract_text(getattr(state_obj, "entity_id", ""))
-        return ""
+    _metadata_key = "now_playing_entity"
+    _state_field = "entity_id"
 
 
-class SpectraLsComponentNowPlayingStateSensor(CoordinatorEntity, SensorEntity):
+class SpectraLsComponentNowPlayingStateSensor(_ComponentNowPlayingContractStateSensor):
     """Component-native now-playing state contract surface."""
 
     _attr_has_entity_name = True
@@ -592,20 +667,11 @@ class SpectraLsComponentNowPlayingStateSensor(CoordinatorEntity, SensorEntity):
     _attr_icon = "mdi:play-pause"
     _attr_name = "Component Now Playing State"
     _attr_unique_id = "spectra_ls_component_now_playing_state"
-
-    @property
-    def native_value(self):
-        values = _metadata_values(self.coordinator.data)
-        state_value = _contract_text(values.get("now_playing_state", ""))
-        if state_value:
-            return state_value
-        state_obj = _component_now_playing_state(self)
-        if state_obj is not None:
-            return _contract_text(getattr(state_obj, "state", ""))
-        return ""
+    _metadata_key = "now_playing_state"
+    _state_field = "state"
 
 
-class SpectraLsComponentNowPlayingTitleSensor(CoordinatorEntity, SensorEntity):
+class SpectraLsComponentNowPlayingTitleSensor(_ComponentNowPlayingContractAttrSensor):
     """Component-native now-playing title contract surface."""
 
     _attr_has_entity_name = True
@@ -613,15 +679,8 @@ class SpectraLsComponentNowPlayingTitleSensor(CoordinatorEntity, SensorEntity):
     _attr_icon = "mdi:music-note"
     _attr_name = "Component Now Playing Title"
     _attr_unique_id = "spectra_ls_component_now_playing_title"
-
-    @property
-    def native_value(self):
-        values = _metadata_values(self.coordinator.data)
-        title = _contract_text(values.get("now_playing_title", ""))
-        if title:
-            return title
-        state_obj = _component_now_playing_state(self)
-        return _component_state_attr_text(state_obj, ("media_title", "title", "name"))
+    _metadata_key = "now_playing_title"
+    _attr_keys = ("media_title", "title", "name")
 
 
 class SpectraLsComponentNowPlayingFriendlySensor(CoordinatorEntity, SensorEntity):
@@ -642,7 +701,7 @@ class SpectraLsComponentNowPlayingFriendlySensor(CoordinatorEntity, SensorEntity
         return _metadata_value_text(self.coordinator.data, "now_playing_entity")
 
 
-class SpectraLsComponentNowPlayingArtistSensor(CoordinatorEntity, SensorEntity):
+class SpectraLsComponentNowPlayingArtistSensor(_ComponentNowPlayingContractAttrSensor):
     """Component-native now-playing artist contract surface."""
 
     _attr_has_entity_name = True
@@ -650,18 +709,11 @@ class SpectraLsComponentNowPlayingArtistSensor(CoordinatorEntity, SensorEntity):
     _attr_icon = "mdi:account-music"
     _attr_name = "Component Now Playing Artist"
     _attr_unique_id = "spectra_ls_component_now_playing_artist"
-
-    @property
-    def native_value(self):
-        values = _metadata_values(self.coordinator.data)
-        artist = str(values.get("now_playing_artist", "") or "").strip()
-        if artist:
-            return artist
-        state_obj = _component_now_playing_state(self)
-        return _component_state_attr_text(state_obj, ("media_artist", "artist"))
+    _metadata_key = "now_playing_artist"
+    _attr_keys = ("media_artist", "artist")
 
 
-class SpectraLsComponentNowPlayingAlbumSensor(CoordinatorEntity, SensorEntity):
+class SpectraLsComponentNowPlayingAlbumSensor(_ComponentNowPlayingContractAttrSensor):
     """Component-native now-playing album contract surface."""
 
     _attr_has_entity_name = True
@@ -669,18 +721,11 @@ class SpectraLsComponentNowPlayingAlbumSensor(CoordinatorEntity, SensorEntity):
     _attr_icon = "mdi:album"
     _attr_name = "Component Now Playing Album"
     _attr_unique_id = "spectra_ls_component_now_playing_album"
-
-    @property
-    def native_value(self):
-        values = _metadata_values(self.coordinator.data)
-        album = str(values.get("now_playing_album", "") or "").strip()
-        if album:
-            return album
-        state_obj = _component_now_playing_state(self)
-        return _component_state_attr_text(state_obj, ("media_album_name", "media_album", "album"))
+    _metadata_key = "now_playing_album"
+    _attr_keys = ("media_album_name", "media_album", "album")
 
 
-class SpectraLsComponentNowPlayingAppSensor(CoordinatorEntity, SensorEntity):
+class SpectraLsComponentNowPlayingAppSensor(_ComponentNowPlayingContractAttrSensor):
     """Component-native now-playing app contract surface."""
 
     _attr_has_entity_name = True
@@ -688,18 +733,11 @@ class SpectraLsComponentNowPlayingAppSensor(CoordinatorEntity, SensorEntity):
     _attr_icon = "mdi:application-cog-outline"
     _attr_name = "Component Now Playing App"
     _attr_unique_id = "spectra_ls_component_now_playing_app"
-
-    @property
-    def native_value(self):
-        values = _metadata_values(self.coordinator.data)
-        app = str(values.get("now_playing_app", "") or "").strip()
-        if app:
-            return app
-        state_obj = _component_now_playing_state(self)
-        return _component_state_attr_text(state_obj, ("app_name", "media_channel", "app", "application"))
+    _metadata_key = "now_playing_app"
+    _attr_keys = ("app_name", "media_channel", "app", "application")
 
 
-class SpectraLsComponentNowPlayingSourceSensor(CoordinatorEntity, SensorEntity):
+class SpectraLsComponentNowPlayingSourceSensor(_ComponentNowPlayingContractAttrSensor):
     """Component-native now-playing source contract surface."""
 
     _attr_has_entity_name = True
@@ -707,15 +745,8 @@ class SpectraLsComponentNowPlayingSourceSensor(CoordinatorEntity, SensorEntity):
     _attr_icon = "mdi:source-branch"
     _attr_name = "Component Now Playing Source"
     _attr_unique_id = "spectra_ls_component_now_playing_source"
-
-    @property
-    def native_value(self):
-        values = _metadata_values(self.coordinator.data)
-        source = str(values.get("now_playing_source", "") or "").strip()
-        if source:
-            return source
-        state_obj = _component_now_playing_state(self)
-        return _component_state_attr_text(state_obj, ("source", "source_name", "media_source", "input_source"))
+    _metadata_key = "now_playing_source"
+    _attr_keys = ("source", "source_name", "media_source", "input_source")
 
 
 class SpectraLsComponentNowPlayingPositionSensor(CoordinatorEntity, SensorEntity):
@@ -731,19 +762,14 @@ class SpectraLsComponentNowPlayingPositionSensor(CoordinatorEntity, SensorEntity
     @property
     def native_value(self):
         values = _metadata_values(self.coordinator.data)
-        raw = values.get("now_playing_position")
-        try:
-            return float(raw)
-        except (TypeError, ValueError):
-            state_obj = _component_now_playing_state(self)
-            if state_obj is not None:
-                attrs = state_obj.attributes if isinstance(getattr(state_obj, "attributes", {}), dict) else {}
-                fallback = attrs.get("media_position")
-                try:
-                    return float(fallback)
-                except (TypeError, ValueError):
-                    return None
+        parsed = _coerce_float(values.get("now_playing_position"))
+        if parsed is not None:
+            return parsed
+
+        state_obj = _component_now_playing_state(self)
+        if state_obj is None:
             return None
+        return _coerce_float(_state_attrs(state_obj).get("media_position"))
 
 
 class SpectraLsComponentNowPlayingDurationSensor(CoordinatorEntity, SensorEntity):
@@ -759,32 +785,19 @@ class SpectraLsComponentNowPlayingDurationSensor(CoordinatorEntity, SensorEntity
     @property
     def native_value(self):
         values = _metadata_values(self.coordinator.data)
-        raw = values.get("now_playing_duration")
-        try:
-            parsed = float(raw)
-            if parsed > 0.0:
-                return parsed
-        except (TypeError, ValueError):
-            pass
+        parsed = _coerce_positive_float(values.get("now_playing_duration"))
+        if parsed is not None:
+            return parsed
 
         state_obj = _component_now_playing_state(self)
         if state_obj is not None:
-            attrs = state_obj.attributes if isinstance(getattr(state_obj, "attributes", {}), dict) else {}
-            fallback_duration = attrs.get("media_duration")
-            try:
-                fallback_parsed = float(fallback_duration)
-                if fallback_parsed > 0.0:
-                    return fallback_parsed
-            except (TypeError, ValueError):
-                pass
+            fallback_parsed = _coerce_positive_float(_state_attrs(state_obj).get("media_duration"))
+            if fallback_parsed is not None:
+                return fallback_parsed
 
-        helper_duration = values.get("ma_active_duration")
-        try:
-            helper_parsed = float(helper_duration)
-            if helper_parsed > 0.0:
-                return helper_parsed
-        except (TypeError, ValueError):
-            pass
+        helper_parsed = _coerce_positive_float(values.get("ma_active_duration"))
+        if helper_parsed is not None:
+            return helper_parsed
 
         return None
 
@@ -803,11 +816,10 @@ class SpectraLsComponentNowPlayingVolumeSensor(CoordinatorEntity, SensorEntity):
         state_obj = _component_now_playing_state(self)
         if state_obj is None:
             return 0.0
-        attrs = state_obj.attributes if isinstance(getattr(state_obj, "attributes", {}), dict) else {}
+        attrs = _state_attrs(state_obj)
         raw = attrs.get("media_volume_level", attrs.get("volume_level", 0))
-        try:
-            value = float(raw)
-        except (TypeError, ValueError):
+        value = _coerce_float(raw)
+        if value is None:
             return 0.0
         if value <= 1.0:
             value *= 100.0
@@ -818,7 +830,7 @@ class SpectraLsComponentNowPlayingVolumeSensor(CoordinatorEntity, SensorEntity):
         return round(value, 1)
 
 
-class SpectraLsComponentNowPlayingMediaClassSensor(CoordinatorEntity, SensorEntity):
+class SpectraLsComponentNowPlayingMediaClassSensor(_ComponentNowPlayingMetadataTextSensor):
     """Component-native now-playing media-class contract surface."""
 
     _attr_has_entity_name = True
@@ -826,14 +838,10 @@ class SpectraLsComponentNowPlayingMediaClassSensor(CoordinatorEntity, SensorEnti
     _attr_icon = "mdi:music-circle"
     _attr_name = "Component Now Playing Media Class"
     _attr_unique_id = "spectra_ls_component_now_playing_media_class"
-
-    @property
-    def native_value(self):
-        values = _metadata_values(self.coordinator.data)
-        return str(values.get("now_playing_media_class", "") or "").strip()
+    _metadata_key = "now_playing_media_class"
 
 
-class SpectraLsComponentNowPlayingPreviewKeySensor(CoordinatorEntity, SensorEntity):
+class SpectraLsComponentNowPlayingPreviewKeySensor(_ComponentNowPlayingMetadataTextSensor):
     """Component-native now-playing preview-key contract surface."""
 
     _attr_has_entity_name = True
@@ -841,11 +849,7 @@ class SpectraLsComponentNowPlayingPreviewKeySensor(CoordinatorEntity, SensorEnti
     _attr_icon = "mdi:key-variant"
     _attr_name = "Component Now Playing Preview Key"
     _attr_unique_id = "spectra_ls_component_now_playing_preview_key"
-
-    @property
-    def native_value(self):
-        values = _metadata_values(self.coordinator.data)
-        return str(values.get("now_playing_preview_key", "") or "").strip()
+    _metadata_key = "now_playing_preview_key"
 
 
 class SpectraLsComponentNowPlayingFreshnessAgeSensor(CoordinatorEntity, SensorEntity):
@@ -913,11 +917,7 @@ class SpectraLsComponentMetadataOverrideEntitySensor(CoordinatorEntity, SensorEn
     @property
     def native_value(self):
         data = self.coordinator.data
-        packet = _component_metadata_override_packet(data)
-        packet_value = str(packet.get("entity", "") or "").strip()
-        if packet_value.lower() not in {"", "none", "unknown", "unavailable", "null"}:
-            return packet_value
-        return ""
+        return PayloadSurfaceFabric.metadata_override_entity(data)
 
     @property
     def extra_state_attributes(self):
@@ -1234,8 +1234,7 @@ class SpectraLsHostResolutionStatusSensor(CoordinatorEntity, SensorEntity):
     @property
     def native_value(self):
         data = self.coordinator.data
-        registry = data.get("registry", {})
-        entries = registry.get("entries", {}) if isinstance(registry.get("entries", {}), dict) else {}
+        entries = _registry_entries(data)
         total = len(entries)
         resolved = 0
         for entry in entries.values():
@@ -1249,9 +1248,9 @@ class SpectraLsHostResolutionStatusSensor(CoordinatorEntity, SensorEntity):
     @property
     def extra_state_attributes(self):
         data = self.coordinator.data
-        registry = data.get("registry", {})
+        registry = _dict_surface(data, "registry")
         host_cutover = data.get("host_control_cutover_gate", {}) if isinstance(data.get("host_control_cutover_gate", {}), dict) else {}
-        entries = registry.get("entries", {}) if isinstance(registry.get("entries", {}), dict) else {}
+        entries = _registry_entries(data)
         summary = registry.get("source_summary", {}) if isinstance(registry.get("source_summary", {}), dict) else {}
 
         targets: dict[str, dict[str, object]] = {}
@@ -1393,13 +1392,8 @@ class SpectraLsMetaPolicyStatusSensor(CoordinatorEntity, SensorEntity):
         data = self.coordinator.data
         write_controls = data.get("write_controls", {})
         policy = write_controls.get("meta_policy", {}) if isinstance(write_controls.get("meta_policy", {}), dict) else {}
-        metadata_prep = (
-            data.get("metadata_prep_validation", {})
-            if isinstance(data.get("metadata_prep_validation", {}), dict)
-            else {}
-        )
-        checks = metadata_prep.get("checks", {}) if isinstance(metadata_prep.get("checks", {}), dict) else {}
-        values = metadata_prep.get("values", {}) if isinstance(metadata_prep.get("values", {}), dict) else {}
+        checks = _metadata_prep_checks_packet(data)
+        values = _metadata_prep_values_packet(data)
 
         return {
             "meta_policy": policy,
@@ -1432,46 +1426,52 @@ async def async_setup_entry(
     """Set up Spectra LS shadow sensors."""
     coordinator = hass.data[DOMAIN][entry.entry_id]
 
-    async_add_entities(
-        [
-            SpectraLsShadowSensor(coordinator, "active_target", "Shadow Active Target"),
-            SpectraLsShadowSensor(coordinator, "active_control_path", "Shadow Active Control Path"),
-            SpectraLsShadowSensor(coordinator, "control_hosts", "Shadow Control Hosts"),
-            SpectraLsComponentActiveTargetSensor(coordinator),
-            SpectraLsComponentControlHostsSensor(coordinator),
-            SpectraLsComponentControlHostSensor(coordinator),
-            SpectraLsComponentControlTargetsSensor(coordinator),
-            SpectraLsComponentControlPortSensor(coordinator),
-            SpectraLsComponentBackendProfileSensor(coordinator),
-            SpectraLsComponentApiUrlSensor(coordinator),
-            SpectraLsComponentNowPlayingEntitySensor(coordinator),
-            SpectraLsComponentNowPlayingStateSensor(coordinator),
-            SpectraLsComponentNowPlayingTitleSensor(coordinator),
-            SpectraLsComponentNowPlayingFriendlySensor(coordinator),
-            SpectraLsComponentNowPlayingArtistSensor(coordinator),
-            SpectraLsComponentNowPlayingAlbumSensor(coordinator),
-            SpectraLsComponentNowPlayingAppSensor(coordinator),
-            SpectraLsComponentNowPlayingSourceSensor(coordinator),
-            SpectraLsComponentNowPlayingPositionSensor(coordinator),
-            SpectraLsComponentNowPlayingDurationSensor(coordinator),
-            SpectraLsComponentNowPlayingVolumeSensor(coordinator),
-            SpectraLsComponentNowPlayingMediaClassSensor(coordinator),
-            SpectraLsComponentNowPlayingPreviewKeySensor(coordinator),
-            SpectraLsComponentNowPlayingFreshnessAgeSensor(coordinator),
-            SpectraLsComponentMetaCandidatesSensor(coordinator),
-            SpectraLsComponentMetadataOverrideEntitySensor(coordinator),
-            SpectraLsComponentMetadataProviderStatusSensor(coordinator),
-            SpectraLsComponentRuntimeTrackDispositionSensor(coordinator),
-            SpectraLsComponentComponentTrackDispositionSensor(coordinator),
-            SpectraLsComponentLc06FinalDispositionSensor(coordinator),
-            SpectraLsComponentLc07FinalDispositionSensor(coordinator),
-            SpectraLsComponentLc08FinalDispositionSensor(coordinator),
-            SpectraLsComponentRetirementLedgerConsistencySensor(coordinator),
-            SpectraLsHostResolutionStatusSensor(coordinator),
-            SpectraLsHostAuthorityCutoverGateSensor(coordinator),
-            SpectraLsSchedulerDecisionSensor(coordinator),
-            SpectraLsMetaPolicyStatusSensor(coordinator),
-            SpectraLsControlCenterReadinessSensor(coordinator),
-            SpectraLsControlCenterLastAttemptStatusSensor(coordinator),
-        ]
+    shadow_specs: tuple[tuple[str, str], ...] = (
+        ("active_target", "Shadow Active Target"),
+        ("active_control_path", "Shadow Active Control Path"),
+        ("control_hosts", "Shadow Control Hosts"),
     )
+    component_sensor_types = (
+        SpectraLsComponentActiveTargetSensor,
+        SpectraLsComponentControlHostsSensor,
+        SpectraLsComponentControlHostSensor,
+        SpectraLsComponentControlTargetsSensor,
+        SpectraLsComponentControlPortSensor,
+        SpectraLsComponentBackendProfileSensor,
+        SpectraLsComponentApiUrlSensor,
+        SpectraLsComponentNowPlayingEntitySensor,
+        SpectraLsComponentNowPlayingStateSensor,
+        SpectraLsComponentNowPlayingTitleSensor,
+        SpectraLsComponentNowPlayingFriendlySensor,
+        SpectraLsComponentNowPlayingArtistSensor,
+        SpectraLsComponentNowPlayingAlbumSensor,
+        SpectraLsComponentNowPlayingAppSensor,
+        SpectraLsComponentNowPlayingSourceSensor,
+        SpectraLsComponentNowPlayingPositionSensor,
+        SpectraLsComponentNowPlayingDurationSensor,
+        SpectraLsComponentNowPlayingVolumeSensor,
+        SpectraLsComponentNowPlayingMediaClassSensor,
+        SpectraLsComponentNowPlayingPreviewKeySensor,
+        SpectraLsComponentNowPlayingFreshnessAgeSensor,
+        SpectraLsComponentMetaCandidatesSensor,
+        SpectraLsComponentMetadataOverrideEntitySensor,
+        SpectraLsComponentMetadataProviderStatusSensor,
+        SpectraLsComponentRuntimeTrackDispositionSensor,
+        SpectraLsComponentComponentTrackDispositionSensor,
+        SpectraLsComponentLc06FinalDispositionSensor,
+        SpectraLsComponentLc07FinalDispositionSensor,
+        SpectraLsComponentLc08FinalDispositionSensor,
+        SpectraLsComponentRetirementLedgerConsistencySensor,
+        SpectraLsHostResolutionStatusSensor,
+        SpectraLsHostAuthorityCutoverGateSensor,
+        SpectraLsSchedulerDecisionSensor,
+        SpectraLsMetaPolicyStatusSensor,
+        SpectraLsControlCenterReadinessSensor,
+        SpectraLsControlCenterLastAttemptStatusSensor,
+    )
+
+    entities = [
+        *(SpectraLsShadowSensor(coordinator, key, name) for key, name in shadow_specs),
+        *(sensor_type(coordinator) for sensor_type in component_sensor_types),
+    ]
+    async_add_entities(entities)

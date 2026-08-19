@@ -1,8 +1,18 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.08.14.5 -->
-<!-- Last updated: 2026-08-14 -->
+<!-- Version: 2026.08.19.3 -->
+<!-- Last updated: 2026-08-19 -->
 
 # Changelog
+
+## 2026-08-19
+
+- Runtime/OLED passthrough keepalive follow-up — close residual clear-path that could still blank title under idle transport flags despite fresh passthrough source evidence (`esphome/spectra_ls_system/spectra-ls-peripherals.yaml`, `esphome/spectra_ls_system.yaml`, `docs/CHANGELOG.md`): adjusted late-stage clear guards to preserve source-label keepalive posture when passthrough freshness is valid, preventing `audio|oled:-` regressions in aligned Optical/Line-In contexts. Runtime track disposition: implemented. Component track disposition: compatibility-shimmed. Version-parity review: runtime `updated`; component `not-applicable`.
+
+- Runtime/OLED passthrough no-track keepalive correction — prevent incorrect blank payload during active Optical/Line-In passthrough windows (`esphome/spectra_ls_system/spectra-ls-peripherals.yaml`, `esphome/spectra_ls_system.yaml`, `docs/CHANGELOG.md`): fix `audio|oled:-` posture when control/route/handoff were aligned and passthrough source was valid but no track metadata was present. Runtime now maintains a bounded passthrough source keepalive title (for example `Optical In`) under fresh component contract evidence instead of forcing blank payload classification. Runtime track disposition: implemented (active ESP runtime payload posture corrected). Component track disposition: compatibility-shimmed (no `custom_components/spectra_ls` behavior mutation). Version-parity review: runtime `updated`; component `not-applicable`. P1/P2/P3 impact: no source-of-truth ownership reassignment; runtime OLED payload readiness policy hardening only. README parity: no material repo-state/operator-workflow change. Wiki parity: no material operator-workflow change.
+
+- Runtime/OLED now-playing stability hardening — suppress autoplay source/meta popup takeover during steady now-playing windows (`esphome/spectra_ls_system/spectra-ls-peripherals.yaml`, `esphome/spectra_ls_system/packages/spectra-ls-audio-tcp.yaml`, `esphome/spectra_ls_system.yaml`, `docs/CHANGELOG.md`): fix UI flicker where OLED intermittently jumped between source context overlays and now-playing payload while playback/title contracts were healthy. Added fail-closed popup guardrails so automatic source-change popups only arm in short user-interaction windows and active steady now-playing posture clears non-user popup overlays instead of preempting title render. Runtime track disposition: implemented (active ESP runtime render/gating behavior corrected). Component track disposition: compatibility-shimmed (no `custom_components/spectra_ls` behavior mutation in this slice). Version-parity review: runtime `updated`; component `not-applicable`. P1/P2/P3 impact: no source-of-truth ownership reassignment; runtime UX stability hardening only. README parity: no material repo-state/operator-workflow change. Wiki parity: no material operator-workflow change.
+
+- Roadmap/v-next parity note for this slice (`docs/roadmap/CUSTOM-COMPONENT-ROADMAP.md`, `docs/roadmap/v-next-NOTES.md`): recorded runtime-only OLED stability guard update with explicit two-track disposition and no component contract ownership change.
 
 ## 2026-08-14
 

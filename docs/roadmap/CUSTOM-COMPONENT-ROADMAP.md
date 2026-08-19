@@ -1,6 +1,6 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.08.14.4 -->
-<!-- Last updated: 2026-08-14 -->
+<!-- Version: 2026.08.19.2 -->
+<!-- Last updated: 2026-08-19 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
 
@@ -51,6 +51,24 @@ Latest run update (2026-08-14, metadata-priority hardening + diagnostics normali
 - Selection-handoff gate normalization active: helper options alignment remains visible for operator insight but is advisory-only in component-authority mode when route + contract gates pass.
 - Runtime track disposition: compatibility-shimmed.
 - Component track disposition: implemented.
+
+Latest run update (2026-08-19, runtime OLED now-playing stability guard):
+
+- Addressed OLED flicker posture where source/meta overlays could preempt steady now-playing title render during active playback.
+- Runtime guardrails now constrain automatic source popup arming to short user-interaction windows and clear non-user popup overlays when now-playing is steady and title-ready.
+- Runtime track disposition: implemented.
+- Component track disposition: compatibility-shimmed.
+- Version parity review: runtime `updated`; component `not-applicable`.
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; runtime UX stability hardening only.
+
+Latest run update (2026-08-19, runtime passthrough no-track OLED keepalive):
+
+- Corrected runtime OLED payload policy for passthrough transport contexts (Optical/Line-In) when no track metadata exists but component freshness evidence is live.
+- Runtime now keeps a bounded source-label line instead of forcing blank payload posture (`audio|oled:-`) in aligned control/handoff states.
+- Runtime track disposition: implemented.
+- Component track disposition: compatibility-shimmed.
+- Version parity review: runtime `updated`; component `not-applicable`.
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; runtime payload-readiness hardening only.
 
 Latest run update (2026-08-01, reboot-loop stabilization + LC-06 compatibility retirement wave):
 

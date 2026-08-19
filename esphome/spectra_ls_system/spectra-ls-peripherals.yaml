@@ -1,6 +1,6 @@
 # Description: Spectra LS OLED-only peripherals package (no LED rings) for Control Board v2.
-# Version: 2026.08.15.14
-# Last updated: 2026-08-15
+# Version: 2026.08.19.3
+# Last updated: 2026-08-19
 # Update version/date whenever you change this file.
 esphome:
   name: ${device_name}
@@ -618,6 +618,23 @@ interval:
           std::string src_display = src_ctx;
           if (src_display.empty()) src_display = source_label;
           if (!src_display.empty()) src_display = normalize_source_label(src_display);
+
+          const float passthrough_keepalive_freshness_s = ((float) meta_stale_ms / 1000.0f) + 2.0f;
+          const bool component_blank_contract_keepalive =
+            id(ha_audio_oled_blank_contract).has_state() && id(ha_audio_oled_blank_contract).state;
+          const bool passthrough_source_keepalive =
+            passthrough_context &&
+            !source_label.empty() &&
+            id(ha_audio_display_allowed).has_state() &&
+            id(ha_audio_display_allowed).state &&
+            !component_blank_contract_keepalive &&
+            now_playing_freshness_age_s >= 0.0f &&
+            now_playing_freshness_age_s <= passthrough_keepalive_freshness_s;
+
+          if (title.empty() && passthrough_source_keepalive) {
+            title = source_label;
+          }
+
           if (!display_hold) {
             source_pill.clear();
             src_display.clear();
@@ -727,7 +744,7 @@ interval:
             ha_playback_activity_recent;
 
           if (!playing && !has_text_meta) {
-            if (paused_passthrough_keepalive) {
+            if (paused_passthrough_keepalive || passthrough_source_keepalive) {
               if (source_label.empty()) source_label = source_raw_ctx;
               if (source_label.empty()) source_label = src_ctx;
               if (is_generic_source_placeholder(source_label)) source_label.clear();
@@ -818,7 +835,7 @@ interval:
           if (src_display.empty()) src_display = source_label;
           if (!src_display.empty()) src_display = normalize_source_label(src_display);
 
-          if (!display_hold || (title.empty() && !playing_no_meta && !paused_passthrough_keepalive)) {
+          if ((!display_hold && !passthrough_source_keepalive) || (title.empty() && !playing_no_meta && !paused_passthrough_keepalive && !passthrough_source_keepalive)) {
             title.clear();
             artist.clear();
             album.clear();
@@ -1077,6 +1094,12 @@ script:
             state_is_paused(id(ha_audio_state).state.c_str()) &&
             ha_playback_activity_recent_screen &&
             ha_playing_recent;
+          const bool passthrough_source_keepalive_screen =
+            passthrough_context &&
+            !has_cached_meta &&
+            ha_display_allowed_screen &&
+            meta_recent_screen &&
+            !component_blank_contract;
           const bool no_progress_payload_screen =
             id(ha_audio_pos_last_value) <= 0.05f &&
             id(arylic_meta_position_state) <= 0 &&
@@ -1113,7 +1136,7 @@ script:
             !paused_passthrough_keepalive_screen;
           const bool now_playing_active =
             ha_display_allowed_screen &&
-            (playing || ha_state_playing_effective_screen || active_recent_screen || playing_recent_hold || ha_playing_recent || wake_overlay_recent_input || meta_recent_allowed || cached_recent || paused_passthrough_keepalive_screen) &&
+            (playing || ha_state_playing_effective_screen || active_recent_screen || playing_recent_hold || ha_playing_recent || wake_overlay_recent_input || meta_recent_allowed || cached_recent || paused_passthrough_keepalive_screen || passthrough_source_keepalive_screen) &&
             !component_blank_contract &&
             !passthrough_suppression;
 
@@ -1126,7 +1149,7 @@ script:
             component_blank_contract ||
             passthrough_suppression ||
             !ha_display_allowed_screen ||
-            (!playing && !meta_recent_allowed && !active_recent_screen && !wake_overlay_recent_input);
+            (!playing && !meta_recent_allowed && !active_recent_screen && !wake_overlay_recent_input && !passthrough_source_keepalive_screen);
           const bool lighting_hold_active = id(lighting_return_to_audio_ms) > 0 && now < id(lighting_return_to_audio_ms);
           const bool lighting_active = lighting_mode &&
                                        (lighting_hold_active || now < id(brightness_active_until_ms) || now < id(hue_ring_active_until_ms) || now < id(audio_ring_active_until_ms));
@@ -1495,6 +1518,15 @@ display:
         id(meta_popup_until_ms) = 0;
         it.fill(COLOR_OFF);
         return;
+      }
+
+      const bool steady_now_playing_render =
+        (display_state_value == STATE_NOW_PLAYING) &&
+        id(np_oled_line_ready);
+      const bool popup_user_window_render = (now - id(last_input_ms)) <= 1500;
+      if (steady_now_playing_render && !popup_user_window_render) {
+        if (id(source_popup_until_ms) > now) id(source_popup_until_ms) = 0;
+        if (id(meta_popup_until_ms) > now) id(meta_popup_until_ms) = 0;
       }
 
       if (now < id(meta_popup_until_ms)) {

@@ -1,6 +1,6 @@
 # Description: Audio controls package for Spectra LS System (TCP-only) with host-resolved control routing.
-# Version: 2026.08.15.2
-# Last updated: 2026-08-15
+# Version: 2026.08.19.1
+# Last updated: 2026-08-19
 # PARITY DIRECTIVE: Behavior/contract edits require same-slice runtime+component parity review and version-metadata review.
 # Update version/date whenever you change this file.
 
@@ -1188,9 +1188,17 @@ text_sensor:
             (id(ha_audio_pos_last_ms) > 0 && (now - id(ha_audio_pos_last_ms)) < meta_stale_ms) ||
             (id(ha_audio1_last_playing_ms) > 0 && (now - id(ha_audio1_last_playing_ms)) < meta_stale_ms);
           const bool wake_overlay_active = id(audio_wake_until_ms) > now;
+          const uint32_t source_popup_user_window_ms = 1500;
+          const bool source_popup_user_window = (now - id(last_input_ms)) <= source_popup_user_window_ms;
+          const bool steady_now_playing =
+            id(np_oled_line_ready) &&
+            id(display_state) == ${display_state_now_playing};
 
           const bool auto_popup_allowed =
-            !component_blank_contract && (ha_state_active || recent_activity || wake_overlay_active);
+            !component_blank_contract &&
+            source_popup_user_window &&
+            !steady_now_playing &&
+            (ha_state_active || recent_activity || wake_overlay_active);
 
           if (resolved && cur != last_source) {
             last_source = cur;

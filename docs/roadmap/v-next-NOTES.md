@@ -1,6 +1,6 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.08.14.4 -->
-<!-- Last updated: 2026-08-14 -->
+<!-- Version: 2026.08.19.2 -->
+<!-- Last updated: 2026-08-19 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
 
@@ -22,10 +22,30 @@ Latest update (2026-08-14)
 - Normalized validation gates so component-authority operation no longer emits false parity/handoff WARN states when legacy parity fields are unresolved but component route/metadata contracts are healthy.
 - Finalized selection-handoff scoring to treat helper option-alignment mismatches as advisory-only in component-authority mode while preserving strict WARN behavior outside component mode.
 
-### Disposition
+### Disposition (2026-08-19 slice)
 
 - Runtime track: compatibility-shimmed
 - Integration track: implemented
+
+Latest update (2026-08-19)
+
+- Runtime OLED now-playing stability slice completed: popup preemption guards added so automatic source/meta overlays do not repeatedly steal frame ownership from steady now-playing title windows.
+- Automatic source popup arming is now constrained to short post-input interaction windows; non-user popup overlays are cleared when now-playing is steady and title-ready.
+
+### Disposition
+
+- Runtime track: implemented
+- Integration track: compatibility-shimmed
+
+Latest update (2026-08-19, passthrough no-track OLED keepalive)
+
+- Corrected runtime OLED policy for passthrough transport contexts where playback/title metadata is absent but source context is valid and fresh.
+- Runtime now preserves a bounded source-label keepalive line (for example `Optical In`) rather than rendering blank payload (`audio|oled:-`) in aligned control/handoff posture.
+
+### Disposition (2026-08-19 passthrough keepalive slice)
+
+- Runtime track: implemented
+- Integration track: compatibility-shimmed
 
 Latest run update (2026-08-01, reboot-loop stabilization + LC-06 compatibility retirement wave):
 

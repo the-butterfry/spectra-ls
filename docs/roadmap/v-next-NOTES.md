@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.08.20.2 -->
+<!-- Version: 2026.08.20.3 -->
 <!-- Last updated: 2026-08-20 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -63,6 +63,16 @@ Latest update (2026-08-20, passthrough fail-closed blanking follow-up)
 - Objective: eliminate residual “OLED shows nothing” posture in passthrough/no-track windows while preserving bounded fail-closed behavior outside latch windows.
 
 ### Disposition (2026-08-20 follow-up slice)
+
+- Runtime track: implemented
+- Integration track: compatibility-shimmed
+
+Latest update (2026-08-20, passthrough source-line canonical eligibility)
+
+- Corrected runtime canonical OLED payload logic so valid passthrough source continuity labels are render-eligible when title metadata is absent.
+- Objective: prevent `audio|oled:-` in healthy passthrough control/handoff posture where source context is valid but track metadata is legitimately empty.
+
+### Disposition (2026-08-20 canonical eligibility slice)
 
 - Runtime track: implemented
 - Integration track: compatibility-shimmed

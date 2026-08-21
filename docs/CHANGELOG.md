@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.08.20.2 -->
+<!-- Version: 2026.08.20.3 -->
 <!-- Last updated: 2026-08-20 -->
 
 # Changelog
 
 ## 2026-08-20
+
+- Runtime/OLED passthrough source-line eligibility fix — accept valid passthrough source labels as canonical OLED payload when title metadata is absent and display policy allows render (`esphome/spectra_ls_system/spectra-ls-peripherals.yaml`, `esphome/spectra_ls_system.yaml`, `docs/CHANGELOG.md`): resolve live posture where control/handoff were ready and source was `Optical In`, but canonical line remained blank because source-like text was excluded from title-only canonicalization. Runtime now explicitly allows passthrough source continuity labels as canonical line in no-track windows under allowed display policy. Runtime track disposition: implemented. Component track disposition: compatibility-shimmed. Version-parity review: runtime `updated`; component `not-applicable`.
 
 - Runtime/OLED passthrough blanking follow-up — relax hard fail-closed blanking when passthrough source-latch context is valid (`esphome/spectra_ls_system/packages/spectra-ls-audio-tcp.yaml`, `esphome/spectra_ls_system/packages/spectra-ls-system.yaml`, `esphome/spectra_ls_system/spectra-ls-peripherals.yaml`, `esphome/spectra_ls_system.yaml`, `docs/CHANGELOG.md`): address residual “OLED shows nothing” posture where strict component blank-contract/no-audio gates could still blank render despite valid passthrough source continuity. Runtime now honors bounded passthrough source-latch context in compute-state and render fail-closed branches so source continuity remains visible through stale/no-track windows without reboot dependency. Runtime track disposition: implemented. Component track disposition: compatibility-shimmed. Version-parity review: runtime `updated`; component `not-applicable`. README parity: no material repo-state/operator-workflow change.
 

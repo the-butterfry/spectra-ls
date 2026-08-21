@@ -1,5 +1,5 @@
 # Description: Spectra LS OLED-only peripherals package (no LED rings) for Control Board v2.
-# Version: 2026.08.20.2
+# Version: 2026.08.20.3
 # Last updated: 2026-08-20
 # Update version/date whenever you change this file.
 esphome:
@@ -649,6 +649,12 @@ interval:
             ((now_playing_freshness_age_s >= 0.0f &&
               now_playing_freshness_age_s <= passthrough_keepalive_freshness_s) ||
              passthrough_latch_active);
+          const bool passthrough_source_continuity =
+            passthrough_context &&
+            !source_label.empty() &&
+            id(ha_audio_display_allowed).has_state() &&
+            id(ha_audio_display_allowed).state &&
+            !component_blank_contract_keepalive;
 
           if (title.empty() && passthrough_source_keepalive) {
             title = source_label;
@@ -915,13 +921,20 @@ interval:
             !is_generic_source_placeholder(ha_title_authoritative);
 
           std::string canonical_oled_line;
+          const bool canonical_allow_passthrough_source_line =
+            passthrough_source_continuity;
 
           // Canonical title precedence: when authoritative title exists, never
           // let source/app fallback override it.
           if (ha_title_valid && display_allowed_authoritative && live_playback_evidence) {
             canonical_oled_line = ha_title_authoritative;
-          } else if (!is_blankish(title) && !is_source_like_text(title) && !is_generic_source_placeholder(title)) {
+          } else if (!is_blankish(title) &&
+                     ((!is_source_like_text(title) && !is_generic_source_placeholder(title)) ||
+                      (canonical_allow_passthrough_source_line && is_source_like_text(title)))) {
             canonical_oled_line = title;
+          }
+          if (canonical_oled_line.empty() && canonical_allow_passthrough_source_line) {
+            canonical_oled_line = source_label;
           }
 
           canonical_oled_line = normalize_source_label(canonical_oled_line);

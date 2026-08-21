@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.08.20.2 -->
+<!-- Version: 2026.08.20.3 -->
 <!-- Last updated: 2026-08-20 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -87,6 +87,15 @@ Latest run update (2026-08-20, passthrough fail-closed blanking follow-up):
 - Component track disposition: compatibility-shimmed.
 - Version parity review: runtime `updated`; component `not-applicable`.
 - P1/P2/P3 impact check: no source-of-truth ownership reassignment; runtime no-audio gate hardening only.
+
+Latest run update (2026-08-20, passthrough source-line canonical eligibility):
+
+- Corrected canonical OLED payload eligibility so passthrough source continuity labels (for example `Optical In`) are accepted as valid canonical line when title metadata is absent and display policy allows render.
+- Removes residual blank posture where source-like text was rejected during canonicalization despite healthy control/handoff posture.
+- Runtime track disposition: implemented.
+- Component track disposition: compatibility-shimmed.
+- Version parity review: runtime `updated`; component `not-applicable`.
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; runtime canonicalization correctness hardening only.
 
 Latest run update (2026-08-01, reboot-loop stabilization + LC-06 compatibility retirement wave):
 

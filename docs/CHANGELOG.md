@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.08.20.6 -->
+<!-- Version: 2026.08.20.7 -->
 <!-- Last updated: 2026-08-20 -->
 
 # Changelog
 
 ## 2026-08-20
+
+- Runtime/OLED passthrough idle-suppression correction — require recent transport/playback evidence before retaining passthrough source-only line in no-track posture (`esphome/spectra_ls_system/spectra-ls-peripherals.yaml`, `esphome/spectra_ls_system.yaml`, `docs/CHANGELOG.md`): resolves regression where OLED could continue showing `Optical In` while nothing was actively playing. Runtime now limits passthrough source retention/canonical eligibility to bounded recent-activity windows instead of display-allowed alone. Runtime track disposition: implemented. Component track disposition: compatibility-shimmed. Version-parity review: runtime `updated`; component `not-applicable`.
 
 - Runtime/OLED passthrough source-retention in idle/no-track posture — preserve passthrough source line during compute canonicalization when display policy allows render (`esphome/spectra_ls_system/spectra-ls-peripherals.yaml`, `esphome/spectra_ls_system.yaml`, `docs/CHANGELOG.md`): resolves residual blank where compute previously cleared source context on `display_hold=false` and `state=idle`, causing canonical payload to collapse before render despite valid Optical/Line-In continuity. Runtime track disposition: implemented. Component track disposition: compatibility-shimmed. Version-parity review: runtime `updated`; component `not-applicable`.
 

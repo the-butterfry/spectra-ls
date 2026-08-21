@@ -1,5 +1,5 @@
 # Description: Spectra LS OLED-only peripherals package (no LED rings) for Control Board v2.
-# Version: 2026.08.20.6
+# Version: 2026.08.20.7
 # Last updated: 2026-08-20
 # Update version/date whenever you change this file.
 esphome:
@@ -469,7 +469,6 @@ interval:
             title.clear();
             artist.clear();
             album.clear();
-            source_label.clear();
           }
 
           if (title.empty()) {
@@ -560,6 +559,12 @@ interval:
           const bool paused_recent_passthrough_keepalive = ha_declares_paused && fresh_clock_evidence;
           const bool live_playback_evidence =
             ha_declares_playing || transport_declares_playing || fresh_clock_evidence || paused_recent_passthrough_keepalive;
+          const bool passthrough_recent_activity_for_display =
+            transport_declares_playing ||
+            ha_declares_playing ||
+            paused_recent_passthrough_keepalive ||
+            (id(ha_audio1_last_playing_ms) > 0 &&
+             (now - id(ha_audio1_last_playing_ms)) < ((uint32_t) ${meta_pause_timeout_ms}));
 
           if (title.empty() && id(ha_audio_title).has_state()) {
             std::string authoritative_title = id(ha_audio_title).state.c_str();
@@ -654,12 +659,15 @@ interval:
             !source_label.empty() &&
             id(ha_audio_display_allowed).has_state() &&
             id(ha_audio_display_allowed).state &&
-            !component_blank_contract_keepalive;
+            !component_blank_contract_keepalive &&
+            passthrough_recent_activity_for_display;
           const bool passthrough_source_policy_keepalive =
             passthrough_context &&
+            !source_label.empty() &&
             id(ha_audio_display_allowed).has_state() &&
             id(ha_audio_display_allowed).state &&
-            !component_blank_contract_keepalive;
+            !component_blank_contract_keepalive &&
+            passthrough_recent_activity_for_display;
 
           if (title.empty() && passthrough_source_keepalive) {
             title = source_label;

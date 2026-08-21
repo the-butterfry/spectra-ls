@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.08.20.6 -->
+<!-- Version: 2026.08.20.7 -->
 <!-- Last updated: 2026-08-20 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -101,6 +101,15 @@ Latest update (2026-08-20, passthrough idle/no-track source-retention)
 - Corrected compute-stage source clearing so passthrough source continuity remains canonical-payload eligible under display-allowed policy even with idle/no-track state.
 
 ### Disposition (2026-08-20 source-retention slice)
+
+- Runtime track: implemented
+- Integration track: compatibility-shimmed
+
+Latest update (2026-08-20, passthrough idle-suppression correction)
+
+- Tightened passthrough source-only render eligibility to require recent transport/playback evidence, preventing stale idle source-only display.
+
+### Disposition (2026-08-20 idle-suppression slice)
 
 - Runtime track: implemented
 - Integration track: compatibility-shimmed

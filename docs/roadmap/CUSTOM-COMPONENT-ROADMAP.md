@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.08.20.6 -->
+<!-- Version: 2026.08.20.7 -->
 <!-- Last updated: 2026-08-20 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -124,6 +124,14 @@ Latest run update (2026-08-20, passthrough idle/no-track source-retention):
 - Component track disposition: compatibility-shimmed.
 - Version parity review: runtime `updated`; component `not-applicable`.
 - P1/P2/P3 impact check: no source-of-truth ownership reassignment; runtime compute canonicalization hardening only.
+
+Latest run update (2026-08-20, passthrough idle-suppression correction):
+
+- Tightened passthrough source-only retention so it requires recent transport/playback activity evidence, preventing stale `Optical In` display when audio is idle.
+- Runtime track disposition: implemented.
+- Component track disposition: compatibility-shimmed.
+- Version parity review: runtime `updated`; component `not-applicable`.
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; runtime passthrough activity-gating hardening only.
 
 Latest run update (2026-08-01, reboot-loop stabilization + LC-06 compatibility retirement wave):
 

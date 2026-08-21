@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.08.20.1 -->
+<!-- Version: 2026.08.20.2 -->
 <!-- Last updated: 2026-08-20 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -53,6 +53,16 @@ Latest update (2026-08-20, long-idle stale-gate recovery)
 - Objective: keep valid passthrough source contexts render-eligible across long uptime windows without reboot dependency.
 
 ### Disposition (2026-08-20 idle recovery slice)
+
+- Runtime track: implemented
+- Integration track: compatibility-shimmed
+
+Latest update (2026-08-20, passthrough fail-closed blanking follow-up)
+
+- Added runtime follow-up guard so fail-closed blanking branches do not suppress OLED source continuity when bounded passthrough source-latch context is valid.
+- Objective: eliminate residual “OLED shows nothing” posture in passthrough/no-track windows while preserving bounded fail-closed behavior outside latch windows.
+
+### Disposition (2026-08-20 follow-up slice)
 
 - Runtime track: implemented
 - Integration track: compatibility-shimmed

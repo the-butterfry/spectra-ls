@@ -1,5 +1,5 @@
 # Description: Spectra LS OLED-only peripherals package (no LED rings) for Control Board v2.
-# Version: 2026.08.20.1
+# Version: 2026.08.20.2
 # Last updated: 2026-08-20
 # Update version/date whenever you change this file.
 esphome:
@@ -1105,6 +1105,10 @@ script:
           const bool passthrough_latch_active_screen =
             id(passthrough_source_latch_until_ms) > now &&
             !passthrough_latch_label_screen.empty();
+          const bool passthrough_latch_continuity_screen =
+            passthrough_context &&
+            passthrough_latch_active_screen &&
+            ha_display_allowed_screen;
           const bool passthrough_no_track_evidence =
             passthrough_context && !has_cached_meta && !transport_playing_flags && !pos_advancing_recent;
           const bool source_hint_window_active = id(source_popup_until_ms) > now;
@@ -1159,10 +1163,12 @@ script:
             !wake_overlay_recent_input &&
             !paused_passthrough_keepalive_screen &&
             !passthrough_latch_active_screen;
+          const bool component_blank_blocks_now_playing =
+            component_blank_contract && !passthrough_latch_continuity_screen;
           const bool now_playing_active =
             ha_display_allowed_screen &&
             (playing || ha_state_playing_effective_screen || active_recent_screen || playing_recent_hold || ha_playing_recent || wake_overlay_recent_input || meta_recent_allowed || cached_recent || paused_passthrough_keepalive_screen || passthrough_source_keepalive_screen) &&
-            !component_blank_contract &&
+            !component_blank_blocks_now_playing &&
             !passthrough_suppression;
 
           const std::string canonical_oled_line = id(np_oled_line);
@@ -1171,7 +1177,7 @@ script:
             canonical_oled_line != "-";
 
           const bool no_audio_activity =
-            component_blank_contract ||
+            component_blank_blocks_now_playing ||
             passthrough_suppression ||
             !ha_display_allowed_screen ||
             (!playing && !meta_recent_allowed && !active_recent_screen && !wake_overlay_recent_input && !passthrough_source_keepalive_screen);
@@ -1187,7 +1193,7 @@ script:
           else if (eq_recent_screen) display_state_value = STATE_EQ;
           else if (menu_active_now) display_state_value = STATE_MENU;
           else if (lighting_active) display_state_value = STATE_LIGHTING;
-          else if (component_blank_contract) display_state_value = STATE_BLANK;
+          else if (component_blank_contract && !passthrough_latch_continuity_screen) display_state_value = STATE_BLANK;
           else if (no_audio_activity) display_state_value = STATE_BLANK;
           else if (audio_now_playing && canonical_oled_audio_nonblank) display_state_value = STATE_NOW_PLAYING;
           else if (lighting_idle_now_playing && canonical_oled_audio_nonblank) display_state_value = STATE_NOW_PLAYING;
@@ -1531,10 +1537,15 @@ display:
         (id(ha_audio_state).has_state() && (to_lower_ascii(id(ha_audio_state).state.c_str()) == "playing"));
       const int display_state_value = id(display_state);
       const bool menu_active_now = id(menu_active);
+      std::string passthrough_latch_label_render = id(passthrough_source_latch_label);
+      const bool passthrough_latch_continuity_render =
+        id(passthrough_source_latch_until_ms) > now &&
+        !passthrough_latch_label_render.empty();
 
       const bool fail_closed_idle_blank_render =
         component_blank_contract_render &&
         !transport_live_render &&
+        !passthrough_latch_continuity_render &&
         !menu_active_now &&
         !audio_wake_active;
 

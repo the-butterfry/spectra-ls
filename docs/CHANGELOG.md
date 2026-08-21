@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.08.20.1 -->
+<!-- Version: 2026.08.20.2 -->
 <!-- Last updated: 2026-08-20 -->
 
 # Changelog
 
 ## 2026-08-20
+
+- Runtime/OLED passthrough blanking follow-up — relax hard fail-closed blanking when passthrough source-latch context is valid (`esphome/spectra_ls_system/packages/spectra-ls-audio-tcp.yaml`, `esphome/spectra_ls_system/packages/spectra-ls-system.yaml`, `esphome/spectra_ls_system/spectra-ls-peripherals.yaml`, `esphome/spectra_ls_system.yaml`, `docs/CHANGELOG.md`): address residual “OLED shows nothing” posture where strict component blank-contract/no-audio gates could still blank render despite valid passthrough source continuity. Runtime now honors bounded passthrough source-latch context in compute-state and render fail-closed branches so source continuity remains visible through stale/no-track windows without reboot dependency. Runtime track disposition: implemented. Component track disposition: compatibility-shimmed. Version-parity review: runtime `updated`; component `not-applicable`. README parity: no material repo-state/operator-workflow change.
 
 - Runtime/OLED idle-recovery hardening — passthrough stale-gate latch for long-idle uptime (`esphome/spectra_ls_system/packages/spectra-ls-system.yaml`, `esphome/spectra_ls_system/packages/spectra-ls-audio-tcp.yaml`, `esphome/spectra_ls_system/spectra-ls-peripherals.yaml`, `esphome/spectra_ls_system.yaml`, `docs/CHANGELOG.md`): address reboot-recovers/idle-regresses pattern where passthrough no-track contexts could age into blank payload posture (`audio|oled:-`) after long idle. Added a bounded passthrough source activity latch and integrated it into display-state ungating/suppression guards so valid Optical/Line-In source context remains render-eligible without requiring HA reboot-time refresh bursts. Runtime track disposition: implemented. Component track disposition: compatibility-shimmed. Version-parity review: runtime `updated`; component `not-applicable`.
 

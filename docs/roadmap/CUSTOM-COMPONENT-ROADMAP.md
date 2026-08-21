@@ -1,6 +1,6 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.08.19.2 -->
-<!-- Last updated: 2026-08-19 -->
+<!-- Version: 2026.08.20.1 -->
+<!-- Last updated: 2026-08-20 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
 
@@ -69,6 +69,15 @@ Latest run update (2026-08-19, runtime passthrough no-track OLED keepalive):
 - Component track disposition: compatibility-shimmed.
 - Version parity review: runtime `updated`; component `not-applicable`.
 - P1/P2/P3 impact check: no source-of-truth ownership reassignment; runtime payload-readiness hardening only.
+
+Latest run update (2026-08-20, long-idle passthrough stale-gate recovery):
+
+- Added bounded passthrough source-activity latch to prevent long-idle stale-gate blanking regressions that previously recovered only after HA reboot refresh bursts.
+- Integrated latch posture into runtime now-playing ungate/suppression checks so valid passthrough source contexts remain render-eligible through long uptime windows.
+- Runtime track disposition: implemented.
+- Component track disposition: compatibility-shimmed.
+- Version parity review: runtime `updated`; component `not-applicable`.
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; runtime idle-recovery hardening only.
 
 Latest run update (2026-08-01, reboot-loop stabilization + LC-06 compatibility retirement wave):
 

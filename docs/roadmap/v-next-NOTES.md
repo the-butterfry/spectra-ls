@@ -1,6 +1,6 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.08.19.2 -->
-<!-- Last updated: 2026-08-19 -->
+<!-- Version: 2026.08.20.1 -->
+<!-- Last updated: 2026-08-20 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
 
@@ -43,6 +43,16 @@ Latest update (2026-08-19, passthrough no-track OLED keepalive)
 - Runtime now preserves a bounded source-label keepalive line (for example `Optical In`) rather than rendering blank payload (`audio|oled:-`) in aligned control/handoff posture.
 
 ### Disposition (2026-08-19 passthrough keepalive slice)
+
+- Runtime track: implemented
+- Integration track: compatibility-shimmed
+
+Latest update (2026-08-20, long-idle stale-gate recovery)
+
+- Added runtime passthrough source activity latch and wired it into OLED now-playing ungate/suppression logic to prevent idle-aging regressions that required HA reboot to recover.
+- Objective: keep valid passthrough source contexts render-eligible across long uptime windows without reboot dependency.
+
+### Disposition (2026-08-20 idle recovery slice)
 
 - Runtime track: implemented
 - Integration track: compatibility-shimmed

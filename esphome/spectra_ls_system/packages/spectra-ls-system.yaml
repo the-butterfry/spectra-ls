@@ -1,6 +1,6 @@
 # Description: Spectra LS core state + globals + system intervals + shared scripts.
-# Version: 2026.08.14.11
-# Last updated: 2026-08-14
+# Version: 2026.08.20.1
+# Last updated: 2026-08-20
 # Update version/date whenever you change this file.
 #
 # Sections:
@@ -1078,6 +1078,14 @@ globals:
     restore_value: no
     initial_value: '""'
   - id: source_popup_until_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: passthrough_source_latch_label
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: passthrough_source_latch_until_ms
     type: uint32_t
     restore_value: no
     initial_value: "0"

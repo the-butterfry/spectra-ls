@@ -1,6 +1,6 @@
 # Description: Spectra LS OLED-only peripherals package (no LED rings) for Control Board v2.
-# Version: 2026.08.19.3
-# Last updated: 2026-08-19
+# Version: 2026.08.20.1
+# Last updated: 2026-08-20
 # Update version/date whenever you change this file.
 esphome:
   name: ${device_name}
@@ -576,12 +576,16 @@ interval:
           }
 
           const bool source_context = !source_label.empty() || !source_raw_ctx.empty() || !src_ctx.empty() || !app_label_ctx.empty() || !friendly_ctx.empty() || !active_target_friendly_ctx.empty();
+          std::string passthrough_latch_label = id(passthrough_source_latch_label);
+          if (is_generic_source_placeholder(passthrough_latch_label)) passthrough_latch_label.clear();
+          if (!passthrough_latch_label.empty()) passthrough_latch_label = normalize_source_label(passthrough_latch_label);
           const bool passthrough_context =
             is_passthrough_source(source_label) ||
             is_passthrough_source(source_raw_ctx) ||
             is_passthrough_source(src_ctx) ||
             is_passthrough_source(app_label_ctx) ||
             is_passthrough_source(friendly_ctx) ||
+            is_passthrough_source(passthrough_latch_label) ||
             (id(ha_audio_source).has_state() && is_passthrough_source(id(ha_audio_source).state.c_str()));
           const bool source_hint_window_active = id(source_popup_until_ms) > now;
           const uint32_t idle_ms = now - id(last_input_ms);
@@ -598,6 +602,11 @@ interval:
             !has_text_meta &&
             !source_hint_window_active &&
             no_progress_payload;
+          uint32_t passthrough_latch_extend_ms = ((uint32_t) ${meta_pause_timeout_ms}) * 12U;
+          if (passthrough_latch_extend_ms < 900000U) passthrough_latch_extend_ms = 900000U;
+          bool passthrough_latch_active =
+            id(passthrough_source_latch_until_ms) > now &&
+            !passthrough_latch_label.empty();
           const bool passthrough_idle_stale_cutoff =
             passthrough_context &&
             !has_text_meta &&
@@ -612,7 +621,18 @@ interval:
             ((id(ha_audio1_last_playing_ms) > 0 &&
               (now - id(ha_audio1_last_playing_ms)) > ((uint32_t) ${meta_pause_timeout_ms})) ||
              passthrough_idle_stale_cutoff);
+          const bool component_blank_contract_keepalive =
+            id(ha_audio_oled_blank_contract).has_state() && id(ha_audio_oled_blank_contract).state;
           if (!source_label.empty()) source_label = normalize_source_label(source_label);
+          if (source_label.empty() && passthrough_latch_active) {
+            source_label = passthrough_latch_label;
+          }
+          if (passthrough_context && !source_label.empty() && ha_display_allowed && !component_blank_contract_keepalive) {
+            id(passthrough_source_latch_label) = source_label;
+            id(passthrough_source_latch_until_ms) = now + passthrough_latch_extend_ms;
+            passthrough_latch_active = true;
+            passthrough_latch_label = source_label;
+          }
           std::string source_pill = source_label;
           if (source_pill.size() > 6) source_pill = source_pill.substr(0, 6);
           std::string src_display = src_ctx;
@@ -620,16 +640,15 @@ interval:
           if (!src_display.empty()) src_display = normalize_source_label(src_display);
 
           const float passthrough_keepalive_freshness_s = ((float) meta_stale_ms / 1000.0f) + 2.0f;
-          const bool component_blank_contract_keepalive =
-            id(ha_audio_oled_blank_contract).has_state() && id(ha_audio_oled_blank_contract).state;
           const bool passthrough_source_keepalive =
             passthrough_context &&
             !source_label.empty() &&
             id(ha_audio_display_allowed).has_state() &&
             id(ha_audio_display_allowed).state &&
             !component_blank_contract_keepalive &&
-            now_playing_freshness_age_s >= 0.0f &&
-            now_playing_freshness_age_s <= passthrough_keepalive_freshness_s;
+            ((now_playing_freshness_age_s >= 0.0f &&
+              now_playing_freshness_age_s <= passthrough_keepalive_freshness_s) ||
+             passthrough_latch_active);
 
           if (title.empty() && passthrough_source_keepalive) {
             title = source_label;
@@ -712,7 +731,7 @@ interval:
             title.clear();
           }
 
-          if (stale_passthrough_false_playing || passthrough_source_only_no_payload) {
+          if ((stale_passthrough_false_playing || passthrough_source_only_no_payload) && !passthrough_latch_active) {
             title.clear();
             artist.clear();
             album.clear();
@@ -779,7 +798,8 @@ interval:
             !ha_state_paused_now &&
             !state_playing1 &&
             stale_now_playing_contract &&
-            !paused_passthrough_keepalive;
+            !paused_passthrough_keepalive &&
+            !passthrough_source_keepalive;
           if (stop_state_stale_meta) {
             title.clear();
             artist.clear();
@@ -1081,6 +1101,10 @@ script:
             (id(arylic_source).has_state() && is_passthrough_source(id(arylic_source).state.c_str())) ||
             is_passthrough_source(id(arylic_source_state)) ||
             is_passthrough_source(id(arylic_lr_source_state));
+          std::string passthrough_latch_label_screen = id(passthrough_source_latch_label);
+          const bool passthrough_latch_active_screen =
+            id(passthrough_source_latch_until_ms) > now &&
+            !passthrough_latch_label_screen.empty();
           const bool passthrough_no_track_evidence =
             passthrough_context && !has_cached_meta && !transport_playing_flags && !pos_advancing_recent;
           const bool source_hint_window_active = id(source_popup_until_ms) > now;
@@ -1098,7 +1122,7 @@ script:
             passthrough_context &&
             !has_cached_meta &&
             ha_display_allowed_screen &&
-            meta_recent_screen &&
+            (meta_recent_screen || passthrough_latch_active_screen) &&
             !component_blank_contract;
           const bool no_progress_payload_screen =
             id(ha_audio_pos_last_value) <= 0.05f &&
@@ -1133,7 +1157,8 @@ script:
           const bool passthrough_suppression =
             (passthrough_no_track_evidence || passthrough_silent_window_no_play_evidence || stale_passthrough_false_playing_screen || passthrough_idle_stale_cutoff_screen) &&
             !wake_overlay_recent_input &&
-            !paused_passthrough_keepalive_screen;
+            !paused_passthrough_keepalive_screen &&
+            !passthrough_latch_active_screen;
           const bool now_playing_active =
             ha_display_allowed_screen &&
             (playing || ha_state_playing_effective_screen || active_recent_screen || playing_recent_hold || ha_playing_recent || wake_overlay_recent_input || meta_recent_allowed || cached_recent || paused_passthrough_keepalive_screen || passthrough_source_keepalive_screen) &&
@@ -1900,6 +1925,10 @@ display:
           (id(arylic_source).has_state() && is_passthrough_source(id(arylic_source).state.c_str())) ||
           is_passthrough_source(id(arylic_source_state)) ||
           is_passthrough_source(id(arylic_lr_source_state));
+        std::string passthrough_latch_label_render = id(passthrough_source_latch_label);
+        const bool passthrough_latch_active_render =
+          id(passthrough_source_latch_until_ms) > now &&
+          !passthrough_latch_label_render.empty();
         const bool passthrough_no_text_silent = passthrough_context && !has_text_payload && !source_hint_window_active;
         const bool passthrough_no_text_silent_no_play = passthrough_no_text_silent && !passthrough_live_activity_signal && !live_transport_playing;
         const std::string canonical_line = id(np_oled_line);
@@ -1984,7 +2013,7 @@ display:
           return;
         }
 
-        if (((!has_text_payload && !live_transport_playing) || passthrough_no_text_silent_no_play || stale_passthrough_false_playing_render || passthrough_idle_stale_cutoff_render || passthrough_source_only_no_payload_render) && !allow_wake_overlay && !canonical_line_ready) {
+        if (((!has_text_payload && !live_transport_playing) || passthrough_no_text_silent_no_play || stale_passthrough_false_playing_render || passthrough_idle_stale_cutoff_render || passthrough_source_only_no_payload_render) && !allow_wake_overlay && !canonical_line_ready && !passthrough_latch_active_render) {
           title_scroll_offset = 0;
           title_scroll_last_ms = now;
           album_scroll_offset = 0;

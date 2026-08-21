@@ -1,6 +1,6 @@
 # Description: Audio controls package for Spectra LS System (TCP-only) with host-resolved control routing.
-# Version: 2026.08.19.1
-# Last updated: 2026-08-19
+# Version: 2026.08.20.1
+# Last updated: 2026-08-20
 # PARITY DIRECTIVE: Behavior/contract edits require same-slice runtime+component parity review and version-metadata review.
 # Update version/date whenever you change this file.
 
@@ -1172,6 +1172,18 @@ text_sensor:
           for (auto &c : low) c = (char) ::tolower(c);
           const bool resolved = !(low.empty() || low == "unknown" || low == "unavailable" || low == "none" || low == "null");
           const uint32_t now = millis();
+          auto is_passthrough_source = [](const std::string &value) {
+            if (value.empty()) return false;
+            std::string v = value;
+            for (auto &c : v) c = (char) ::tolower(c);
+            return v.find("optical") != std::string::npos ||
+                   v.find("line-in") != std::string::npos ||
+                   v.find("line in") != std::string::npos ||
+                   v.find("aux") != std::string::npos ||
+                   v.find("coax") != std::string::npos ||
+                   v.find("hdmi") != std::string::npos ||
+                   v.find("arc") != std::string::npos;
+          };
           const bool component_blank_contract =
             id(ha_audio_oled_blank_contract).has_state() && id(ha_audio_oled_blank_contract).state;
 
@@ -1193,6 +1205,17 @@ text_sensor:
           const bool steady_now_playing =
             id(np_oled_line_ready) &&
             id(display_state) == ${display_state_now_playing};
+
+          const bool passthrough_source = resolved && is_passthrough_source(cur);
+          uint32_t passthrough_latch_ms = ((uint32_t) ${meta_pause_timeout_ms}) * 12U;
+          if (passthrough_latch_ms < 900000U) passthrough_latch_ms = 900000U;
+          if (passthrough_source) {
+            id(passthrough_source_latch_label) = cur;
+            id(passthrough_source_latch_until_ms) = now + passthrough_latch_ms;
+          } else if (resolved) {
+            id(passthrough_source_latch_label).clear();
+            id(passthrough_source_latch_until_ms) = 0;
+          }
 
           const bool auto_popup_allowed =
             !component_blank_contract &&

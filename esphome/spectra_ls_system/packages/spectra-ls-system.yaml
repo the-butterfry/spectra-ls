@@ -1,5 +1,5 @@
 # Description: Spectra LS core state + globals + system intervals + shared scripts.
-# Version: 2026.08.20.1
+# Version: 2026.08.20.4
 # Last updated: 2026-08-20
 # Update version/date whenever you change this file.
 #
@@ -1363,9 +1363,13 @@ text_sensor:
     internal: false
     update_interval: 30s
     lambda: |-
+      const int STATE_BLANK = ${display_state_blank};
       std::string mode = id(screen_mode) == 0 ? "lighting" : "audio";
       if (id(menu_active)) {
         return mode + "|menu:lvl=" + std::to_string(id(menu_level));
+      }
+      if (id(display_state) == STATE_BLANK) {
+        return mode + "|blank";
       }
 
       std::string line = id(np_oled_line);

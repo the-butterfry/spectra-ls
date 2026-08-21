@@ -1,10 +1,16 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.08.20.3 -->
+<!-- Version: 2026.08.20.6 -->
 <!-- Last updated: 2026-08-20 -->
 
 # Changelog
 
 ## 2026-08-20
+
+- Runtime/OLED passthrough source-retention in idle/no-track posture — preserve passthrough source line during compute canonicalization when display policy allows render (`esphome/spectra_ls_system/spectra-ls-peripherals.yaml`, `esphome/spectra_ls_system.yaml`, `docs/CHANGELOG.md`): resolves residual blank where compute previously cleared source context on `display_hold=false` and `state=idle`, causing canonical payload to collapse before render despite valid Optical/Line-In continuity. Runtime track disposition: implemented. Component track disposition: compatibility-shimmed. Version-parity review: runtime `updated`; component `not-applicable`.
+
+- Runtime/OLED passthrough no-track force-render override — when passthrough source continuity is valid and canonical OLED line is non-blank under allowed display policy, bypass residual blank-state posture and render now-playing line (`esphome/spectra_ls_system/spectra-ls-peripherals.yaml`, `esphome/spectra_ls_system.yaml`, `docs/CHANGELOG.md`): addresses live case where contracts classify `audio_payload_blank_expected_passthrough_no_track_metadata` while operator-visible OLED remained physically blank. Runtime now forces now-playing render in bounded passthrough/no-track posture rather than honoring legacy blank expectation. Runtime track disposition: implemented. Component track disposition: compatibility-shimmed. Version-parity review: runtime `updated`; component `not-applicable`.
+
+- Runtime/OLED passthrough latch render-state fix — prevent display-state blank from suppressing valid passthrough source line when bounded continuity latch is active (`esphome/spectra_ls_system/spectra-ls-peripherals.yaml`, `esphome/spectra_ls_system/packages/spectra-ls-system.yaml`, `esphome/spectra_ls_system.yaml`, `docs/CHANGELOG.md`): resolve live posture where `ESP OLED Status` could report non-blank canonical line while render state machine still selected `STATE_BLANK`. Runtime now treats bounded passthrough-latch continuity as an explicit now-playing activity signal and as a no-audio blank gate exemption, and telemetry exports explicit `audio|blank` when render state is blank to avoid false-positive status interpretation. Runtime track disposition: implemented. Component track disposition: compatibility-shimmed. Version-parity review: runtime `updated`; component `not-applicable`.
 
 - Runtime/OLED passthrough source-line eligibility fix — accept valid passthrough source labels as canonical OLED payload when title metadata is absent and display policy allows render (`esphome/spectra_ls_system/spectra-ls-peripherals.yaml`, `esphome/spectra_ls_system.yaml`, `docs/CHANGELOG.md`): resolve live posture where control/handoff were ready and source was `Optical In`, but canonical line remained blank because source-like text was excluded from title-only canonicalization. Runtime now explicitly allows passthrough source continuity labels as canonical line in no-track windows under allowed display policy. Runtime track disposition: implemented. Component track disposition: compatibility-shimmed. Version-parity review: runtime `updated`; component `not-applicable`.
 

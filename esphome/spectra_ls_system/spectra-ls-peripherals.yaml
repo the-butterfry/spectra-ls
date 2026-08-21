@@ -1,5 +1,5 @@
 # Description: Spectra LS OLED-only peripherals package (no LED rings) for Control Board v2.
-# Version: 2026.08.20.3
+# Version: 2026.08.20.6
 # Last updated: 2026-08-20
 # Update version/date whenever you change this file.
 esphome:
@@ -655,12 +655,17 @@ interval:
             id(ha_audio_display_allowed).has_state() &&
             id(ha_audio_display_allowed).state &&
             !component_blank_contract_keepalive;
+          const bool passthrough_source_policy_keepalive =
+            passthrough_context &&
+            id(ha_audio_display_allowed).has_state() &&
+            id(ha_audio_display_allowed).state &&
+            !component_blank_contract_keepalive;
 
           if (title.empty() && passthrough_source_keepalive) {
             title = source_label;
           }
 
-          if (!display_hold) {
+          if (!display_hold && !passthrough_source_policy_keepalive) {
             source_pill.clear();
             src_display.clear();
           }
@@ -769,9 +774,10 @@ interval:
             ha_playback_activity_recent;
 
           if (!playing && !has_text_meta) {
-            if (paused_passthrough_keepalive || passthrough_source_keepalive) {
+            if (paused_passthrough_keepalive || passthrough_source_keepalive || passthrough_source_policy_keepalive) {
               if (source_label.empty()) source_label = source_raw_ctx;
               if (source_label.empty()) source_label = src_ctx;
+              if (source_label.empty()) source_label = passthrough_latch_label;
               if (is_generic_source_placeholder(source_label)) source_label.clear();
               source_label = normalize_source_label(source_label);
 
@@ -1180,7 +1186,7 @@ script:
             component_blank_contract && !passthrough_latch_continuity_screen;
           const bool now_playing_active =
             ha_display_allowed_screen &&
-            (playing || ha_state_playing_effective_screen || active_recent_screen || playing_recent_hold || ha_playing_recent || wake_overlay_recent_input || meta_recent_allowed || cached_recent || paused_passthrough_keepalive_screen || passthrough_source_keepalive_screen) &&
+            (playing || ha_state_playing_effective_screen || active_recent_screen || playing_recent_hold || ha_playing_recent || wake_overlay_recent_input || meta_recent_allowed || cached_recent || paused_passthrough_keepalive_screen || passthrough_source_keepalive_screen || passthrough_latch_continuity_screen) &&
             !component_blank_blocks_now_playing &&
             !passthrough_suppression;
 
@@ -1193,7 +1199,7 @@ script:
             component_blank_blocks_now_playing ||
             passthrough_suppression ||
             !ha_display_allowed_screen ||
-            (!playing && !meta_recent_allowed && !active_recent_screen && !wake_overlay_recent_input && !passthrough_source_keepalive_screen);
+            (!playing && !meta_recent_allowed && !active_recent_screen && !wake_overlay_recent_input && !passthrough_source_keepalive_screen && !passthrough_latch_continuity_screen);
           const bool lighting_hold_active = id(lighting_return_to_audio_ms) > 0 && now < id(lighting_return_to_audio_ms);
           const bool lighting_active = lighting_mode &&
                                        (lighting_hold_active || now < id(brightness_active_until_ms) || now < id(hue_ring_active_until_ms) || now < id(audio_ring_active_until_ms));
@@ -1303,6 +1309,17 @@ display:
         if (value.empty()) return true;
         std::string low = to_lower_ascii(value);
         return low == "unknown" || low == "unavailable" || low == "none" || low == "null" || low == "idle";
+      };
+      auto is_passthrough_source_render = [&](const std::string &input) {
+        if (input.empty()) return false;
+        std::string low = to_lower_ascii(input);
+        return low.find("optical") != std::string::npos ||
+               low.find("line-in") != std::string::npos ||
+               low.find("line in") != std::string::npos ||
+               low.find("aux") != std::string::npos ||
+               low.find("coax") != std::string::npos ||
+               low.find("hdmi") != std::string::npos ||
+               low.find("arc") != std::string::npos;
       };
       const int STATE_SPLASH = ${display_state_splash};
       const int STATE_BOOT_MENU = ${display_state_boot_menu};
@@ -2126,6 +2143,23 @@ display:
         id(np_last_draw_ms) = now;
         log_loop_section("now_playing", section_start_ms);
       };
+
+      const bool force_now_playing_passthrough_render =
+        (display_state_value == STATE_BLANK) &&
+        id(np_oled_line_ready) &&
+        id(ha_audio_display_allowed).has_state() &&
+        id(ha_audio_display_allowed).state &&
+        (is_passthrough_source_render(id(np_raw_source_label)) ||
+         is_passthrough_source_render(id(np_raw_src_display)) ||
+         (id(ha_audio_source).has_state() && is_passthrough_source_render(id(ha_audio_source).state.c_str())) ||
+         (id(arylic_source).has_state() && is_passthrough_source_render(id(arylic_source).state.c_str())) ||
+         is_passthrough_source_render(id(arylic_source_state)) ||
+         is_passthrough_source_render(id(arylic_lr_source_state)));
+
+      if (force_now_playing_passthrough_render) {
+        render_now_playing();
+        return;
+      }
 
       if (display_state_value == STATE_BLANK || display_state_value == STATE_SCREENSAVER) {
         const uint32_t section_start_ms = millis();

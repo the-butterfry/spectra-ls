@@ -1,5 +1,5 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.08.20.3 -->
+<!-- Version: 2026.08.20.6 -->
 <!-- Last updated: 2026-08-20 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
@@ -96,6 +96,34 @@ Latest run update (2026-08-20, passthrough source-line canonical eligibility):
 - Component track disposition: compatibility-shimmed.
 - Version parity review: runtime `updated`; component `not-applicable`.
 - P1/P2/P3 impact check: no source-of-truth ownership reassignment; runtime canonicalization correctness hardening only.
+
+Latest run update (2026-08-20, passthrough latch render-state blank gating):
+
+- Corrected runtime display-state logic so bounded passthrough continuity latch counts as valid now-playing activity in no-track windows.
+- Prevents residual `STATE_BLANK` selection when canonical line is valid and passthrough continuity is explicitly active.
+- Runtime telemetry now reports `audio|blank` when render state is blank, avoiding status packets that look non-blank while panel is intentionally blanked by state machine.
+- Runtime track disposition: implemented.
+- Component track disposition: compatibility-shimmed.
+- Version parity review: runtime `updated`; component `not-applicable`.
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; runtime render-state gating and telemetry clarity hardening only.
+
+Latest run update (2026-08-20, passthrough no-track force-render override):
+
+- Added bounded force-render override for passthrough/no-track posture so valid canonical source line is drawn instead of honoring legacy blank expectation.
+- Targets operator-visible blank OLED while source continuity and display policy are healthy.
+- Runtime track disposition: implemented.
+- Component track disposition: compatibility-shimmed.
+- Version parity review: runtime `updated`; component `not-applicable`.
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; runtime render behavior hardening only.
+
+Latest run update (2026-08-20, passthrough idle/no-track source-retention):
+
+- Corrected compute-stage clearing so passthrough source continuity labels are retained under allowed display policy even when transport state reports idle/no-track.
+- Prevents canonical payload collapse-to-empty before render in valid Optical/Line-In posture.
+- Runtime track disposition: implemented.
+- Component track disposition: compatibility-shimmed.
+- Version parity review: runtime `updated`; component `not-applicable`.
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; runtime compute canonicalization hardening only.
 
 Latest run update (2026-08-01, reboot-loop stabilization + LC-06 compatibility retirement wave):
 

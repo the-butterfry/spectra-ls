@@ -1,5 +1,5 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.08.20.3 -->
+<!-- Version: 2026.08.20.6 -->
 <!-- Last updated: 2026-08-20 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
@@ -73,6 +73,34 @@ Latest update (2026-08-20, passthrough source-line canonical eligibility)
 - Objective: prevent `audio|oled:-` in healthy passthrough control/handoff posture where source context is valid but track metadata is legitimately empty.
 
 ### Disposition (2026-08-20 canonical eligibility slice)
+
+- Runtime track: implemented
+- Integration track: compatibility-shimmed
+
+Latest update (2026-08-20, passthrough latch render-state blank gating)
+
+- Corrected runtime render-state gating so bounded passthrough continuity latch explicitly keeps now-playing render eligible in no-track metadata windows.
+- Added explicit blank-state OLED status export (`audio|blank`) when render state is blank to avoid misleading non-blank status packets.
+
+### Disposition (2026-08-20 render-state gating slice)
+
+- Runtime track: implemented
+- Integration track: compatibility-shimmed
+
+Latest update (2026-08-20, passthrough no-track force-render override)
+
+- Added bounded runtime override to force now-playing render for valid passthrough source continuity even when no-track policy previously classified posture as blank-expected.
+
+### Disposition (2026-08-20 force-render slice)
+
+- Runtime track: implemented
+- Integration track: compatibility-shimmed
+
+Latest update (2026-08-20, passthrough idle/no-track source-retention)
+
+- Corrected compute-stage source clearing so passthrough source continuity remains canonical-payload eligible under display-allowed policy even with idle/no-track state.
+
+### Disposition (2026-08-20 source-retention slice)
 
 - Runtime track: implemented
 - Integration track: compatibility-shimmed

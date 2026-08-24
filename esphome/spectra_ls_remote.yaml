@@ -1,6 +1,6 @@
 # Description: Standalone ESPHome config for Spectra LS Remote tabletop control box (encoder + transport buttons + battery telemetry).
-# Version: 2026.08.15.1
-# Last updated: 2026-08-15
+# Version: 2026.08.24.1
+# Last updated: 2026-08-24
 # Notes:
 # - BLE transport removed; control lane is direct Wi-Fi/TCP.
 
@@ -59,6 +59,9 @@ substitutions:
   battery_divider_ratio: "2.05"
   battery_empty_v: "3.30"
   battery_full_v: "4.20"
+  battery_charge_hold_min_v: "4.05"
+  battery_charge_rise_min_delta_v: "0.008"
+  battery_charge_hold_timeout_ms: "900000"
 
   # Sleep model
   remote_deep_sleep_enabled: "true"
@@ -217,6 +220,22 @@ globals:
     type: int
     restore_value: no
     initial_value: "0"
+  - id: remote_battery_voltage_last_v
+    type: float
+    restore_value: no
+    initial_value: "NAN"
+  - id: remote_battery_voltage_last_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: remote_battery_charge_seen_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: remote_battery_charging_estimated
+    type: bool
+    restore_value: no
+    initial_value: "false"
 
 text_sensor:
   - platform: template
@@ -429,10 +448,12 @@ sensor:
     internal: true
 
   - platform: template
-    name: "Remote Battery SoC"
-    id: remote_battery_soc
-    unit_of_measurement: "%"
-    accuracy_decimals: 0
+    name: "Remote Battery Voltage"
+    id: remote_battery_voltage
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+    device_class: voltage
+    state_class: measurement
     update_interval: 25s
     lambda: |-
       if (!${remote_has_battery}) return {};
@@ -441,8 +462,61 @@ sensor:
       if (isnan(raw_v)) return {};
       const float v = raw_v * ${battery_divider_ratio};
       if (isnan(v)) return {};
+      return v;
+    on_value:
+      - lambda: |-
+          const uint32_t now = millis();
+          const float v = x;
+          if (isnan(v)) return;
+
+          float dv = 0.0f;
+          uint32_t dt_ms = 0;
+          if (id(remote_battery_voltage_last_ms) != 0 && !isnan(id(remote_battery_voltage_last_v))) {
+            dv = v - id(remote_battery_voltage_last_v);
+            dt_ms = now - id(remote_battery_voltage_last_ms);
+          }
+
+          id(remote_battery_voltage_last_v) = v;
+          id(remote_battery_voltage_last_ms) = now;
+
+          const bool rising = dt_ms >= 15000 && dv >= ${battery_charge_rise_min_delta_v};
+          const bool high_hold = v >= ${battery_charge_hold_min_v};
+          if (rising || high_hold) {
+            id(remote_battery_charge_seen_ms) = now;
+          }
+
+          bool charging_est = false;
+          if (id(remote_battery_charge_seen_ms) != 0) {
+            charging_est = (now - id(remote_battery_charge_seen_ms)) <= (uint32_t) ${battery_charge_hold_timeout_ms};
+          }
+          id(remote_battery_charging_estimated) = charging_est;
+
+          const float lo = ${battery_empty_v};
+          const float hi = ${battery_full_v};
+          float soc = NAN;
+          if (hi > lo) {
+            if (v <= lo) soc = 0.0f;
+            else if (v >= hi) soc = 100.0f;
+            else soc = ((v - lo) / (hi - lo)) * 100.0f;
+          }
+
+          const float raw_v = id(remote_battery_voltage_raw).state;
+          ESP_LOGW("remote_battery", "raw=%.3fV scaled=%.3fV soc=%.0f%% dv=%.3fV dt=%lus charging_est=%d", raw_v, v, isnan(soc) ? -1.0f : soc, dv, (unsigned long) (dt_ms / 1000), charging_est ? 1 : 0);
+
+  - platform: template
+    name: "Remote Battery SoC"
+    id: remote_battery_soc
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+    update_interval: 25s
+    lambda: |-
+      if (!${remote_has_battery}) return {};
+      if (!id(remote_battery_voltage).has_state()) return {};
+      const float v = id(remote_battery_voltage).state;
+      if (isnan(v)) return {};
       const float lo = ${battery_empty_v};
       const float hi = ${battery_full_v};
+      if (hi <= lo) return {};
       if (v <= lo) return 0.0f;
       if (v >= hi) return 100.0f;
       return ((v - lo) / (hi - lo)) * 100.0f;
@@ -469,6 +543,15 @@ binary_sensor:
     id: remote_volume_acceleration_enabled
     entity_id: ${remote_volume_acceleration_helper}
     internal: true
+
+  - platform: template
+    name: "Remote Charging (Estimated)"
+    id: remote_charging_estimated
+    device_class: battery_charging
+    entity_category: diagnostic
+    lambda: |-
+      if (!${remote_has_battery}) return false;
+      return id(remote_battery_charging_estimated);
 
   - platform: gpio
     id: remote_encoder_press_button
@@ -1092,6 +1175,9 @@ interval:
                       ? id(remote_last_encoder_interaction_ms)
                       : id(remote_last_input_ms);
               const uint32_t idle = tick - last_activity_ms;
+              if (id(remote_battery_charging_estimated)) {
+                return false;
+              }
               return idle >= (uint32_t) ${remote_idle_sleep_ms};
           then:
             - logger.log:

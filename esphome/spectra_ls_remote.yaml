@@ -1,5 +1,5 @@
 # Description: Standalone ESPHome config for Spectra LS Remote tabletop control box (encoder + transport buttons + battery telemetry).
-# Version: 2026.08.24.3
+# Version: 2026.08.24.4
 # Last updated: 2026-08-24
 # Notes:
 # - BLE transport removed; control lane is direct Wi-Fi/TCP.
@@ -62,6 +62,11 @@ substitutions:
   battery_charge_hold_min_v: "4.05"
   battery_charge_rise_min_delta_v: "0.008"
   battery_charge_hold_timeout_ms: "900000"
+  battery_recent_full_v: "4.15"
+  battery_post_charge_hold_ms: "1200000"
+  battery_post_charge_floor_start_pct: "100.0"
+  battery_post_charge_floor_end_pct: "92.0"
+  battery_post_charge_floor_min_v: "3.95"
 
   # Sleep model
   remote_deep_sleep_enabled: "false"
@@ -236,6 +241,10 @@ globals:
     type: bool
     restore_value: no
     initial_value: "false"
+  - id: remote_last_full_charge_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
 
 text_sensor:
   - platform: template
@@ -485,6 +494,10 @@ sensor:
             id(remote_battery_charge_seen_ms) = now;
           }
 
+          if (v >= ${battery_recent_full_v}) {
+            id(remote_last_full_charge_ms) = now;
+          }
+
           bool charging_est = false;
           if (id(remote_battery_charge_seen_ms) != 0) {
             charging_est = (now - id(remote_battery_charge_seen_ms)) <= (uint32_t) ${battery_charge_hold_timeout_ms};
@@ -540,20 +553,47 @@ sensor:
       };
 
       const int n = (int) (sizeof(curve) / sizeof(curve[0]));
-      if (v <= curve[0].voltage) return curve[0].soc;
-      if (v >= curve[n - 1].voltage) return curve[n - 1].soc;
-
-      for (int i = 1; i < n; i++) {
-        const float v0 = curve[i - 1].voltage;
-        const float v1 = curve[i].voltage;
-        if (v <= v1) {
-          const float s0 = curve[i - 1].soc;
-          const float s1 = curve[i].soc;
-          const float t = (v - v0) / (v1 - v0);
-          return s0 + (s1 - s0) * t;
+      float soc = 100.0f;
+      if (v <= curve[0].voltage) {
+        soc = curve[0].soc;
+      } else if (v >= curve[n - 1].voltage) {
+        soc = curve[n - 1].soc;
+      } else {
+        for (int i = 1; i < n; i++) {
+          const float v0 = curve[i - 1].voltage;
+          const float v1 = curve[i].voltage;
+          if (v <= v1) {
+            const float s0 = curve[i - 1].soc;
+            const float s1 = curve[i].soc;
+            const float t = (v - v0) / (v1 - v0);
+            soc = s0 + (s1 - s0) * t;
+            break;
+          }
         }
       }
-      return 100.0f;
+
+      // Post-charge compensation for Li-ion surface-charge relaxation:
+      // after a recent full/near-full window, keep a temporary floor so
+      // SoC does not cliff-drop immediately on unplug.
+      if (id(remote_last_full_charge_ms) != 0 && v >= ${battery_post_charge_floor_min_v}) {
+        const uint32_t now = millis();
+        const uint32_t age_ms = now - id(remote_last_full_charge_ms);
+        if (age_ms <= (uint32_t) ${battery_post_charge_hold_ms}) {
+          const float start_pct = ${battery_post_charge_floor_start_pct};
+          const float end_pct = ${battery_post_charge_floor_end_pct};
+          float u = (float) age_ms / (float) ((uint32_t) ${battery_post_charge_hold_ms});
+          if (u < 0.0f) u = 0.0f;
+          if (u > 1.0f) u = 1.0f;
+          const float floor_pct = start_pct + (end_pct - start_pct) * u;
+          if (soc < floor_pct) {
+            soc = floor_pct;
+          }
+        }
+      }
+
+      if (soc < 0.0f) soc = 0.0f;
+      if (soc > 100.0f) soc = 100.0f;
+      return soc;
 
   - platform: homeassistant
     id: remote_active_volume_pct

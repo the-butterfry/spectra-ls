@@ -1,5 +1,5 @@
 # Description: Standalone ESPHome config for Spectra LS Remote tabletop control box (encoder + transport buttons + battery telemetry).
-# Version: 2026.08.24.1
+# Version: 2026.08.24.2
 # Last updated: 2026-08-24
 # Notes:
 # - BLE transport removed; control lane is direct Wi-Fi/TCP.
@@ -514,12 +514,46 @@ sensor:
       if (!id(remote_battery_voltage).has_state()) return {};
       const float v = id(remote_battery_voltage).state;
       if (isnan(v)) return {};
-      const float lo = ${battery_empty_v};
-      const float hi = ${battery_full_v};
-      if (hi <= lo) return {};
-      if (v <= lo) return 0.0f;
-      if (v >= hi) return 100.0f;
-      return ((v - lo) / (hi - lo)) * 100.0f;
+      // Li-ion (single-cell) OCV-based approximate SoC curve.
+      // Tuned for user-facing battery percentage behavior rather than strict lab metrology.
+      struct CurvePoint {
+        float voltage;
+        float soc;
+      };
+
+      static const CurvePoint curve[] = {
+          {3.30f, 0.0f},
+          {3.40f, 2.0f},
+          {3.50f, 5.0f},
+          {3.60f, 12.0f},
+          {3.70f, 25.0f},
+          {3.75f, 35.0f},
+          {3.80f, 50.0f},
+          {3.85f, 62.0f},
+          {3.90f, 74.0f},
+          {3.95f, 84.0f},
+          {4.00f, 91.0f},
+          {4.05f, 96.0f},
+          {4.10f, 98.0f},
+          {4.15f, 99.0f},
+          {4.20f, 100.0f},
+      };
+
+      const int n = (int) (sizeof(curve) / sizeof(curve[0]));
+      if (v <= curve[0].voltage) return curve[0].soc;
+      if (v >= curve[n - 1].voltage) return curve[n - 1].soc;
+
+      for (int i = 1; i < n; i++) {
+        const float v0 = curve[i - 1].voltage;
+        const float v1 = curve[i].voltage;
+        if (v <= v1) {
+          const float s0 = curve[i - 1].soc;
+          const float s1 = curve[i].soc;
+          const float t = (v - v0) / (v1 - v0);
+          return s0 + (s1 - s0) * t;
+        }
+      }
+      return 100.0f;
 
   - platform: homeassistant
     id: remote_active_volume_pct

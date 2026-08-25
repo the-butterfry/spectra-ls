@@ -1,6 +1,6 @@
 # Description: Standalone ESPHome config for Spectra LS Remote tabletop control box (encoder + transport buttons + battery telemetry).
-# Version: 2026.08.24.14
-# Last updated: 2026-08-24
+# Version: 2026.08.25.15
+# Last updated: 2026-08-25
 # Notes:
 # - BLE transport removed; control lane is direct Wi-Fi/TCP.
 # - Battery voltage telemetry assumes the physical divider network is present on the ADC input; keep `battery_divider_ratio` aligned to the actual resistor pair.
@@ -58,7 +58,7 @@ substitutions:
 
   # Battery model
   remote_has_battery: "true"
-  battery_divider_ratio: "2.0"
+  battery_divider_ratio: "2.03"
   battery_empty_v: "3.30"
   battery_full_v: "4.20"
   battery_charge_hold_min_v: "4.05"

@@ -1,5 +1,5 @@
 # Description: Standalone ESPHome config for Spectra LS Remote tabletop control box (encoder + transport buttons + battery telemetry).
-# Version: 2026.08.24.11
+# Version: 2026.08.24.12
 # Last updated: 2026-08-24
 # Notes:
 # - BLE transport removed; control lane is direct Wi-Fi/TCP.
@@ -72,6 +72,8 @@ substitutions:
   battery_post_charge_floor_start_pct: "100.0"
   battery_post_charge_floor_end_pct: "92.0"
   battery_post_charge_floor_min_v: "3.95"
+  battery_charge_surface_comp_v: "0.18"
+  battery_charge_comp_taper_start_v: "4.12"
 
   # Sleep model
   remote_deep_sleep_enabled: "false"
@@ -555,7 +557,10 @@ sensor:
           const float raw_v = id(remote_battery_voltage_raw).state;
           const bool full_unplug_hold = id(remote_full_unplug_hold_until_ms) != 0 &&
                                         (int32_t) (id(remote_full_unplug_hold_until_ms) - now) > 0;
-          ESP_LOGW("remote_battery", "raw=%.3fV scaled=%.3fV dv=%.3fV dt=%lus charging_est=%d rise_count=%d unplug_drop=%d recent_full_latched=%d full_unplug_hold=%d soc_mode=%s", raw_v, v, dv, (unsigned long) (dt_ms / 1000), charging_est ? 1 : 0, id(remote_battery_charge_rise_count), unplug_drop ? 1 : 0, id(remote_recent_full_latched) ? 1 : 0, full_unplug_hold ? 1 : 0, full_unplug_hold ? "full_hold_100" : "curve_ocv");
+          const char *soc_mode = full_unplug_hold
+                                     ? "full_hold_100"
+                                     : (charging_est ? "curve_ocv_chg_comp" : "curve_ocv");
+          ESP_LOGW("remote_battery", "raw=%.3fV scaled=%.3fV dv=%.3fV dt=%lus charging_est=%d rise_count=%d unplug_drop=%d recent_full_latched=%d full_unplug_hold=%d soc_mode=%s", raw_v, v, dv, (unsigned long) (dt_ms / 1000), charging_est ? 1 : 0, id(remote_battery_charge_rise_count), unplug_drop ? 1 : 0, id(remote_recent_full_latched) ? 1 : 0, full_unplug_hold ? 1 : 0, soc_mode);
 
   - platform: template
     name: "Remote Battery SoC"
@@ -578,6 +583,24 @@ sensor:
         id(remote_full_unplug_hold_until_ms) = now + (uint32_t) ${battery_unplug_full_hold_ms};
         id(remote_recent_full_latched) = false;
       }
+
+      // Compensate charging surface-voltage inflation so SoC doesn't jump
+      // unrealistically high immediately after plug-in.
+      float soc_input_v = v;
+      if (id(remote_battery_charging_estimated) && v < ${battery_recent_full_v}) {
+        const float full_v = ${battery_full_v};
+        const float taper_start_v = ${battery_charge_comp_taper_start_v};
+        float comp_v = ${battery_charge_surface_comp_v};
+        if (full_v > taper_start_v && v >= taper_start_v) {
+          float t = (v - taper_start_v) / (full_v - taper_start_v);
+          if (t < 0.0f) t = 0.0f;
+          if (t > 1.0f) t = 1.0f;
+          comp_v *= (1.0f - t);
+        }
+        soc_input_v = v - comp_v;
+        if (soc_input_v < ${battery_empty_v}) soc_input_v = ${battery_empty_v};
+      }
+
       // Li-ion (single-cell) OCV-based approximate SoC curve.
       // Tuned for user-facing battery percentage behavior rather than strict lab metrology.
       struct CurvePoint {
@@ -605,18 +628,18 @@ sensor:
 
       const int n = (int) (sizeof(curve) / sizeof(curve[0]));
       float soc = 100.0f;
-      if (v <= curve[0].voltage) {
+      if (soc_input_v <= curve[0].voltage) {
         soc = curve[0].soc;
-      } else if (v >= curve[n - 1].voltage) {
+      } else if (soc_input_v >= curve[n - 1].voltage) {
         soc = curve[n - 1].soc;
       } else {
         for (int i = 1; i < n; i++) {
           const float v0 = curve[i - 1].voltage;
           const float v1 = curve[i].voltage;
-          if (v <= v1) {
+          if (soc_input_v <= v1) {
             const float s0 = curve[i - 1].soc;
             const float s1 = curve[i].soc;
-            const float t = (v - v0) / (v1 - v0);
+            const float t = (soc_input_v - v0) / (v1 - v0);
             soc = s0 + (s1 - s0) * t;
             break;
           }

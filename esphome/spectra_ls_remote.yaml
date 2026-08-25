@@ -254,6 +254,10 @@ globals:
     type: uint32_t
     restore_value: no
     initial_value: "0"
+  - id: remote_recent_full_latched
+    type: bool
+    restore_value: no
+    initial_value: "false"
   - id: remote_full_unplug_hold_until_ms
     type: uint32_t
     restore_value: no

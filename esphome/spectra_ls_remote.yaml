@@ -636,24 +636,6 @@ sensor:
         float soc;
       };
 
-      // Guard early charging-session SoC jumps so low-start sessions don't
-      // cliff-jump to high-90s in one sample from charger surface voltage.
-      if (id(remote_battery_charging_estimated) &&
-          id(remote_charge_session_start_soc) >= 0.0f &&
-          id(remote_charge_session_start_ms) != 0) {
-        const uint32_t age_ms = now - id(remote_charge_session_start_ms);
-        const uint32_t guard_window_ms = (uint32_t) ${battery_charge_jump_guard_window_ms};
-        if (age_ms <= guard_window_ms && guard_window_ms > 0) {
-          float u = (float) age_ms / (float) guard_window_ms;
-          if (u < 0.0f) u = 0.0f;
-          if (u > 1.0f) u = 1.0f;
-          const float rise0 = ${battery_charge_jump_guard_initial_pct};
-          const float rise1 = ${battery_charge_jump_guard_max_pct};
-          const float allowed = id(remote_charge_session_start_soc) + (rise0 + (rise1 - rise0) * u);
-          if (soc > allowed) soc = allowed;
-        }
-      }
-
       static const CurvePoint curve[] = {
           {3.30f, 0.0f},
           {3.40f, 2.0f},
@@ -689,6 +671,24 @@ sensor:
             soc = s0 + (s1 - s0) * t;
             break;
           }
+        }
+      }
+
+      // Guard early charging-session SoC jumps so low-start sessions don't
+      // cliff-jump to high-90s in one sample from charger surface voltage.
+      if (id(remote_battery_charging_estimated) &&
+          id(remote_charge_session_start_soc) >= 0.0f &&
+          id(remote_charge_session_start_ms) != 0) {
+        const uint32_t age_ms = now - id(remote_charge_session_start_ms);
+        const uint32_t guard_window_ms = (uint32_t) ${battery_charge_jump_guard_window_ms};
+        if (age_ms <= guard_window_ms && guard_window_ms > 0) {
+          float u = (float) age_ms / (float) guard_window_ms;
+          if (u < 0.0f) u = 0.0f;
+          if (u > 1.0f) u = 1.0f;
+          const float rise0 = ${battery_charge_jump_guard_initial_pct};
+          const float rise1 = ${battery_charge_jump_guard_max_pct};
+          const float allowed = id(remote_charge_session_start_soc) + (rise0 + (rise1 - rise0) * u);
+          if (soc > allowed) soc = allowed;
         }
       }
 

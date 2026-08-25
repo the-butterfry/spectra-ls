@@ -1,5 +1,5 @@
 # Description: Standalone ESPHome config for Spectra LS Remote tabletop control box (encoder + transport buttons + battery telemetry).
-# Version: 2026.08.24.10
+# Version: 2026.08.24.11
 # Last updated: 2026-08-24
 # Notes:
 # - BLE transport removed; control lane is direct Wi-Fi/TCP.
@@ -552,19 +552,10 @@ sensor:
           }
           id(remote_battery_charging_estimated) = charging_est;
 
-          const float lo = ${battery_empty_v};
-          const float hi = ${battery_full_v};
-          float lin_soc = NAN;
-          if (hi > lo) {
-            if (v <= lo) lin_soc = 0.0f;
-            else if (v >= hi) lin_soc = 100.0f;
-            else lin_soc = ((v - lo) / (hi - lo)) * 100.0f;
-          }
-
           const float raw_v = id(remote_battery_voltage_raw).state;
           const bool full_unplug_hold = id(remote_full_unplug_hold_until_ms) != 0 &&
                                         (int32_t) (id(remote_full_unplug_hold_until_ms) - now) > 0;
-          ESP_LOGW("remote_battery", "raw=%.3fV scaled=%.3fV lin_soc=%.0f%% dv=%.3fV dt=%lus charging_est=%d rise_count=%d unplug_drop=%d recent_full_latched=%d full_unplug_hold=%d", raw_v, v, isnan(lin_soc) ? -1.0f : lin_soc, dv, (unsigned long) (dt_ms / 1000), charging_est ? 1 : 0, id(remote_battery_charge_rise_count), unplug_drop ? 1 : 0, id(remote_recent_full_latched) ? 1 : 0, full_unplug_hold ? 1 : 0);
+          ESP_LOGW("remote_battery", "raw=%.3fV scaled=%.3fV dv=%.3fV dt=%lus charging_est=%d rise_count=%d unplug_drop=%d recent_full_latched=%d full_unplug_hold=%d soc_mode=%s", raw_v, v, dv, (unsigned long) (dt_ms / 1000), charging_est ? 1 : 0, id(remote_battery_charge_rise_count), unplug_drop ? 1 : 0, id(remote_recent_full_latched) ? 1 : 0, full_unplug_hold ? 1 : 0, full_unplug_hold ? "full_hold_100" : "curve_ocv");
 
   - platform: template
     name: "Remote Battery SoC"

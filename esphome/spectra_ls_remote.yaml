@@ -1,5 +1,5 @@
 # Description: Standalone ESPHome config for Spectra LS Remote tabletop control box (encoder + transport buttons + battery telemetry).
-# Version: 2026.08.24.6
+# Version: 2026.08.24.5
 # Last updated: 2026-08-24
 # Notes:
 # - BLE transport removed; control lane is direct Wi-Fi/TCP.
@@ -61,8 +61,7 @@ substitutions:
   battery_full_v: "4.20"
   battery_charge_hold_min_v: "4.05"
   battery_charge_release_v: "4.00"
-  battery_charge_rise_min_delta_v: "0.003"
-  battery_charge_rise_confirm_samples: "2"
+  battery_charge_rise_min_delta_v: "0.008"
   battery_charge_hold_timeout_ms: "900000"
   battery_recent_full_v: "4.15"
   battery_post_charge_hold_ms: "1200000"
@@ -243,10 +242,6 @@ globals:
     type: bool
     restore_value: no
     initial_value: "false"
-  - id: remote_battery_charge_rise_score
-    type: int
-    restore_value: no
-    initial_value: "0"
   - id: remote_last_full_charge_ms
     type: uint32_t
     restore_value: no
@@ -495,28 +490,11 @@ sensor:
           id(remote_battery_voltage_last_ms) = now;
 
           const bool rising = dt_ms >= 15000 && dv >= ${battery_charge_rise_min_delta_v};
-          const bool falling = dt_ms >= 15000 && dv <= -${battery_charge_rise_min_delta_v};
           const bool high_hold = v >= ${battery_charge_hold_min_v};
           const bool unplug_drop = dt_ms >= 10000 && dv <= -0.10f && v <= ${battery_charge_release_v};
 
-          if (rising) {
-            int s = id(remote_battery_charge_rise_score);
-            if (s < 8) s += 1;
-            id(remote_battery_charge_rise_score) = s;
-          } else if (falling) {
-            int s = id(remote_battery_charge_rise_score);
-            s -= 2;
-            if (s < 0) s = 0;
-            id(remote_battery_charge_rise_score) = s;
-          } else if (dt_ms >= 15000) {
-            int s = id(remote_battery_charge_rise_score);
-            if (s > 0) s -= 1;
-            id(remote_battery_charge_rise_score) = s;
-          }
-
           if (unplug_drop) {
             id(remote_battery_charge_seen_ms) = 0;
-            id(remote_battery_charge_rise_score) = 0;
           }
 
           if (rising || high_hold) {
@@ -531,8 +509,7 @@ sensor:
           if (id(remote_battery_charge_seen_ms) != 0) {
             const bool seen_recent = (now - id(remote_battery_charge_seen_ms)) <= (uint32_t) ${battery_charge_hold_timeout_ms};
             const bool charge_like_voltage = v >= ${battery_charge_release_v};
-            const bool rise_confirmed = id(remote_battery_charge_rise_score) >= (int) ${battery_charge_rise_confirm_samples};
-            charging_est = high_hold || rise_confirmed || (seen_recent && charge_like_voltage);
+            charging_est = high_hold || (seen_recent && charge_like_voltage);
           }
           id(remote_battery_charging_estimated) = charging_est;
 
@@ -546,7 +523,7 @@ sensor:
           }
 
           const float raw_v = id(remote_battery_voltage_raw).state;
-          ESP_LOGW("remote_battery", "raw=%.3fV scaled=%.3fV soc=%.0f%% dv=%.3fV dt=%lus charging_est=%d rise_score=%d unplug_drop=%d", raw_v, v, isnan(soc) ? -1.0f : soc, dv, (unsigned long) (dt_ms / 1000), charging_est ? 1 : 0, id(remote_battery_charge_rise_score), unplug_drop ? 1 : 0);
+          ESP_LOGW("remote_battery", "raw=%.3fV scaled=%.3fV soc=%.0f%% dv=%.3fV dt=%lus charging_est=%d unplug_drop=%d", raw_v, v, isnan(soc) ? -1.0f : soc, dv, (unsigned long) (dt_ms / 1000), charging_est ? 1 : 0, unplug_drop ? 1 : 0);
 
   - platform: template
     name: "Remote Battery SoC"

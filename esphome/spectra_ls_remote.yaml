@@ -1,5 +1,5 @@
 # Description: Standalone ESPHome config for Spectra LS Remote tabletop control box (encoder + transport buttons + battery telemetry).
-# Version: 2026.08.24.12
+# Version: 2026.08.24.13
 # Last updated: 2026-08-24
 # Notes:
 # - BLE transport removed; control lane is direct Wi-Fi/TCP.
@@ -72,8 +72,11 @@ substitutions:
   battery_post_charge_floor_start_pct: "100.0"
   battery_post_charge_floor_end_pct: "92.0"
   battery_post_charge_floor_min_v: "3.95"
-  battery_charge_surface_comp_v: "0.18"
+  battery_charge_surface_comp_v: "0.06"
   battery_charge_comp_taper_start_v: "4.12"
+  battery_charge_jump_guard_window_ms: "600000"
+  battery_charge_jump_guard_initial_pct: "8.0"
+  battery_charge_jump_guard_max_pct: "25.0"
 
   # Sleep model
   remote_deep_sleep_enabled: "false"
@@ -264,6 +267,22 @@ globals:
     type: uint32_t
     restore_value: no
     initial_value: "0"
+  - id: remote_last_soc_pct
+    type: float
+    restore_value: yes
+    initial_value: "-1.0"
+  - id: remote_charge_session_start_soc
+    type: float
+    restore_value: no
+    initial_value: "-1.0"
+  - id: remote_charge_session_start_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: remote_prev_charging_est
+    type: bool
+    restore_value: no
+    initial_value: "false"
 
 text_sensor:
   - platform: template
@@ -554,6 +573,15 @@ sensor:
           }
           id(remote_battery_charging_estimated) = charging_est;
 
+          if (charging_est && !id(remote_prev_charging_est)) {
+            id(remote_charge_session_start_soc) = id(remote_last_soc_pct);
+            id(remote_charge_session_start_ms) = now;
+          } else if (!charging_est && id(remote_prev_charging_est)) {
+            id(remote_charge_session_start_soc) = -1.0f;
+            id(remote_charge_session_start_ms) = 0;
+          }
+          id(remote_prev_charging_est) = charging_est;
+
           const float raw_v = id(remote_battery_voltage_raw).state;
           const bool full_unplug_hold = id(remote_full_unplug_hold_until_ms) != 0 &&
                                         (int32_t) (id(remote_full_unplug_hold_until_ms) - now) > 0;
@@ -607,6 +635,24 @@ sensor:
         float voltage;
         float soc;
       };
+
+      // Guard early charging-session SoC jumps so low-start sessions don't
+      // cliff-jump to high-90s in one sample from charger surface voltage.
+      if (id(remote_battery_charging_estimated) &&
+          id(remote_charge_session_start_soc) >= 0.0f &&
+          id(remote_charge_session_start_ms) != 0) {
+        const uint32_t age_ms = now - id(remote_charge_session_start_ms);
+        const uint32_t guard_window_ms = (uint32_t) ${battery_charge_jump_guard_window_ms};
+        if (age_ms <= guard_window_ms && guard_window_ms > 0) {
+          float u = (float) age_ms / (float) guard_window_ms;
+          if (u < 0.0f) u = 0.0f;
+          if (u > 1.0f) u = 1.0f;
+          const float rise0 = ${battery_charge_jump_guard_initial_pct};
+          const float rise1 = ${battery_charge_jump_guard_max_pct};
+          const float allowed = id(remote_charge_session_start_soc) + (rise0 + (rise1 - rise0) * u);
+          if (soc > allowed) soc = allowed;
+        }
+      }
 
       static const CurvePoint curve[] = {
           {3.30f, 0.0f},
@@ -676,6 +722,7 @@ sensor:
 
       if (soc < 0.0f) soc = 0.0f;
       if (soc > 100.0f) soc = 100.0f;
+      id(remote_last_soc_pct) = soc;
       return soc;
 
   - platform: homeassistant

@@ -519,10 +519,13 @@ sensor:
           }
 
           if (unplug_drop) {
-            if (id(remote_last_full_charge_ms) != 0 &&
-                (now - id(remote_last_full_charge_ms)) <= (uint32_t) ${battery_post_charge_hold_ms}) {
+            const bool recent_full_by_age = id(remote_last_full_charge_ms) != 0 &&
+                                            (now - id(remote_last_full_charge_ms)) <= (uint32_t) ${battery_post_charge_hold_ms};
+            const bool full_latched = id(remote_recent_full_latched);
+            if (recent_full_by_age || full_latched) {
               id(remote_full_unplug_hold_until_ms) = now + (uint32_t) ${battery_unplug_full_hold_ms};
             }
+            id(remote_recent_full_latched) = false;
             id(remote_battery_charge_seen_ms) = 0;
             id(remote_battery_charge_rise_count) = 0;
           }

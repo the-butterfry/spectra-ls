@@ -535,6 +535,7 @@ sensor:
 
           if (v >= ${battery_recent_full_v}) {
             id(remote_last_full_charge_ms) = now;
+            id(remote_recent_full_latched) = true;
           }
 
           bool charging_est = false;

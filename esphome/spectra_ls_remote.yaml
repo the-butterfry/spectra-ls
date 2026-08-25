@@ -1,5 +1,5 @@
 # Description: Standalone ESPHome config for Spectra LS Remote tabletop control box (encoder + transport buttons + battery telemetry).
-# Version: 2026.08.24.9
+# Version: 2026.08.24.10
 # Last updated: 2026-08-24
 # Notes:
 # - BLE transport removed; control lane is direct Wi-Fi/TCP.
@@ -256,7 +256,7 @@ globals:
     initial_value: "0"
   - id: remote_recent_full_latched
     type: bool
-    restore_value: no
+    restore_value: yes
     initial_value: "false"
   - id: remote_full_unplug_hold_until_ms
     type: uint32_t
@@ -554,17 +554,17 @@ sensor:
 
           const float lo = ${battery_empty_v};
           const float hi = ${battery_full_v};
-          float soc = NAN;
+          float lin_soc = NAN;
           if (hi > lo) {
-            if (v <= lo) soc = 0.0f;
-            else if (v >= hi) soc = 100.0f;
-            else soc = ((v - lo) / (hi - lo)) * 100.0f;
+            if (v <= lo) lin_soc = 0.0f;
+            else if (v >= hi) lin_soc = 100.0f;
+            else lin_soc = ((v - lo) / (hi - lo)) * 100.0f;
           }
 
           const float raw_v = id(remote_battery_voltage_raw).state;
           const bool full_unplug_hold = id(remote_full_unplug_hold_until_ms) != 0 &&
                                         (int32_t) (id(remote_full_unplug_hold_until_ms) - now) > 0;
-          ESP_LOGW("remote_battery", "raw=%.3fV scaled=%.3fV soc=%.0f%% dv=%.3fV dt=%lus charging_est=%d rise_count=%d unplug_drop=%d recent_full_latched=%d full_unplug_hold=%d", raw_v, v, isnan(soc) ? -1.0f : soc, dv, (unsigned long) (dt_ms / 1000), charging_est ? 1 : 0, id(remote_battery_charge_rise_count), unplug_drop ? 1 : 0, id(remote_recent_full_latched) ? 1 : 0, full_unplug_hold ? 1 : 0);
+          ESP_LOGW("remote_battery", "raw=%.3fV scaled=%.3fV lin_soc=%.0f%% dv=%.3fV dt=%lus charging_est=%d rise_count=%d unplug_drop=%d recent_full_latched=%d full_unplug_hold=%d", raw_v, v, isnan(lin_soc) ? -1.0f : lin_soc, dv, (unsigned long) (dt_ms / 1000), charging_est ? 1 : 0, id(remote_battery_charge_rise_count), unplug_drop ? 1 : 0, id(remote_recent_full_latched) ? 1 : 0, full_unplug_hold ? 1 : 0);
 
   - platform: template
     name: "Remote Battery SoC"
@@ -578,6 +578,15 @@ sensor:
       const uint32_t now = millis();
       const float v = id(remote_battery_voltage).state;
       if (isnan(v)) return {};
+
+      // Reboot/OTA edge recovery: if we previously latched a recent-full event
+      // and come up unplugged, arm one-shot 100% hold immediately.
+      if (!id(remote_battery_charging_estimated) &&
+          id(remote_recent_full_latched) &&
+          id(remote_full_unplug_hold_until_ms) == 0) {
+        id(remote_full_unplug_hold_until_ms) = now + (uint32_t) ${battery_unplug_full_hold_ms};
+        id(remote_recent_full_latched) = false;
+      }
       // Li-ion (single-cell) OCV-based approximate SoC curve.
       // Tuned for user-facing battery percentage behavior rather than strict lab metrology.
       struct CurvePoint {

@@ -1,5 +1,5 @@
 # Description: Standalone ESPHome config for Spectra LS Remote tabletop control box (encoder + transport buttons + battery telemetry).
-# Version: 2026.08.24.7
+# Version: 2026.08.24.8
 # Last updated: 2026-08-24
 # Notes:
 # - BLE transport removed; control lane is direct Wi-Fi/TCP.
@@ -66,7 +66,8 @@ substitutions:
   battery_charge_rise_min_delta_v: "0.001"
   battery_charge_rise_confirm_samples: "2"
   battery_charge_hold_timeout_ms: "900000"
-  battery_recent_full_v: "4.15"
+  battery_recent_full_v: "4.19"
+  battery_unplug_full_hold_ms: "600000"
   battery_post_charge_hold_ms: "1200000"
   battery_post_charge_floor_start_pct: "100.0"
   battery_post_charge_floor_end_pct: "92.0"
@@ -250,6 +251,10 @@ globals:
     restore_value: no
     initial_value: "0"
   - id: remote_last_full_charge_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+  - id: remote_full_unplug_hold_until_ms
     type: uint32_t
     restore_value: no
     initial_value: "0"
@@ -510,6 +515,10 @@ sensor:
           }
 
           if (unplug_drop) {
+            if (id(remote_last_full_charge_ms) != 0 &&
+                (now - id(remote_last_full_charge_ms)) <= (uint32_t) ${battery_post_charge_hold_ms}) {
+              id(remote_full_unplug_hold_until_ms) = now + (uint32_t) ${battery_unplug_full_hold_ms};
+            }
             id(remote_battery_charge_seen_ms) = 0;
             id(remote_battery_charge_rise_count) = 0;
           }
@@ -530,6 +539,9 @@ sensor:
             const bool charge_like_voltage = v >= ${battery_charge_release_v};
             charging_est = rise_confirmed || high_hold || (seen_recent && charge_like_voltage);
           }
+          if (charging_est) {
+            id(remote_full_unplug_hold_until_ms) = 0;
+          }
           id(remote_battery_charging_estimated) = charging_est;
 
           const float lo = ${battery_empty_v};
@@ -542,7 +554,9 @@ sensor:
           }
 
           const float raw_v = id(remote_battery_voltage_raw).state;
-          ESP_LOGW("remote_battery", "raw=%.3fV scaled=%.3fV soc=%.0f%% dv=%.3fV dt=%lus charging_est=%d rise_count=%d unplug_drop=%d", raw_v, v, isnan(soc) ? -1.0f : soc, dv, (unsigned long) (dt_ms / 1000), charging_est ? 1 : 0, id(remote_battery_charge_rise_count), unplug_drop ? 1 : 0);
+          const bool full_unplug_hold = id(remote_full_unplug_hold_until_ms) != 0 &&
+                                        (int32_t) (id(remote_full_unplug_hold_until_ms) - now) > 0;
+          ESP_LOGW("remote_battery", "raw=%.3fV scaled=%.3fV soc=%.0f%% dv=%.3fV dt=%lus charging_est=%d rise_count=%d unplug_drop=%d full_unplug_hold=%d", raw_v, v, isnan(soc) ? -1.0f : soc, dv, (unsigned long) (dt_ms / 1000), charging_est ? 1 : 0, id(remote_battery_charge_rise_count), unplug_drop ? 1 : 0, full_unplug_hold ? 1 : 0);
 
   - platform: template
     name: "Remote Battery SoC"
@@ -553,6 +567,7 @@ sensor:
     lambda: |-
       if (!${remote_has_battery}) return {};
       if (!id(remote_battery_voltage).has_state()) return {};
+      const uint32_t now = millis();
       const float v = id(remote_battery_voltage).state;
       if (isnan(v)) return {};
       // Li-ion (single-cell) OCV-based approximate SoC curve.
@@ -604,7 +619,6 @@ sensor:
       // after a recent full/near-full window, keep a temporary floor so
       // SoC does not cliff-drop immediately on unplug.
       if (id(remote_last_full_charge_ms) != 0 && v >= ${battery_post_charge_floor_min_v}) {
-        const uint32_t now = millis();
         const uint32_t age_ms = now - id(remote_last_full_charge_ms);
         if (age_ms <= (uint32_t) ${battery_post_charge_hold_ms}) {
           const float start_pct = ${battery_post_charge_floor_start_pct};
@@ -616,6 +630,16 @@ sensor:
           if (soc < floor_pct) {
             soc = floor_pct;
           }
+        }
+      }
+
+      // Immediately after unplug from a recent full-voltage window, hold 100%
+      // briefly so displayed SoC doesn't cliff-drop on surface-charge relaxation.
+      if (!id(remote_battery_charging_estimated) && id(remote_full_unplug_hold_until_ms) != 0) {
+        if ((int32_t) (id(remote_full_unplug_hold_until_ms) - now) > 0) {
+          soc = 100.0f;
+        } else {
+          id(remote_full_unplug_hold_until_ms) = 0;
         }
       }
 

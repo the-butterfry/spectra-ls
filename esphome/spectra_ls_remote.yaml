@@ -1,5 +1,5 @@
 # Description: Standalone ESPHome config for Spectra LS Remote tabletop control box (encoder + transport buttons + battery telemetry).
-# Version: 2026.08.25.15
+# Version: 2026.08.25.16
 # Last updated: 2026-08-25
 # Notes:
 # - BLE transport removed; control lane is direct Wi-Fi/TCP.
@@ -79,7 +79,7 @@ substitutions:
   battery_charge_jump_guard_max_pct: "25.0"
 
   # Sleep model
-  remote_deep_sleep_enabled: "false"
+  remote_deep_sleep_enabled: "true"
   remote_idle_sleep_ms: "60000"
 
 esphome:

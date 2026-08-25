@@ -1,8 +1,10 @@
 # Description: Standalone ESPHome config for Spectra LS Remote tabletop control box (encoder + transport buttons + battery telemetry).
-# Version: 2026.08.24.6
+# Version: 2026.08.24.7
 # Last updated: 2026-08-24
 # Notes:
 # - BLE transport removed; control lane is direct Wi-Fi/TCP.
+# - Battery voltage telemetry assumes the physical divider network is present on the ADC input; keep `battery_divider_ratio` aligned to the actual resistor pair.
+# - Charging detection policy is intentionally simple: require 2 consecutive rising voltage samples (`battery_charge_rise_confirm_samples`) before charge is considered detected.
 
 substitutions:
   device_name: spectra-ls-remote

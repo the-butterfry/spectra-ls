@@ -1,5 +1,5 @@
 # Description: Standalone ESPHome config for Spectra LS Remote tabletop control box (encoder + transport buttons + battery telemetry).
-# Version: 2026.09.07.1
+# Version: 2026.09.07.8
 # Last updated: 2026-09-07
 # Notes:
 # - BLE transport removed; control lane is direct Wi-Fi/TCP.
@@ -52,11 +52,13 @@ substitutions:
   remote_encoder_max_detents_per_emit: "4"
   remote_encoder_flush_delay_ms: "15"
   remote_encoder_direction_multiplier: "-1"
-  remote_encoder_long_press_ms: "2000"
-  remote_encoder_short_press_max_ms: "1999"
+  remote_encoder_long_press_ms: "1100"
+  remote_encoder_short_press_max_ms: "1099"
   remote_brightness_mode_timeout_ms: "15000"
   remote_brightness_step_pct: "6"
   remote_brightness_step_cooldown_ms: "60"
+  remote_brightness_default_pct: "50"
+  remote_brightness_fixed_room_area_id: living_room
   remote_living_room_light_entity: light.living_room_lights
   remote_unresolved_log_interval_ms: "1500"
   remote_direct_transport_enabled: "true"
@@ -253,6 +255,26 @@ globals:
     type: uint32_t
     restore_value: no
     initial_value: "0"
+  - id: remote_brightness_step_pending_pct
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: remote_brightness_level_pct
+    type: int
+    restore_value: yes
+    initial_value: "${remote_brightness_default_pct}"
+  - id: remote_brightness_target_mode_pending
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: remote_brightness_target_entity_pending
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: remote_brightness_target_area_pending
+    type: std::string
+    restore_value: no
+    initial_value: '""'
   - id: remote_battery_voltage_last_v
     type: float
     restore_value: no
@@ -920,12 +942,12 @@ script:
           if (id(remote_brightness_mode_active)) {
             id(remote_brightness_mode_active) = false;
             id(remote_brightness_mode_until_ms) = 0;
-            ESP_LOGI("remote", "brightness mode OFF (long press)");
+            ESP_LOGW("remote", "brightness mode OFF (long press)");
             return;
           }
           id(remote_brightness_mode_active) = true;
           id(remote_brightness_mode_until_ms) = now + (uint32_t) ${remote_brightness_mode_timeout_ms};
-          ESP_LOGI("remote", "brightness mode ON for %ums", (unsigned) ((uint32_t) ${remote_brightness_mode_timeout_ms}));
+          ESP_LOGW("remote", "brightness mode ON for %ums", (unsigned) ((uint32_t) ${remote_brightness_mode_timeout_ms}));
 
   - id: remote_brightness_adjust_guarded
     mode: queued
@@ -933,32 +955,25 @@ script:
       delta: int
     then:
       - script.execute: remote_note_input
-      - lambda: |-
-          const uint32_t now = millis();
-          if (!id(remote_brightness_mode_active) || id(remote_brightness_mode_until_ms) <= now) {
-            id(remote_brightness_mode_active) = false;
-            id(remote_brightness_mode_until_ms) = 0;
-            return;
-          }
-          if ((now - id(remote_last_brightness_step_ms)) < (uint32_t) ${remote_brightness_step_cooldown_ms}) {
-            return;
-          }
-          if (!id(remote_ha_api).is_connected()) {
-            ESP_LOGW("remote", "brightness adjust blocked: HA API disconnected");
-            return;
-          }
-          if (delta == 0) return;
-          id(remote_last_brightness_step_ms) = now;
-          id(remote_brightness_mode_until_ms) = now + (uint32_t) ${remote_brightness_mode_timeout_ms};
-      - homeassistant.service:
-          service: light.turn_on
-          data:
-            entity_id: ${remote_living_room_light_entity}
-            brightness_step_pct: !lambda |-
-              int detents = delta;
-              if (detents == 0) {
-                return std::string("0");
+      - if:
+          condition:
+            lambda: |-
+              const uint32_t now = millis();
+              if (!id(remote_brightness_mode_active) || id(remote_brightness_mode_until_ms) <= now) {
+                id(remote_brightness_mode_active) = false;
+                id(remote_brightness_mode_until_ms) = 0;
+                return false;
               }
+              if ((now - id(remote_last_brightness_step_ms)) < (uint32_t) ${remote_brightness_step_cooldown_ms}) {
+                return false;
+              }
+              if (!id(remote_ha_api).is_connected()) {
+                ESP_LOGW("remote", "brightness adjust blocked: HA API disconnected");
+                return false;
+              }
+              if (delta == 0) return false;
+
+              int detents = delta;
               const int sign = detents > 0 ? 1 : -1;
               if (detents < 0) detents = -detents;
               if (detents > (int) ${remote_encoder_max_detents_per_emit}) {
@@ -968,7 +983,57 @@ script:
               if (step < 1) step = 1;
               if (step > 100) step = 100;
               if (sign < 0) step = -step;
-              return std::to_string(step);
+
+              auto to_lower = [](std::string value) {
+                for (auto &c : value) c = (char) ::tolower(c);
+                return value;
+              };
+              auto is_unresolved = [&](const std::string &value) {
+                const std::string low = to_lower(value);
+                return (low.empty() || low == "unknown" || low == "unavailable" || low == "none" || low == "null");
+              };
+
+              const std::string fixed_area = std::string("${remote_brightness_fixed_room_area_id}");
+              const bool has_fixed_area = !is_unresolved(fixed_area);
+
+              id(remote_brightness_target_mode_pending) = has_fixed_area ? 2 : 1;
+              id(remote_brightness_target_entity_pending) = std::string("${remote_living_room_light_entity}");
+              id(remote_brightness_target_area_pending) = has_fixed_area ? fixed_area : std::string("");
+
+              id(remote_brightness_step_pending_pct) = step;
+              int next_pct = id(remote_brightness_level_pct) + step;
+              if (next_pct < 1) next_pct = 1;
+              if (next_pct > 100) next_pct = 100;
+              id(remote_brightness_level_pct) = next_pct;
+              id(remote_last_brightness_step_ms) = now;
+              id(remote_brightness_mode_until_ms) = now + (uint32_t) ${remote_brightness_mode_timeout_ms};
+              if (id(remote_brightness_target_mode_pending) == 2) {
+                ESP_LOGW("remote", "brightness step pct=%d target_pct=%d route=area area_id='%s' scope=always_living_room", step, id(remote_brightness_level_pct), id(remote_brightness_target_area_pending).c_str());
+              } else {
+                ESP_LOGW("remote", "brightness step pct=%d target_pct=%d route=entity entity_id='%s' scope=always_living_room", step, id(remote_brightness_level_pct), id(remote_brightness_target_entity_pending).c_str());
+              }
+              return true;
+          then:
+            - if:
+                condition:
+                  lambda: |-
+                    return id(remote_brightness_target_mode_pending) == 2;
+                then:
+                  - homeassistant.service:
+                      service: light.turn_on
+                      data:
+                        area_id: !lambda |-
+                          return id(remote_brightness_target_area_pending);
+                        brightness_pct: !lambda |-
+                          return id(remote_brightness_level_pct);
+                else:
+                  - homeassistant.service:
+                      service: light.turn_on
+                      data:
+                        entity_id: !lambda |-
+                          return id(remote_brightness_target_entity_pending);
+                        brightness_pct: !lambda |-
+                          return id(remote_brightness_level_pct);
 
   - id: remote_volume_up_guarded
     mode: queued
@@ -1458,7 +1523,7 @@ interval:
           if (id(remote_brightness_mode_active) && id(remote_brightness_mode_until_ms) <= now) {
             id(remote_brightness_mode_active) = false;
             id(remote_brightness_mode_until_ms) = 0;
-            ESP_LOGI("remote", "brightness mode OFF (timeout)");
+            ESP_LOGW("remote", "brightness mode OFF (timeout)");
           }
 
   - interval: 5s

@@ -55,8 +55,8 @@ esphome:
   on_boot:
     then:
       - delay: 2s
-      - homeassistant.service:
-          service: spectra_ls.build_target_options_scaffold
+      - homeassistant.action:
+          action: spectra_ls.build_target_options_scaffold
       - delay: 200ms
       - lambda: |-
           if (id(splash_until_ms) == 0) {

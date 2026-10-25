@@ -1,6 +1,6 @@
 # Description: Data coordinator for Spectra LS parity diagnostics, Phase 3 guarded routing write-path controls, Phase 4 diagnostics scaffolding (F4-S01/F4-S03), Phase 5 metadata trial contract auditing, and Phase 6/8 control-center settings, fast-remap, execution visibility, startup auto-recovery orchestration (latency-hardened cadence), and selection-lock lifecycle parity migration (ambiguity lock, stale unlock, auto-select loop).
-# Version: 2026.08.02.9
-# Last updated: 2026-08-02
+# Version: 2026.08.25.1
+# Last updated: 2026-08-25
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -31,12 +31,8 @@ from .const import (
     LEGACY_LAST_VALID_TARGET,
     LEGACY_META_OVERRIDE_ACTIVE,
     LEGACY_META_OVERRIDE_ENTITY,
-    LEGACY_META_PAUSED_HIDE_S,
-    LEGACY_META_RESOLVER,
-    LEGACY_META_CONFIDENCE_MIN,
     LEGACY_CONTROL_HOST,
     LEGACY_CONTROL_TARGETS,
-    LEGACY_META_CANDIDATES,
     LEGACY_SERVER_PROFILE,
     LEGACY_SERVER_PROFILE_EFFECTIVE,
     LEGACY_ACTIVE_TARGET_HELPER,

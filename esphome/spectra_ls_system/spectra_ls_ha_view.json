@@ -1,6 +1,6 @@
 # Description: Local Lovelace view fixture used for Spectra LS HA layout testing.
-# Version: 2026.06.22.1
-# Last updated: 2026-06-22
+# Version: 2026.09.30.1
+# Last updated: 2026-09-30
 
 views:
   - path: default_view
@@ -496,7 +496,7 @@ views:
               name: App
             - entity: media_player.spectra_ls_2
               name: Player
-            - entity: input_select.ma_active_target
+            - entity: sensor.component_active_target
               name: Target
     - type: grid
       cards:

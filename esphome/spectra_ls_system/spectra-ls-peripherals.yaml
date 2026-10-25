@@ -1,6 +1,6 @@
 # Description: Spectra LS OLED-only peripherals package (no LED rings) for Control Board v2.
-# Version: 2026.08.20.7
-# Last updated: 2026-08-20
+# Version: 2026.09.06.1
+# Last updated: 2026-09-06
 # Update version/date whenever you change this file.
 esphome:
   name: ${device_name}
@@ -562,6 +562,7 @@ interval:
           const bool passthrough_recent_activity_for_display =
             transport_declares_playing ||
             ha_declares_playing ||
+            fresh_clock_evidence ||
             paused_recent_passthrough_keepalive ||
             (id(ha_audio1_last_playing_ms) > 0 &&
              (now - id(ha_audio1_last_playing_ms)) < ((uint32_t) ${meta_pause_timeout_ms}));
@@ -1903,6 +1904,13 @@ display:
         const std::string &album_cached = id(np_album_cached);
         const uint32_t cache_version = id(np_cache_version);
 
+        std::string canonical_line = normalize_source_label(id(np_oled_line));
+        const bool canonical_line_ready = !canonical_line.empty() && canonical_line != "-";
+        std::string title_display = title_cached;
+        if (title_display.empty() && canonical_line_ready) {
+          title_display = canonical_line;
+        }
+
         const int title_h = ${now_playing_font_size};
         const int mid_h = ${now_playing_mid_font_size};
         const int sub_h = ${now_playing_small_font_size};
@@ -1926,8 +1934,11 @@ display:
           np_cached_artist_text_w = (int) artist_cached.size() * 8;
           np_cached_version_for_widths = cache_version;
         }
-        const int title_text_w = np_cached_title_text_w;
-        const bool title_has = !title_cached.empty();
+        int title_text_w = np_cached_title_text_w;
+        if (title_display != title_cached) {
+          title_text_w = (int) title_display.size() * 8;
+        }
+        const bool title_has = !title_display.empty();
         const bool title_scrolls = title_text_w > title_width;
         const bool album_has = !album_cached.empty();
         const int album_width = text_area_w;
@@ -1980,8 +1991,7 @@ display:
           !passthrough_latch_label_render.empty();
         const bool passthrough_no_text_silent = passthrough_context && !has_text_payload && !source_hint_window_active;
         const bool passthrough_no_text_silent_no_play = passthrough_no_text_silent && !passthrough_live_activity_signal && !live_transport_playing;
-        const std::string canonical_line = id(np_oled_line);
-        const bool canonical_line_ready = !canonical_line.empty() && canonical_line != "-";
+        
         const bool component_blank_contract =
           id(ha_audio_oled_blank_contract).has_state() && id(ha_audio_oled_blank_contract).state;
         const bool audio_wake_active = id(audio_wake_until_ms) > now;
@@ -2095,9 +2105,9 @@ display:
         if (title_has) {
           it.filled_rectangle(0, title_y, w, title_band_h, COLOR_ON);
           if (!title_scrolls) {
-            it.printf(w / 2, title_y, id(font_now), COLOR_OFF, TextAlign::TOP_CENTER, "%s", title_cached.c_str());
+            it.printf(w / 2, title_y, id(font_now), COLOR_OFF, TextAlign::TOP_CENTER, "%s", title_display.c_str());
           } else {
-            draw_scrolling_text(title_pad, title_y, title_width, title_cached, id(font_now), now, ${scroll_speed_ms}, 8, title_gap, COLOR_OFF, title_scroll_offset, title_scroll_last_ms);
+            draw_scrolling_text(title_pad, title_y, title_width, title_display, id(font_now), now, ${scroll_speed_ms}, 8, title_gap, COLOR_OFF, title_scroll_offset, title_scroll_last_ms);
           }
         } else {
           title_scroll_offset = 0;

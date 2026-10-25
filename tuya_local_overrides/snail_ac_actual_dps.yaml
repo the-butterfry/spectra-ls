@@ -1,0 +1,113 @@
+# Description: Persistent local override for Tuya Local Snail AC mapping (survives integration updates).
+# Version: 2026.09.29.1
+# Last updated: 2026-09-29
+
+name: Air conditioner
+products:
+  - id: eb342d2083541257beqy08
+    manufacturer: Haier
+    model: Snail AC (actual DPs)
+
+entities:
+  - entity: climate
+    translation_key: aircon_extra
+    dps:
+      - id: 1
+        name: hvac_mode
+        type: boolean
+        mapping:
+          - dps_val: false
+            value: "off"
+          - dps_val: true
+            constraint: mode
+            conditions:
+              - dps_val: cold
+                value: cool
+              - dps_val: wet
+                value: dry
+              - dps_val: fan
+                value: fan_only
+              - dps_val: wind
+                value: fan_only
+      - id: 4
+        name: mode
+        type: string
+        hidden: true
+      - id: 2
+        name: temperature
+        type: integer
+        range:
+          min: 16
+          max: 30
+        mapping:
+          - constraint: temperature_unit
+            conditions:
+              - dps_val: f
+                target_range:
+                  min: 61
+                  max: 86
+      - id: 116
+        name: current_temperature
+        type: integer
+        optional: true
+      - id: 19
+        name: temperature_unit
+        type: string
+        mapping:
+          - dps_val: c
+            value: C
+          - dps_val: f
+            value: F
+      - id: 5
+        name: fan_mode
+        type: string
+        mapping:
+          - dps_val: auto
+            value: auto
+          - dps_val: low
+            value: low
+          - dps_val: mid
+            value: medium
+          - dps_val: middle
+            value: medium
+          - dps_val: high
+            value: high
+
+  - entity: switch
+    name: ECO mode
+    icon: "mdi:leaf"
+    category: config
+    dps:
+      - id: 8
+        name: switch
+        type: boolean
+
+  - entity: switch
+    translation_key: sleep
+    category: config
+    dps:
+      - id: 109
+        name: switch
+        type: boolean
+
+  - entity: switch
+    name: Beep
+    icon: "mdi:volume-high"
+    category: config
+    dps:
+      - id: 16
+        name: switch
+        type: boolean
+
+  - entity: binary_sensor
+    translation_key: filter_replacement
+    class: problem
+    category: diagnostic
+    dps:
+      - id: 12
+        name: sensor
+        type: boolean
+        mapping:
+          - dps_val: false
+            value: false
+          - value: true

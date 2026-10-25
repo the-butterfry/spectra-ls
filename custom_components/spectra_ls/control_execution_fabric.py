@@ -1,6 +1,6 @@
 # Description: Control-execution fabric workflow for Spectra LS control-center settings/input and guarded write-trial services extracted from coordinator.
-# Version: 2026.08.18.1
-# Last updated: 2026-08-18
+# Version: 2026.08.25.1
+# Last updated: 2026-08-25
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -83,7 +83,7 @@ class ControlExecutionFabricWorkflow:
         return False, self._volume_service_retry_attempts, last_error
 
     def _resolve_route_target(self, target_hint: str | None) -> str:
-        """Resolve target from hint, cached route snapshot surfaces, or helper fallback."""
+        """Resolve target from hint and component-owned route/parity surfaces."""
         c = self._coordinator
         hint = str(target_hint or "").strip()
         if hint:
@@ -100,8 +100,8 @@ class ControlExecutionFabricWorkflow:
         if parity_target:
             return parity_target
 
-        helper_state = c.hass.states.get("input_select.ma_active_target")
-        return str(helper_state.state if helper_state is not None else "").strip()
+        component_active_target_state = c.hass.states.get("sensor.component_active_target")
+        return str(component_active_target_state.state if component_active_target_state is not None else "").strip()
 
     def _schedule_snapshot_refresh(self) -> None:
         """Request throttled coordinator refresh instead of immediate full snapshot rebuild."""

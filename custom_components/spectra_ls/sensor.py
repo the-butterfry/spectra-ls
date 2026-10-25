@@ -1,6 +1,6 @@
 # Description: Sensor entities for Spectra LS shadow parity routing surfaces with Phase 3 write-control, Phase 4 diagnostics attributes, and Phase 6/8 control-center settings/readiness/last-attempt visibility, including recorder-safe attribute payload sizing and shared MA authority-contract packet propagation.
-# Version: 2026.08.18.3
-# Last updated: 2026-08-18
+# Version: 2026.08.25.2
+# Last updated: 2026-08-25
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -19,9 +19,6 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .authority_contract import build_authority_contract_packet
 from .const import (
     DOMAIN,
-    LEGACY_META_CANDIDATES,
-    LEGACY_META_CONFIDENCE_MIN,
-    LEGACY_META_RESOLVER,
 )
 from .payload_surface_fabric import PayloadSurfaceFabric
 
@@ -84,17 +81,10 @@ def _jsonish(value: Any) -> Any:
 
 
 def _component_meta_candidates_packet(entity: CoordinatorEntity) -> dict[str, Any]:
-    hass = entity.coordinator.hass
-    candidates_state = hass.states.get(LEGACY_META_CANDIDATES)
-    resolver_state = hass.states.get(LEGACY_META_RESOLVER)
-
-    confidence_min_state = hass.states.get(LEGACY_META_CONFIDENCE_MIN)
+    data = entity.coordinator.data
+    values = _metadata_values(data)
+    checks = _metadata_checks(data)
     confidence_min = 4.0
-    if confidence_min_state is not None:
-        try:
-            confidence_min = float(confidence_min_state.state)
-        except (TypeError, ValueError):
-            confidence_min = 4.0
 
     entities: list[str] = []
     names: list[str] = []
@@ -103,68 +93,36 @@ def _component_meta_candidates_packet(entity: CoordinatorEntity) -> dict[str, An
     best_score = 0.0
     candidate_count_hint = 0
 
-    if candidates_state is not None:
-        attrs = candidates_state.attributes if isinstance(candidates_state.attributes, dict) else {}
+    selection_raw = values.get("component_now_playing_selection", {})
+    selection = selection_raw if isinstance(selection_raw, dict) else _jsonish(selection_raw)
+    if not isinstance(selection, dict):
+        selection = {}
 
-        summary = _jsonish(attrs.get("candidate_summary_json"))
-        if isinstance(summary, dict):
-            raw_candidate_count = summary.get("candidate_count", 0)
-            if isinstance(raw_candidate_count, (int, float)) and raw_candidate_count > 0:
-                candidate_count_hint = int(raw_candidate_count)
-            raw_entities = summary.get("entities", [])
-            raw_names = summary.get("names", [])
-            raw_scores = summary.get("scores", [])
-            if isinstance(raw_entities, list):
-                entities = [str(item).strip() for item in raw_entities if str(item).strip()]
-            if isinstance(raw_names, list):
-                names = [str(item).strip() for item in raw_names if str(item).strip()]
-            if isinstance(raw_scores, list):
-                parsed_scores: list[float] = []
-                for item in raw_scores:
-                    try:
-                        parsed_scores.append(float(item))
-                    except (TypeError, ValueError):
-                        continue
-                scores = parsed_scores
-
-        rows = _jsonish(attrs.get("candidate_rows_json"))
-        if isinstance(rows, list) and len(entities) == 0:
-            for row in rows:
-                if not isinstance(row, dict):
-                    continue
-                ent = str(row.get("entity", "") or "").strip()
-                if not ent:
-                    continue
-                entities.append(ent)
-                names.append(str(row.get("name", "") or ent).strip())
-                try:
-                    scores.append(float(row.get("score", 0)))
-                except (TypeError, ValueError):
-                    scores.append(0.0)
-
-        best_candidate = _jsonish(attrs.get("best_candidate_json"))
-        if isinstance(best_candidate, dict):
-            best_entity = str(best_candidate.get("entity", "") or "").strip()
-            try:
-                best_score = float(best_candidate.get("score", 0))
-            except (TypeError, ValueError):
-                best_score = 0.0
-
-        if best_entity == "":
-            best_entity = str(attrs.get("best_entity", "") or "").strip()
-        if best_score == 0.0:
-            try:
-                best_score = float(attrs.get("best_score", 0))
-            except (TypeError, ValueError):
-                best_score = 0.0
-
-    if best_entity == "" and resolver_state is not None:
-        best_entity = str(resolver_state.attributes.get("best_entity", "") or "").strip()
-    if best_score == 0.0 and resolver_state is not None:
+    rows = selection.get("candidates", []) if isinstance(selection.get("candidates", []), list) else []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        ent = str(row.get("entity", "") or "").strip()
+        if not ent:
+            continue
+        entities.append(ent)
+        names.append(str(row.get("source", "") or ent).strip())
         try:
-            best_score = float(resolver_state.attributes.get("best_score", 0))
+            scores.append(float(row.get("meta_richness", 0) or 0))
         except (TypeError, ValueError):
-            best_score = 0.0
+            scores.append(0.0)
+
+    if isinstance(selection.get("candidate_count"), (int, float)):
+        candidate_count_hint = int(selection.get("candidate_count", 0) or 0)
+
+    best_entity = str(
+        selection.get("winner_entity", "")
+        or checks.get("component_now_playing_selection_winner_entity", "")
+        or values.get("now_playing_entity", "")
+        or ""
+    ).strip()
+    if best_entity:
+        best_score = 100.0
 
     candidate_count = max(len(entities), candidate_count_hint)
     low_confidence = best_entity == "" or best_score < confidence_min
@@ -1072,7 +1030,6 @@ class SpectraLsShadowSensor(CoordinatorEntity, SensorEntity):
     # 16KB attribute warnings on high-volume nested payloads.
     _unrecorded_attributes = frozenset(
         {
-            "legacy_value",
             "unresolved_sources",
             "mismatches",
             "route_trace",
@@ -1103,7 +1060,6 @@ class SpectraLsShadowSensor(CoordinatorEntity, SensorEntity):
     def extra_state_attributes(self):
         data = self.coordinator.data
         base = {
-            "legacy_value": data["legacy"].get(self._key),
             "unresolved_sources": data.get("unresolved_sources", []),
             "mismatches": data.get("mismatches", []),
         }
@@ -1316,7 +1272,6 @@ class SpectraLsHostAuthorityCutoverGateSensor(CoordinatorEntity, SensorEntity):
             "authority_source_mode": gate.get("authority_source_mode", "legacy"),
             "authority_mode": gate.get("authority_mode", "legacy"),
             "component_authoritative_candidate": gate.get("component_authoritative_candidate", {}),
-            "legacy_authority_snapshot": gate.get("legacy_authority_snapshot", {}),
             "route_decision": gate.get("route_decision", ""),
             "resolved_control_path": gate.get("resolved_control_path", ""),
             "checks": gate.get("checks", {}),

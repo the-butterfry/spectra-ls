@@ -1,6 +1,6 @@
 # Description: Runtime autocalibration/tracking state manager for Spectra LS RP2040 firmware.
-# Version: 2026.04.17.1
-# Last updated: 2026-04-17
+# Version: 2026.08.24.6
+# Last updated: 2026-08-24
 #
 # RP FILE CONTRACT:
 # - Owns autocalibration trigger/channel/sample state and calibration tracking state.
@@ -57,7 +57,128 @@ class CalibrationRuntimeManager:
         self.tracking_max_ms = {}
         self.tracking_low_hits = {}
         self.tracking_high_hits = {}
+        self.tracking_samples = {}
+        self.tracking_raw_samples = {}
+        self.tracking_retry_after_ms = {}
         self.tracking_active = False
+
+    def _tracking_force_save_samples_for_idx(self, idx):
+        overrides = self.cfg.get("CALIBRATION_TRACKING_FORCE_SAVE_SAMPLES_BY_NAME") or {}
+        name = self._name(idx)
+        value = overrides.get(name)
+        if value is None:
+            return 0
+        try:
+            parsed = int(value)
+        except (TypeError, ValueError):
+            return 0
+        return parsed if parsed > 0 else 0
+
+    def _tracking_force_min_range_for_idx(self, idx):
+        overrides = self.cfg.get("CALIBRATION_TRACKING_FORCE_MIN_RANGE_BY_NAME") or {}
+        name = self._name(idx)
+        value = overrides.get(name)
+        if value is None:
+            return 0
+        try:
+            parsed = int(value)
+        except (TypeError, ValueError):
+            return 0
+        return parsed if parsed > 0 else 0
+
+    def _tracking_min_range_for_idx(self, idx):
+        default_value = int(self.cfg["CALIBRATION_TRACKING_MIN_RANGE"])
+        overrides = self.cfg.get("CALIBRATION_TRACKING_MIN_RANGE_BY_NAME") or {}
+        name = self._name(idx)
+        value = overrides.get(name)
+        if value is None:
+            return default_value
+        try:
+            parsed = int(value)
+        except (TypeError, ValueError):
+            return default_value
+        return parsed if parsed > 0 else default_value
+
+    def _tracking_edge_min_samples_for_idx(self, idx):
+        default_value = int(self.cfg["CALIBRATION_TRACKING_EDGE_MIN_SAMPLES"])
+        overrides = self.cfg.get("CALIBRATION_TRACKING_EDGE_MIN_SAMPLES_BY_NAME") or {}
+        name = self._name(idx)
+        value = overrides.get(name)
+        if value is None:
+            return default_value
+        try:
+            parsed = int(value)
+        except (TypeError, ValueError):
+            return default_value
+        return parsed if parsed >= 0 else default_value
+
+    def _tracking_retry_delay_ms(self):
+        value = self.cfg.get("CALIBRATION_TRACKING_RETRY_DELAY_MS", 1000)
+        try:
+            parsed = int(value)
+        except (TypeError, ValueError):
+            return 1000
+        return parsed if parsed >= 0 else 1000
+
+    def _tracking_mid_min_samples(self):
+        value = self.cfg.get("CALIBRATION_TRACKING_MID_MIN_SAMPLES", 40)
+        try:
+            parsed = int(value)
+        except (TypeError, ValueError):
+            return 40
+        return parsed if parsed > 0 else 40
+
+    def _tracking_mid_samples_max(self):
+        value = self.cfg.get("CALIBRATION_TRACKING_MID_SAMPLES_MAX", 400)
+        try:
+            parsed = int(value)
+        except (TypeError, ValueError):
+            return 400
+        return parsed if parsed > 0 else 400
+
+    def _tracking_mid_enabled_for_idx(self, idx):
+        name = self._name(idx)
+        enabled = (self.cfg.get("CALIBRATION_TRACKING_ENABLE_MID_BY_NAME") or {}).get(name, False)
+        return bool(enabled)
+
+    def _tracking_calibration_requires_mid_refresh(self, idx):
+        if not self._tracking_mid_enabled_for_idx(idx):
+            return False
+        source = self._source(idx)
+        name = self._name(idx)
+        existing = self.calibration.get(source, {}).get(name) or {}
+        raw_min = existing.get("min")
+        raw_max = existing.get("max")
+        raw_mid = existing.get("mid")
+        if raw_min is None or raw_max is None:
+            return True
+        return raw_mid is None
+
+    def _tracking_record_sample(self, idx, raw):
+        samples = self.tracking_raw_samples.setdefault(idx, [])
+        samples.append(int(raw))
+        max_samples = self._tracking_mid_samples_max()
+        if len(samples) > max_samples:
+            del samples[: len(samples) - max_samples]
+
+    def _tracking_calibration_payload(self, idx, min_val, max_val):
+        payload = {"min": int(min_val), "max": int(max_val)}
+        if not self._tracking_mid_enabled_for_idx(idx):
+            return payload
+        samples = self.tracking_raw_samples.get(idx) or []
+        if len(samples) < self._tracking_mid_min_samples():
+            return payload
+        ordered = sorted(samples)
+        mid = ordered[len(ordered) // 2]
+        span = max_val - min_val
+        min_mid_guard = max(1, int(span * 0.02))
+        if mid <= (min_val + min_mid_guard):
+            mid = min_val + min_mid_guard
+        if mid >= (max_val - min_mid_guard):
+            mid = max_val - min_mid_guard
+        if min_val < mid < max_val:
+            payload["mid"] = int(mid)
+        return payload
 
     def _name(self, idx):
         return self.analog_name_for_index(self.analog_inputs, idx)
@@ -253,8 +374,14 @@ class CalibrationRuntimeManager:
             name = self._name(idx)
             if names and name not in names:
                 continue
-            if self.calibration_missing(self.calibration, name):
+            if self.calibration_missing(self.calibration, name) or self._tracking_calibration_requires_mid_refresh(idx):
                 self.tracking_indices.append(idx)
+                source = self._source(idx)
+                existing = self.calibration.get(source, {}).get(name) or {}
+                if existing.get("min") is not None:
+                    self.tracking_min[idx] = int(existing.get("min"))
+                if existing.get("max") is not None:
+                    self.tracking_max[idx] = int(existing.get("max"))
         self.tracking_active = bool(self.tracking_indices)
         if self.tracking_active and self.debug_calibration_serial:
             names_line = ", ".join(self._name(idx) for idx in self.tracking_indices)
@@ -264,6 +391,9 @@ class CalibrationRuntimeManager:
         if not self.tracking_active or idx not in self.tracking_indices:
             return
         now = self.ticks_ms()
+        retry_after = self.tracking_retry_after_ms.get(idx)
+        if retry_after is not None and self.ticks_diff(now, retry_after) < 0:
+            return
         min_val = self.tracking_min.get(idx)
         max_val = self.tracking_max.get(idx)
         min_changed = False
@@ -288,8 +418,24 @@ class CalibrationRuntimeManager:
             return
 
         span = max_val - min_val
-        if span < self.cfg["CALIBRATION_TRACKING_MIN_RANGE"]:
-            return
+        self._tracking_record_sample(idx, raw)
+        self.tracking_samples[idx] = self.tracking_samples.get(idx, 0) + 1
+        min_range = self._tracking_min_range_for_idx(idx)
+        force_samples = self._tracking_force_save_samples_for_idx(idx)
+        force_min_range = self._tracking_force_min_range_for_idx(idx)
+        force_ready = (
+            force_samples > 0
+            and self.tracking_samples.get(idx, 0) >= force_samples
+            and span >= force_min_range
+        )
+        if span < min_range:
+            if not force_ready:
+                return
+            if self.debug_calibration_serial:
+                print(
+                    f"Calibration tracking force-save gate satisfied: {self._name(idx)} "
+                    f"samples={self.tracking_samples.get(idx, 0)} span={span}"
+                )
 
         edge_span = max(1, int(span * self.cfg["CALIBRATION_TRACKING_EDGE_PCT"] / 100))
         if raw <= (min_val + edge_span):
@@ -297,30 +443,43 @@ class CalibrationRuntimeManager:
         if raw >= (max_val - edge_span):
             self.tracking_high_hits[idx] = self.tracking_high_hits.get(idx, 0) + 1
 
-        if self.tracking_low_hits.get(idx, 0) < self.cfg["CALIBRATION_TRACKING_EDGE_MIN_SAMPLES"]:
-            return
-        if self.tracking_high_hits.get(idx, 0) < self.cfg["CALIBRATION_TRACKING_EDGE_MIN_SAMPLES"]:
-            return
+        edge_min_samples = self._tracking_edge_min_samples_for_idx(idx)
+        if edge_min_samples > 0:
+            if self.tracking_low_hits.get(idx, 0) < edge_min_samples:
+                return
+            if self.tracking_high_hits.get(idx, 0) < edge_min_samples:
+                return
 
         if self.ticks_diff(now, self.tracking_min_ms.get(idx, now)) < self.cfg["CALIBRATION_TRACKING_SETTLE_MS"]:
             return
         if self.ticks_diff(now, self.tracking_max_ms.get(idx, now)) < self.cfg["CALIBRATION_TRACKING_SETTLE_MS"]:
             return
 
+        if self._tracking_mid_enabled_for_idx(idx):
+            sample_count = len(self.tracking_raw_samples.get(idx) or [])
+            if sample_count < self._tracking_mid_min_samples():
+                return
+
         name = self._name(idx)
         source = self._source(idx)
         self.calibration.setdefault(source, {})
-        self.calibration[source][name] = {"min": int(min_val), "max": int(max_val)}
+        self.calibration[source][name] = self._tracking_calibration_payload(idx, min_val, max_val)
         saved = self._save_calibration()
         if saved:
             print(f"Calibration saved: {name} min={int(min_val)} max={int(max_val)}")
+            self.tracking_samples.pop(idx, None)
+            self.tracking_raw_samples.pop(idx, None)
+            self.tracking_retry_after_ms.pop(idx, None)
+            self.tracking_indices.remove(idx)
+            self.tracking_active = bool(self.tracking_indices)
         else:
             print(f"Calibration NOT saved (USB mounted): {name} min={int(min_val)} max={int(max_val)}")
+            self.tracking_retry_after_ms[idx] = (now + self._tracking_retry_delay_ms()) & 0xFFFFFFFF
         if self.debug_calibration_serial:
-            print(f"Calibration tracking saved: {name} min={int(min_val)} max={int(max_val)}")
-
-        self.tracking_indices.remove(idx)
-        self.tracking_active = bool(self.tracking_indices)
+            if saved:
+                print(f"Calibration tracking saved: {name} min={int(min_val)} max={int(max_val)}")
+            else:
+                print(f"Calibration tracking pending retry: {name} min={int(min_val)} max={int(max_val)}")
 
     def get_tracking_calibration(self, idx):
         if not self.cfg["CALIBRATION_TRACKING_DYNAMIC"]:
@@ -329,12 +488,15 @@ class CalibrationRuntimeManager:
         max_val = self.tracking_max.get(idx)
         if min_val is None or max_val is None:
             return None
-        if (max_val - min_val) < self.cfg["CALIBRATION_TRACKING_MIN_RANGE"]:
+        min_range = self._tracking_min_range_for_idx(idx)
+        if (max_val - min_val) < min_range:
             return None
-        if self.tracking_low_hits.get(idx, 0) < self.cfg["CALIBRATION_TRACKING_EDGE_MIN_SAMPLES"]:
-            return None
-        if self.tracking_high_hits.get(idx, 0) < self.cfg["CALIBRATION_TRACKING_EDGE_MIN_SAMPLES"]:
-            return None
+        edge_min_samples = self._tracking_edge_min_samples_for_idx(idx)
+        if edge_min_samples > 0:
+            if self.tracking_low_hits.get(idx, 0) < edge_min_samples:
+                return None
+            if self.tracking_high_hits.get(idx, 0) < edge_min_samples:
+                return None
         return {"min": int(min_val), "max": int(max_val)}
 
     def process_autocal_sample(self, idx, raw, now_ms):

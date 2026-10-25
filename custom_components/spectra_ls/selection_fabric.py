@@ -1,6 +1,6 @@
 # Description: Selection-fabric workflow for Spectra LS scheduler, target-options, and helper write orchestration extracted from meta-fabric.
-# Version: 2026.08.18.4
-# Last updated: 2026-08-18
+# Version: 2026.08.25.3
+# Last updated: 2026-08-25
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -12,9 +12,6 @@ from uuid import uuid4
 
 from .const import (
     COMPONENT_METADATA_OVERRIDE_ACTIVE,
-    LEGACY_ACTIVE_TARGET_HELPER,
-    LEGACY_LAST_VALID_TARGET,
-    LEGACY_ROOMS_JSON,
     WRITE_AUTH_COMPONENT,
 )
 from .write_path_fabric import WritePathFabric
@@ -119,22 +116,15 @@ class SelectionFabricWorkflow:
             }
             c._component_selection_state = state
 
-        helper_state = c.hass.states.get(LEGACY_ACTIVE_TARGET_HELPER)
-        if (not isinstance(state.get("options", []), list) or len(state.get("options", [])) == 0) and helper_state is not None:
-            state["options"] = WritePathFabric.normalize_options(helper_state.attributes.get("options", []))
-
+        state["options"] = (
+            WritePathFabric.normalize_options(state.get("options", []))
+            if isinstance(state.get("options", []), list)
+            else []
+        )
         active_target = str(state.get("active_target", "") or "").strip()
-        if not c._is_resolved_state(active_target) and helper_state is not None:
-            helper_current = str(helper_state.state or "").strip()
-            if c._is_resolved_state(helper_current):
-                state["active_target"] = helper_current
-
+        state["active_target"] = active_target if c._is_resolved_state(active_target) else ""
         last_valid = str(state.get("last_valid_target", "") or "").strip()
-        if not c._is_resolved_state(last_valid):
-            last_valid_state = c.hass.states.get(LEGACY_LAST_VALID_TARGET)
-            helper_last_valid = str(last_valid_state.state if last_valid_state is not None else "").strip()
-            if c._is_resolved_state(helper_last_valid):
-                state["last_valid_target"] = helper_last_valid
+        state["last_valid_target"] = last_valid if c._is_resolved_state(last_valid) else ""
 
         c._component_selection_state = state
         return state
@@ -142,39 +132,28 @@ class SelectionFabricWorkflow:
     def _selection_helper_snapshot(
         self,
         *,
-        helper_entity: str = LEGACY_ACTIVE_TARGET_HELPER,
         include_last_valid: bool = False,
     ) -> dict[str, Any]:
-        """Resolve helper-backed selection snapshot with normalized current/options and optional last-valid target."""
+        """Resolve component-backed selection snapshot with normalized current/options and optional last-valid target."""
         c = self._coordinator
         selection_state = self._selection_state()
-        helper_state = c.hass.states.get(helper_entity)
-
         helper_current = str(selection_state.get("active_target", "") or "").strip()
-        if helper_state is not None and not c._is_resolved_state(helper_current):
-            helper_current = str(helper_state.state or "").strip()
-
         helper_options = (
             list(selection_state.get("options", []))
             if isinstance(selection_state.get("options", []), list)
             else []
         )
-        if helper_state is not None and len(helper_options) == 0:
-            helper_options = WritePathFabric.normalize_options(helper_state.attributes.get("options", []))
 
         snapshot: dict[str, Any] = {
             "selection_state": selection_state,
-            "helper_state": helper_state,
+            "helper_state": None,
             "helper_current": helper_current,
             "helper_options": helper_options,
         }
 
         if include_last_valid:
-            last_valid_state = c.hass.states.get(LEGACY_LAST_VALID_TARGET)
             last_valid_target = str(selection_state.get("last_valid_target", "") or "").strip()
-            if not c._is_resolved_state(last_valid_target):
-                last_valid_target = str(last_valid_state.state if last_valid_state is not None else "").strip()
-            snapshot["last_valid_state"] = last_valid_state
+            snapshot["last_valid_state"] = None
             snapshot["last_valid_target"] = last_valid_target
 
         return snapshot
@@ -208,40 +187,16 @@ class SelectionFabricWorkflow:
         return state
 
     def compute_component_target_options_plan(self) -> dict[str, Any]:
-        """Compute deterministic component target-options plan from helpers/registry/runtime surfaces."""
+        """Compute deterministic component target-options plan from component state/registry/runtime surfaces."""
         c = self._coordinator
         selection_state = self._selection_state()
-        helper_entity = LEGACY_ACTIVE_TARGET_HELPER
-        helper_state = c.hass.states.get(helper_entity)
+        helper_entity = "component_selection_state"
         helper_options = list(selection_state.get("options", [])) if isinstance(selection_state.get("options", []), list) else []
         helper_current = str(selection_state.get("active_target", "") or "").strip()
-        if helper_state is not None:
-            if not c._is_resolved_state(helper_current):
-                helper_current = str(helper_state.state or "").strip()
-            if len(helper_options) == 0:
-                helper_options = WritePathFabric.normalize_options(helper_state.attributes.get("options", []))
-
-        last_valid_state = c.hass.states.get(LEGACY_LAST_VALID_TARGET)
         last_valid = str(selection_state.get("last_valid_target", "") or "").strip()
-        if not c._is_resolved_state(last_valid):
-            last_valid = str(last_valid_state.state if last_valid_state is not None else "").strip()
 
         known_targets: list[str] = []
         known_seen: set[str] = set()
-        rooms_state = c.hass.states.get(LEGACY_ROOMS_JSON)
-        rooms_raw = rooms_state.attributes.get("rooms_json", []) if rooms_state is not None else []
-        rooms_list = c.utility_fabric.extract_payload_list(rooms_raw, ("rooms", "result"))
-        for room in rooms_list:
-            if not isinstance(room, dict):
-                continue
-            ent = str(room.get("entity", "") or "").strip()
-            if not c._is_resolved_state(ent):
-                continue
-            if not ent.startswith("media_player."):
-                continue
-            if c.hass.states.get(ent) is None:
-                continue
-            self._append_unique(known_targets, known_seen, ent)
 
         discovered_targets: list[str] = []
 
@@ -295,7 +250,7 @@ class SelectionFabricWorkflow:
                 if control_capable and host_resolved and control_path_supported and fresh_enough:
                     self._append_unique(registry_capability_targets, registry_seen, target)
 
-        detected_state = c.hass.states.get("sensor.ma_detected_receiver_entity")
+        detected_state = c.hass.states.get("sensor.component_now_playing_entity")
         detected_candidate = str(detected_state.state if detected_state is not None else "").strip()
         if not c._is_resolved_state(detected_candidate):
             detected_candidate = ""
@@ -447,11 +402,13 @@ class SelectionFabricWorkflow:
         helper_fallback_reason = ""
 
         if selected is None:
-            helper_state = c.hass.states.get(LEGACY_ACTIVE_TARGET_HELPER)
-            helper_current = str(helper_state.state if helper_state is not None else "").strip()
-            helper_options: list[str] = []
-            if helper_state is not None:
-                helper_options = WritePathFabric.normalize_options(helper_state.attributes.get("options", []))
+            selection_state = self._selection_state()
+            helper_current = str(selection_state.get("active_target", "") or "").strip()
+            helper_options: list[str] = (
+                WritePathFabric.normalize_options(selection_state.get("options", []))
+                if isinstance(selection_state.get("options", []), list)
+                else []
+            )
 
             helper_current_resolved = c._is_resolved_state(helper_current)
             helper_current_in_options = helper_current_resolved and helper_current in helper_options
@@ -629,7 +586,6 @@ class SelectionFabricWorkflow:
 
         selected_target = str(decision.get("selected_target", "") or "").strip()
         helper_snapshot = self._selection_helper_snapshot()
-        helper_state = helper_snapshot["helper_state"]
 
         result: dict[str, Any] = self._new_write_result(
             requested_at=requested_at,
@@ -637,7 +593,7 @@ class SelectionFabricWorkflow:
             dry_run=dry_run,
             force=force,
             extra={
-                "target_helper_entity": LEGACY_ACTIVE_TARGET_HELPER,
+                "target_helper_entity": "component_selection_state",
                 "host_cutover_gate_status": str(host_cutover_gate.get("status", "blocked") or "blocked"),
                 "host_cutover_gate_ready": bool(host_cutover_gate.get("ready_for_cutover", False)),
                 "host_cutover_gate_blockers": host_cutover_gate.get("gate_blockers", []),
@@ -726,8 +682,7 @@ class SelectionFabricWorkflow:
             if isinstance(scaffolds.get("target_options_plan", {}), dict)
             else {}
         )
-        helper_entity = str(plan.get("helper_entity", LEGACY_ACTIVE_TARGET_HELPER) or LEGACY_ACTIVE_TARGET_HELPER)
-        helper_state = c.hass.states.get(helper_entity)
+        helper_entity = "component_selection_state"
         selection_state = self._selection_state()
 
         candidates = plan.get("candidates", []) if isinstance(plan.get("candidates", []), list) else []
@@ -745,7 +700,7 @@ class SelectionFabricWorkflow:
             force=force,
             extra={
                 "helper_entity": helper_entity,
-                "helper_exists": helper_state is not None,
+                "helper_exists": True,
                 "include_none": bool(include_none),
                 "planned_options": proposed_options,
                 "default_option": str(plan.get("default_option", "none") or "none"),
@@ -763,16 +718,12 @@ class SelectionFabricWorkflow:
 
         if result["status"] == "pending" and dry_run:
             helper_current = str(selection_state.get("active_target", "") or "").strip()
-            if not c._is_resolved_state(helper_current):
-                helper_current = str(helper_state.state or "").strip() if helper_state is not None else ""
             current_ok = c._is_resolved_state(helper_current) and helper_current in proposed_options
             default_option = str(result.get("default_option", "none") or "none")
             result["would_select_default"] = (not current_ok) and default_option in proposed_options
 
         def _apply_target_options_state() -> None:
             helper_current = str(selection_state.get("active_target", "") or "").strip()
-            if not c._is_resolved_state(helper_current):
-                helper_current = str(helper_state.state or "").strip() if helper_state is not None else ""
             current_ok = c._is_resolved_state(helper_current) and helper_current in proposed_options
             default_option = str(result.get("default_option", "none") or "none")
             next_active = helper_current if current_ok else (default_option if default_option in proposed_options else "")
@@ -835,21 +786,13 @@ class SelectionFabricWorkflow:
             else {}
         )
 
-        helper_entity = str(
-            target_options_plan.get("helper_entity", LEGACY_ACTIVE_TARGET_HELPER) or LEGACY_ACTIVE_TARGET_HELPER
-        )
-        helper_state = c.hass.states.get(helper_entity)
+        helper_entity = "component_selection_state"
         selection_state = self._selection_state()
         selected_target = str(auto_select_plan.get("selected_target", "") or "").strip()
         selection_reason = str(auto_select_plan.get("selection_reason", "no_candidate") or "no_candidate")
 
         helper_options = list(selection_state.get("options", [])) if isinstance(selection_state.get("options", []), list) else []
         helper_current = str(selection_state.get("active_target", "") or "").strip()
-        if helper_state is not None:
-            if len(helper_options) == 0:
-                helper_options = WritePathFabric.normalize_options(helper_state.attributes.get("options", []))
-            if not c._is_resolved_state(helper_current):
-                helper_current = str(helper_state.state or "").strip()
 
         helper_current_resolved = c._is_resolved_state(helper_current)
         helper_current_in_options = helper_current_resolved and helper_current in helper_options
@@ -927,7 +870,7 @@ class SelectionFabricWorkflow:
             force=force,
             extra={
                 "helper_entity": helper_entity,
-                "helper_exists": helper_state is not None,
+                "helper_exists": True,
                 "sync_options_if_missing": bool(sync_options_if_missing),
                 "include_none": bool(include_none),
                 "selected_target": selected_target,
@@ -1024,8 +967,8 @@ class SelectionFabricWorkflow:
             force=force,
             extra={
                 "source": source,
-                "helper_entity": LEGACY_ACTIVE_TARGET_HELPER,
-                "last_valid_entity": LEGACY_LAST_VALID_TARGET,
+                "helper_entity": "component_selection_state",
+                "last_valid_entity": "component_selection_state.last_valid_target",
                 "tracked_target": helper_current,
             },
         )
@@ -1042,9 +985,6 @@ class SelectionFabricWorkflow:
 
         if result["status"] == "pending":
             current_last_valid = str(selection_state.get("last_valid_target", "") or "").strip()
-            if not c._is_resolved_state(current_last_valid):
-                last_valid_state = c.hass.states.get(LEGACY_LAST_VALID_TARGET)
-                current_last_valid = str(last_valid_state.state if last_valid_state is not None else "").strip()
             if current_last_valid == helper_current:
                 result["status"] = "noop_already_tracked"
                 result["reason"] = "Last-valid helper already matches current active target"
@@ -1104,8 +1044,8 @@ class SelectionFabricWorkflow:
             dry_run=dry_run,
             force=force,
             extra={
-                "helper_entity": LEGACY_ACTIVE_TARGET_HELPER,
-                "last_valid_entity": LEGACY_LAST_VALID_TARGET,
+                "helper_entity": "component_selection_state",
+                "last_valid_entity": "component_selection_state.last_valid_target",
                 "helper_current": helper_current,
                 "last_valid_target": last_valid_target,
                 "restore_target": restore_candidate,
@@ -1177,7 +1117,6 @@ class SelectionFabricWorkflow:
         corr = (correlation_id or "").strip() or f"cycle-target-{uuid4().hex[:12]}"
 
         helper_snapshot = self._selection_helper_snapshot()
-        helper_state = helper_snapshot["helper_state"]
         component_override_state = getattr(c, "_component_metadata_override_state", {})
         override_active = False
         if isinstance(component_override_state, dict):
@@ -1211,7 +1150,7 @@ class SelectionFabricWorkflow:
             force=force,
             extra={
                 "include_none": bool(include_none),
-                "helper_entity": LEGACY_ACTIVE_TARGET_HELPER,
+                "helper_entity": "component_selection_state",
                 "override_entity": COMPONENT_METADATA_OVERRIDE_ACTIVE,
                 "helper_current": helper_current,
                 "helper_options_count": len(helper_options),
@@ -1297,7 +1236,6 @@ class SelectionFabricWorkflow:
 
         requested_target = str(target or "").strip()
         helper_snapshot = self._selection_helper_snapshot()
-        helper_state = helper_snapshot["helper_state"]
         helper_current = str(helper_snapshot.get("helper_current", "") or "").strip()
         helper_options: list[str] = list(helper_snapshot.get("helper_options", [])) if isinstance(helper_snapshot.get("helper_options", []), list) else []
 
@@ -1308,8 +1246,8 @@ class SelectionFabricWorkflow:
             force=force,
             extra={
                 "sync_options_if_missing": bool(sync_options_if_missing),
-                "helper_entity": LEGACY_ACTIVE_TARGET_HELPER,
-                "helper_exists": helper_state is not None,
+                "helper_entity": "component_selection_state",
+                "helper_exists": True,
                 "helper_current": helper_current,
                 "helper_options_count": len(helper_options),
                 "requested_target": requested_target,

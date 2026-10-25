@@ -1,6 +1,6 @@
 # Description: Calibration persistence and scaling helpers for Spectra LS RP2040 firmware.
-# Version: 2026.04.17.2
-# Last updated: 2026-04-17
+# Version: 2026.08.24.2
+# Last updated: 2026-08-24
 #
 # RP FILE CONTRACT:
 # - Owns calibration load/save/apply utilities.
@@ -36,22 +36,29 @@ def save_calibration(data, calibration_enabled, calibration_file, debug_calibrat
             json.dump(data, handle)
         return True
     except OSError as exc:
-        err = getattr(exc, "errno", None)
         if debug_calibration_serial:
             print(f"Calibration save failed: {exc}")
-        if err == 30:
-            try:
-                import storage  # type: ignore
+        try:
+            import storage  # type: ignore
 
+            remounted_with_override = False
+            try:
+                storage.remount("/", readonly=False, disable_concurrent_write_protection=True)
+                remounted_with_override = True
+            except TypeError:
+                # Older CircuitPython builds may not expose disable_concurrent_write_protection.
                 storage.remount("/", readonly=False)
-                with open(calibration_file, "w") as handle:
-                    json.dump(data, handle)
-                if debug_calibration_serial:
+            with open(calibration_file, "w") as handle:
+                json.dump(data, handle)
+            if debug_calibration_serial:
+                if remounted_with_override:
+                    print("Calibration save succeeded after remount (concurrent-write override)")
+                else:
                     print("Calibration save succeeded after remount")
-                return True
-            except Exception as remount_exc:
-                if debug_calibration_serial:
-                    print(f"Calibration remount failed: {remount_exc}")
+            return True
+        except Exception as remount_exc:
+            if debug_calibration_serial:
+                print(f"Calibration remount/write retry failed: {remount_exc}")
         return False
 
 

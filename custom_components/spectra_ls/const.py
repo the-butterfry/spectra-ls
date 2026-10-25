@@ -1,6 +1,6 @@
 # Description: Constants for Spectra LS custom integration shadow parity, Phase 3 guarded routing write-path controls, Phase 4 diagnostics scaffolding (F4-S01/F4-S03), Phase 5 metadata trial contract service, and Phase 6/8 control-center settings and fast-remap preset contracts including startup MA-readiness gating constants and selection-ownership migration services.
-# Version: 2026.08.01.5
-# Last updated: 2026-08-01
+# Version: 2026.08.25.1
+# Last updated: 2026-08-25
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -92,13 +92,10 @@ LEGACY_ACTIVE_CONTROL_PATH = "sensor.ma_active_control_path"
 LEGACY_ACTIVE_CONTROL_CAPABLE = "binary_sensor.ma_active_control_capable"
 LEGACY_ACTIVE_TARGET_HELPER = "input_select.ma_active_target"
 LEGACY_ACTIVE_META_ENTITY = "sensor.ma_active_meta_entity"
-LEGACY_META_RESOLVER = "sensor.ma_meta_resolver"
 LEGACY_META_DETECTED_ENTITY = "sensor.ma_meta_detected_entity"
 LEGACY_META_OVERRIDE_ACTIVE = "input_boolean.ma_meta_override_active"
 LEGACY_META_OVERRIDE_ENTITY = "input_text.ma_meta_override_entity"
-LEGACY_META_PAUSED_HIDE_S = "input_number.ma_meta_paused_hide_s"
 LEGACY_META_STALE_S = "input_number.ma_meta_stale_s"
-LEGACY_META_CONFIDENCE_MIN = "input_number.ma_meta_confidence_min"
 LEGACY_META_PROVIDER_LAST_STATUS = "input_text.ma_metadata_provider_last_status"
 LEGACY_META_PROVIDER_LAST_RESPONSE = "input_text.ma_metadata_provider_last_response"
 LEGACY_META_PROVIDER_LAST_PROVIDERS = "input_text.ma_metadata_provider_last_providers"
@@ -138,7 +135,6 @@ LEGACY_NOW_PLAYING_MEDIA_CLASS = "sensor.now_playing_media_class"
 LEGACY_NOW_PLAYING_PREVIEW_KEY = "sensor.now_playing_preview_key"
 LEGACY_NOW_PLAYING_DISPLAY_ALLOWED = "binary_sensor.now_playing_display_allowed"
 LEGACY_ACTIVE_DURATION = "sensor.ma_active_duration"
-LEGACY_META_CANDIDATES = "sensor.ma_meta_candidates"
 LEGACY_MA_PLAYERS = "sensor.ma_players"
 LEGACY_CONTROL_HOSTS = "sensor.ma_control_hosts"
 LEGACY_CONTROL_HOST = "sensor.ma_control_host"

@@ -1,6 +1,6 @@
 # Description: Home Assistant Lovelace sidebar dashboard for Spectra L/S operator settings and visibility.
-# Version: 2026.04.22.2
-# Last updated: 2026-04-22
+# Version: 2026.09.30.1
+# Last updated: 2026-09-30
 
 title: Spectra L/S Settings
 views:
@@ -33,10 +33,10 @@ views:
             name: Active control path (shadow)
 
       - type: entities
-        title: Runtime compatibility helpers
+        title: Contract surfaces
         show_header_toggle: false
         entities:
-          - entity: input_select.ma_active_target
+          - entity: sensor.component_active_target
             name: Active audio target
           - entity: input_select.control_board_room
             name: Lighting room

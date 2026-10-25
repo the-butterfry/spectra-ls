@@ -1,6 +1,6 @@
 # Description: Spectra LS core state + globals + system intervals + shared scripts.
-# Version: 2026.08.20.4
-# Last updated: 2026-08-20
+# Version: 2026.08.21.5
+# Last updated: 2026-08-21
 # Update version/date whenever you change this file.
 #
 # Sections:
@@ -1276,8 +1276,12 @@ text_sensor:
       const std::string hosts_cached = id(arylic_control_hosts);
       const std::string host_cached = id(arylic_control_host);
       const bool host_ready = is_resolved(host_state) || is_resolved(hosts_state) || is_resolved(host_cached) || is_resolved(hosts_cached);
+      const bool reconnect_grace_active = id(control_target_ha_reconnect_guard_until_ms) > now;
 
-      if (!is_resolved(target) && !is_resolved(friendly) && !host_ready) return std::string("no_target");
+      if (!is_resolved(target) && !is_resolved(friendly) && !host_ready) {
+        if (reconnect_grace_active || id(control_target_pending_until_ms) > now) return std::string("pending_refresh");
+        return std::string("no_target");
+      }
       if (host_ready) return std::string("ready");
       if (id(control_target_pending_until_ms) > now) return std::string("pending_refresh");
       return std::string("no_host");

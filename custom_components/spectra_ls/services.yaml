@@ -1,6 +1,6 @@
 # Description: Service definitions for Spectra LS Phase 2/3 diagnostics, Phase 4 Slice-01/Slice-03 diagnostics scaffolding, Phase 5 metadata trial contract, and Phase 6/8 control-center settings, fast-remap presets, selection-ownership migration services, execution, and expanded authority-contract response echo.
-# Version: 2026.06.21.1
-# Last updated: 2026-06-21
+# Version: 2026.09.30.1
+# Last updated: 2026-09-30
 # PARITY DIRECTIVE: Behavior/contract edits must include same-slice two-track parity review and version-metadata review (runtime + component).
 
 get_authority_contract:
@@ -114,7 +114,7 @@ run_scheduler_choice:
 
 apply_scheduler_choice:
   name: Apply scheduler choice
-  description: Run scheduler ranking and (optionally dry-run) apply selected target to input_select.ma_active_target with authority/debounce safeguards.
+  description: Run scheduler ranking and (optionally dry-run) apply selected target to component selection state with authority/debounce safeguards.
   fields:
     require_control_capable:
       name: Require control capable
@@ -228,7 +228,7 @@ run_auto_select_scaffold:
 
 cycle_active_target:
   name: Cycle active target
-  description: Cycle input_select.ma_active_target to the next option using component-guarded semantics and optional override activation.
+  description: Cycle component selection active target to the next option using component-guarded semantics and optional override activation.
   fields:
     dry_run:
       name: Dry run
@@ -257,7 +257,7 @@ cycle_active_target:
 
 restore_last_valid_target:
   name: Restore last valid target
-  description: Restore input_select.ma_active_target from input_text.ma_last_valid_target when active selection is unresolved.
+  description: Restore component selection active target from component last-valid state when active selection is unresolved.
   fields:
     dry_run:
       name: Dry run
@@ -280,7 +280,7 @@ restore_last_valid_target:
 
 track_last_valid_target:
   name: Track last valid target
-  description: Persist current input_select.ma_active_target value into input_text.ma_last_valid_target with guarded semantics.
+  description: Persist current component selection active target into component last-valid state with guarded semantics.
   fields:
     dry_run:
       name: Dry run
@@ -303,7 +303,7 @@ track_last_valid_target:
 
 set_active_target:
   name: Set active target
-  description: Apply explicit target selection to input_select.ma_active_target through component-guarded write semantics.
+  description: Apply explicit target selection to component selection state through component-guarded write semantics.
   fields:
     target:
       name: Target entity ID

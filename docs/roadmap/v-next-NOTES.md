@@ -1,6 +1,6 @@
 <!-- Description: v-next implementation notes for Spectra LS System hardware-first control plan and migration policy. -->
-<!-- Version: 2026.08.20.7 -->
-<!-- Last updated: 2026-08-20 -->
+<!-- Version: 2026.08.24.5 -->
+<!-- Last updated: 2026-08-24 -->
 
 # v-next NOTES — Hardware-First Control Plan (Implementation Guide)
 
@@ -21,6 +21,41 @@ Latest update (2026-08-14)
 - Scope narrowed to `custom_components/spectra_ls/metadata_stack.py` selection + metadata prep semantics so runtime remains a contract consumer in this slice.
 - Normalized validation gates so component-authority operation no longer emits false parity/handoff WARN states when legacy parity fields are unresolved but component route/metadata contracts are healthy.
 - Finalized selection-handoff scoring to treat helper option-alignment mismatches as advisory-only in component-authority mode while preserving strict WARN behavior outside component mode.
+
+Latest update (2026-08-24, WiiM transport-policy feature-flag rollout slice A)
+
+- Implemented docs-first + code-first Slice A for WiiM universal transport-policy handling behind opt-in feature flag `experimental_transport_policy_handler` (default `off`) in `custom_components/wiim`.
+- Added dedicated architecture slice doc (`docs/architecture/WIIM-TRANSPORT-POLICY-ARCHITECTURE.md`) and initial policy module/wiring (`custom_components/wiim/transport_policy.py`, setup-path gating in `custom_components/wiim/__init__.py`, options exposure in `custom_components/wiim/config_flow.py`).
+- Runtime track disposition: checked/not-applicable (no `packages/` or `esphome` behavior mutation in this slice).
+- Component track disposition: implemented (feature-flagged policy handler active when opted in, legacy default preserved).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; controlled rollout scaffolding + startup-transport decision hardening only.
+
+Latest update (2026-08-24, Spectra main volume 1:1 normalization hardening)
+
+- Fixed main-system volume-pot mapping disconnect by hardening runtime normalization to correctly handle both percent payloads (`0..100`) and raw analog payload ranges (`~0..26367` / `0..65535`) before cap application.
+- Fixed top-end sweep convergence lag caused by double-smoothing (RP filtered percent stream + ESP median-of-3) by bypassing local ESP median filtering for percent payload mode.
+- Fixed deterministic top-end under-range by enabling RP-side `volume_pot` calibration tracking and endpoint snap in CircuitPython source + mirror.
+- Protective runtime ceiling remains intentionally capped (`audio_max_volume_pct=90`) for equipment safety.
+- Runtime track disposition: implemented.
+- Integration track disposition: compatibility-shimmed.
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; runtime input-scale correctness hardening only.
+
+Latest update (2026-08-24, RP-authoritative volume contract reset)
+
+- Reset the volume path to a strict single-authority contract: RP owns analog math/scaling and emits absolute volume percent payloads; ESP consumes percent payloads and only applies policy cap + dispatch.
+- Removed ESP-side endpoint snap/reinterpretation behavior in the pot ingest lane so near-top values no longer collapse before cap mapping.
+- RP volume stream granularity tuned for high-end fidelity by removing volume full-end snap forcing and lowering volume min-change threshold.
+- Runtime track disposition: implemented.
+- Integration track disposition: checked/not-applicable.
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; write-path determinism hardening only.
+
+Latest update (2026-08-24, RP calibration resilience auto-recovery hardening)
+
+- Root-cause closure for persistent half-scale loudness posture after contract cleanup: active runtime had boot autocal disabled and tracking persistence thresholds that were too strict for compressed volume-pot spans.
+- Added channel-specific calibration tracking thresholds and edge-hit gates for `volume_pot` so missing calibration can converge and persist automatically under realistic sweep behavior, without requiring manual calibration mode toggles.
+- Runtime track disposition: implemented.
+- Integration track disposition: checked/not-applicable.
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; calibration robustness and anti-regression hardening only.
 
 ### Disposition (2026-08-19 slice)
 

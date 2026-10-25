@@ -1,6 +1,6 @@
 {# Description: Raw copy/paste Developer Tools template to validate OLED, control target, and meta target alignment (including SRC fallback causes). #}
-{# Version: 2026.08.18.2 #}
-{# Last updated: 2026-08-18 #}
+{# Version: 2026.08.25.1 #}
+{# Last updated: 2026-08-25 #}
 
 {# =========================
   OLED + Control Target + Meta Target Validation
@@ -29,11 +29,18 @@
 
 {% set route_trace = state_attr(s_target, 'route_trace') or {} %}
 {% set metadata_prep = state_attr(s_target, 'metadata_prep_validation') or {} %}
+{% set contract_validation = state_attr(s_target, 'contract_validation') or {} %}
+{% set host_cutover_gate = state_attr(s_target, 'host_control_cutover_gate') or {} %}
 {% if route_trace is not mapping %}{% set route_trace = {} %}{% endif %}
 {% if metadata_prep is not mapping %}{% set metadata_prep = {} %}{% endif %}
+{% if contract_validation is not mapping %}{% set contract_validation = {} %}{% endif %}
+{% if host_cutover_gate is not mapping %}{% set host_cutover_gate = {} %}{% endif %}
 
 {% set route_decision = route_trace.decision if route_trace.decision is defined else 'unknown' %}
 {% set route_active_target = route_trace.active_target if route_trace.active_target is defined else 'unknown' %}
+{% set contract_valid = contract_validation.valid if contract_validation.valid is defined else false %}
+{% set cutover_status = host_cutover_gate.status if host_cutover_gate.status is defined else 'unknown' %}
+{% set cutover_ready = host_cutover_gate.ready_for_cutover if host_cutover_gate.ready_for_cutover is defined else false %}
 {% set metadata_owner = metadata_prep.metadata_authority_owner if metadata_prep.metadata_authority_owner is defined else 'unknown' %}
 {% set metadata_checks = metadata_prep.checks if metadata_prep.checks is defined and metadata_prep.checks is mapping else {} %}
 {% set metadata_values = metadata_prep.values if metadata_prep.values is defined and metadata_prep.values is mapping else {} %}
@@ -177,6 +184,22 @@
 {% set esp_mode = esp_oled.split('|', 1)[0] if esp_oled not in invalid and '|' in esp_oled else 'unknown' %}
 {% set esp_oled_payload = esp_oled.split('oled:', 1)[1] if esp_oled not in invalid and 'oled:' in esp_oled else '' %}
 {% set esp_oled_payload_trim = esp_oled_payload | trim %}
+
+{# --- Wave 3 closure gates --- #}
+{% set gate_route_supported = route_decision == 'route_linkplay_tcp' %}
+{% set gate_contract_valid = contract_valid %}
+{% set gate_cutover_ready = cutover_status == 'ready' and cutover_ready %}
+{% set gate_component_entity_ready = c_entity not in invalid %}
+{% set gate_component_title_ready = c_title not in invalid %}
+{% set gate_oled_posture_aligned = esp_oled not in invalid and esp_mode == 'audio' and (esp_oled_payload_trim != '' or c_title not in invalid) %}
+{% set wave3_gate_failures = [] %}
+{% if not gate_route_supported %}{% set wave3_gate_failures = wave3_gate_failures + ['route_not_linkplay_tcp'] %}{% endif %}
+{% if not gate_contract_valid %}{% set wave3_gate_failures = wave3_gate_failures + ['contract_invalid'] %}{% endif %}
+{% if not gate_cutover_ready %}{% set wave3_gate_failures = wave3_gate_failures + ['host_cutover_not_ready'] %}{% endif %}
+{% if not gate_component_entity_ready %}{% set wave3_gate_failures = wave3_gate_failures + ['component_now_playing_entity_missing'] %}{% endif %}
+{% if not gate_component_title_ready %}{% set wave3_gate_failures = wave3_gate_failures + ['component_now_playing_title_missing'] %}{% endif %}
+{% if not gate_oled_posture_aligned %}{% set wave3_gate_failures = wave3_gate_failures + ['oled_posture_not_aligned'] %}{% endif %}
+{% set wave3_closure_status = 'PASS' if wave3_gate_failures | length == 0 else 'WARN' %}
 
 {# --- issue detection --- #}
 {% set oled_src_fallback = false %}
@@ -513,3 +536,13 @@
 {% else %}
 - No `SRC` fallback detected in this sample. If issue is intermittent, run this during the visible fault and compare packets.
 {% endif %}
+
+### Wave 3 closure gates
+- closure status: **{{ wave3_closure_status }}**
+- route decision is `route_linkplay_tcp`: **{{ gate_route_supported }}**
+- contract validation is `valid=true`: **{{ gate_contract_valid }}**
+- host cutover gate is `ready`: **{{ gate_cutover_ready }}**
+- component now-playing entity resolved: **{{ gate_component_entity_ready }}**
+- component now-playing title resolved: **{{ gate_component_title_ready }}**
+- OLED posture aligned (audio + payload/title evidence): **{{ gate_oled_posture_aligned }}**
+- closure blockers: **{{ wave3_gate_failures | join(', ') if wave3_gate_failures | length > 0 else 'none' }}**

@@ -1,13 +1,12 @@
 # Description: Extracted metadata stack workflows for Spectra LS (metadata prep/bridge/cutover validation and metadata trial services).
-# Version: 2026.08.18.5
-# Last updated: 2026-08-18
+# Version: 2026.08.26.18
+# Last updated: 2026-08-26
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
 from __future__ import annotations
 
 from datetime import UTC, datetime
-import json
 from typing import Any
 from uuid import uuid4
 
@@ -18,23 +17,8 @@ from .const import (
 	FABRIC_AUTH_REASON_DEGRADED_ACTIVE,
 	FABRIC_AUTH_REASON_PAYLOAD_SHAPE_INVALID,
 	FABRIC_AUTH_REASON_PAYLOAD_STALE,
-	LEGACY_ACTIVE_DURATION,
-	LEGACY_ACTIVE_META_ENTITY,
-	LEGACY_ACTIVE_TARGET_HELPER,
-	LEGACY_META_CANDIDATES,
-	LEGACY_META_CONFIDENCE_MIN,
 	LEGACY_META_OVERRIDE_ACTIVE,
 	LEGACY_META_OVERRIDE_ENTITY,
-	LEGACY_META_PAUSED_HIDE_S,
-	LEGACY_META_RESOLVER,
-	LEGACY_NOW_PLAYING_DISPLAY_ALLOWED,
-	LEGACY_NOW_PLAYING_DURATION,
-	LEGACY_NOW_PLAYING_ENTITY,
-	LEGACY_NOW_PLAYING_MEDIA_CLASS,
-	LEGACY_NOW_PLAYING_POSITION,
-	LEGACY_NOW_PLAYING_PREVIEW_KEY,
-	LEGACY_NOW_PLAYING_STATE,
-	LEGACY_NOW_PLAYING_TITLE,
 	META_POLICY_DEFAULTS,
 	META_SUPPRESSION_ENTITY_MISSING,
 	META_SUPPRESSION_LONG_IDLE,
@@ -216,6 +200,59 @@ class MetadataStackWorkflow:
 			richness += 5
 		return richness
 
+	@staticmethod
+	def _classify_candidate_source_family(source: str) -> str:
+		"""Classify selector candidate source for extensible provider telemetry."""
+		source_norm = str(source or "").strip().lower()
+		if source_norm.startswith("resolver_"):
+			return "resolver"
+		if source_norm.startswith("discovered_ma_rich"):
+			return "ma_rich_discovery"
+		if source_norm.startswith("discovered_passthrough"):
+			return "passthrough_discovery"
+		if source_norm.startswith("discovered_"):
+			return "external_discovery"
+		if source_norm.startswith("selector_lock"):
+			return "selector_lock"
+		if source_norm == "route_active_target":
+			return "route_target"
+		if source_norm == "active_meta_entity":
+			return "active_meta"
+		return "other"
+
+	def _candidate_source_rank(self, source: str) -> int:
+		"""Return deterministic source rank with family-aware fallback for new providers."""
+		source_norm = str(source or "").strip().lower()
+		exact_rank = {
+			"resolver_selected_passthrough": 0,
+			"resolver_selected_candidate": 0,
+			"resolver_best_candidate_passthrough": 1,
+			"resolver_best_candidate": 1,
+			"resolver_detected_candidate_passthrough": 2,
+			"resolver_detected_candidate": 2,
+			"discovered_passthrough_origin_candidate": 3,
+			"discovered_passthrough_origin_global_fallback": 4,
+			"active_meta_entity": 5,
+			"route_active_target": 6,
+			"discovered_ma_rich_candidate": 7,
+			"discovered_ma_rich_global_fallback": 8,
+		}
+		if source_norm in exact_rank:
+			return exact_rank[source_norm]
+
+		source_family = self._classify_candidate_source_family(source_norm)
+		family_fallback_rank = {
+			"resolver": 9,
+			"passthrough_discovery": 30,
+			"route_target": 40,
+			"active_meta": 45,
+			"ma_rich_discovery": 50,
+			"external_discovery": 60,
+			"selector_lock": 70,
+			"other": 90,
+		}
+		return int(family_fallback_rank.get(source_family, 90))
+
 	def _component_override_state(self) -> dict[str, Any]:
 		c = self._coordinator
 		state = getattr(c, "_component_metadata_override_state", None)
@@ -231,20 +268,6 @@ class MetadataStackWorkflow:
 		entity = str(state.get("entity", "") or "").strip()
 		if not c._is_resolved_state(entity):
 			entity = ""
-
-		if not active and entity == "":
-			helper_active_state = c.hass.states.get(LEGACY_META_OVERRIDE_ACTIVE)
-			helper_entity_state = c.hass.states.get(LEGACY_META_OVERRIDE_ENTITY)
-			helper_active = c._normalize_state(
-				helper_active_state.state if helper_active_state is not None else ""
-			) == "on"
-			helper_entity = str(helper_entity_state.state if helper_entity_state is not None else "").strip()
-			if not c._is_resolved_state(helper_entity):
-				helper_entity = ""
-			if helper_active or helper_entity:
-				active = bool(helper_active)
-				entity = helper_entity
-				state["source"] = "legacy_helper_seed"
 
 		state["active"] = active
 		state["entity"] = entity
@@ -281,8 +304,6 @@ class MetadataStackWorkflow:
 		reason_norm = (reason or "").strip()
 
 		override_state = self._component_override_state()
-		override_active_state = c.hass.states.get(LEGACY_META_OVERRIDE_ACTIVE)
-		override_entity_state = c.hass.states.get(LEGACY_META_OVERRIDE_ENTITY)
 		override_active_exists = True
 		override_entity_exists = True
 		current_override_active = bool(override_state.get("active", False))
@@ -777,11 +798,7 @@ class MetadataStackWorkflow:
 			pos_age_source = "last_changed" if pos_age_s is not None else "missing"
 
 		meta_stale_s = float(META_POLICY_DEFAULTS["meta_stale_s"])
-		paused_hide_s_state = c.hass.states.get(LEGACY_META_PAUSED_HIDE_S)
-		paused_hide_s = _safe_float(paused_hide_s_state.state, float(META_POLICY_DEFAULTS["paused_hide_s"])) if (
-			paused_hide_s_state is not None
-			and paused_hide_s_state.state not in ("", "unknown", "unavailable")
-		) else float(META_POLICY_DEFAULTS["paused_hide_s"])
+		paused_hide_s = float(META_POLICY_DEFAULTS["paused_hide_s"])
 
 		recent_play_progress = pos_age_s is not None and pos_age_s <= meta_stale_s
 		recent_paused_progress = pos_age_s is not None and pos_age_s <= paused_hide_s
@@ -912,74 +929,11 @@ class MetadataStackWorkflow:
 			"paused_hide_s": paused_hide_s,
 		}
 
-	def _metadata_candidate_payload_ready(self) -> bool:
-		c = self._coordinator
-		candidates_state = c.hass.states.get(LEGACY_META_CANDIDATES)
-		if candidates_state is None:
-			resolver_state = c.hass.states.get(LEGACY_META_RESOLVER)
-			if resolver_state is None:
-				return False
-			resolver_best_entity = str(resolver_state.attributes.get("best_entity", "") or "").strip()
-			resolver_best_score = resolver_state.attributes.get("best_score", 0)
-			resolver_score_positive = isinstance(resolver_best_score, (int, float)) and float(resolver_best_score) > 0
-			return c._is_resolved_state(resolver_best_entity) and resolver_score_positive
-
-		def _parse_jsonish(value: Any) -> Any:
-			if isinstance(value, (dict, list)):
-				return value
-			if isinstance(value, str):
-				raw = value.strip()
-				if not raw or raw in {"{}", "[]"}:
-					return None
-				try:
-					return json.loads(raw)
-				except json.JSONDecodeError:
-					return None
-			return None
-
-		best_candidate_raw = candidates_state.attributes.get("best_candidate_json")
-		best_candidate = _parse_jsonish(best_candidate_raw)
-		if isinstance(best_candidate, dict):
-			best_entity = str(best_candidate.get("entity", "") or "").strip()
-			if best_entity:
-				return True
-
-		summary_raw = candidates_state.attributes.get("candidate_summary_json")
-		summary = _parse_jsonish(summary_raw)
-		if isinstance(summary, dict):
-			entities = summary.get("entities", [])
-			if isinstance(entities, list):
-				if any(isinstance(entity, str) and entity.strip() for entity in entities):
-					return True
-			candidate_count = summary.get("candidate_count", 0)
-			if isinstance(candidate_count, (int, float)) and candidate_count > 0:
-				return True
-
-		rows_raw = candidates_state.attributes.get("candidate_rows_json")
-		rows = _parse_jsonish(rows_raw)
-		if isinstance(rows, list):
-			for row in rows:
-				if isinstance(row, dict):
-					entity = str(row.get("entity", "") or "").strip()
-					if entity:
-						return True
-
-		resolver_state = c.hass.states.get(LEGACY_META_RESOLVER)
-		if resolver_state is not None:
-			resolver_best_entity = str(resolver_state.attributes.get("best_entity", "") or "").strip()
-			resolver_best_score = resolver_state.attributes.get("best_score", 0)
-			resolver_score_positive = isinstance(resolver_best_score, (int, float)) and float(resolver_best_score) > 0
-			if c._is_resolved_state(resolver_best_entity) and resolver_score_positive:
-				return True
-
-		return False
-
 	def _select_component_now_playing_entity(
 		self,
 		*,
 		route_trace: dict[str, Any],
 		active_meta_entity: str,
-		legacy_now_playing_entity: str,
 		resolver_selected_meta_entity: str = "",
 		resolver_best_candidate: str = "",
 		resolver_detected_candidate: str = "",
@@ -1005,7 +959,6 @@ class MetadataStackWorkflow:
 			[
 				(active_target, "route_active_target"),
 				(active_meta_entity, "active_meta_entity"),
-				(legacy_now_playing_entity, "legacy_now_playing_entity"),
 			]
 		)
 
@@ -1094,7 +1047,7 @@ class MetadataStackWorkflow:
 			return has_transport_token and not _has_music_assistant_hint(entity_id) and meta_richness <= 60
 
 		def _discover_ma_rich_candidates() -> list[tuple[str, str]]:
-			anchors = _anchor_tokens(active_target, active_meta_entity, legacy_now_playing_entity)
+			anchors = _anchor_tokens(active_target, active_meta_entity)
 			matches: list[tuple[str, str]] = []
 			fallback_matches: list[tuple[str, str]] = []
 			for state_obj in c.hass.states.async_all("media_player"):
@@ -1226,19 +1179,8 @@ class MetadataStackWorkflow:
 			normalized_candidates.append((entity_norm, source))
 
 		source_rank = {
-			"resolver_selected_passthrough": 0,
-			"resolver_selected_candidate": 0,
-			"resolver_best_candidate_passthrough": 1,
-			"resolver_best_candidate": 1,
-			"resolver_detected_candidate_passthrough": 2,
-			"resolver_detected_candidate": 2,
-			"discovered_passthrough_origin_candidate": 3,
-			"discovered_passthrough_origin_global_fallback": 4,
-			"active_meta_entity": 5,
-			"route_active_target": 6,
-			"legacy_now_playing_entity": 7,
-			"discovered_ma_rich_candidate": 8,
-			"discovered_ma_rich_global_fallback": 9,
+			source: self._candidate_source_rank(source)
+			for _entity, source in normalized_candidates
 		}
 
 		candidate_rows: list[dict[str, Any]] = []
@@ -1318,6 +1260,7 @@ class MetadataStackWorkflow:
 			row = {
 				"entity": entity_id,
 				"source": source,
+				"source_family": self._classify_candidate_source_family(source),
 				"state": state_norm,
 				"eligible": eligible,
 				"pool": pool,
@@ -1373,9 +1316,15 @@ class MetadataStackWorkflow:
 				winner_pool = "idle_expected"
 				winner_reason = "idle_no_payload_expected_target_hold"
 
+		source_family_counts: dict[str, int] = {}
+		for row in candidate_rows:
+			family = str(row.get("source_family", "other") or "other")
+			source_family_counts[family] = source_family_counts.get(family, 0) + 1
+
 		telemetry = {
 			"winner_entity": winner,
 			"winner_source": winner_source,
+			"winner_source_family": self._classify_candidate_source_family(winner_source),
 			"winner_pool": winner_pool,
 			"winner_reason": winner_reason,
 			"expected_idle_selector_posture": bool(
@@ -1384,6 +1333,7 @@ class MetadataStackWorkflow:
 			"ma_rich_active_exists": ma_rich_active_exists,
 			"candidate_count": len(candidate_rows),
 			"eligible_count": len(eligible_rows),
+			"source_family_counts": source_family_counts,
 			"candidates": candidate_rows,
 		}
 
@@ -1543,6 +1493,37 @@ class MetadataStackWorkflow:
 			or route_app_name_hint
 		)
 		if not has_route_identity_hint:
+			selector_lock = self._selector_lock if isinstance(self._selector_lock, dict) else {}
+			locked_entity = str(selector_lock.get("entity", "") or "").strip()
+			if c._is_resolved_state(locked_entity) and locked_entity != now_playing_entity:
+				locked_state_obj = c.hass.states.get(locked_entity)
+				if locked_state_obj is not None:
+					locked_state = c._normalize_state(str(locked_state_obj.state or ""))
+					if locked_state in {"playing", "paused", "buffering"}:
+						locked_title = str(locked_state_obj.attributes.get("media_title", "") or "").strip()
+						locked_artist = str(locked_state_obj.attributes.get("media_artist", "") or "").strip()
+						locked_app = str(
+							locked_state_obj.attributes.get("app_name", "")
+							or locked_state_obj.attributes.get("app_id", "")
+							or ""
+						).strip()
+						locked_age_s = c._timestamp_age_seconds(locked_state_obj.last_updated)
+						if locked_age_s is None:
+							locked_age_s = 1_000_000.0
+						locked_age_limit_s = 1800.0 if locked_state == "playing" else 21600.0
+						if (
+							(locked_title or locked_artist)
+							and locked_age_s <= locked_age_limit_s
+							and c._is_resolved_state(route_active_source_continuity)
+						):
+							return (
+								locked_entity,
+								locked_title,
+								locked_artist,
+								locked_app,
+								"selector_lock_passthrough_source_only",
+								240.0,
+							)
 			return "", "", "", "", "", -1.0
 
 		anchor_tokens: set[str] = set()
@@ -1649,18 +1630,7 @@ class MetadataStackWorkflow:
 	) -> dict[str, Any]:
 		c = self._coordinator
 		component_mode_active = c._write_authority_mode == WRITE_AUTH_COMPONENT
-		required_entities = {
-			"active_meta_entity": LEGACY_ACTIVE_META_ENTITY,
-			"now_playing_entity": LEGACY_NOW_PLAYING_ENTITY,
-			"now_playing_state": LEGACY_NOW_PLAYING_STATE,
-			"now_playing_title": LEGACY_NOW_PLAYING_TITLE,
-			"now_playing_position": LEGACY_NOW_PLAYING_POSITION,
-			"now_playing_duration": LEGACY_NOW_PLAYING_DURATION,
-			"ma_active_duration": LEGACY_ACTIVE_DURATION,
-			"meta_candidates": LEGACY_META_CANDIDATES,
-			"now_playing_media_class": LEGACY_NOW_PLAYING_MEDIA_CLASS,
-			"now_playing_display_allowed": LEGACY_NOW_PLAYING_DISPLAY_ALLOWED,
-		}
+		required_entities: dict[str, str] = {}
 
 		missing_required = [
 			key for key, entity_id in required_entities.items() if c.hass.states.get(entity_id) is None
@@ -1679,19 +1649,12 @@ class MetadataStackWorkflow:
 		resolver_best_candidate = str(resolver_plan.get("best_candidate", "") or "").strip()
 		resolver_detected_candidate = str(resolver_plan.get("detected_candidate", "") or "").strip()
 
-		active_meta_raw = c.hass.states.get(LEGACY_ACTIVE_META_ENTITY)
-		now_playing_entity_raw = c.hass.states.get(LEGACY_NOW_PLAYING_ENTITY)
-		now_playing_state_raw = c.hass.states.get(LEGACY_NOW_PLAYING_STATE)
-		now_playing_title_raw = c.hass.states.get(LEGACY_NOW_PLAYING_TITLE)
-		now_playing_position_raw = c.hass.states.get(LEGACY_NOW_PLAYING_POSITION)
-		now_playing_duration_raw = c.hass.states.get(LEGACY_NOW_PLAYING_DURATION)
-		ma_active_duration_raw = c.hass.states.get(LEGACY_ACTIVE_DURATION)
-		now_playing_media_class_raw = c.hass.states.get(LEGACY_NOW_PLAYING_MEDIA_CLASS)
-		now_playing_preview_key_raw = c.hass.states.get(LEGACY_NOW_PLAYING_PREVIEW_KEY)
-		now_playing_display_allowed_raw = c.hass.states.get(LEGACY_NOW_PLAYING_DISPLAY_ALLOWED)
-
-		active_meta_entity = active_meta_raw.state if active_meta_raw is not None else "missing"
-		legacy_now_playing_entity = now_playing_entity_raw.state if now_playing_entity_raw is not None else "missing"
+		active_meta_entity = (
+			resolver_selected_meta_entity
+			or resolver_best_candidate
+			or resolver_detected_candidate
+			or "missing"
+		)
 
 		route_active_target = str(route_trace.get("active_target", "") or "").strip()
 		route_active_target_state = c.hass.states.get(route_active_target) if c._is_resolved_state(route_active_target) else None
@@ -1711,18 +1674,17 @@ class MetadataStackWorkflow:
 		) = self._select_component_now_playing_entity(
 			route_trace=route_trace,
 			active_meta_entity=active_meta_entity,
-			legacy_now_playing_entity=legacy_now_playing_entity,
 			resolver_selected_meta_entity=resolver_selected_meta_entity,
 			resolver_best_candidate=resolver_best_candidate,
 			resolver_detected_candidate=resolver_detected_candidate,
 			passthrough_source_detected=passthrough_source_detected,
 		)
-		now_playing_entity = component_now_playing_entity or legacy_now_playing_entity
-		now_playing_state = now_playing_state_raw.state if now_playing_state_raw is not None else "missing"
+		now_playing_entity = component_now_playing_entity
+		now_playing_state = "missing"
 		transport_now_playing_state = str(now_playing_state or "").strip()
-		now_playing_title = now_playing_title_raw.state if now_playing_title_raw is not None else "missing"
-		now_playing_position = now_playing_position_raw.state if now_playing_position_raw is not None else "missing"
-		now_playing_duration = now_playing_duration_raw.state if now_playing_duration_raw is not None else "missing"
+		now_playing_title = ""
+		now_playing_position = "missing"
+		now_playing_duration = "missing"
 		now_playing_artist = ""
 		now_playing_album = ""
 		now_playing_source = ""
@@ -1742,7 +1704,7 @@ class MetadataStackWorkflow:
 		passthrough_upstream_meta_reason = ""
 		passthrough_upstream_meta_score: float | None = None
 		passthrough_stale_carryover_cleared = False
-		allow_passthrough_upstream_meta_rescue = False
+		allow_passthrough_upstream_meta_rescue = bool(passthrough_source_detected)
 		global_active_metadata_rescue_used = False
 		progress_clock_cache_reused = False
 		progress_clock_cache_cross_entity_reused = False
@@ -1758,6 +1720,14 @@ class MetadataStackWorkflow:
 			if isinstance(component_now_playing_selection, dict)
 			else ""
 		)
+		passthrough_upstream_candidate: tuple[str, str, str, str, str, float] = ("", "", "", "", "", -1.0)
+		if allow_passthrough_upstream_meta_rescue:
+			passthrough_upstream_candidate = self._discover_passthrough_upstream_meta_candidate(
+				now_playing_entity=now_playing_entity,
+				route_active_target=route_active_target,
+				route_active_source_continuity=route_active_source_continuity,
+			)
+
 		should_consider_global_metadata_rescue = (
 			component_mode_active
 			and not c._is_resolved_state(now_playing_title)
@@ -1772,11 +1742,7 @@ class MetadataStackWorkflow:
 				fallback_app,
 				fallback_reason,
 				fallback_score,
-			) = self._discover_passthrough_upstream_meta_candidate(
-				now_playing_entity=now_playing_entity,
-				route_active_target=route_active_target,
-				route_active_source_continuity=route_active_source_continuity,
-			)
+			) = passthrough_upstream_candidate
 			if c._is_resolved_state(fallback_entity) and c._is_resolved_state(fallback_title):
 				fallback_state = c.hass.states.get(fallback_entity)
 				if fallback_state is not None:
@@ -1807,6 +1773,8 @@ class MetadataStackWorkflow:
 					(resolver_selected_meta_entity, "resolver_selected_passthrough_metadata"),
 					(resolver_best_candidate, "resolver_best_candidate_passthrough_metadata"),
 					(resolver_detected_candidate, "resolver_detected_candidate_passthrough_metadata"),
+					(active_meta_entity, "active_meta_passthrough_metadata"),
+					(route_active_target, "route_active_target_passthrough_metadata"),
 				]
 				for fallback_entity, fallback_source in fallback_candidates:
 					fallback_entity_norm = str(fallback_entity or "").strip()
@@ -1916,11 +1884,7 @@ class MetadataStackWorkflow:
 					passthrough_hint_app,
 					passthrough_hint_reason,
 					passthrough_hint_score,
-				) = self._discover_passthrough_upstream_meta_candidate(
-					now_playing_entity=now_playing_entity,
-					route_active_target=route_active_target,
-					route_active_source_continuity=route_active_source_continuity,
-				)
+				) = passthrough_upstream_candidate
 				if c._is_resolved_state(passthrough_hint_title):
 					now_playing_title = passthrough_hint_title
 					if not c._is_resolved_state(now_playing_artist) and c._is_resolved_state(passthrough_hint_artist):
@@ -1989,7 +1953,6 @@ class MetadataStackWorkflow:
 						resolver_best_candidate,
 						resolver_detected_candidate,
 						active_meta_entity,
-						legacy_now_playing_entity,
 					]
 					seen_clock_entities: set[str] = set()
 					for clock_entity in clock_fallback_candidates:
@@ -2026,15 +1989,24 @@ class MetadataStackWorkflow:
 				now_playing_artist = ""
 				now_playing_album = ""
 				passthrough_stale_carryover_cleared = True
-		ma_active_duration = ma_active_duration_raw.state if ma_active_duration_raw is not None else "missing"
-		now_playing_media_class = c._normalize_state(
-			now_playing_media_class_raw.state if now_playing_media_class_raw is not None else "missing"
-		)
-		now_playing_preview_key = (
-			str(now_playing_preview_key_raw.state if now_playing_preview_key_raw is not None else "").strip()
-		)
-		now_playing_display_allowed = c._normalize_state(
-			now_playing_display_allowed_raw.state if now_playing_display_allowed_raw is not None else "missing"
+		ma_active_duration = now_playing_duration if c._is_resolved_state(now_playing_duration) else "missing"
+		now_playing_media_class = "music" if c._is_resolved_state(now_playing_title) or c._is_resolved_state(now_playing_artist) else "none"
+		preview_key_parts = [
+			str(now_playing_entity or "").strip(),
+			str(now_playing_title or "").strip(),
+			str(now_playing_artist or "").strip(),
+			str(now_playing_position or "").strip(),
+			str(now_playing_duration or "").strip(),
+		]
+		now_playing_preview_key = "|".join(part for part in preview_key_parts if part)
+		now_playing_display_allowed = (
+			"on"
+			if (
+				c._is_resolved_state(now_playing_title)
+				or c._is_resolved_state(now_playing_artist)
+				or c._normalize_state(now_playing_state) in {"playing", "paused", "buffering"}
+			)
+			else "off"
 		)
 
 		component_selection_winner_entity = str(
@@ -2065,6 +2037,7 @@ class MetadataStackWorkflow:
 
 		component_selection_winner_pool = _selection_text("winner_pool")
 		component_selection_winner_reason = _selection_text("winner_reason")
+		component_selection_winner_source_family = _selection_text("winner_source_family")
 		component_selection_ma_rich_active_exists = _selection_bool("ma_rich_active_exists")
 		component_selection_eligible_count = _selection_int("eligible_count")
 		component_selection_candidate_count = _selection_int("candidate_count")
@@ -2072,7 +2045,7 @@ class MetadataStackWorkflow:
 		component_selection_lock_entity = _selection_text("selector_lock_entity")
 		component_selection_lock_release_reason = _selection_text("selector_lock_release_reason")
 		active_meta_entity_effective = active_meta_entity
-		active_meta_entity_source = "legacy_active_meta_entity"
+		active_meta_entity_source = "component_resolver_candidate"
 		if not c._is_resolved_state(active_meta_entity_effective):
 			component_meta_candidates = [
 				(resolver_selected_meta_entity, "resolver_selected_meta_entity"),
@@ -2114,8 +2087,9 @@ class MetadataStackWorkflow:
 				now_playing_media_class_resolved = True
 			if not now_playing_display_allowed_resolved:
 				now_playing_display_allowed_resolved = True
+		preview_anchor_state = selected_state_obj or route_active_target_state
 		now_playing_preview_age_s = c._timestamp_age_seconds(
-			now_playing_preview_key_raw.last_changed if now_playing_preview_key_raw is not None else None
+			preview_anchor_state.last_changed if preview_anchor_state is not None else None
 		)
 		media_contract_consistent = now_playing_display_allowed_resolved
 
@@ -2133,7 +2107,6 @@ class MetadataStackWorkflow:
 		now_playing_duration_v = _to_float(now_playing_duration)
 		ma_active_duration_v = _to_float(ma_active_duration)
 
-		legacy_candidate_payload_ready = self._metadata_candidate_payload_ready()
 		component_candidate_payload_ready = (
 			(
 				isinstance(component_now_playing_selection, dict)
@@ -2143,10 +2116,13 @@ class MetadataStackWorkflow:
 			or c._is_resolved_state(resolver_best_candidate)
 			or c._is_resolved_state(resolver_detected_candidate)
 		)
-		candidate_payload_ready = legacy_candidate_payload_ready or (
-			component_mode_active and component_candidate_payload_ready
-		)
+		candidate_payload_ready = bool(component_candidate_payload_ready)
 		now_playing_signal = self._build_now_playing_signal(now_playing_entity)
+		route_active_signal = (
+			self._build_now_playing_signal(route_active_target)
+			if c._is_resolved_state(route_active_target)
+			else self._missing_now_playing_signal()
+		)
 		active_playback_signal = c._normalize_state(now_playing_state) == "playing" or bool(
 			now_playing_signal.get("fresh_play_signal", False)
 		)
@@ -2291,14 +2267,35 @@ class MetadataStackWorkflow:
 		)
 		now_playing_title_signal_ready = now_playing_identity_meta_present
 		now_playing_track_metadata_ready = now_playing_identity_meta_present
+		now_playing_state_norm_before_coerce = c._normalize_state(now_playing_state)
 		passthrough_source_only_no_track = bool(
 			passthrough_context_detected
 			and not now_playing_track_metadata_ready
 		)
+		passthrough_source_only_active_state = bool(
+			passthrough_source_only_no_track
+			and (
+				now_playing_state_norm_before_coerce in {"playing", "paused", "buffering"}
+				or active_playback_signal
+				or bool(now_playing_signal.get("fresh_play_signal", False))
+				or bool(now_playing_signal.get("recent_play_progress", False))
+				or bool(now_playing_signal.get("recent_paused_progress", False))
+				or bool(route_active_signal.get("fresh_play_signal", False))
+				or bool(route_active_signal.get("recent_play_progress", False))
+				or bool(route_active_signal.get("recent_paused_progress", False))
+			)
+			and (
+				c._is_resolved_state(now_playing_source)
+				or c._is_resolved_state(route_active_source_continuity)
+			)
+		)
 		if (not now_playing_title_signal_ready) and (
-			playing_without_fresh_signal
-			or long_idle_stale_hidden
-			or passthrough_source_only_no_track
+			(
+				playing_without_fresh_signal
+				or long_idle_stale_hidden
+				or passthrough_source_only_no_track
+			)
+			and not passthrough_source_only_active_state
 		):
 			now_playing_state = "idle"
 			active_playback_signal = False
@@ -2318,6 +2315,22 @@ class MetadataStackWorkflow:
 			if isinstance(passthrough_signal_age_s_raw, (int, float))
 			else None
 		)
+		route_passthrough_signal_age_s_raw = route_active_signal.get("position_age_s")
+		route_passthrough_signal_age_s = (
+			float(route_passthrough_signal_age_s_raw)
+			if isinstance(route_passthrough_signal_age_s_raw, (int, float))
+			else None
+		)
+		passthrough_signal_age_candidates = [
+			age
+			for age in (passthrough_signal_age_s, route_passthrough_signal_age_s)
+			if isinstance(age, float)
+		]
+		passthrough_signal_age_effective_s = (
+			min(passthrough_signal_age_candidates)
+			if len(passthrough_signal_age_candidates) > 0
+			else None
+		)
 		passthrough_pause_window_s = (
 			float(now_playing_signal.get("paused_hide_s", float(META_POLICY_DEFAULTS["paused_hide_s"])))
 			if isinstance(now_playing_signal.get("paused_hide_s"), (int, float))
@@ -2327,19 +2340,45 @@ class MetadataStackWorkflow:
 		passthrough_display_contract_ready = (
 			passthrough_context_detected
 			and c._is_resolved_state(passthrough_contract_source)
-			and isinstance(passthrough_signal_age_s, float)
-			and passthrough_signal_age_s <= passthrough_pause_window_s
+			and isinstance(passthrough_signal_age_effective_s, float)
+			and passthrough_signal_age_effective_s <= passthrough_pause_window_s
 			and now_playing_track_metadata_ready
 		)
 		passthrough_source_only_max_age_s = min(
 			passthrough_pause_window_s,
 			float(META_POLICY_DEFAULTS["meta_stale_s"]) * 2.0,
 		)
+		passthrough_source_only_duration_known = (
+			isinstance(now_playing_duration_v, float)
+			and now_playing_duration_v > 0.0
+		)
+		passthrough_source_only_position_change_recent = bool(
+			now_playing_signal.get("position_change_recent", False)
+			or route_active_signal.get("position_change_recent", False)
+		)
+		passthrough_source_only_state_age_max_s = max(
+			float(META_POLICY_DEFAULTS["paused_hide_s"]),
+			1800.0,
+		)
+		passthrough_source_only_state_age_max_effective_s = (
+			passthrough_source_only_state_age_max_s
+			if passthrough_source_only_duration_known
+			else 0.0
+		)
+		passthrough_source_only_state_age_fresh = (
+			isinstance(now_playing_preview_age_s, float)
+			and now_playing_preview_age_s <= passthrough_source_only_state_age_max_effective_s
+		)
 		passthrough_source_only_keepalive_ready = (
 			passthrough_context_detected
 			and c._is_resolved_state(passthrough_contract_source)
-			and isinstance(passthrough_signal_age_s, float)
-			and passthrough_signal_age_s <= passthrough_source_only_max_age_s
+			and isinstance(passthrough_signal_age_effective_s, float)
+			and passthrough_signal_age_effective_s <= passthrough_source_only_max_age_s
+			and passthrough_source_only_state_age_fresh
+			and (
+				passthrough_source_only_duration_known
+				or passthrough_source_only_position_change_recent
+			)
 			and not now_playing_track_metadata_ready
 		)
 		passthrough_title_keepalive_ready = (
@@ -2381,6 +2420,16 @@ class MetadataStackWorkflow:
 				now_playing_display_allowed_value = False
 				now_playing_source = ""
 				now_playing_app = ""
+		passthrough_source_only_fail_closed = (
+			passthrough_context_detected
+			and not now_playing_track_metadata_ready
+			and not passthrough_display_contract_ready
+			and not passthrough_source_only_keepalive_ready
+		)
+		if passthrough_source_only_fail_closed:
+			now_playing_display_allowed_value = False
+			now_playing_source = ""
+			now_playing_app = ""
 		passthrough_cutover_timing_override = False
 		duration_contract_enforced = not (
 			component_mode_active
@@ -2418,7 +2467,7 @@ class MetadataStackWorkflow:
 			),
 			resolver_selected=resolver_selected,
 		)
-		metadata_authority_owner = str(metadata_authority.get("metadata_authority_owner", METADATA_AUTH_OWNER_LEGACY))
+		metadata_authority_owner = str(metadata_authority.get("metadata_authority_owner", METADATA_AUTH_OWNER_COMPONENT))
 		metadata_cutover_active = bool(metadata_authority.get("metadata_cutover_active", False))
 		cutover_block_reason = str(metadata_authority.get("cutover_block_reason", METADATA_CUTOVER_BLOCK_NOT_CUT_OVER) or "")
 		no_authority_expansion = c._write_authority_mode == WRITE_AUTH_COMPONENT
@@ -2574,12 +2623,11 @@ class MetadataStackWorkflow:
 			"contract_valid": contract_valid,
 			"active_meta_entity_resolved": active_meta_entity_resolved,
 			"active_meta_entity_effective_resolved": c._is_resolved_state(active_meta_entity_effective),
-			"active_meta_entity_component_sourced": active_meta_entity_source != "legacy_active_meta_entity",
+			"active_meta_entity_component_sourced": c._is_resolved_state(active_meta_entity_effective),
 			"now_playing_entity_resolved": now_playing_entity_resolved,
 			"now_playing_state_resolved": now_playing_state_resolved,
 			"now_playing_title_signal_ready": now_playing_title_signal_ready,
 			"candidate_payload_ready": candidate_payload_ready,
-			"legacy_candidate_payload_ready": legacy_candidate_payload_ready,
 			"component_candidate_payload_ready": component_candidate_payload_ready,
 			"route_trace_present": route_trace_present,
 			"no_authority_expansion": no_authority_expansion,
@@ -2713,6 +2761,13 @@ class MetadataStackWorkflow:
 				"passthrough_display_contract_ready": passthrough_display_contract_ready,
 				"passthrough_source_only_keepalive_ready": passthrough_source_only_keepalive_ready,
 				"passthrough_source_only_max_age_s": passthrough_source_only_max_age_s,
+				"passthrough_source_only_duration_known": passthrough_source_only_duration_known,
+				"passthrough_source_only_position_change_recent": passthrough_source_only_position_change_recent,
+				"passthrough_source_only_state_age_fresh": passthrough_source_only_state_age_fresh,
+				"passthrough_source_only_state_age_max_s": passthrough_source_only_state_age_max_s,
+				"passthrough_source_only_state_age_max_effective_s": passthrough_source_only_state_age_max_effective_s,
+				"passthrough_source_only_fail_closed": passthrough_source_only_fail_closed,
+				"passthrough_source_only_active_state": passthrough_source_only_active_state,
 				"passthrough_title_keepalive_ready": passthrough_title_keepalive_ready,
 				"component_playback_keepalive_ready": component_playback_keepalive_ready,
 				"global_active_metadata_rescue_used": global_active_metadata_rescue_used,
@@ -2734,6 +2789,7 @@ class MetadataStackWorkflow:
 				"component_now_playing_entity_source": component_now_playing_entity_source,
 				"component_now_playing_selection_winner_pool": component_selection_winner_pool,
 				"component_now_playing_selection_winner_reason": component_selection_winner_reason,
+				"component_now_playing_selection_winner_source_family": component_selection_winner_source_family,
 				"component_now_playing_selection_winner_entity": component_selection_winner_entity,
 				"component_now_playing_selection_winner_source": component_selection_winner_source,
 				"component_now_playing_selection_ma_rich_active_exists": component_selection_ma_rich_active_exists,
@@ -2794,13 +2850,13 @@ class MetadataStackWorkflow:
 				"active_meta_entity": active_meta_entity,
 				"active_meta_entity_effective": active_meta_entity_effective,
 				"active_meta_entity_source": active_meta_entity_source,
-				"legacy_now_playing_entity": legacy_now_playing_entity,
 				"component_now_playing_entity_source": component_now_playing_entity_source,
 				"component_now_playing_selection": component_now_playing_selection,
 				"component_now_playing_selection_winner_entity": component_selection_winner_entity,
 				"component_now_playing_selection_winner_source": component_selection_winner_source,
 				"component_now_playing_selection_winner_pool": component_selection_winner_pool,
 				"component_now_playing_selection_winner_reason": component_selection_winner_reason,
+				"component_now_playing_selection_winner_source_family": component_selection_winner_source_family,
 				"passthrough_source_detected": passthrough_source_detected,
 				"route_active_source": route_active_source,
 				"resolver_selected_meta_entity": resolver_selected_meta_entity,
@@ -2864,11 +2920,23 @@ class MetadataStackWorkflow:
 				"now_playing_track_metadata_ready": now_playing_track_metadata_ready,
 				"now_playing_display_force_off_idle_no_meta": display_force_off_idle_no_meta,
 				"passthrough_display_contract_ready": passthrough_display_contract_ready,
+				"passthrough_source_only_keepalive_ready": passthrough_source_only_keepalive_ready,
+				"passthrough_source_only_max_age_s": passthrough_source_only_max_age_s,
+				"passthrough_source_only_duration_known": passthrough_source_only_duration_known,
+				"passthrough_source_only_position_change_recent": passthrough_source_only_position_change_recent,
+				"passthrough_source_only_state_age_fresh": passthrough_source_only_state_age_fresh,
+				"passthrough_source_only_state_age_max_s": passthrough_source_only_state_age_max_s,
+				"passthrough_source_only_state_age_max_effective_s": passthrough_source_only_state_age_max_effective_s,
+				"passthrough_source_only_fail_closed": passthrough_source_only_fail_closed,
 				"passthrough_title_keepalive_ready": passthrough_title_keepalive_ready,
 				"now_playing_preview_age_s": round(now_playing_preview_age_s, 1)
 				if isinstance(now_playing_preview_age_s, float)
 				else None,
 				"now_playing_position_age_s": now_playing_signal.get("position_age_s"),
+				"route_active_position_age_s": route_active_signal.get("position_age_s"),
+				"passthrough_signal_age_effective_s": round(passthrough_signal_age_effective_s, 1)
+				if isinstance(passthrough_signal_age_effective_s, float)
+				else None,
 				"now_playing_position_age_source": now_playing_signal.get("position_age_source", "missing"),
 				"meta_stale_s": now_playing_signal.get("meta_stale_s"),
 				"paused_hide_s": now_playing_signal.get("paused_hide_s"),
@@ -3225,10 +3293,15 @@ class MetadataStackWorkflow:
 		metadata_ready = bool(metadata_validation.get("ready_for_metadata_handoff", False))
 		metadata_cutover_active = bool(metadata_validation.get("metadata_cutover_active", False))
 		metadata_authority_owner = str(metadata_validation.get("metadata_authority_owner", "") or "")
+		metadata_values = (
+			metadata_validation.get("values", {})
+			if isinstance(metadata_validation.get("values", {}), dict)
+			else {}
+		)
 		active_meta_entity = str(
-			c.hass.states.get(LEGACY_ACTIVE_META_ENTITY).state
-			if c.hass.states.get(LEGACY_ACTIVE_META_ENTITY) is not None
-			else ""
+			metadata_values.get("active_meta_entity_effective", "")
+			or metadata_values.get("active_meta_entity", "")
+			or ""
 		).strip()
 		scaffolds = c._build_component_scaffolds()
 		resolver_plan = (

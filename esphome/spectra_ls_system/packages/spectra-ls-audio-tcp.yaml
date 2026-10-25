@@ -1,6 +1,6 @@
 # Description: Audio controls package for Spectra LS System (TCP-only) with host-resolved control routing.
-# Version: 2026.08.20.1
-# Last updated: 2026-08-20
+# Version: 2026.08.24.3
+# Last updated: 2026-08-24
 # PARITY DIRECTIVE: Behavior/contract edits require same-slice runtime+component parity review and version-metadata review.
 # Update version/date whenever you change this file.
 
@@ -159,35 +159,12 @@ sensor:
             - lambda: |-
                 static uint32_t last_log = 0;
                 float pct_raw = (float) x;
-                if (pct_raw > 100.0f) {
-                  pct_raw = (pct_raw / 65535.0f) * 100.0f;
-                }
                 if (pct_raw < 0.0f) pct_raw = 0.0f;
                 if (pct_raw > 100.0f) pct_raw = 100.0f;
-                if (pct_raw <= 2.0f) pct_raw = 0.0f;
-                if (pct_raw >= 98.0f) pct_raw = 100.0f;
                 if (${volume_pot_invert}) {
                   pct_raw = 100.0f - pct_raw;
                 }
-
-                // RP2040-driven pot cleanup (comms + meter): median-of-3 removes
-                // single-sample spikes with near-zero lag.
-                static bool pot_hist_init = false;
-                static float pot_prev_a = 0.0f;
-                static float pot_prev_b = 0.0f;
-                auto median3 = [](float a, float b, float c) {
-                  if ((a >= b && a <= c) || (a <= b && a >= c)) return a;
-                  if ((b >= a && b <= c) || (b <= a && b >= c)) return b;
-                  return c;
-                };
-                if (!pot_hist_init) {
-                  pot_hist_init = true;
-                  pot_prev_a = pct_raw;
-                  pot_prev_b = pct_raw;
-                }
-                const float pct = median3(pot_prev_a, pot_prev_b, pct_raw);
-                pot_prev_a = pot_prev_b;
-                pot_prev_b = pct_raw;
+                const float pct = pct_raw;
 
                 int max_vol = (int) ${audio_max_volume_pct};
                 if (max_vol <= 0 || max_vol > 100) max_vol = 100;
@@ -664,6 +641,7 @@ text_sensor:
                          targets_ready ? 1 : 0,
                          hosts_ready ? 1 : 0,
                          (unsigned) now);
+      - script.execute: refresh_control_handoff_contracts
   - platform: homeassistant
     id: ma_active_friendly
     entity_id: ${ha_ma_active_friendly}
@@ -1341,6 +1319,7 @@ interval:
   - interval: ${ha_audio_refresh_ms}ms
     then:
       - script.execute: ensure_control_target_sync
+      - script.execute: refresh_control_handoff_contracts
       - if:
           condition:
             lambda: |-
@@ -1538,6 +1517,79 @@ script:
                 id(control_target_force_until_ms) = now + 2000;
                 id(control_target_pending_until_ms) = now + 6000;
                 id(meta_refresh_force) = true;
+
+  - id: refresh_control_handoff_contracts
+    mode: restart
+    then:
+      - if:
+          condition:
+            lambda: |-
+              const uint32_t now = millis();
+              auto lower = [](std::string value) {
+                for (auto &c : value) c = (char) ::tolower(c);
+                return value;
+              };
+              auto is_resolved = [&](const std::string &value) {
+                const std::string low = lower(value);
+                return !(low.empty() || low == "unknown" || low == "unavailable" || low == "none" || low == "null");
+              };
+
+              const std::string active_target = id(ma_active_target).has_state() ? id(ma_active_target).state.c_str() : "";
+              const std::string active_friendly = id(ma_active_friendly).has_state() ? id(ma_active_friendly).state.c_str() : "";
+              const std::string hosts_live = id(ma_control_hosts).has_state() ? id(ma_control_hosts).state.c_str() : "";
+              const std::string host_live = id(ma_control_host).has_state() ? id(ma_control_host).state.c_str() : "";
+
+              const bool target_ready = is_resolved(active_target) || is_resolved(active_friendly);
+              const bool host_ready =
+                is_resolved(hosts_live) ||
+                is_resolved(host_live) ||
+                is_resolved(id(arylic_control_hosts)) ||
+                is_resolved(id(arylic_control_host));
+
+              const bool reconnect_grace_active = id(control_target_ha_reconnect_guard_until_ms) > now;
+              const bool pending_refresh = id(control_target_pending_until_ms) > now;
+
+              if (target_ready && host_ready) return false;
+              return reconnect_grace_active || pending_refresh;
+          then:
+            - homeassistant.service:
+                service: homeassistant.update_entity
+                data:
+                  entity_id: ${ha_ma_active_target}
+            - homeassistant.service:
+                service: homeassistant.update_entity
+                data:
+                  entity_id: ${ha_ma_active_friendly}
+            - homeassistant.service:
+                service: homeassistant.update_entity
+                data:
+                  entity_id: ${ha_ma_control_targets}
+            - homeassistant.service:
+                service: homeassistant.update_entity
+                data:
+                  entity_id: ${ha_ma_control_hosts}
+            - homeassistant.service:
+                service: homeassistant.update_entity
+                data:
+                  entity_id: ${ha_ma_control_host}
+            - homeassistant.service:
+                service: homeassistant.update_entity
+                data:
+                  entity_id: ${ha_ma_control_port}
+            - homeassistant.service:
+                service: homeassistant.update_entity
+                data:
+                  entity_id: ${ha_ma_now_playing_entity}
+            - lambda: |-
+                const uint32_t now = millis();
+                if (id(control_target_pending_until_ms) < now + 6000) {
+                  id(control_target_pending_until_ms) = now + 6000;
+                }
+                static uint32_t last_log_ms = 0;
+                if (now - last_log_ms > 5000) {
+                  last_log_ms = now;
+                  ESP_LOGI("ma", "refresh_control_handoff_contracts: forced reconnect refresh cycle");
+                }
 
   - id: show_source_context_popup
     mode: restart

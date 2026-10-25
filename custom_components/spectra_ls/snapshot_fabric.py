@@ -1,6 +1,6 @@
 # Description: Snapshot-fabric workflow for Spectra LS coordinator snapshot and write-controls packet assembly extracted from coordinator.
-# Version: 2026.08.18.1
-# Last updated: 2026-08-18
+# Version: 2026.08.25.1
+# Last updated: 2026-08-25
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -10,10 +10,6 @@ from datetime import UTC, datetime
 from typing import Any
 
 from .const import (
-    LEGACY_CONTROL_HOST,
-    LEGACY_CONTROL_TARGETS,
-    LEGACY_ROOMS_JSON,
-    LEGACY_ROOMS_RAW,
     LEGACY_SURFACES,
     WRITE_AUTH_ALLOWED,
     WRITE_AUTH_COMPONENT,
@@ -203,12 +199,12 @@ class SnapshotFabricWorkflow:
         c = self._coordinator
         registry = build_registry_snapshot(
             hass=c.hass,
-            legacy_control_host_entity=LEGACY_CONTROL_HOST,
-            legacy_control_targets_entity=LEGACY_CONTROL_TARGETS,
-            legacy_rooms_json_entity=LEGACY_ROOMS_JSON,
-            legacy_rooms_raw_entity=LEGACY_ROOMS_RAW,
+            legacy_control_host_entity=None,
+            legacy_control_targets_entity=None,
+            legacy_rooms_json_entity=None,
+            legacy_rooms_raw_entity=None,
             legacy_active_target_helper_entity=None,
-            legacy_active_target_entity=LEGACY_SURFACES["active_target"],
+            legacy_active_target_entity=None,
         )
 
         component_active_target, component_active_control_path, authority_source = self._derive_component_route_authority(

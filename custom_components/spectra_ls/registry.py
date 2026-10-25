@@ -1,6 +1,6 @@
 # Description: Registry scaffold helpers for Spectra LS Phase 2 read-only target normalization and deterministic payload parsing with helper/active-target fallback seeding hardening plus host-type capability/path classification safeguards.
-# Version: 2026.08.01.1
-# Last updated: 2026-08-01
+# Version: 2026.08.25.1
+# Last updated: 2026-08-25
 # PARITY DIRECTIVE (until full cutover): runtime-affecting contract behavior changed here must be mirrored/reconciled in `packages/` + `esphome/`
 # in the same slice, with explicit implemented/shim/defer two-track disposition and version-metadata review.
 
@@ -314,6 +314,15 @@ def _discover_alias_host(hass: HomeAssistant, friendly_name: str, skip_entity_id
     return ""
 
 
+def _state_for_entity(hass: HomeAssistant, entity_id: str | None) -> Any | None:
+    if not isinstance(entity_id, str):
+        return None
+    candidate = entity_id.strip()
+    if not candidate:
+        return None
+    return hass.states.get(candidate)
+
+
 def _room_target_ids(room: dict[str, Any]) -> list[str]:
     ids: list[str] = []
     for key in ("entity", "entity_id", "id", "name"):
@@ -457,28 +466,41 @@ SUPPORTED_CONTROL_PATHS = {"linkplay_tcp"}
 
 def build_registry_snapshot(
     hass: HomeAssistant,
-    legacy_control_host_entity: str,
-    legacy_control_targets_entity: str,
-    legacy_rooms_json_entity: str,
-    legacy_rooms_raw_entity: str,
+    legacy_control_host_entity: str | None,
+    legacy_control_targets_entity: str | None,
+    legacy_rooms_json_entity: str | None,
+    legacy_rooms_raw_entity: str | None,
     legacy_active_target_helper_entity: str | None = None,
     legacy_active_target_entity: str | None = None,
 ) -> dict[str, Any]:
     """Build normalized target registry scaffold from current legacy surfaces."""
-    control_host_state = hass.states.get(legacy_control_host_entity)
-    control_targets_state = hass.states.get(legacy_control_targets_entity)
-    rooms_json_state = hass.states.get(legacy_rooms_json_entity)
-    rooms_raw_state = hass.states.get(legacy_rooms_raw_entity)
+    control_host_state = _state_for_entity(hass, legacy_control_host_entity)
+    control_targets_state = _state_for_entity(hass, legacy_control_targets_entity)
+    rooms_json_state = _state_for_entity(hass, legacy_rooms_json_entity)
+    rooms_raw_state = _state_for_entity(hass, legacy_rooms_raw_entity)
 
-    control_host = _clean_host(control_host_state.state if control_host_state else "")
+    component_control_host_state = hass.states.get("sensor.component_control_host")
+    component_control_host = _clean_host(component_control_host_state.state if component_control_host_state else "")
+    control_host = component_control_host or _clean_host(control_host_state.state if control_host_state else "")
 
-    control_targets: set[str] = set(_split_csv(control_targets_state.state if control_targets_state else ""))
+    control_targets: set[str] = set()
+    component_control_targets_state = hass.states.get("sensor.component_control_targets")
+    if component_control_targets_state is not None and isinstance(component_control_targets_state.attributes, dict):
+        entities = component_control_targets_state.attributes.get("entities", [])
+        if isinstance(entities, list):
+            control_targets.update(
+                str(item).strip()
+                for item in entities
+                if isinstance(item, str) and str(item).strip() and str(item).strip().lower() not in INVALID_STATE_VALUES
+            )
+
+    control_targets.update(_split_csv(control_targets_state.state if control_targets_state else ""))
     if control_targets_state is not None:
         for key in ("targets", "options", "entities", "result"):
             control_targets.update(_extract_strings(control_targets_state.attributes.get(key)))
 
     helper_seed_targets: set[str] = set()
-    helper_state = hass.states.get(legacy_active_target_helper_entity) if legacy_active_target_helper_entity else None
+    helper_state = _state_for_entity(hass, legacy_active_target_helper_entity)
     if helper_state is not None:
         helper_current = str(helper_state.state or "").strip()
         if helper_current and helper_current.lower() not in INVALID_STATE_VALUES:
@@ -492,7 +514,7 @@ def build_registry_snapshot(
             )
 
     active_target_seed = ""
-    active_target_state = hass.states.get(legacy_active_target_entity) if legacy_active_target_entity else None
+    active_target_state = _state_for_entity(hass, legacy_active_target_entity)
     if active_target_state is not None:
         active_target_seed = str(active_target_state.state or "").strip()
         if active_target_seed and active_target_seed.lower() not in INVALID_STATE_VALUES:
@@ -707,10 +729,10 @@ def build_registry_snapshot(
             "profiles_count": len(empirical_overlays),
         },
         "source_entities": {
-            "control_host": legacy_control_host_entity,
-            "control_targets": legacy_control_targets_entity,
-            "rooms_json": legacy_rooms_json_entity,
-            "rooms_raw": legacy_rooms_raw_entity,
+            "control_host": legacy_control_host_entity or "component_control_host",
+            "control_targets": legacy_control_targets_entity or "component_control_targets",
+            "rooms_json": legacy_rooms_json_entity or "component_discovery",
+            "rooms_raw": legacy_rooms_raw_entity or "component_discovery",
             "active_target_helper": legacy_active_target_helper_entity,
             "active_target": legacy_active_target_entity,
         },

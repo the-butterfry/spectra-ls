@@ -1,6 +1,6 @@
 ## Description: RP2040 firmware for Spectra LS input scanning and UART event transport.
-## Version: 2026.08.14.3
-## Last updated: 2026-08-14
+## Version: 2026.08.24.8
+## Last updated: 2026-08-24
 #
 # RP FILE CONTRACT:
 # - Owns hardware initialization and main-loop orchestration only.
@@ -116,7 +116,7 @@ ANALOG_MIN_CHANGE_BY_NAME = {
     "eq_bass_pot": 2,
     "eq_mid_pot": 2,
     "eq_treble_pot": 2,
-    "volume_pot": 2,
+    "volume_pot": 1,
 }
 ANALOG_IDLE_LOCK_MS = 0  # idle gate disabled
 ANALOG_IDLE_MIN_CHANGE_BY_NAME = {}
@@ -169,12 +169,34 @@ AUTOCAL_SUSPEND_OUTPUT = True
 DEBUG_CALIBRATION_SERIAL = True
 
 CALIBRATION_TRACKING_ENABLED = True
-CALIBRATION_TRACKING_CHANNEL_NAMES = ("eq_bass_pot", "eq_mid_pot", "eq_treble_pot")
+CALIBRATION_TRACKING_CHANNEL_NAMES = ("eq_bass_pot", "eq_mid_pot", "eq_treble_pot", "volume_pot")
 CALIBRATION_TRACKING_MIN_RANGE = 6000
+# Channel-specific tracking minima allow compressed-but-valid hardware spans to
+# self-calibrate without requiring manual mode toggles or autocal rituals.
+CALIBRATION_TRACKING_MIN_RANGE_BY_NAME = {
+    "volume_pot": 3000,
+}
 CALIBRATION_TRACKING_SETTLE_MS = 0
 CALIBRATION_TRACKING_DYNAMIC = True
+CALIBRATION_TRACKING_RETRY_DELAY_MS = 1000
+CALIBRATION_TRACKING_MID_MIN_SAMPLES = 40
+CALIBRATION_TRACKING_MID_SAMPLES_MAX = 400
+CALIBRATION_TRACKING_ENABLE_MID_BY_NAME = {
+    "volume_pot": True,
+}
 CALIBRATION_TRACKING_EDGE_PCT = 5
 CALIBRATION_TRACKING_EDGE_MIN_SAMPLES = 3
+CALIBRATION_TRACKING_EDGE_MIN_SAMPLES_BY_NAME = {
+    "volume_pot": 0,
+}
+# Fallback convergence path for channels that remain uncalibrated even after repeated
+# operator sweeps due to hardware/compression variance in observed spans.
+CALIBRATION_TRACKING_FORCE_SAVE_SAMPLES_BY_NAME = {
+    "volume_pot": 80,
+}
+CALIBRATION_TRACKING_FORCE_MIN_RANGE_BY_NAME = {
+    "volume_pot": 3000,
+}
 
 CALIBRATION_FILE = "/calibration.json"
 CALIBRATION_LEGACY_MAP = {
@@ -257,18 +279,15 @@ def _ads_channel(module, index):
 
 # PCF8575 for buttons (optional)
 pcf = None
-pcf_addr = None
 for addr in PCF8575_ADDRESSES:
     if i2c_has_address(i2c, addr):
         try:
             pcf = PCF8575(i2c, address=addr)
-            pcf_addr = addr
             break
         except Exception as exc:
             if DEBUG_PCF8575_INIT:
                 print(f"PCF8575 init failed at 0x{addr:02X}: {exc}")
             pcf = None
-            pcf_addr = None
 if pcf is None:
     if DEBUG_PCF8575_INIT:
         print("PCF8575 not found; button inputs disabled")
@@ -578,10 +597,18 @@ CAL_RUNTIME_CONFIG = {
     "CALIBRATION_TRACKING_ENABLED": CALIBRATION_TRACKING_ENABLED,
     "CALIBRATION_TRACKING_CHANNEL_NAMES": CALIBRATION_TRACKING_CHANNEL_NAMES,
     "CALIBRATION_TRACKING_MIN_RANGE": CALIBRATION_TRACKING_MIN_RANGE,
+    "CALIBRATION_TRACKING_MIN_RANGE_BY_NAME": CALIBRATION_TRACKING_MIN_RANGE_BY_NAME,
     "CALIBRATION_TRACKING_SETTLE_MS": CALIBRATION_TRACKING_SETTLE_MS,
     "CALIBRATION_TRACKING_DYNAMIC": CALIBRATION_TRACKING_DYNAMIC,
+    "CALIBRATION_TRACKING_RETRY_DELAY_MS": CALIBRATION_TRACKING_RETRY_DELAY_MS,
+    "CALIBRATION_TRACKING_MID_MIN_SAMPLES": CALIBRATION_TRACKING_MID_MIN_SAMPLES,
+    "CALIBRATION_TRACKING_MID_SAMPLES_MAX": CALIBRATION_TRACKING_MID_SAMPLES_MAX,
+    "CALIBRATION_TRACKING_ENABLE_MID_BY_NAME": CALIBRATION_TRACKING_ENABLE_MID_BY_NAME,
     "CALIBRATION_TRACKING_EDGE_PCT": CALIBRATION_TRACKING_EDGE_PCT,
     "CALIBRATION_TRACKING_EDGE_MIN_SAMPLES": CALIBRATION_TRACKING_EDGE_MIN_SAMPLES,
+    "CALIBRATION_TRACKING_EDGE_MIN_SAMPLES_BY_NAME": CALIBRATION_TRACKING_EDGE_MIN_SAMPLES_BY_NAME,
+    "CALIBRATION_TRACKING_FORCE_SAVE_SAMPLES_BY_NAME": CALIBRATION_TRACKING_FORCE_SAVE_SAMPLES_BY_NAME,
+    "CALIBRATION_TRACKING_FORCE_MIN_RANGE_BY_NAME": CALIBRATION_TRACKING_FORCE_MIN_RANGE_BY_NAME,
 }
 
 cal_runtime = CalibrationRuntimeManager(
@@ -783,7 +810,7 @@ while True:
         analog_filtered[idx] = filtered
         filtered_value = int(round(filtered))
         if profile["is_named_pot"] and raw_stable:
-            if raw_stable and abs(filtered_value - calibrated) <= ANALOG_TAIL_CUT_FILTER_DELTA:
+            if abs(filtered_value - calibrated) <= ANALOG_TAIL_CUT_FILTER_DELTA:
                 filtered = float(calibrated)
                 analog_filtered[idx] = filtered
                 filtered_value = calibrated

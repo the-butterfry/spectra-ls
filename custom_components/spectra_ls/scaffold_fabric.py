@@ -1,6 +1,6 @@
 # Description: Scaffold-fabric workflow for Spectra LS scaffold/inventory/backend assembly extracted from meta-fabric.
-# Version: 2026.08.01.2
-# Last updated: 2026-08-01
+# Version: 2026.08.25.1
+# Last updated: 2026-08-25
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -10,20 +10,7 @@ from typing import Any
 
 from .const import (
     COMPONENT_NOW_PLAYING_ENTITY,
-    LEGACY_CONTROL_HOST,
-    LEGACY_CONTROL_TARGETS,
-    LEGACY_MA_API_URL,
-    LEGACY_META_OVERRIDE_ACTIVE,
-    LEGACY_META_OVERRIDE_ENTITY,
-    LEGACY_META_RESOLVER,
-    LEGACY_ROOMS_JSON,
-    LEGACY_ROOMS_RAW,
-    LEGACY_SERVER_PROFILE,
-    LEGACY_SERVER_PROFILE_EFFECTIVE,
-    LEGACY_SURFACES,
 )
-from .registry import build_registry_snapshot
-from .router import build_route_trace
 
 
 class ScaffoldFabricWorkflow:
@@ -47,28 +34,21 @@ class ScaffoldFabricWorkflow:
         if isinstance(c.data, dict) and isinstance(c.data.get("registry", {}), dict):
             registry = c.data.get("registry", {})
         else:
-            registry = build_registry_snapshot(
-                hass=c.hass,
-                legacy_control_host_entity=LEGACY_CONTROL_HOST,
-                legacy_control_targets_entity=LEGACY_CONTROL_TARGETS,
-                legacy_rooms_json_entity=LEGACY_ROOMS_JSON,
-                legacy_rooms_raw_entity=LEGACY_ROOMS_RAW,
-                legacy_active_target_helper_entity=None,
-                legacy_active_target_entity=LEGACY_SURFACES["active_target"],
-            )
+            registry = {"entries": {}, "target_count": 0, "unresolved_sources": ["registry_missing"]}
 
         if isinstance(c.data, dict) and isinstance(c.data.get("route_trace", {}), dict):
             route_trace = c.data.get("route_trace", {})
         else:
-            active_target_state = c.hass.states.get(LEGACY_SURFACES["active_target"])
-            active_control_path_state = c.hass.states.get(LEGACY_SURFACES["active_control_path"])
-            route_trace = build_route_trace(
-                active_target=str(active_target_state.state if active_target_state is not None else ""),
-                active_control_path=str(
-                    active_control_path_state.state if active_control_path_state is not None else ""
-                ),
-                registry=registry,
-            )
+            component_active_target_state = c.hass.states.get("sensor.component_active_target")
+            active_target = str(component_active_target_state.state if component_active_target_state is not None else "")
+            route_trace = {
+                "active_target": active_target,
+                "active_control_path": "linkplay_tcp" if c._is_resolved_state(active_target) else "unknown",
+                "resolved_control_path": "linkplay_tcp" if c._is_resolved_state(active_target) else "unknown",
+                "decision": "route_linkplay_tcp" if c._is_resolved_state(active_target) else "defer_no_target",
+                "reason": "component_fallback_route_trace",
+                "selected_target": {},
+            }
 
         target_options_plan = self._selection_fabric.compute_component_target_options_plan()
         helper_options = (
@@ -115,15 +95,13 @@ class ScaffoldFabricWorkflow:
             selected_target = candidates[0]
             selection_reason = "first_candidate_fallback"
 
-        best_candidate = ""
-        best_score = 0
-        meta_resolver_state = c.hass.states.get(LEGACY_META_RESOLVER)
-        if meta_resolver_state is not None:
-            best_candidate = str(meta_resolver_state.attributes.get("best_entity", "") or "").strip()
-            try:
-                best_score = int(float(meta_resolver_state.attributes.get("best_score", 0) or 0))
-            except (TypeError, ValueError):
-                best_score = 0
+        metadata_prep = c.data.get("metadata_prep_validation", {}) if isinstance(getattr(c, "data", {}), dict) and isinstance(c.data.get("metadata_prep_validation", {}), dict) else {}
+        metadata_values = metadata_prep.get("values", {}) if isinstance(metadata_prep.get("values", {}), dict) else {}
+        best_candidate = str(metadata_values.get("resolver_best_candidate", "") or "").strip()
+        try:
+            best_score = int(float(metadata_values.get("resolver_best_score", 0) or 0))
+        except (TypeError, ValueError):
+            best_score = 0
 
         detected_candidate = str(
             c.hass.states.get(COMPONENT_NOW_PLAYING_ENTITY).state
@@ -145,10 +123,9 @@ class ScaffoldFabricWorkflow:
             selected_meta_entity = selected_target
             metadata_selection_reason = "selected_target_fallback"
 
-        override_state = c.hass.states.get(LEGACY_META_OVERRIDE_ACTIVE)
-        override_entity_state = c.hass.states.get(LEGACY_META_OVERRIDE_ENTITY)
-        override_active = c._normalize_state(override_state.state if override_state is not None else "") == "on"
-        override_entity = str(override_entity_state.state if override_entity_state is not None else "").strip()
+        override_store = getattr(c, "_component_metadata_override_state", {})
+        override_active = bool(override_store.get("active", False)) if isinstance(override_store, dict) else False
+        override_entity = str(override_store.get("entity", "") or "").strip()
         override_entity = override_entity if c._is_resolved_state(override_entity) else ""
 
         return {
@@ -160,11 +137,11 @@ class ScaffoldFabricWorkflow:
                 "ready": selected_target != "",
             },
             "metadata_resolver_plan": {
-                "override_active_entity": LEGACY_META_OVERRIDE_ACTIVE,
-                "override_entity_helper": LEGACY_META_OVERRIDE_ENTITY,
+                "override_active_entity": "component_metadata_override_active",
+                "override_entity_helper": "component_metadata_override_entity",
                 "current_override_active": override_active,
                 "current_override_entity": override_entity,
-                "meta_resolver_entity": LEGACY_META_RESOLVER,
+                "meta_resolver_entity": "component_meta_candidates",
                 "detected_meta_entity_source": COMPONENT_NOW_PLAYING_ENTITY,
                 "best_candidate": best_candidate,
                 "best_score": best_score,
@@ -247,21 +224,9 @@ class ScaffoldFabricWorkflow:
     def build_ma_backend_profile(self) -> dict[str, Any]:
         """Build MA backend profile/effective URL diagnostics payload."""
         c = self._coordinator
-        profile_state = c.hass.states.get(LEGACY_SERVER_PROFILE)
-        profile_effective_state = c.hass.states.get(LEGACY_SERVER_PROFILE_EFFECTIVE)
-        api_url_state = c.hass.states.get(LEGACY_MA_API_URL)
-
-        profile_value = ""
-        if profile_state is not None:
-            profile_value = str(profile_state.state or "").strip().lower()
-
+        profile_value = "component_discovered"
         selected_url = ""
-        if profile_effective_state is not None:
-            selected_url = str(profile_effective_state.attributes.get("selected_url", "") or "").strip()
-
         api_url = ""
-        if api_url_state is not None:
-            api_url = str(api_url_state.state or "").strip()
 
         selected_url_fallback = ""
         if not c._is_resolved_state(selected_url):
@@ -281,9 +246,9 @@ class ScaffoldFabricWorkflow:
                 profile_value = "api_only_discovered"
 
         return {
-            "profile_entity": LEGACY_SERVER_PROFILE,
-            "effective_entity": LEGACY_SERVER_PROFILE_EFFECTIVE,
-            "api_url_entity": LEGACY_MA_API_URL,
+            "profile_entity": "component_backend_profile",
+            "effective_entity": "component_backend_profile",
+            "api_url_entity": "component_ma_api_url",
             "profile": profile_value,
             "selected_url": selected_url,
             "selected_url_fallback": selected_url_fallback,

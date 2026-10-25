@@ -1,0 +1,8 @@
+# Description: RP2040 boot/runtime local toggles for Spectra LS.
+# Version: 2026.08.25.4
+# Last updated: 2026-08-25
+
+# USB MSC policy:
+# - 1 (default): maintenance mode; enables CIRCUITPY USB mass-storage for host edits.
+# - 0: runtime-safe mode; disables CIRCUITPY USB mass-storage for write isolation.
+SPECTRA_USB_MSC = 1

@@ -1,10 +1,10 @@
 # Description: Standalone ESPHome config for Spectra LS Remote tabletop control box (encoder + transport buttons + battery telemetry).
-# Version: 2026.09.07.8
-# Last updated: 2026-09-07
+# Version: 2026.10.23.2
+# Last updated: 2026-10-23
 # Notes:
 # - BLE transport removed; control lane is direct Wi-Fi/TCP.
 # - Battery voltage telemetry assumes the physical divider network is present on the ADC input; keep `battery_divider_ratio` aligned to the actual resistor pair.
-# - Charging detection policy is intentionally simple: require 2 consecutive rising voltage samples (`battery_charge_rise_confirm_samples`) before charge is considered detected.
+# - Charging detection policy is intentionally simple: require consecutive rising voltage samples (`battery_charge_rise_confirm_samples`, currently 3) before charge is considered detected.
 
 substitutions:
   device_name: spectra-ls-remote
@@ -71,8 +71,8 @@ substitutions:
   battery_full_v: "4.20"
   battery_charge_hold_min_v: "4.05"
   battery_charge_release_v: "4.00"
-  battery_charge_rise_min_delta_v: "0.001"
-  battery_charge_rise_confirm_samples: "2"
+  battery_charge_rise_min_delta_v: "0.002"
+  battery_charge_rise_confirm_samples: "3"
   battery_charge_hold_timeout_ms: "900000"
   battery_recent_full_v: "4.19"
   battery_unplug_full_hold_ms: "600000"
@@ -80,6 +80,7 @@ substitutions:
   battery_post_charge_floor_start_pct: "100.0"
   battery_post_charge_floor_end_pct: "92.0"
   battery_post_charge_floor_min_v: "3.95"
+  battery_charge_comp_apply_min_v: "4.00"
   battery_charge_surface_comp_v: "0.06"
   battery_charge_comp_taper_start_v: "4.12"
   battery_charge_jump_guard_window_ms: "600000"
@@ -445,6 +446,16 @@ text_sensor:
           if (state == "playing") {
             id(remote_last_playing_ms) = millis();
           }
+
+  - platform: template
+    name: "Remote Battery SoC Mode"
+    id: remote_battery_soc_mode
+    icon: mdi:battery-heart-variant
+    entity_category: diagnostic
+    update_interval: never
+    lambda: |-
+      if (!${remote_has_battery}) return {"disabled"};
+      return {"boot"};
 sensor:
   - platform: rotary_encoder
     id: remote_encoder
@@ -642,6 +653,7 @@ sensor:
       const uint32_t now = millis();
       const float v = id(remote_battery_voltage).state;
       if (isnan(v)) return {};
+      std::string soc_mode = "curve_ocv";
 
       // Reboot/OTA edge recovery: if we previously latched a recent-full event
       // and come up unplugged, arm one-shot 100% hold immediately.
@@ -650,12 +662,17 @@ sensor:
           id(remote_full_unplug_hold_until_ms) == 0) {
         id(remote_full_unplug_hold_until_ms) = now + (uint32_t) ${battery_unplug_full_hold_ms};
         id(remote_recent_full_latched) = false;
+        soc_mode = "full_hold_100";
       }
 
-      // Compensate charging surface-voltage inflation so SoC doesn't jump
-      // unrealistically high immediately after plug-in.
+        // Compensate charging surface-voltage inflation so SoC doesn't jump
+        // unrealistically high immediately after plug-in.
+        // Apply only in higher-voltage charging windows; low/mid-voltage charging
+        // should not be penalized with a sudden SoC cliff.
       float soc_input_v = v;
-      if (id(remote_battery_charging_estimated) && v < ${battery_recent_full_v}) {
+        if (id(remote_battery_charging_estimated) &&
+          v >= ${battery_charge_comp_apply_min_v} &&
+          v < ${battery_recent_full_v}) {
         const float full_v = ${battery_full_v};
         const float taper_start_v = ${battery_charge_comp_taper_start_v};
         float comp_v = ${battery_charge_surface_comp_v};
@@ -667,6 +684,7 @@ sensor:
         }
         soc_input_v = v - comp_v;
         if (soc_input_v < ${battery_empty_v}) soc_input_v = ${battery_empty_v};
+        soc_mode = "curve_ocv_chg_comp";
       }
 
       // Li-ion (single-cell) OCV-based approximate SoC curve.
@@ -762,6 +780,31 @@ sensor:
 
       if (soc < 0.0f) soc = 0.0f;
       if (soc > 100.0f) soc = 100.0f;
+
+      // Charging session stability rule: SoC should not decrease while charge
+      // estimation is active. This avoids visible percentage cliffing when
+      // charge-state toggles or compensation posture changes mid-session.
+      if (id(remote_battery_charging_estimated) && id(remote_last_soc_pct) >= 0.0f) {
+        if (soc < id(remote_last_soc_pct)) {
+          soc = id(remote_last_soc_pct);
+          soc_mode = "curve_ocv_chg_clamped";
+        }
+      }
+
+      if (!id(remote_battery_charging_estimated) && id(remote_full_unplug_hold_until_ms) != 0) {
+        if ((int32_t) (id(remote_full_unplug_hold_until_ms) - now) > 0) {
+          soc_mode = "full_hold_100";
+        }
+      }
+
+      if (id(remote_battery_soc_mode).has_state()) {
+        if (id(remote_battery_soc_mode).state != soc_mode) {
+          id(remote_battery_soc_mode).publish_state(soc_mode);
+        }
+      } else {
+        id(remote_battery_soc_mode).publish_state(soc_mode);
+      }
+
       id(remote_last_soc_pct) = soc;
       return soc;
 
@@ -1019,16 +1062,16 @@ script:
                   lambda: |-
                     return id(remote_brightness_target_mode_pending) == 2;
                 then:
-                  - homeassistant.service:
-                      service: light.turn_on
+                  - homeassistant.action:
+                      action: light.turn_on
                       data:
                         area_id: !lambda |-
                           return id(remote_brightness_target_area_pending);
                         brightness_pct: !lambda |-
                           return id(remote_brightness_level_pct);
                 else:
-                  - homeassistant.service:
-                      service: light.turn_on
+                  - homeassistant.action:
+                      action: light.turn_on
                       data:
                         entity_id: !lambda |-
                           return id(remote_brightness_target_entity_pending);
@@ -1509,8 +1552,8 @@ script:
 
           id(remote_resolved_target) = target;
           id(remote_last_transport_ms) = now;
-      - homeassistant.service:
-          service: media_player.media_next_track
+      - homeassistant.action:
+          action: media_player.media_next_track
           data:
             entity_id: !lambda |-
               return id(remote_resolved_target);

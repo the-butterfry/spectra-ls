@@ -1,6 +1,6 @@
 <!-- Description: Specification and phased roadmap for the Spectra LS custom Home Assistant component developed in parallel with existing runtime. -->
-<!-- Version: 2026.08.20.7 -->
-<!-- Last updated: 2026-08-20 -->
+<!-- Version: 2026.08.24.5 -->
+<!-- Last updated: 2026-08-24 -->
 
 # Spectra LS Custom Component — Specification + Roadmap
 
@@ -51,6 +51,41 @@ Latest run update (2026-08-14, metadata-priority hardening + diagnostics normali
 - Selection-handoff gate normalization active: helper options alignment remains visible for operator insight but is advisory-only in component-authority mode when route + contract gates pass.
 - Runtime track disposition: compatibility-shimmed.
 - Component track disposition: implemented.
+
+Latest run update (2026-08-24, WiiM universal transport-policy feature-flag rollout slice A):
+
+- Added concrete architecture + implementation slice for WiiM transport-policy hardening behind feature flag `experimental_transport_policy_handler` (default `off`), preserving legacy setup path as fallback/default.
+- Added dedicated policy module (`custom_components/wiim/transport_policy.py`) and incremental setup wiring in `custom_components/wiim/__init__.py` with opt-in options surface in `custom_components/wiim/config_flow.py`.
+- Runtime track disposition: checked/not-applicable (no `packages/`/`esphome` behavior mutation).
+- Component track disposition: implemented (opt-in policy handler + staged migration scaffolding).
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; additive safety rollout and startup transport-decision determinism hardening only.
+
+Latest run update (2026-08-24, Spectra main volume 1:1 normalization hardening):
+
+- Corrected main runtime pot normalization so volume input handles both percent and raw analog payload shapes without under-scaling.
+- Removed percent-mode endpoint lag in main runtime by avoiding redundant local median smoothing when RP filtered percent payloads are already authoritative.
+- Added RP-side `volume_pot` calibration tracking + endpoint snap to eliminate deterministic top-end under-range caused by compressed physical ADC span.
+- Protective runtime cap remains intentionally retained at `audio_max_volume_pct=90` for equipment safety.
+- Runtime track disposition: implemented.
+- Component track disposition: compatibility-shimmed.
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; runtime input-scale correctness hardening only.
+
+Latest run update (2026-08-24, RP-authoritative volume contract reset):
+
+- Volume contract reset to strict single-authority mapping: RP computes/owns analog-to-percent semantics and emits absolute volume percent; ESP now treats RP payload as authoritative percent input and applies only cap policy + dispatch.
+- Removed ESP ingest endpoint snap/reinterpretation semantics in the active volume-pot lane to avoid near-end value collapse before cap mapping.
+- RP volume granularity hardened by removing volume full-end snap forcing and lowering volume minimum-change threshold for tighter high-end fidelity.
+- Runtime track disposition: implemented.
+- Component track disposition: checked/not-applicable.
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; runtime write-path determinism hardening only.
+
+Latest run update (2026-08-24, RP calibration resilience auto-recovery hardening):
+
+- Closed the post-reset residual volume calibration risk by hardening RP-side missing-calibration convergence for compressed hardware spans.
+- Channel-specific tracking thresholds are now part of the runtime calibration contract so `volume_pot` calibration can persist automatically once endpoint evidence is observed, without requiring manual autocal modes.
+- Runtime track disposition: implemented.
+- Component track disposition: checked/not-applicable.
+- P1/P2/P3 impact check: no source-of-truth ownership reassignment; runtime calibration resilience and anti-regression hardening only.
 
 Latest run update (2026-08-19, runtime OLED now-playing stability guard):
 

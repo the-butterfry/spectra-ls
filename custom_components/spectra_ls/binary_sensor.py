@@ -1,6 +1,6 @@
 # Description: Binary sensor entities for Spectra LS shadow parity routing surfaces with Phase 3 write-control, Phase 4 diagnostics attributes, and Phase 6 control-center settings visibility, including host-cutover readiness and shared MA authority-contract packet propagation.
-# Version: 2026.08.18.2
-# Last updated: 2026-08-18
+# Version: 2026.08.25.2
+# Last updated: 2026-08-25
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -18,8 +18,6 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .authority_contract import build_authority_contract_packet
 from .const import (
     DOMAIN,
-    LEGACY_META_CONFIDENCE_MIN,
-    LEGACY_META_RESOLVER,
 )
 from .payload_surface_fabric import PayloadSurfaceFabric
 
@@ -76,7 +74,6 @@ class SpectraLsShadowControlCapableBinarySensor(CoordinatorEntity, BinarySensorE
     def extra_state_attributes(self):
         data = self.coordinator.data
         return {
-            "legacy_value": data["legacy"].get("active_control_capable"),
             "unresolved_sources": data.get("unresolved_sources", []),
             "mismatches": data.get("mismatches", []),
             "captured_at": data.get("captured_at"),
@@ -120,7 +117,6 @@ class SpectraLsHostCutoverGateReadyBinarySensor(CoordinatorEntity, BinarySensorE
             "authority_source_mode": gate.get("authority_source_mode", "legacy"),
             "authority_mode": gate.get("authority_mode", "legacy"),
             "component_authoritative_candidate": gate.get("component_authoritative_candidate", {}),
-            "legacy_authority_snapshot": gate.get("legacy_authority_snapshot", {}),
             "route_decision": gate.get("route_decision", ""),
             "resolved_control_path": gate.get("resolved_control_path", ""),
             "checks": gate.get("checks", {}),
@@ -216,24 +212,8 @@ class SpectraLsComponentMetaLowConfidenceBinarySensor(CoordinatorEntity, BinaryS
             best_entity = str(attrs.get("best_entity", "") or "").strip()
             return best_entity == "" or best_score < confidence_min
 
-        resolver_state = self.coordinator.hass.states.get(LEGACY_META_RESOLVER)
-        confidence_min_state = self.coordinator.hass.states.get(LEGACY_META_CONFIDENCE_MIN)
-
-        try:
-            confidence_min = float(confidence_min_state.state) if confidence_min_state is not None else 4.0
-        except (TypeError, ValueError):
-            confidence_min = 4.0
-
-        if resolver_state is None:
-            return True
-
-        best_entity = str(resolver_state.attributes.get("best_entity", "") or "").strip()
-        try:
-            best_score = float(resolver_state.attributes.get("best_score", 0))
-        except (TypeError, ValueError):
-            best_score = 0.0
-
-        return best_entity == "" or best_score < confidence_min
+        # Fail-closed if component candidates surface is unavailable.
+        return True
 
     @property
     def extra_state_attributes(self):

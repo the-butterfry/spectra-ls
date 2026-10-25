@@ -1,6 +1,6 @@
 # Description: Spectra LS System substitutions for ESPHome main config and packages.
-# Version: 2026.08.15.1
-# Last updated: 2026-08-15
+# Version: 2026.08.24.3
+# Last updated: 2026-08-24
 # Spectra LS substitutions scoped to spectra_ls_system.
 # Use absolute paths for assets so this file can move with spectra_ls_system.
 
@@ -274,7 +274,7 @@ menu_tile_icon_play_font_size: "26"
 # Purpose: now-playing/overlay windows and audio-facing UI ranges.
 # Gain: smoother perceived audio UX without changing transport internals.
 ha_audio_refresh_ms: "2000"
-audio_max_volume_pct: "90"
+audio_max_volume_pct: "100"
 audio_ui_min: "1"
 audio_ui_max: "11"
 now_playing_return_ms: "5000"

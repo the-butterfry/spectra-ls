@@ -1,6 +1,6 @@
 # Description: Spectra LS lighting hub (rooms/targets from HA Areas).
-# Version: 2026.06.22.1
-# Last updated: 2026-06-22
+# Version: 2026.09.07.1
+# Last updated: 2026-09-07
 # Update version/date whenever you change this file.
 #
 # Notes:
@@ -29,6 +29,16 @@ input_text:
   control_board_wled_api_url:
     name: Control Board WLED API URL (Optional)
     max: 255
+
+input_number:
+  control_board_living_room_brightness_pct:
+    name: Control Board Living Room Brightness
+    min: 1
+    max: 100
+    step: 1
+    mode: slider
+    icon: mdi:brightness-percent
+    initial: 50
 
 input_button:
   control_board_sync_wled_palette_room:
@@ -122,6 +132,74 @@ script:
                     - service: light.turn_off
                       data:
                         entity_id: "{{ repeat.item }}"
+
+  control_board_living_room_brightness_step_uniform:
+    alias: Spectra LS - Living Room Brightness Step (Uniform Dimmables)
+    mode: queued
+    fields:
+      step_pct:
+        description: Brightness delta in percent points (e.g. +6 or -6)
+        example: 6
+    sequence:
+      - variables:
+          delta: "{{ step_pct | default(0) | float(0) }}"
+          current: "{{ states('input_number.control_board_living_room_brightness_pct') | float(50) }}"
+          target_pct: >
+            {% set v = current + delta %}
+            {% if v < 1 %}
+              1
+            {% elif v > 100 %}
+              100
+            {% else %}
+              {{ v | round(0) }}
+            {% endif %}
+          raw: "{{ state_attr('sensor.control_board_eligible_light_catalog', 'items_json') or '[]' }}"
+          parsed: >
+            {% if raw is string %}
+              {{ raw | trim | from_json(default=[]) }}
+            {% elif raw is iterable and raw is not string %}
+              {{ raw }}
+            {% else %}
+              {{ [] }}
+            {% endif %}
+          targets: >
+            {% set ns = namespace(items=[]) %}
+            {% for item in parsed if item is mapping %}
+              {% set room = item.area_name if item.area_name is defined else '' %}
+              {% set ent = item.entity_id if item.entity_id is defined else '' %}
+              {% if room == 'Living Room' and ent not in ['', none] and states(ent) not in ['unavailable', 'unknown', none] %}
+                {% set modes = state_attr(ent, 'supported_color_modes') %}
+                {% set modes_blob = (modes | tojson | lower) if modes is not none else '[]' %}
+                {% set supports_dimming =
+                  ('brightness' in modes_blob) or
+                  ('color_temp' in modes_blob) or
+                  ('hs' in modes_blob) or
+                  ('xy' in modes_blob) or
+                  ('rgb' in modes_blob) or
+                  ('rgbw' in modes_blob) or
+                  ('rgbww' in modes_blob) or
+                  ('white' in modes_blob)
+                %}
+                {% if supports_dimming and ent not in ns.items %}
+                  {% set ns.items = ns.items + [ent] %}
+                {% endif %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.items }}
+      - service: input_number.set_value
+        data:
+          entity_id: input_number.control_board_living_room_brightness_pct
+          value: "{{ target_pct }}"
+      - choose:
+          - conditions: "{{ targets | count > 0 }}"
+            sequence:
+              - repeat:
+                  for_each: "{{ targets }}"
+                  sequence:
+                    - service: light.turn_on
+                      data:
+                        entity_id: "{{ repeat.item }}"
+                        brightness_pct: "{{ target_pct }}"
 
 template:
   - sensor:

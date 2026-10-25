@@ -3,14 +3,15 @@ description: "Workspace instructions for Home Assistant + ESPHome development (E
 ---
 
 <!-- Description: Workspace Copilot operating instructions for Home Assistant + ESPHome. -->
-<!-- Version: 2026.08.01.2 -->
-<!-- Last updated: 2026-08-01 -->
+<!-- Version: 2026.09.30.1 -->
+<!-- Last updated: 2026-09-30 -->
 
 # GitHub Copilot Instructions — Home Assistant + ESPHome
 
 ## Quick Operating Rules (read first)
 - Operate as a senior engineer for a **public-facing** HA + ESPHome product.
 - Prefer root-cause fixes over symptom patches; keep changes minimal and reversible.
+- Legacy-resurrection prohibition (default): do **not** revive legacy paths, helper-authority behavior, dual-write compatibility lanes, or rollback-safe fallback behavior unless the operator explicitly requests that compatibility mode for a specific slice.
 - If a request conflicts with safety/contract rules, call it out and offer the safest alternative.
 - If uncertain and blocked by ambiguity, ask one concise question.
 - For active migration slices in this phase (currently Phase-5/P5-S02), continue autonomously end-to-end without routine check-ins; only pause when explicit user intervention is required (runtime action, operator validation capture, missing environment input, or approval-gated decision).

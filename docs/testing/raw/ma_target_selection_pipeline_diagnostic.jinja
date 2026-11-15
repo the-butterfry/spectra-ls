@@ -1,134 +1,108 @@
-{# Description: Raw copy/paste Jinja template for MA active-target selection pipeline diagnostics. #}
-{# Version: 2026.04.26.1 #}
-{# Last updated: 2026-04-26 #}
+{# Description: Raw copy/paste Jinja template for component-only target-selection and control/meta alignment diagnostics. #}
+{# Version: 2026.11.14.1 #}
+{# Last updated: 2026-11-14 #}
 
 {# =========================
-  MA Active-Target Selection Pipeline Diagnostic
-  Purpose: explain why input_select.ma_active_target remains none.
+  Component Target-Selection + Route/Meta Alignment Diagnostic
+  Purpose: explain why control target or metadata target appears wrong using modern component surfaces only.
   Usage:
     1) Optional refresh actions:
-       - script.ma_update_target_options
-       - script.ma_auto_select
+       - spectra_ls.dump_route_trace
+       - spectra_ls.run_auto_select_scaffold (dry_run=false, force=true)
     2) Paste in Developer Tools -> Template.
-    3) Use output to identify options/build/selection gate failures.
+    3) Use output to identify control-route authority, metadata winner, and mismatch posture.
   ========================= #}
 
-{% set invalid = ['','none','unknown','unavailable','None', none] %}
+{% set invalid = ['', 'none', 'unknown', 'unavailable', 'null', 'None', none] %}
 
-{% set active_target = states('input_select.ma_active_target') %}
-{% set options = state_attr('input_select.ma_active_target','options') or [] %}
-{% set active_valid = active_target not in invalid and active_target in options and states[active_target] is not none %}
+{% set component_active_target = states('sensor.component_active_target') %}
+{% set component_now_playing_entity = states('sensor.component_now_playing_entity') %}
+{% set component_now_playing_title = states('sensor.component_now_playing_title') %}
+{% set component_now_playing_artist = states('sensor.component_now_playing_artist') %}
+{% set room_area_hint = states('sensor.control_board_room_area_id') %}
+{% set control_board_target = states('sensor.control_board_target_entity_id') %}
 
-{% set rooms_raw = state_attr('sensor.spectra_ls_rooms_json','rooms_json') | default([], true) %}
-{% set rooms = rooms_raw %}
-{% if rooms is string %}
-  {% set raw_trim = rooms | trim %}
-  {% set raw_trim_l = raw_trim | lower %}
-  {% if raw_trim_l not in ['unknown','unavailable','none',''] and (raw_trim.startswith('[') or raw_trim.startswith('{')) %}
-    {% set parsed = raw_trim | from_json %}
-    {% if parsed is sequence and parsed is not string and parsed is not mapping %}
-      {% set rooms = parsed %}
-    {% elif parsed is mapping %}
-      {% set rooms = (parsed.rooms if parsed.rooms is defined else (parsed.result if parsed.result is defined else [])) %}
-    {% else %}
-      {% set rooms = [] %}
-    {% endif %}
-  {% else %}
-    {% set rooms = [] %}
-  {% endif %}
-{% elif rooms is mapping %}
-  {% set rooms = (rooms.rooms if rooms.rooms is defined else (rooms.result if rooms.result is defined else [])) %}
-{% elif rooms is not sequence %}
-  {% set rooms = [] %}
-{% endif %}
+{% set route_target = state_attr('sensor.shadow_active_target', 'route_trace').active_target if state_attr('sensor.shadow_active_target', 'route_trace') else '' %}
+{% set route_authority = state_attr('sensor.shadow_active_target', 'route_trace').authority_source if state_attr('sensor.shadow_active_target', 'route_trace') else '' %}
+{% set route_decision = state_attr('sensor.shadow_active_target', 'route_trace').decision if state_attr('sensor.shadow_active_target', 'route_trace') else '' %}
+{% set route_host = state_attr('sensor.shadow_active_target', 'route_trace').control_host if state_attr('sensor.shadow_active_target', 'route_trace') else '' %}
 
-{% set known = namespace(list=[]) %}
-{% for r in rooms %}
-  {% if r is not none and r.entity is defined and r.entity not in invalid and states[r.entity] is not none %}
-    {% set known.list = known.list + [r.entity] %}
-  {% endif %}
-{% endfor %}
-{% set known_targets = known.list | unique | list %}
+{% set prep_validation = state_attr('sensor.shadow_active_target', 'metadata_prep_validation') or {} %}
+{% set prep_values = prep_validation['values'] if prep_validation is mapping and 'values' in prep_validation else {} %}
+{% set prep_blockers = prep_validation['blocking_reasons'] if prep_validation is mapping and 'blocking_reasons' in prep_validation else [] %}
+{% set prep_ready = prep_validation['ready_for_metadata_handoff'] if prep_validation is mapping and 'ready_for_metadata_handoff' in prep_validation else false %}
 
-{% set players = state_attr('sensor.ma_players','result') or [] %}
-{% set discovered = namespace(list=[], rejected=[]) %}
-{% for p in players %}
-  {% set ent = (p.entity_id if p.entity_id is defined else '') %}
-  {% set ip = (state_attr(ent,'ip_address') if ent not in invalid else '') or (p.ip_address if p.ip_address is defined else '') %}
-  {% if ent not in invalid and (ent | regex_match('^media_player\.')) and states[ent] is not none and ip not in invalid %}
-    {% set discovered.list = discovered.list + [ent] %}
-  {% else %}
-    {% if ent not in invalid %}
-      {% set reason = 'missing_state' if states[ent] is none else ('missing_ip' if ip in invalid else 'filtered') %}
-      {% set discovered.rejected = discovered.rejected + [ent ~ ':' ~ reason] %}
-    {% endif %}
-  {% endif %}
-{% endfor %}
-{% set discovered_targets = discovered.list | unique | list %}
+{% set canonical_control_target = prep_values.canonical_control_target if prep_values is mapping and prep_values.canonical_control_target is defined else '' %}
+{% set canonical_meta_target = prep_values.canonical_meta_target if prep_values is mapping and prep_values.canonical_meta_target is defined else '' %}
+{% set canonical_now_playing = prep_values.canonical_now_playing_entity if prep_values is mapping and prep_values.canonical_now_playing_entity is defined else '' %}
+{% set canonical_alignment = prep_values.canonical_alignment_state if prep_values is mapping and prep_values.canonical_alignment_state is defined else '' %}
+{% set canonical_cause = prep_values.canonical_cause_hint if prep_values is mapping and prep_values.canonical_cause_hint is defined else '' %}
 
-{% set detected = states('sensor.ma_detected_receiver_entity') %}
-{% set detected_valid = detected not in invalid and (detected | regex_match('^media_player\.')) and states[detected] is not none %}
+{% set winner_entity = prep_values.component_now_playing_selection_winner_entity if prep_values is mapping and prep_values.component_now_playing_selection_winner_entity is defined else '' %}
+{% set winner_source = prep_values.component_now_playing_selection_winner_source if prep_values is mapping and prep_values.component_now_playing_selection_winner_source is defined else '' %}
+{% set winner_pool = prep_values.component_now_playing_selection_winner_pool if prep_values is mapping and prep_values.component_now_playing_selection_winner_pool is defined else '' %}
 
-{% set ma_players_count = states('sensor.ma_players') %}
-{% set players_ready = ma_players_count not in ['unknown','unavailable',''] and (ma_players_count | int(0)) > 0 %}
+{% set active_target_valid = component_active_target not in invalid and states[component_active_target] is not none %}
+{% set route_target_valid = route_target not in invalid and states[route_target] is not none %}
+{% set now_playing_entity_valid = component_now_playing_entity not in invalid and states[component_now_playing_entity] is not none %}
+{% set title_ready = component_now_playing_title not in invalid or component_now_playing_artist not in invalid %}
 
-{% set selectable = (known_targets + discovered_targets + ([detected] if detected_valid else [])) | unique | list %}
-
-{% set pick_state = (states(detected) | lower) if detected_valid else '' %}
-{% set pick_ready = detected_valid and detected in options and pick_state not in ['','unknown','unavailable'] %}
-
-{% set first_active = namespace(ent='') %}
-{% for o in options %}
-  {% if first_active.ent == '' and o is string and o.startswith('media_player.') and states[o] is not none %}
-    {% set st = states(o) | lower %}
-    {% if st in ['playing','paused'] %}
-      {% set first_active.ent = o %}
-    {% endif %}
-  {% endif %}
-{% endfor %}
+{% set control_aligned = active_target_valid and route_target_valid and component_active_target == route_target %}
+{% set canonical_control_aligned = canonical_control_target not in invalid and route_target == canonical_control_target %}
+{% set metadata_ready = prep_ready and (prep_blockers | count == 0) %}
 
 {% set score = 0 %}
-{% if players_ready %}{% set score = score + 1 %}{% endif %}
-{% if (known_targets | length) > 0 %}{% set score = score + 1 %}{% endif %}
-{% if (discovered_targets | length) > 0 %}{% set score = score + 1 %}{% endif %}
-{% if detected_valid %}{% set score = score + 1 %}{% endif %}
-{% if (options | length) > 1 %}{% set score = score + 1 %}{% endif %}
-{% if (selectable | length) > 0 %}{% set score = score + 1 %}{% endif %}
-{% if active_valid %}{% set score = score + 1 %}{% endif %}
+{% if active_target_valid %}{% set score = score + 1 %}{% endif %}
+{% if route_target_valid %}{% set score = score + 1 %}{% endif %}
+{% if control_aligned %}{% set score = score + 1 %}{% endif %}
+{% if canonical_control_aligned %}{% set score = score + 1 %}{% endif %}
+{% if now_playing_entity_valid %}{% set score = score + 1 %}{% endif %}
+{% if title_ready %}{% set score = score + 1 %}{% endif %}
+{% if metadata_ready %}{% set score = score + 1 %}{% endif %}
 
-{% set verdict = 'PASS' if score >= 6 else 'WARN' %}
+{% set verdict = 'PASS' if score >= 6 else ('WARN' if score >= 4 else 'FAIL') %}
 
-### MA Active-Target Selection Pipeline Diagnostic
+### Component Target/Meta Alignment Diagnostic (Modern Only)
 - Result: **{{ verdict }}**
 - Score: **{{ score }}/7**
 - Timestamp: **{{ now() }}**
 
-### Active target helper state
-- `input_select.ma_active_target`: **{{ active_target }}** (valid={{ active_valid }})
-- Options count: **{{ options | length }}**
-- Options: **{{ options }}**
+### Control Route Authority
+- `sensor.component_active_target`: **{{ component_active_target }}** (valid={{ active_target_valid }})
+- `route_trace.active_target`: **{{ route_target }}** (valid={{ route_target_valid }})
+- Route authority source: **{{ route_authority if route_authority not in invalid else 'missing' }}**
+- Route decision: **{{ route_decision if route_decision not in invalid else 'missing' }}**
+- Route host: **{{ route_host if route_host not in invalid else 'missing' }}**
+- Control aligned (component_active_target == route_trace.active_target): **{{ control_aligned }}**
 
-### Upstream option builders
-- `sensor.ma_players` count: **{{ ma_players_count }}** (ready={{ players_ready }})
-- Known targets from rooms map: **{{ known_targets if (known_targets | length) > 0 else [] }}**
-- Discovered targets from MA players (ip-qualified): **{{ discovered_targets if (discovered_targets | length) > 0 else [] }}**
-- Discovered rejects (first 12): **{{ (discovered.rejected[:12]) if (discovered.rejected | length) > 0 else [] }}**
-- Detected receiver entity: **{{ detected }}** (valid={{ detected_valid }})
-- Selectable candidates (union): **{{ selectable if (selectable | length) > 0 else [] }}**
+### Intent Surfaces
+- `sensor.control_board_room_area_id`: **{{ room_area_hint if room_area_hint not in invalid else 'missing' }}**
+- `sensor.control_board_target_entity_id`: **{{ control_board_target if control_board_target not in invalid else 'missing/none' }}**
 
-### Auto-select gate hints
-- Pick-ready (`detected receiver in options and state available`): **{{ pick_ready }}**
-- First active option (`playing/paused`): **{{ first_active.ent if first_active.ent != '' else 'none' }}**
+### Metadata / Winner Surfaces
+- `sensor.component_now_playing_entity`: **{{ component_now_playing_entity if component_now_playing_entity not in invalid else 'missing' }}**
+- `sensor.component_now_playing_title`: **{{ component_now_playing_title if component_now_playing_title not in invalid else 'missing' }}**
+- `sensor.component_now_playing_artist`: **{{ component_now_playing_artist if component_now_playing_artist not in invalid else 'missing' }}**
+- Selector winner entity/source/pool: **{{ winner_entity if winner_entity not in invalid else 'missing' }} / {{ winner_source if winner_source not in invalid else 'missing' }} / {{ winner_pool if winner_pool not in invalid else 'missing' }}**
+
+### Canonical Alignment (Shadow Packet)
+- canonical control target: **{{ canonical_control_target if canonical_control_target not in invalid else 'missing' }}**
+- canonical meta target: **{{ canonical_meta_target if canonical_meta_target not in invalid else 'missing' }}**
+- canonical now playing: **{{ canonical_now_playing if canonical_now_playing not in invalid else 'missing' }}**
+- alignment state: **{{ canonical_alignment if canonical_alignment not in invalid else 'missing' }}**
+- cause hint: **{{ canonical_cause if canonical_cause not in invalid else 'missing' }}**
+- metadata prep ready: **{{ metadata_ready }}**
+- metadata blockers: **{{ prep_blockers if (prep_blockers | count) > 0 else [] }}**
 
 ### Suggested next action
-{% if active_valid %}
-- Selection pipeline is healthy in this snapshot.
-{% elif (options | length) <= 1 and (selectable | length) == 0 %}
-- No selectable candidates reached the helper: check `sensor.spectra_ls_rooms_json`, `sensor.ma_players`, and detected receiver state.
-{% elif detected_valid and detected not in options %}
-- Detected receiver is valid but missing from helper options: rerun `script.ma_update_target_options` and inspect option update automation.
-{% elif first_active.ent != '' %}
-- Active candidate exists but helper still none: rerun `script.ma_auto_select` and verify override is off.
+{% if verdict == 'PASS' %}
+- Component control + metadata stack is healthy in this snapshot. If user-visible behavior disagrees, capture a second snapshot immediately after source switch and compare `route_trace.active_target`, `winner_entity`, and `canonical_cause_hint`.
+{% elif not active_target_valid or not route_target_valid %}
+- Route authority is unresolved; run `spectra_ls.dump_route_trace` and inspect `sensor.shadow_active_target` `route_trace` + `host_control_cutover_gate` surfaces.
+{% elif not control_aligned %}
+- Control route mismatch: run `spectra_ls.run_auto_select_scaffold` (`dry_run=false`, `force=true`) and re-check whether `component_active_target` converges to `route_trace.active_target`.
+{% elif not metadata_ready %}
+- Metadata prep is blocked: inspect `metadata_blockers` and `canonical_cause_hint` in `sensor.shadow_active_target` before changing selector policy.
 {% else %}
-- Review discovered rejects and room-map entities to identify missing-state or missing-ip qualifiers.
+- Mixed posture detected; capture immediate before/after snapshots around source switch to isolate transition gate and authority source drift.
 {% endif %}

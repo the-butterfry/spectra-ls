@@ -1,6 +1,6 @@
 # Description: Snapshot-fabric workflow for Spectra LS coordinator snapshot and write-controls packet assembly extracted from coordinator.
-# Version: 2026.08.25.1
-# Last updated: 2026-08-25
+# Version: 2026.11.14.1
+# Last updated: 2026-11-14
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -36,6 +36,25 @@ class SnapshotFabricWorkflow:
         if value.lower() in {"", "none", "unknown", "unavailable", "null"}:
             return ""
         return value
+
+    def _entity_matches_room_hint(self, target_id: str, room_hint: str) -> bool:
+        """Return true when target entity/friendly-name aligns with room-area intent hint."""
+        c = self._coordinator
+        target_norm = str(target_id or "").strip().lower()
+        room_norm = str(room_hint or "").strip().lower().replace("-", "_")
+        if not target_norm or not room_norm:
+            return False
+
+        state_obj = c.hass.states.get(target_norm)
+        friendly = (
+            str(state_obj.attributes.get("friendly_name", "") or "").strip().lower()
+            if state_obj is not None and isinstance(state_obj.attributes, dict)
+            else ""
+        )
+
+        normalized_friendly = friendly.replace("-", "_").replace(" ", "_")
+        normalized_target = target_norm.replace(".", "_")
+        return room_norm in normalized_target or room_norm in normalized_friendly
 
     def _build_metadata_provider_packet(self) -> dict[str, Any]:
         c = self._coordinator
@@ -90,6 +109,36 @@ class SnapshotFabricWorkflow:
         prior_target_state = c.hass.states.get("sensor.component_active_target")
         prior_target = str(prior_target_state.state if prior_target_state is not None else "").strip()
 
+        component_selection_state = (
+            dict(c._component_selection_state)
+            if isinstance(getattr(c, "_component_selection_state", {}), dict)
+            else {}
+        )
+        selection_active_target = str(component_selection_state.get("active_target", "") or "").strip()
+        control_board_target_state = c.hass.states.get("sensor.control_board_target_entity_id")
+        control_board_target = str(control_board_target_state.state if control_board_target_state is not None else "").strip()
+        room_area_state = c.hass.states.get("sensor.control_board_room_area_id")
+        room_area_hint = str(room_area_state.state if room_area_state is not None else "").strip()
+
+        def _eligible_target(target_id: str) -> tuple[bool, str]:
+            target = str(target_id or "").strip()
+            if not target:
+                return False, ""
+            entry = entries.get(target, {}) if isinstance(entries.get(target, {}), dict) else {}
+            host = str(entry.get("host", "") or "").strip()
+            control_path = str(entry.get("control_path", "") or "").strip().lower()
+            control_capable = bool(entry.get("control_capable", False))
+            eligible = bool(control_capable and host and control_path == "linkplay_tcp")
+            return eligible, control_path if eligible else ""
+
+        selection_eligible, selection_path = _eligible_target(selection_active_target)
+        if selection_eligible:
+            return selection_active_target, selection_path, "component_selection_active_target"
+
+        control_board_eligible, control_board_path = _eligible_target(control_board_target)
+        if control_board_eligible:
+            return control_board_target, control_board_path, "component_control_board_target_entity"
+
         def _availability_points(raw_quality: Any) -> int:
             quality = str(raw_quality or "").strip().lower()
             if quality == "fresh":
@@ -130,9 +179,10 @@ class SnapshotFabricWorkflow:
 
             feature_profile = entry.get("feature_profile", {}) if isinstance(entry.get("feature_profile", {}), dict) else {}
             availability_points = _availability_points(feature_profile.get("availability_quality", ""))
-            sticky_points = 200 if prior_target and target_id == prior_target else 0
+            room_hint_points = 320 if self._entity_matches_room_hint(target_id, room_area_hint) else 0
+            sticky_points = 120 if prior_target and target_id == prior_target else 0
 
-            ranked.append((state_points + availability_points + sticky_points, target_id, control_path))
+            ranked.append((state_points + availability_points + room_hint_points + sticky_points, target_id, control_path))
 
         if not ranked:
             return "", "", "component_no_control_capable_candidate"
@@ -141,6 +191,8 @@ class SnapshotFabricWorkflow:
         selected_target = ranked[0][1]
         selected_path = ranked[0][2]
 
+        if room_area_hint and self._entity_matches_room_hint(selected_target, room_area_hint):
+            return selected_target, selected_path, "component_room_hint_ranked_candidate"
         if prior_target and selected_target == prior_target:
             return selected_target, selected_path, "component_sticky_ranked_candidate"
         return selected_target, selected_path, "component_ranked_candidate"

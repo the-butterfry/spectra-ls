@@ -1,6 +1,6 @@
 # Description: Scaffold-fabric workflow for Spectra LS scaffold/inventory/backend assembly extracted from meta-fabric.
-# Version: 2026.08.25.1
-# Last updated: 2026-08-25
+# Version: 2026.11.14.1
+# Last updated: 2026-11-14
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -110,9 +110,17 @@ class ScaffoldFabricWorkflow:
         ).strip()
         detected_candidate = detected_candidate if c._is_resolved_state(detected_candidate) else ""
 
+        override_store = getattr(c, "_component_metadata_override_state", {})
+        override_active = bool(override_store.get("active", False)) if isinstance(override_store, dict) else False
+        override_entity = str(override_store.get("entity", "") or "").strip()
+        override_entity = override_entity if c._is_resolved_state(override_entity) else ""
+
         selected_meta_entity = ""
         metadata_selection_reason = "no_candidate"
-        if c._is_resolved_state(best_candidate):
+        if override_active and override_entity:
+            selected_meta_entity = override_entity
+            metadata_selection_reason = "component_override_entity"
+        elif c._is_resolved_state(best_candidate):
             selected_meta_entity = best_candidate
             metadata_selection_reason = "meta_resolver_best_entity"
         elif detected_candidate:
@@ -122,11 +130,6 @@ class ScaffoldFabricWorkflow:
         if not selected_meta_entity and selected_target:
             selected_meta_entity = selected_target
             metadata_selection_reason = "selected_target_fallback"
-
-        override_store = getattr(c, "_component_metadata_override_state", {})
-        override_active = bool(override_store.get("active", False)) if isinstance(override_store, dict) else False
-        override_entity = str(override_store.get("entity", "") or "").strip()
-        override_entity = override_entity if c._is_resolved_state(override_entity) else ""
 
         return {
             "target_options_plan": target_options_plan,

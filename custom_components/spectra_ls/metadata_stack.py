@@ -1,6 +1,6 @@
 # Description: Extracted metadata stack workflows for Spectra LS (metadata prep/bridge/cutover validation and metadata trial services).
-# Version: 2026.08.26.18
-# Last updated: 2026-08-26
+# Version: 2026.11.14.1
+# Last updated: 2026-11-14
 # PARITY DIRECTIVE (until full cutover): behavior/contract edits here require same-slice two-track parity review
 # and version-metadata review in runtime (`packages/` + `esphome/`) and component (`custom_components/spectra_ls/`) tracks.
 
@@ -1646,6 +1646,11 @@ class MetadataStackWorkflow:
 		resolver_selected_meta_entity = str(
 			resolver_plan.get("selected_meta_entity", "") or ""
 		).strip()
+		override_state = self._component_override_state()
+		override_active = bool(override_state.get("active", False))
+		override_entity = str(override_state.get("entity", "") or "").strip()
+		if override_active and c._is_resolved_state(override_entity):
+			resolver_selected_meta_entity = override_entity
 		resolver_best_candidate = str(resolver_plan.get("best_candidate", "") or "").strip()
 		resolver_detected_candidate = str(resolver_plan.get("detected_candidate", "") or "").strip()
 
@@ -2369,15 +2374,24 @@ class MetadataStackWorkflow:
 			isinstance(now_playing_preview_age_s, float)
 			and now_playing_preview_age_s <= passthrough_source_only_state_age_max_effective_s
 		)
+		passthrough_source_only_signal_age_fresh = (
+			isinstance(passthrough_signal_age_effective_s, float)
+			and passthrough_signal_age_effective_s <= passthrough_source_only_max_age_s
+		)
 		passthrough_source_only_keepalive_ready = (
 			passthrough_context_detected
 			and c._is_resolved_state(passthrough_contract_source)
 			and isinstance(passthrough_signal_age_effective_s, float)
 			and passthrough_signal_age_effective_s <= passthrough_source_only_max_age_s
-			and passthrough_source_only_state_age_fresh
+			and passthrough_source_only_active_state
+			and (
+				passthrough_source_only_state_age_fresh
+				or passthrough_source_only_signal_age_fresh
+			)
 			and (
 				passthrough_source_only_duration_known
 				or passthrough_source_only_position_change_recent
+				or passthrough_source_only_signal_age_fresh
 			)
 			and not now_playing_track_metadata_ready
 		)
@@ -2764,6 +2778,7 @@ class MetadataStackWorkflow:
 				"passthrough_source_only_duration_known": passthrough_source_only_duration_known,
 				"passthrough_source_only_position_change_recent": passthrough_source_only_position_change_recent,
 				"passthrough_source_only_state_age_fresh": passthrough_source_only_state_age_fresh,
+				"passthrough_source_only_signal_age_fresh": passthrough_source_only_signal_age_fresh,
 				"passthrough_source_only_state_age_max_s": passthrough_source_only_state_age_max_s,
 				"passthrough_source_only_state_age_max_effective_s": passthrough_source_only_state_age_max_effective_s,
 				"passthrough_source_only_fail_closed": passthrough_source_only_fail_closed,
@@ -2925,6 +2940,7 @@ class MetadataStackWorkflow:
 				"passthrough_source_only_duration_known": passthrough_source_only_duration_known,
 				"passthrough_source_only_position_change_recent": passthrough_source_only_position_change_recent,
 				"passthrough_source_only_state_age_fresh": passthrough_source_only_state_age_fresh,
+				"passthrough_source_only_signal_age_fresh": passthrough_source_only_signal_age_fresh,
 				"passthrough_source_only_state_age_max_s": passthrough_source_only_state_age_max_s,
 				"passthrough_source_only_state_age_max_effective_s": passthrough_source_only_state_age_max_effective_s,
 				"passthrough_source_only_fail_closed": passthrough_source_only_fail_closed,

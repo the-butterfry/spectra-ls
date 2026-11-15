@@ -1,5 +1,5 @@
 # Description: Spectra LS OLED-only peripherals package (no LED rings) for Control Board v2.
-# Version: 2026.11.15.5
+# Version: 2026.11.15.7
 # Last updated: 2026-11-15
 # Update version/date whenever you change this file.
 esphome:
@@ -567,13 +567,15 @@ interval:
             paused_recent_passthrough_keepalive ||
             (id(ha_audio1_last_playing_ms) > 0 &&
              (now - id(ha_audio1_last_playing_ms)) < ((uint32_t) ${meta_pause_timeout_ms}));
+          const bool component_blank_contract_keepalive =
+            id(ha_audio_oled_blank_contract).has_state() && id(ha_audio_oled_blank_contract).state;
 
           if (title.empty() && id(ha_audio_title).has_state()) {
             std::string authoritative_title = id(ha_audio_title).state.c_str();
             if (!authoritative_title.empty() &&
                 ha_display_allowed &&
+                !component_blank_contract_keepalive &&
                 !class_blocks_display &&
-                live_playback_evidence &&
                 !is_source_like_text(authoritative_title) &&
                 !is_generic_source_placeholder(authoritative_title)) {
               title = authoritative_title;
@@ -638,8 +640,6 @@ interval:
             ((id(ha_audio1_last_playing_ms) > 0 &&
               (now - id(ha_audio1_last_playing_ms)) > ((uint32_t) ${meta_pause_timeout_ms})) ||
              passthrough_idle_stale_cutoff);
-          const bool component_blank_contract_keepalive =
-            id(ha_audio_oled_blank_contract).has_state() && id(ha_audio_oled_blank_contract).state;
           if (!source_label.empty()) source_label = normalize_source_label(source_label);
           if (source_label.empty() && passthrough_latch_active) {
             source_label = passthrough_latch_label;
@@ -693,8 +693,10 @@ interval:
             id(passthrough_source_latch_until_ms) = 0;
           }
 
+          bool passthrough_title_fallback_active = false;
           if (title.empty() && passthrough_source_keepalive) {
             title = source_label;
+            passthrough_title_fallback_active = !source_label.empty();
           }
 
           if (!display_hold && !passthrough_source_policy_keepalive) {
@@ -702,7 +704,6 @@ interval:
             src_display.clear();
           }
 
-          bool passthrough_title_fallback_active = false;
           if (playing_no_meta) {
             const float freshness_guard_s = ((float) meta_stale_ms / 1000.0f) + 2.0f;
             const bool freshness_gate_ok =

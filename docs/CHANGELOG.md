@@ -1,9 +1,11 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.11.15.6 -->
+<!-- Version: 2026.11.15.7 -->
 <!-- Last updated: 2026-11-15 -->
 # Changelog
 
 ## 2026-11-15
+
+- Runtime/HA guarded AppleTV metadata-stall recovery intervention (`packages/spectra_ls_hw_status.yaml`, `docs/CHANGELOG.md`): add a strictly profile-matched safety recovery path for the observed stall signature only (component reports active Optical In playback with display allowed, title empty, and ESP OLED remains `audio|blank` continuously), then perform at most one AppleTV config-entry reload per cooldown window. Anti-loop controls include persistence gating (`for` window), exact signature checks at action-time, and a hard cooldown using automation `last_triggered` age to prevent reload loops. Runtime track disposition: implemented (HA automation guardrail intervention). Component track disposition: compatibility-shimmed (no `custom_components/spectra_ls` code mutation; component contracts remain source authority). Version-parity review: runtime `updated`; component `not-applicable`. P1/P2/P3 impact: no source-of-truth ownership reassignment; bounded recovery automation only. README/wiki parity: no material operator workflow change.
 
 - Runtime/OLED passthrough source-fallback preservation fix (`esphome/spectra_ls_system/spectra-ls-peripherals.yaml`, `esphome/spectra_ls_system.yaml`, `docs/CHANGELOG.md`): fix active passthrough playback remaining blank when title payload is empty (for example Optical In sessions) due to a later source-like text scrub clearing a source fallback title that compute had just assigned. Source fallback titles set by passthrough keepalive are now explicitly preserved as intentional fallback labels, while stale/no-freshness source-only windows remain fail-closed to prevent idle sticky regressions. Runtime track disposition: implemented (runtime fallback/scrubber ordering correction). Component track disposition: compatibility-shimmed (no `custom_components/spectra_ls` code mutation in this slice; component contracts remain input authority). Version-parity review: runtime `updated`; component `not-applicable`. P1/P2/P3 impact: no source-of-truth ownership reassignment; runtime render fallback correctness only. README/wiki parity: no material operator workflow change.
 

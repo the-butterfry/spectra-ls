@@ -1,6 +1,6 @@
 # Description: Spectra LS hardware play-state polling via UART-over-TCP.
-# Version: 2026.08.02.1
-# Last updated: 2026-08-02
+# Version: 2026.11.15.1
+# Last updated: 2026-11-15
 # Update version/date whenever you change this file.
 
 command_line:
@@ -71,3 +71,91 @@ automation:
               - service: homeassistant.update_entity
                 data:
                   entity_id: sensor.spectra_ls_hw_status
+
+  - id: spectra_ls_recover_now_playing_after_appletv_bounce
+    alias: "Spectra LS: Recover now-playing after AppleTV bounce"
+    mode: restart
+    max_exceeded: silent
+    trigger:
+      - platform: state
+        entity_id: media_player.the_oracle_2
+        from: "unavailable"
+        to: "playing"
+      - platform: state
+        entity_id: media_player.the_oracle_2
+        from: "unknown"
+        to: "playing"
+      - platform: state
+        entity_id: media_player.the_oracle_2
+        from: "unavailable"
+        to: "paused"
+      - platform: state
+        entity_id: media_player.the_oracle_2
+        from: "unknown"
+        to: "paused"
+    action:
+      - service: spectra_ls.run_metadata_resolver_scaffold
+        data:
+          dry_run: false
+          force: true
+          correlation_id: "appletv_recovery"
+      - delay:
+          seconds: 1
+      - service: homeassistant.update_entity
+        data:
+          entity_id: sensor.spectra_ls_hw_status
+
+  - id: spectra_ls_recover_appletv_metadata_stall_profile
+    alias: "Spectra LS: Recover AppleTV metadata stall (guarded profile)"
+    mode: single
+    max_exceeded: silent
+    trigger:
+      - platform: state
+        entity_id: sensor.spectra_ls_system_esp_oled_status
+        to: "audio|blank"
+        for:
+          seconds: 90
+    condition:
+      - condition: template
+        value_template: >-
+          {% set lp = this.attributes.last_triggered %}
+          {{ lp is none or (as_timestamp(now()) - as_timestamp(lp)) > 1800 }}
+      - condition: template
+        value_template: >-
+          {{ states('sensor.component_now_playing_entity') == 'media_player.the_oracle_2' }}
+      - condition: template
+        value_template: >-
+          {{ states('sensor.component_now_playing_state') | lower == 'playing' }}
+      - condition: template
+        value_template: >-
+          {{ 'optical in' in (states('sensor.component_now_playing_source') | lower) }}
+      - condition: template
+        value_template: >-
+          {{ (states('sensor.component_now_playing_title') | trim) == '' }}
+      - condition: state
+        entity_id: binary_sensor.component_now_playing_display_allowed
+        state: "on"
+      - condition: state
+        entity_id: binary_sensor.component_now_playing_oled_blank
+        state: "off"
+      - condition: template
+        value_template: >-
+          {% set captured = state_attr('binary_sensor.component_now_playing_oled_blank','captured_at') %}
+          {% set age = (as_timestamp(now()) - as_timestamp(captured)) if captured else 999999 %}
+          {{ age <= 120 }}
+    action:
+      - service: homeassistant.reload_config_entry
+        target:
+          entity_id: media_player.the_oracle_2
+      - delay:
+          seconds: 2
+      - service: spectra_ls.run_metadata_resolver_scaffold
+        data:
+          dry_run: false
+          force: true
+          correlation_id: "appletv_stall_profile_recovery"
+      - delay:
+          seconds: 1
+      - service: homeassistant.update_entity
+        data:
+          entity_id: sensor.spectra_ls_hw_status

@@ -1,9 +1,11 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.11.15.3 -->
+<!-- Version: 2026.11.15.4 -->
 <!-- Last updated: 2026-11-15 -->
 # Changelog
 
 ## 2026-11-15
+
+- Runtime/OLED stale progress-cache suppression hardening (`esphome/spectra_ls_system/spectra-ls-peripherals.yaml`, `esphome/spectra_ls_system.yaml`, `docs/CHANGELOG.md`): fix persistent idle source rendering when legacy/stale position values (`ha_audio_pos_last_value`, Arylic position/duration cache) could keep passthrough logic from entering no-payload idle mode. No-progress decisions now require recent progress evidence windows (HA position timestamp and Arylic metadata freshness), so old cached progress values cannot indefinitely preserve `Optical In` keepalive while nothing is actively playing. Runtime track disposition: implemented (runtime no-payload/idle classification hardening). Component track disposition: compatibility-shimmed (no `custom_components/spectra_ls` behavior mutation in this slice; component contracts continue as inputs). Version-parity review: runtime `updated`; component `not-applicable`. P1/P2/P3 impact: no source-of-truth ownership reassignment; stale-cache suppression correctness hardening only. README/wiki parity: no material operator workflow change.
 
 - Runtime/OLED stale `playing` passthrough suppression hardening (`esphome/spectra_ls_system/spectra-ls-peripherals.yaml`, `esphome/spectra_ls_system.yaml`, `docs/CHANGELOG.md`): fix remaining idle `Optical In` stickiness when upstream state could remain `playing` without fresh playback evidence. Compute and render lanes now treat HA `playing` as effective only when paired with recent metadata/position activity, preventing source-only passthrough continuity from being sustained by stale state alone. Runtime track disposition: implemented (runtime playback-evidence gate hardening). Component track disposition: compatibility-shimmed (no `custom_components/spectra_ls` behavior mutation in this slice; component contracts continue as inputs). Version-parity review: runtime `updated`; component `not-applicable`. P1/P2/P3 impact: no source-of-truth ownership reassignment; stale-state suppression correctness hardening only. README/wiki parity: no material operator workflow change.
 

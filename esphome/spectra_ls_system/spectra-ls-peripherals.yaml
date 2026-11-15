@@ -1,5 +1,5 @@
 # Description: Spectra LS OLED-only peripherals package (no LED rings) for Control Board v2.
-# Version: 2026.11.15.4
+# Version: 2026.11.15.5
 # Last updated: 2026-11-15
 # Update version/date whenever you change this file.
 esphome:
@@ -600,10 +600,20 @@ interval:
           if (passthrough_idle_cutoff_ms < 300000U) passthrough_idle_cutoff_ms = 300000U;
           const uint32_t source_popup_grace_ms = ((uint32_t) ${source_popup_ms}) + 2000U;
           if (passthrough_idle_cutoff_ms < source_popup_grace_ms) passthrough_idle_cutoff_ms = source_popup_grace_ms;
+          const bool ha_pos_payload_recent =
+            id(ha_audio_pos_last_ms) > 0 &&
+            (now - id(ha_audio_pos_last_ms)) < meta_stale_ms;
+          const bool ha_pos_payload_present =
+            ha_pos_payload_recent && id(ha_audio_pos_last_value) > 0.05f;
+          const bool arylic_pos_payload_recent =
+            id(arylic_last_meta_ms) > 0 &&
+            (now - id(arylic_last_meta_ms)) < meta_stale_ms;
+          const bool arylic_pos_payload_present =
+            arylic_pos_payload_recent &&
+            (id(arylic_meta_position_state) > 0 || id(arylic_meta_duration_state) > 0);
           const bool no_progress_payload =
-            id(ha_audio_pos_last_value) <= 0.05f &&
-            id(arylic_meta_position_state) <= 0 &&
-            id(arylic_meta_duration_state) <= 0;
+            !ha_pos_payload_present &&
+            !arylic_pos_payload_present;
           const bool passthrough_source_only_no_payload =
             passthrough_context &&
             !has_text_meta &&
@@ -1164,10 +1174,20 @@ script:
             state_is_paused(id(ha_audio_state).state.c_str()) &&
             ha_playback_activity_recent_screen &&
             ha_playing_recent;
+          const bool ha_pos_payload_recent_screen =
+            id(ha_audio_pos_last_ms) > 0 &&
+            (now - id(ha_audio_pos_last_ms)) < meta_stale_ms;
+          const bool ha_pos_payload_present_screen =
+            ha_pos_payload_recent_screen && id(ha_audio_pos_last_value) > 0.05f;
+          const bool arylic_pos_payload_recent_screen =
+            id(arylic_last_meta_ms) > 0 &&
+            (now - id(arylic_last_meta_ms)) < meta_stale_ms;
+          const bool arylic_pos_payload_present_screen =
+            arylic_pos_payload_recent_screen &&
+            (id(arylic_meta_position_state) > 0 || id(arylic_meta_duration_state) > 0);
           const bool no_progress_payload_screen =
-            id(ha_audio_pos_last_value) <= 0.05f &&
-            id(arylic_meta_position_state) <= 0 &&
-            id(arylic_meta_duration_state) <= 0;
+            !ha_pos_payload_present_screen &&
+            !arylic_pos_payload_present_screen;
           const bool passthrough_no_payload_idle_screen =
             passthrough_context &&
             !has_cached_meta &&
@@ -2030,10 +2050,20 @@ display:
           id(ha_audio_display_allowed).state &&
           ha_recent_activity &&
           ha_playing_recent;
+        const bool ha_pos_payload_recent_render =
+          id(ha_audio_pos_last_ms) > 0 &&
+          (now - id(ha_audio_pos_last_ms)) < meta_stale_ms;
+        const bool ha_pos_payload_present_render =
+          ha_pos_payload_recent_render && id(ha_audio_pos_last_value) > 0.05f;
+        const bool arylic_pos_payload_recent_render =
+          id(arylic_last_meta_ms) > 0 &&
+          (now - id(arylic_last_meta_ms)) < meta_stale_ms;
+        const bool arylic_pos_payload_present_render =
+          arylic_pos_payload_recent_render &&
+          (id(arylic_meta_position_state) > 0 || id(arylic_meta_duration_state) > 0);
         const bool no_progress_payload_render =
-          id(ha_audio_pos_last_value) <= 0.05f &&
-          id(arylic_meta_position_state) <= 0 &&
-          id(arylic_meta_duration_state) <= 0;
+          !ha_pos_payload_present_render &&
+          !arylic_pos_payload_present_render;
         const bool passthrough_source_only_no_payload_render =
           passthrough_context &&
           !has_text_payload &&

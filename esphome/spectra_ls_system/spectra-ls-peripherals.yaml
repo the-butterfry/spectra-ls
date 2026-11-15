@@ -1,5 +1,5 @@
 # Description: Spectra LS OLED-only peripherals package (no LED rings) for Control Board v2.
-# Version: 2026.11.15.1
+# Version: 2026.11.15.2
 # Last updated: 2026-11-15
 # Update version/date whenever you change this file.
 esphome:
@@ -2178,11 +2178,15 @@ display:
         log_loop_section("now_playing", section_start_ms);
       };
 
+      const bool passthrough_force_render_window =
+        audio_wake_active || (id(source_popup_until_ms) > now);
+
       const bool force_now_playing_passthrough_render =
         (display_state_value == STATE_BLANK) &&
         id(np_oled_line_ready) &&
         id(ha_audio_display_allowed).has_state() &&
         id(ha_audio_display_allowed).state &&
+        passthrough_force_render_window &&
         (is_passthrough_source_render(id(np_raw_source_label)) ||
          is_passthrough_source_render(id(np_raw_src_display)) ||
          (id(ha_audio_source).has_state() && is_passthrough_source_render(id(ha_audio_source).state.c_str())) ||

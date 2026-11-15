@@ -1,5 +1,5 @@
 # Description: Spectra LS OLED-only peripherals package (no LED rings) for Control Board v2.
-# Version: 2026.11.15.2
+# Version: 2026.11.15.3
 # Last updated: 2026-11-15
 # Update version/date whenever you change this file.
 esphome:
@@ -633,7 +633,7 @@ interval:
           if (source_label.empty() && passthrough_latch_active) {
             source_label = passthrough_latch_label;
           }
-          if (passthrough_context && !source_label.empty() && ha_display_allowed && !component_blank_contract_keepalive) {
+          if (passthrough_context && !source_label.empty() && ha_display_allowed && !component_blank_contract_keepalive && !(passthrough_context && !has_text_meta && !source_hint_window_active && no_progress_payload)) {
             id(passthrough_source_latch_label) = source_label;
             id(passthrough_source_latch_until_ms) = now + passthrough_latch_extend_ms;
             passthrough_latch_active = true;
@@ -677,6 +677,10 @@ interval:
             !component_blank_contract_keepalive &&
             !passthrough_no_payload_idle &&
             passthrough_recent_activity_for_display;
+
+          if (passthrough_no_payload_idle && !source_hint_window_active) {
+            id(passthrough_source_latch_until_ms) = 0;
+          }
 
           if (title.empty() && passthrough_source_keepalive) {
             title = source_label;
@@ -1205,7 +1209,7 @@ script:
             (passthrough_no_track_evidence || passthrough_silent_window_no_play_evidence || stale_passthrough_false_playing_screen || passthrough_idle_stale_cutoff_screen) &&
             !wake_overlay_recent_input &&
             !paused_passthrough_keepalive_screen &&
-            !passthrough_latch_active_screen;
+            !passthrough_latch_continuity_screen;
           const bool component_blank_blocks_now_playing =
             component_blank_contract && !passthrough_latch_continuity_screen;
           const bool now_playing_active =
@@ -2088,7 +2092,7 @@ display:
           return;
         }
 
-        if (((!has_text_payload && !live_transport_playing) || passthrough_no_text_silent_no_play || stale_passthrough_false_playing_render || passthrough_idle_stale_cutoff_render || passthrough_source_only_no_payload_render) && !allow_wake_overlay && !canonical_line_ready && !passthrough_latch_active_render) {
+        if (((!has_text_payload && !live_transport_playing) || passthrough_no_text_silent_no_play || stale_passthrough_false_playing_render || passthrough_idle_stale_cutoff_render || passthrough_source_only_no_payload_render) && !allow_wake_overlay && !canonical_line_ready && !passthrough_latch_continuity_render) {
           title_scroll_offset = 0;
           title_scroll_last_ms = now;
           album_scroll_offset = 0;

@@ -1,10 +1,12 @@
 <!-- Description: Repository changelog for Home Assistant + ESPHome work. -->
-<!-- Version: 2026.11.15.2 -->
+<!-- Version: 2026.11.15.3 -->
 <!-- Last updated: 2026-11-15 -->
 
 # Changelog
 
 ## 2026-11-15
+
+- Runtime/OLED sticky passthrough latch self-refresh fix (`esphome/spectra_ls_system/spectra-ls-peripherals.yaml`, `esphome/spectra_ls_system.yaml`, `docs/CHANGELOG.md`): fix persistent source label carryover by stopping no-payload passthrough windows from continually re-arming the passthrough latch and by requiring live latch continuity (not mere latch existence) before bypassing suppression/blanking. This closes the stale-latch loophole where source-only idle posture could survive restart and continue rendering despite blank-state intent. Runtime track disposition: implemented (runtime latch/suppression consistency hardening). Component track disposition: compatibility-shimmed (no `custom_components/spectra_ls` behavior mutation in this slice; component contracts remain input authority). Version-parity review: runtime `updated`; component `not-applicable`. P1/P2/P3 impact: no source-of-truth ownership reassignment; stale-latch suppression correctness hardening only. README/wiki parity: no material operator workflow change.
 
 - Runtime/OLED sticky passthrough render root-cause fix (`esphome/spectra_ls_system/spectra-ls-peripherals.yaml`, `esphome/spectra_ls_system.yaml`, `docs/CHANGELOG.md`): fix persistent source-text rendering (for example `Optical In`) after idle/blank classification by tightening the render-layer passthrough override. The fallback path that could force now-playing rendering while `display_state=blank` is now limited to explicit short-lived operator interaction windows (wake/popup), preventing stale source-only text from bypassing the state machine during idle. Runtime track disposition: implemented (runtime render-state consistency hardening). Component track disposition: compatibility-shimmed (no `custom_components/spectra_ls` behavior mutation in this slice; component contracts continue to drive eligibility inputs). Version-parity review: runtime `updated`; component `not-applicable`. P1/P2/P3 impact: no source-of-truth ownership reassignment; render-layer override correctness hardening only. README/wiki parity: no material operator workflow change.
 

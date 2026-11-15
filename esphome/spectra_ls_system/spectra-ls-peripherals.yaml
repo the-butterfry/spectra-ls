@@ -1,6 +1,6 @@
 # Description: Spectra LS OLED-only peripherals package (no LED rings) for Control Board v2.
-# Version: 2026.09.06.1
-# Last updated: 2026-09-06
+# Version: 2026.11.15.1
+# Last updated: 2026-11-15
 # Update version/date whenever you change this file.
 esphome:
   name: ${device_name}
@@ -646,21 +646,28 @@ interval:
           if (!src_display.empty()) src_display = normalize_source_label(src_display);
 
           const float passthrough_keepalive_freshness_s = ((float) meta_stale_ms / 1000.0f) + 2.0f;
+          const bool passthrough_no_payload_idle =
+            passthrough_context &&
+            !has_text_meta &&
+            !source_hint_window_active &&
+            no_progress_payload;
+
           const bool passthrough_source_keepalive =
             passthrough_context &&
             !source_label.empty() &&
             id(ha_audio_display_allowed).has_state() &&
             id(ha_audio_display_allowed).state &&
             !component_blank_contract_keepalive &&
+            !passthrough_no_payload_idle &&
             ((now_playing_freshness_age_s >= 0.0f &&
-              now_playing_freshness_age_s <= passthrough_keepalive_freshness_s) ||
-             passthrough_latch_active);
+              now_playing_freshness_age_s <= passthrough_keepalive_freshness_s));
           const bool passthrough_source_continuity =
             passthrough_context &&
             !source_label.empty() &&
             id(ha_audio_display_allowed).has_state() &&
             id(ha_audio_display_allowed).state &&
             !component_blank_contract_keepalive &&
+            !passthrough_no_payload_idle &&
             passthrough_recent_activity_for_display;
           const bool passthrough_source_policy_keepalive =
             passthrough_context &&
@@ -668,6 +675,7 @@ interval:
             id(ha_audio_display_allowed).has_state() &&
             id(ha_audio_display_allowed).state &&
             !component_blank_contract_keepalive &&
+            !passthrough_no_payload_idle &&
             passthrough_recent_activity_for_display;
 
           if (title.empty() && passthrough_source_keepalive) {
@@ -1136,7 +1144,8 @@ script:
           const bool passthrough_latch_continuity_screen =
             passthrough_context &&
             passthrough_latch_active_screen &&
-            ha_display_allowed_screen;
+            ha_display_allowed_screen &&
+            (transport_playing_flags || pos_advancing_recent || ha_state_playing_effective_screen);
           const bool passthrough_no_track_evidence =
             passthrough_context && !has_cached_meta && !transport_playing_flags && !pos_advancing_recent;
           const bool source_hint_window_active = id(source_popup_until_ms) > now;
@@ -1150,16 +1159,22 @@ script:
             state_is_paused(id(ha_audio_state).state.c_str()) &&
             ha_playback_activity_recent_screen &&
             ha_playing_recent;
-          const bool passthrough_source_keepalive_screen =
-            passthrough_context &&
-            !has_cached_meta &&
-            ha_display_allowed_screen &&
-            (meta_recent_screen || passthrough_latch_active_screen) &&
-            !component_blank_contract;
           const bool no_progress_payload_screen =
             id(ha_audio_pos_last_value) <= 0.05f &&
             id(arylic_meta_position_state) <= 0 &&
             id(arylic_meta_duration_state) <= 0;
+          const bool passthrough_no_payload_idle_screen =
+            passthrough_context &&
+            !has_cached_meta &&
+            !source_hint_window_active &&
+            no_progress_payload_screen;
+          const bool passthrough_source_keepalive_screen =
+            passthrough_context &&
+            !has_cached_meta &&
+            ha_display_allowed_screen &&
+            !passthrough_no_payload_idle_screen &&
+            (meta_recent_screen || passthrough_latch_active_screen) &&
+            !component_blank_contract;
           uint32_t passthrough_idle_cutoff_ms_screen = ((uint32_t) ${meta_pause_timeout_ms}) * 5U;
           if (passthrough_idle_cutoff_ms_screen < 300000U) passthrough_idle_cutoff_ms_screen = 300000U;
           const uint32_t source_popup_grace_ms_screen = ((uint32_t) ${source_popup_ms}) + 2000U;
@@ -1579,7 +1594,8 @@ display:
       std::string passthrough_latch_label_render = id(passthrough_source_latch_label);
       const bool passthrough_latch_continuity_render =
         id(passthrough_source_latch_until_ms) > now &&
-        !passthrough_latch_label_render.empty();
+        !passthrough_latch_label_render.empty() &&
+        transport_live_render;
 
       const bool fail_closed_idle_blank_render =
         component_blank_contract_render &&

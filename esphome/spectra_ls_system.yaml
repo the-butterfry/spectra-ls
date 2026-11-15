@@ -1,6 +1,6 @@
 # Description: Main ESPHome config for Spectra LS System main ESPHome config (ESP32-S3 + RP2040 UART + Arylic TCP).
-# Version: 2026.09.06.1
-# Last updated: 2026-09-06
+# Version: 2026.11.15.2
+# Last updated: 2026-11-15
 # Update version/date whenever you change this file.
 #
 # Setup checklist:
@@ -34,19 +34,18 @@ packages:
 esphome:
   name: ${device_name}
   friendly_name: ${friendly_name}
-  platformio_options:
-    build_flags:
-      - -DSLS_ARYLIC_TCP_TIMEOUT_MS=${arylic_tcp_timeout_ms}
-      - -DSLS_ARYLIC_TCP_MIN_INTERVAL_MS=${arylic_tcp_min_interval_ms}
-      - -DSLS_ARYLIC_TCP_DUP_SUPPRESS_MS=${arylic_tcp_dup_suppress_ms}
-      - -DSLS_ARYLIC_TCP_BACKOFF_MS=${arylic_tcp_backoff_ms}
-      - -DSLS_ARYLIC_TCP_BURST_GUARD_ENABLED=${arylic_tcp_burst_guard_enabled}
-      - -DSLS_ARYLIC_TCP_BURST_WINDOW_MS=${arylic_tcp_burst_window_ms}
-      - -DSLS_ARYLIC_TCP_BURST_MAX_SENDS=${arylic_tcp_burst_max_sends}
-      - -DSLS_ARYLIC_TCP_QUEUE_LEN=${arylic_tcp_queue_len}
-      - -DSLS_ARYLIC_TCP_WORKER_STACK=${arylic_tcp_worker_stack}
-      - -DSLS_ARYLIC_TCP_WORKER_PRIO=${arylic_tcp_worker_prio}
-      - -DSLS_ARYLIC_TCP_LOG_INTERVAL_MS=${arylic_tcp_log_interval_ms}
+  build_flags:
+    - -DSLS_ARYLIC_TCP_TIMEOUT_MS=${arylic_tcp_timeout_ms}
+    - -DSLS_ARYLIC_TCP_MIN_INTERVAL_MS=${arylic_tcp_min_interval_ms}
+    - -DSLS_ARYLIC_TCP_DUP_SUPPRESS_MS=${arylic_tcp_dup_suppress_ms}
+    - -DSLS_ARYLIC_TCP_BACKOFF_MS=${arylic_tcp_backoff_ms}
+    - -DSLS_ARYLIC_TCP_BURST_GUARD_ENABLED=${arylic_tcp_burst_guard_enabled}
+    - -DSLS_ARYLIC_TCP_BURST_WINDOW_MS=${arylic_tcp_burst_window_ms}
+    - -DSLS_ARYLIC_TCP_BURST_MAX_SENDS=${arylic_tcp_burst_max_sends}
+    - -DSLS_ARYLIC_TCP_QUEUE_LEN=${arylic_tcp_queue_len}
+    - -DSLS_ARYLIC_TCP_WORKER_STACK=${arylic_tcp_worker_stack}
+    - -DSLS_ARYLIC_TCP_WORKER_PRIO=${arylic_tcp_worker_prio}
+    - -DSLS_ARYLIC_TCP_LOG_INTERVAL_MS=${arylic_tcp_log_interval_ms}
   includes:
     - /config/esphome/spectra_ls_system/components/arylic_tcp.h
     - /config/esphome/spectra_ls_system/components/sls_oled_text_layout.h

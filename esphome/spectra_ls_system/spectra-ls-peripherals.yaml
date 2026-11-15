@@ -1,5 +1,5 @@
 # Description: Spectra LS OLED-only peripherals package (no LED rings) for Control Board v2.
-# Version: 2026.11.15.3
+# Version: 2026.11.15.4
 # Last updated: 2026-11-15
 # Update version/date whenever you change this file.
 esphome:
@@ -557,11 +557,12 @@ interval:
           const bool fresh_clock_evidence =
             now_playing_freshness_age_s >= 0.0f && now_playing_freshness_age_s <= freshness_gate_s;
           const bool paused_recent_passthrough_keepalive = ha_declares_paused && fresh_clock_evidence;
+          const bool ha_declares_playing_effective = ha_declares_playing && ha_playback_activity_recent;
           const bool live_playback_evidence =
-            ha_declares_playing || transport_declares_playing || fresh_clock_evidence || paused_recent_passthrough_keepalive;
+            ha_declares_playing_effective || transport_declares_playing || fresh_clock_evidence || paused_recent_passthrough_keepalive;
           const bool passthrough_recent_activity_for_display =
             transport_declares_playing ||
-            ha_declares_playing ||
+            ha_declares_playing_effective ||
             fresh_clock_evidence ||
             paused_recent_passthrough_keepalive ||
             (id(ha_audio1_last_playing_ms) > 0 &&
@@ -1588,11 +1589,15 @@ display:
       const bool audio_wake_active = id(audio_wake_until_ms) > 0 && now < id(audio_wake_until_ms);
       const bool component_blank_contract_render =
         id(ha_audio_oled_blank_contract).has_state() && id(ha_audio_oled_blank_contract).state;
+      const uint32_t render_meta_stale_ms = (uint32_t) ${meta_stale_ms};
+      const bool ha_playing_recent_render =
+        (id(ha_audio1_last_meta_ms) > 0 && (now - id(ha_audio1_last_meta_ms)) < render_meta_stale_ms) ||
+        (id(ha_audio_pos_last_ms) > 0 && (now - id(ha_audio_pos_last_ms)) < render_meta_stale_ms);
       const bool transport_live_render =
         (id(arylic_playing).has_state() && id(arylic_playing).state) ||
         id(arylic_playing_state) ||
         id(arylic_lr_playing_state) ||
-        (id(ha_audio_state).has_state() && (to_lower_ascii(id(ha_audio_state).state.c_str()) == "playing"));
+        (id(ha_audio_state).has_state() && (to_lower_ascii(id(ha_audio_state).state.c_str()) == "playing") && ha_playing_recent_render);
       const int display_state_value = id(display_state);
       const bool menu_active_now = id(menu_active);
       std::string passthrough_latch_label_render = id(passthrough_source_latch_label);
@@ -1978,7 +1983,6 @@ display:
           (id(ha_audio_pos_last_ms) > 0 && (now - id(ha_audio_pos_last_ms)) < meta_stale_ms);
         const bool live_transport_playing =
           ((id(arylic_playing).has_state() && id(arylic_playing).state) || id(arylic_playing_state) || id(arylic_lr_playing_state)) ||
-          ha_state_playing ||
           (ha_state_playing && ha_recent_activity);
         const bool passthrough_live_activity_signal =
           (id(arylic_playing).has_state() && id(arylic_playing).state) ||
